@@ -8,7 +8,9 @@ from TensorFlow Lite available in Elixir.
 
 ## Demo code
 Model: [mobilenet_v2_1.0_224_inat_bird_quant.tflite](https://github.com/google-coral/edgetpu/blob/master/test_data/mobilenet_v2_1.0_224_inat_bird_quant.tflite)
+
 Input image: [parrot.jpg](https://github.com/google-coral/edgetpu/blob/master/test_data/parrot.jpg)
+
 Labels: [inat_bird_labels.txt](https://github.com/google-coral/edgetpu/blob/master/test_data/inat_bird_labels.txt)
 
 ```elixir
