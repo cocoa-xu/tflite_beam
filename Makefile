@@ -58,15 +58,17 @@ unarchive_source_code: $(TFLITE_SOURCE_ZIP)
     	fi
 
 $(NATIVE_BINDINGS_SO): unarchive_source_code
-	@ mkdir -p $(PRIV_DIR)
-	@ mkdir -p $(CMAKE_BINDINGS_BUILD_DIR)
-	@ cd "$(CMAKE_BINDINGS_BUILD_DIR)" && \
- 		{ cmake -D C_SRC="$(C_SRC)" \
+	@ if [ ! -e "$(NATIVE_BINDINGS_SO)" ]; then \
+		mkdir -p $(PRIV_DIR) && \
+		mkdir -p $(CMAKE_BINDINGS_BUILD_DIR) && \
+		cd "$(CMAKE_BINDINGS_BUILD_DIR)" && \
+ 		cmake -D C_SRC="$(C_SRC)" \
  		  -D PRIV_DIR="$(PRIV_DIR)" \
  		  -D ERTS_INCLUDE_DIR="$(ERTS_INCLUDE_DIR)" \
  		  -D TFLITE_ROOT_DIR="$(TFLITE_ROOT_DIR)" \
  		  $(CMAKE_OPTIONS) \
- 		  "$(shell pwd)" && \
- 		  make "$(MAKE_BUILD_FLAGS)" \
+ 		  "$(shell pwd)" ; \
+	fi
+	@ { cd "$(CMAKE_BINDINGS_BUILD_DIR)" && make "-j10" \
  		  || { echo "\033[0;31mincomplete build of Tensorflow Lite found in '$(CMAKE_TFLITE_BUILD_DIR)', please delete that directory and retry\033[0m" && exit 1 ; } ; } \
  		&& cp "$(CMAKE_BINDINGS_BUILD_DIR)/tflite_elixir.so" "$(NATIVE_BINDINGS_SO)"
