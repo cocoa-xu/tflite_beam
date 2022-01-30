@@ -165,6 +165,20 @@ namespace erlang
       return enif_make_string(env, string, ERL_NIF_LATIN1);
     }
 
+    ERL_NIF_TERM make_binary(ErlNifEnv *env, const char *string)
+    {
+        ERL_NIF_TERM binary_str;
+        unsigned char * ptr;
+        size_t len = strlen(string);
+        if ((ptr = enif_make_new_binary(env, len, &binary_str)) != nullptr) {
+            strcpy((char *)ptr, string);
+            return binary_str;
+        } else {
+            fprintf(stderr, "internal error: cannot allocate memory for binary string\r\n");
+            return enif_make_atom(env, "error");
+        }
+    }
+
     // Atoms
 
     int get_atom(ErlNifEnv *env, ERL_NIF_TERM term, std::string &var)

@@ -14,7 +14,7 @@ defmodule TFLite.InterpreterBuilder do
 
   @spec build(reference(), reference()) :: :ok | nif_error()
   def build(self, interpreter) do
-    TFLite.Nif.interpreter_build(self, interpreter)
+    TFLite.Nif.interpreterBuilder_build(self, interpreter)
   end
 
   @spec build!(reference(), reference()) :: :ok
