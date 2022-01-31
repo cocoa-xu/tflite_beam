@@ -165,13 +165,13 @@ namespace erlang
       return enif_make_string(env, string, ERL_NIF_LATIN1);
     }
 
-    ERL_NIF_TERM make_binary(ErlNifEnv *env, const char *string)
+    ERL_NIF_TERM make_binary(ErlNifEnv *env, const char *c_string)
     {
         ERL_NIF_TERM binary_str;
         unsigned char * ptr;
-        size_t len = strlen(string);
+        size_t len = strlen(c_string);
         if ((ptr = enif_make_new_binary(env, len, &binary_str)) != nullptr) {
-            strcpy((char *)ptr, string);
+            strcpy((char *)ptr, c_string);
             return binary_str;
         } else {
             fprintf(stderr, "internal error: cannot allocate memory for binary string\r\n");
