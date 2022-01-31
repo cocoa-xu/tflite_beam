@@ -9,7 +9,9 @@ from TensorFlow Lite available in Elixir.
 ## Demo code
 Model: [mobilenet_v2_1.0_224_inat_bird_quant.tflite](https://github.com/google-coral/edgetpu/blob/master/test_data/mobilenet_v2_1.0_224_inat_bird_quant.tflite)
 
-Input image: [parrot.jpg](https://github.com/google-coral/edgetpu/blob/master/test_data/parrot.jpg)
+Input image: 
+- [parrot.jpg](https://github.com/google-coral/edgetpu/blob/master/test_data/parrot.jpg)
+- Or use pre-converted input [parrot.bin](https://github.com/cocoa-xu/tflite_elixir/blob/main/test/test_data/parrot.bin)
 
 Labels: [inat_bird_labels.txt](https://github.com/google-coral/edgetpu/blob/master/test_data/inat_bird_labels.txt)
 
@@ -38,6 +40,9 @@ filename = "mobilenet_v2_1.0_224_inat_bird_quant.tflite"
 # {:ok, [1, 965]} = TFLite.TfLiteTensor.dims(output_tensor)
 # {:u, 8} = TFLite.TfLiteTensor.type(output_tensor)
 
+# parrot.bin - if you don't have :evision
+binary = File.read!("parrot.bin")
+# parrot.jpg - if you have :evision
 # load image, resize it, covert to RGB and to binary 
 {:ok, mat} = OpenCV.imread("parrot.jpg")
 {:ok, mat} = OpenCV.resize(mat, [224, 224])
@@ -49,6 +54,7 @@ TFLite.Interpreter.input_tensor(interpreter, 0, binary)
 TFLite.Interpreter.invoke(interpreter)
 {:ok, output_data} = TFLite.Interpreter.output_tensor(interpreter, 0)
 
+# if you have :nx
 # get predicted label
 output_data
 |> Nx.from_binary({:u, 8})
