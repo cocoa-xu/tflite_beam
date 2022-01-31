@@ -71,6 +71,6 @@ $(NATIVE_BINDINGS_SO): unarchive_source_code
  		  "$(shell pwd)" ; \
 	fi
 	@ { rm -rf "$(PRIV_DIR)" && mkdir -p $(PRIV_DIR) && \
- 		cd "$(CMAKE_BINDINGS_BUILD_DIR)" && cmake --build . --config Release -j \
+ 		cd "$(CMAKE_BINDINGS_BUILD_DIR)" && make "$(MAKE_BUILD_FLAGS)" \
  		  || { echo "\033[0;31mincomplete build of Tensorflow Lite found in '$(CMAKE_TFLITE_BUILD_DIR)', please delete that directory and retry\033[0m" && exit 1 ; } ; } \
  		&& cp "$(CMAKE_BINDINGS_BUILD_DIR)/tflite_elixir.so" "$(NATIVE_BINDINGS_SO)"
