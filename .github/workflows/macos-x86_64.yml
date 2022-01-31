@@ -1,0 +1,38 @@
+name: macos-x86_64
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - test-*
+    paths-ignore:
+      - '**/README.md'
+      - 'examples/**'
+      - 'nerves/**'
+      - '.github/FUNDING.yml'
+      - '.github/workflows/nerves-*'
+      - '.github/workflows/linux-x86_64.yml'
+      - '.github/workflows/test-*.yml'
+  workflow_dispatch:
+
+jobs:
+  mix_test:
+    runs-on: macos-11
+    env:
+      MIX_ENV: test
+
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Install Erlang and Elixir
+        run: |
+          brew install erlang
+          brew install elixir
+          mix local.hex --force
+          mix local.rebar --force
+
+      - name: Compile and Test
+        run: |
+          mix deps.get
+          mix test

@@ -1,0 +1,44 @@
+name: linux-x86_64
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - feature-*
+      - experimental-*
+      - test-*
+      - fix-*
+    paths-ignore:
+      - '**/README.md'
+      - 'examples/**'
+      - 'nerves/**'
+      - '.github/FUNDING.yml'
+      - '.github/workflows/nerves-*'
+      - '.github/workflows/macos-*'
+      - '.github/workflows/test-*.yml'
+  workflow_dispatch:
+
+jobs:
+  mix_test:
+    runs-on: ubuntu-20.04
+    env:
+      MIX_ENV: test
+
+    steps:
+      - uses: actions/checkout@v2
+      
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: 24.2
+          elixir-version: 1.13.2
+
+      - name: Install system dependecies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential automake autoconf pkg-config bc m4 unzip zip curl git libssl-dev libncurses5-dev ca-certificates
+
+      - name: Compile and Test
+        run: |
+          mix deps.get
+          mix test
