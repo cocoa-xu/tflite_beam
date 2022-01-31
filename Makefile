@@ -17,7 +17,8 @@ endif
 TFLITE_CACHE_DIR = $(shell pwd)/3rd_party/cache
 TFLITE_SOURCE_URL = "https://github.com/tensorflow/tensorflow/archive/refs/tags/$(TFLITE_VER_V).zip"
 TFLITE_SOURCE_ZIP = $(TFLITE_CACHE_DIR)/tensorflow-$(TFLITE_VER_V).zip
-TENSORFLOW_ROOT_DIR = $(shell pwd)/3rd_party/tensorflow/tensorflow-$(TFLITE_VER)
+UNZIP_TARGET_DIR = $(shell pwd)/3rd_party/tensorflow
+TENSORFLOW_ROOT_DIR = $(UNZIP_TARGET_DIR)/tensorflow-$(TFLITE_VER)
 TFLITE_ROOT_DIR = $(TENSORFLOW_ROOT_DIR)/tensorflow/lite
 TFLITE_CMAKELISTS_TXT = $(TFLITE_ROOT_DIR)/CMakeLists.txt
 CMAKE_TFLITE_BUILD_DIR = $(MIX_APP_PATH)/cmake_tflite_$(TFLITE_VER)
@@ -48,14 +49,15 @@ $(TFLITE_SOURCE_ZIP):
 	fi
 
 unarchive_source_code: $(TFLITE_SOURCE_ZIP)
-	@ if [ ! -e "$(TFLITE_CMAKELISTS_TXT)" ]; then \
-		rm -rf "$(TFLITE_DIR)" ; \
-    		if [ "$(TFLITE_USE_GIT_HEAD)" = "false" ]; then \
-    			unzip -qq -o "$(TFLITE_SOURCE_ZIP)" -d "$(TENSORFLOW_ROOT_DIR)" ; \
-    		else \
-    			git clone --branch=$(TFLITE_USE_GIT_BRANCH) --depth=1 $(TFLITE_GIT_REPO) "$(TFLITE_DIR)" ; \
-    		fi \
-    	fi
+	@ if [ ! -d "$(TENSORFLOW_ROOT_DIR)" ]; then \
+		rm -rf "$(TENSORFLOW_ROOT_DIR)" ; \
+		mkdir -p "$(UNZIP_TARGET_DIR)" ; \
+		if [ "$(TFLITE_USE_GIT_HEAD)" = "false" ]; then \
+			unzip -qq -o "$(TFLITE_SOURCE_ZIP)" -d "$(UNZIP_TARGET_DIR)" ; \
+		else \
+			git clone --branch=$(TFLITE_USE_GIT_BRANCH) --depth=1 $(TFLITE_GIT_REPO) "$(TENSORFLOW_ROOT_DIR)" ; \
+		fi \
+	fi
 
 $(NATIVE_BINDINGS_SO): unarchive_source_code
 	@ if [ ! -e "$(NATIVE_BINDINGS_SO)" ]; then \
