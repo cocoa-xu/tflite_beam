@@ -1,8 +1,9 @@
 defmodule TfliteElixirTest do
   use ExUnit.Case
 
-  def verify_loaded_model(model, input_data, print_state)
-      when is_reference(model) and is_binary(input_data) and is_boolean(print_state) do
+  def verify_loaded_model(model, input_data, expected_out, print_state)
+      when is_reference(model) and is_binary(input_data) and is_binary(expected_out) and
+             is_boolean(print_state) do
     # build interpreter
     %{"TFLITE_METADATA" => <<28>>, "min_runtime_version" => "1.5.0"} =
       TFLite.FlatBufferModel.readAllMetadata(model)
@@ -33,7 +34,8 @@ defmodule TfliteElixirTest do
     :ok = TFLite.Interpreter.allocateTensors(interpreter)
     TFLite.Interpreter.input_tensor(interpreter, 0, input_data)
     TFLite.Interpreter.invoke(interpreter)
-    {:ok, _output_data} = TFLite.Interpreter.output_tensor(interpreter, 0)
+    {:ok, output_data} = TFLite.Interpreter.output_tensor(interpreter, 0)
+    true = expected_out == output_data
 
     if print_state, do: TFLite.printInterpreterState(interpreter)
     :ok
@@ -41,15 +43,17 @@ defmodule TfliteElixirTest do
 
   test "mobilenet_v2_1.0_224_inat_bird_quant buildFromFile" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
-    input_data = Path.join([__DIR__, "test_data", "parrot.bin"])
+    input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
+    expected_out = Path.join([__DIR__, "test_data", "parrot-expected-out.bin"]) |> File.read!()
     {:ok, model} = TFLite.FlatBufferModel.buildFromFile(filename)
-    :ok = verify_loaded_model(model, input_data, true)
+    :ok = verify_loaded_model(model, input_data, expected_out, true)
   end
 
   test "mobilenet_v2_1.0_224_inat_bird_quant buildFromBuffer" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
-    input_data = Path.join([__DIR__, "test_data", "parrot.bin"])
+    input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
+    expected_out = Path.join([__DIR__, "test_data", "parrot-expected-out.bin"]) |> File.read!()
     {:ok, model} = TFLite.FlatBufferModel.buildFromBuffer(File.read!(filename))
-    :ok = verify_loaded_model(model, input_data, false)
+    :ok = verify_loaded_model(model, input_data, expected_out, false)
   end
 end
