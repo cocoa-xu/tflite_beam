@@ -6,7 +6,7 @@ There are mainly two reasons why I write this library.
 2. It would be easier and more flexible to make changes in Elixir if we have all the basic building blocks (i.e., functions)
 from TensorFlow Lite available in Elixir.
 
-[![Coverage Status](https://coveralls.io/repos/github/cocoa-xu/tflite_elixir/badge.svg?branch=master)](https://coveralls.io/github/cocoa-xu/tflite_elixir?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/cocoa-xu/tflite_elixir/badge.svg?branch=main)](https://coveralls.io/github/cocoa-xu/tflite_elixir?branch=main)
 
 | OS               | arch    | Build Status |
 |------------------|---------|--------------|
