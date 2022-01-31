@@ -1,0 +1,111 @@
+<!-- vim: syntax=markdown -->
+
+# super_resolution
+
+## ESRGAN-TF2
+
+* model using ESRGAN-TF2
+* test image from tensorflow examples
+
+```elixir
+defmodule Helper do
+  def download!(url, save_as, overwrite \\ false)
+
+  def download!(url, save_as, false) do
+    unless File.exists?(save_as) do
+      download!(url, save_as, true)
+    end
+
+    :ok
+  end
+
+  def download!(url, save_as, true) do
+    http_opts = []
+    opts = [body_format: :binary]
+    arg = {url, []}
+
+    body =
+      case :httpc.request(:get, arg, http_opts, opts) do
+        {:ok, {{_, 200, _}, _, body}} ->
+          body
+
+        {:error, reason} ->
+          raise inspect(reason)
+      end
+
+    File.write!(save_as, body)
+  end
+end
+```
+
+```elixir
+model_path = "lite-model_esrgan-tf2_1.tflite"
+test_img_path = "lr.jpg"
+
+Helper.download!(
+  "https://tfhub.dev/captain-pool/lite-model/esrgan-tf2/1?lite-format=tflite",
+  model_path
+)
+
+Helper.download!(
+  "https://raw.githubusercontent.com/tensorflow/examples/master/lite/examples/super_resolution/android/app/src/main/assets/lr-1.jpg",
+  test_img_path
+)
+```
+
+## Generate a super resolution image using TensorFlow Lite
+
+```elixir
+{:ok, lr} = OpenCV.imread(test_img_path)
+{:ok, lr} = OpenCV.cvtColor(lr, OpenCV.cv_COLOR_BGR2RGB())
+lr = OpenCV.Nx.to_nx(lr)
+lr = Nx.new_axis(lr, 0)
+lr = Nx.as_type(lr, {:f, 32})
+
+# Load TFLite model and allocate tensors.
+{:ok, interpreter} = TFLite.Interpreter.new(model_path)
+
+# Get input and output tensors.
+{:ok, input_tensors} = TFLite.Interpreter.inputs(interpreter)
+{:ok, output_tensors} = TFLite.Interpreter.outputs(interpreter)
+
+# Run the model
+TFLite.Interpreter.input_tensor(interpreter, 0, Nx.to_binary(lr))
+TFLite.Interpreter.invoke(interpreter)
+
+# Extract the output and postprocess it
+{:ok, output_data} = TFLite.Interpreter.output_tensor(interpreter, 0)
+{:ok, out_tensor} = TFLite.Interpreter.tensor(interpreter, Enum.at(output_tensors, 0))
+{:ok, [1 | shape]} = TFLite.TfLiteTensor.dims(out_tensor)
+
+sr =
+  output_data
+  |> Nx.from_binary({:f, 32})
+  |> Nx.reshape(List.to_tuple(shape))
+  |> Nx.clip(0, 255)
+  |> Nx.as_type({:u, 8})
+```
+
+## Visualize the result
+
+```elixir
+test_img_path
+|> OpenCV.imread()
+|> elem(1)
+|> then(&OpenCV.imencode(".jpeg", &1))
+|> elem(1)
+|> IO.iodata_to_binary()
+|> Kino.Image.new(:jpeg)
+```
+
+```elixir
+sr
+|> OpenCV.Nx.to_mat()
+|> elem(1)
+|> OpenCV.cvtColor(OpenCV.cv_COLOR_RGB2BGR())
+|> elem(1)
+|> then(&OpenCV.imencode(".jpeg", &1))
+|> elem(1)
+|> IO.iodata_to_binary()
+|> Kino.Image.new(:jpeg)
+```
