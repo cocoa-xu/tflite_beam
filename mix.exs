@@ -17,12 +17,18 @@ defmodule TfliteElixir.MixProject do
       source_url: "https://github.com/cocox-xu/tflite_elixir",
       description: description(),
       package: package(),
-      test_coverage: [ignore_modules: [TFLite.Nif]],
+      test_coverage: [ignore_modules: [TFLite.Nif], tool: ExCoveralls],
+      preferred_cli_env: [
+        coveralls: :test,
+        "coveralls.detail": :test,
+        "coveralls.post": :test,
+        "coveralls.html": :test
+      ],
       make_env: %{
         "TFLITE_VER" => tflite_versions(System.get_env("TFLITE_VER", @tflite_version)),
         "MAKE_BUILD_FLAGS" =>
           System.get_env("MAKE_BUILD_FLAGS", "-j#{System.schedulers_online()}")
-      }
+      },
     ]
   end
 
@@ -35,7 +41,8 @@ defmodule TfliteElixir.MixProject do
   defp deps do
     [
       {:elixir_make, "~> 0.6"},
-      {:ex_doc, "~> 0.27", only: :dev, runtime: false},
+      {:excoveralls, "~> 0.10", only: :test},
+      {:ex_doc, "~> 0.27", only: [:dev, :test], runtime: false},
       {:nx, "~> 0.1", optional: true}
     ]
   end

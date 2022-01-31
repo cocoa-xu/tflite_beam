@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-20.04
     env:
       MIX_ENV: test
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - uses: actions/checkout@v2
@@ -41,4 +42,4 @@ jobs:
       - name: Compile and Test
         run: |
           mix deps.get
-          mix test
+          mix coveralls.github

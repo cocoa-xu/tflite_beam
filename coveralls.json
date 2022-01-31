@@ -1,0 +1,6 @@
+{
+  "skip_files": [
+    "lib/tflite_elixir_nif.ex"
+  ]
+}
+
