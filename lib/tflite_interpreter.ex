@@ -38,6 +38,32 @@ defmodule TFLite.Interpreter do
   end
 
   @doc """
+  New interpreter with model
+  """
+  @spec new(String.t()) :: nif_resource_ok() | nif_error()
+  def new(model_path) do
+    with {:build_from_file, {:ok, model}} <- {:build_from_file, TFLite.FlatBufferModel.buildFromFile(model_path)},
+         {:builtin_resolver, {:ok, resolver}} <- {:builtin_resolver, TFLite.Ops.Builtin.BuiltinResolver.new()},
+         {:interpreter_build, {:ok, builder}} <- {:interpreter_build, TFLite.InterpreterBuilder.new(model, resolver)},
+         {:new_interpreter, {:ok, interpreter}} <- {:new_interpreter, TFLite.Interpreter.new()},
+         {:build_interpreter, :ok} <- {:build_interpreter, TFLite.InterpreterBuilder.build(builder, interpreter)},
+         {:allocate_tensors, :ok} <- {:allocate_tensors, TFLite.Interpreter.allocateTensors(interpreter)} do
+      {:ok, interpreter}
+    else
+      error -> error
+    end
+  end
+
+  @doc """
+  New interpreter with model
+  """
+  @spec new!(String.t()) :: reference()
+  def new!(model_path) do
+    {:ok, interpreter} = new(model_path)
+    interpreter
+  end
+
+  @doc """
   Allocate memory for tensors in the graph
   """
   @spec allocateTensors(reference()) :: :ok | nif_error()

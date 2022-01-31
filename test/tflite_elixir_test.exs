@@ -49,6 +49,16 @@ defmodule TfliteElixirTest do
     :ok = verify_loaded_model(model, input_data, expected_out, true)
   end
 
+  test "TFLite.Interpreter.new(model_path)" do
+    model_path = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
+    interpreter = TFLite.Interpreter.new!(model_path)
+    assert is_reference(interpreter)
+
+    {error_at_stage, {:error, reason}} = TFLite.Interpreter.new("/dev/null")
+    assert :build_from_file == error_at_stage
+    assert reason == "cannot load flat buffer model from file"
+  end
+
   test "mobilenet_v2_1.0_224_inat_bird_quant buildFromBuffer" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
