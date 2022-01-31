@@ -20,7 +20,8 @@ defmodule TfliteElixir.MixProject do
       test_coverage: [ignore_modules: [TFLite.Nif]],
       make_env: %{
         "TFLITE_VER" => tflite_versions(System.get_env("TFLITE_VER", @tflite_version)),
-        "MAKE_BUILD_FLAGS" => System.get_env("MAKE_BUILD_FLAGS", "-j#{System.schedulers_online()}"),
+        "MAKE_BUILD_FLAGS" =>
+          System.get_env("MAKE_BUILD_FLAGS", "-j#{System.schedulers_online()}")
       }
     ]
   end
@@ -35,7 +36,7 @@ defmodule TfliteElixir.MixProject do
     [
       {:elixir_make, "~> 0.6"},
       {:ex_doc, "~> 0.27", only: :dev, runtime: false},
-      {:nx, "~> 0.1", optional: true},
+      {:nx, "~> 0.1", optional: true}
     ]
   end
 
@@ -47,8 +48,7 @@ defmodule TfliteElixir.MixProject do
     [
       name: "tflite_elixir",
       # These are the default files included in the package
-      files:
-        ~w(lib c_src 3rd_party .formatter.exs mix.exs README* LICENSE*),
+      files: ~w(lib c_src 3rd_party .formatter.exs mix.exs README* LICENSE*),
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => "https://github.com/cocoa-xu/tflite_elixir"}
     ]
@@ -63,7 +63,8 @@ defmodule TfliteElixir.MixProject do
       )
 
       Logger.warn(
-        "Compatible Tensorflow Lite versions: " <> (@compatible_tflite_versions |> Enum.join(", "))
+        "Compatible Tensorflow Lite versions: " <>
+          (@compatible_tflite_versions |> Enum.join(", "))
       )
 
       version

@@ -4,7 +4,7 @@ defmodule TFLite.Ops.Builtin.BuiltinResolver do
 
   @spec new() :: nif_resource_ok() | nif_error()
   def new() do
-    TFLite.Nif.ops_builtin_builtinResolver_new();
+    TFLite.Nif.ops_builtin_builtinResolver_new()
   end
 
   @spec new!() :: reference()

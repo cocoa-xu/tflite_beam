@@ -1,10 +1,12 @@
 defmodule TfliteElixirTest do
   use ExUnit.Case
 
-  def verify_loaded_model(model, input_data, print_state) when is_reference(model) and is_binary(input_data) and is_boolean(print_state) do
+  def verify_loaded_model(model, input_data, print_state)
+      when is_reference(model) and is_binary(input_data) and is_boolean(print_state) do
     # build interpreter
-    %{"TFLITE_METADATA" => <<28>>,
-      "min_runtime_version" => "1.5.0"} = TFLite.FlatBufferModel.readAllMetadata(model)
+    %{"TFLITE_METADATA" => <<28>>, "min_runtime_version" => "1.5.0"} =
+      TFLite.FlatBufferModel.readAllMetadata(model)
+
     true = TFLite.FlatBufferModel.initialized(model)
     "1.5.0" = TFLite.FlatBufferModel.getMinimumRuntime(model)
     resolver = TFLite.Ops.Builtin.BuiltinResolver.new!()
@@ -15,7 +17,10 @@ defmodule TfliteElixirTest do
     # verify
     {:ok, [0]} = TFLite.Interpreter.inputs(interpreter)
     {:ok, [171]} = TFLite.Interpreter.outputs(interpreter)
-    {:ok, "map/TensorArrayStack/TensorArrayGatherV3"} = TFLite.Interpreter.getInputName(interpreter, 0)
+
+    {:ok, "map/TensorArrayStack/TensorArrayGatherV3"} =
+      TFLite.Interpreter.getInputName(interpreter, 0)
+
     {:ok, "prediction"} = TFLite.Interpreter.getOutputName(interpreter, 0)
     {:ok, input_tensor} = TFLite.Interpreter.tensor(interpreter, 0)
     {:ok, [1, 224, 224, 3]} = TFLite.TfLiteTensor.dims(input_tensor)
@@ -47,8 +52,4 @@ defmodule TfliteElixirTest do
     {:ok, model} = TFLite.FlatBufferModel.buildFromBuffer(File.read!(filename))
     :ok = verify_loaded_model(model, input_data, false)
   end
-
-#  test "printInterpreterState" do
-#    assert capture_io(fn -> IO.puts("a") end) == "a\n"
-#  end
 end

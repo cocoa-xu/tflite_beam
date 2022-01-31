@@ -1,23 +1,24 @@
 defmodule TFLite.Interpreter do
   @type nif_resource_ok :: {:ok, reference()}
   @type nif_error :: {:error, String.t()}
-  @type tensor_type :: :no_type
-                       | {:f, 32}
-                       | {:s, 32}
-                       | {:u, 8}
-                       | {:s, 64}
-                       | :string
-                       | :bool
-                       | {:s, 16}
-                       | {:c, 64}
-                       | {:s, 8}
-                       | {:f, 16}
-                       | {:f, 64}
-                       | {:c, 128}
-                       | {:u, 64}
-                       | :resource
-                       | :variant
-                       | {:u, 32}
+  @type tensor_type ::
+          :no_type
+          | {:f, 32}
+          | {:s, 32}
+          | {:u, 8}
+          | {:s, 64}
+          | :string
+          | :bool
+          | {:s, 16}
+          | {:c, 64}
+          | {:s, 8}
+          | {:f, 16}
+          | {:f, 64}
+          | {:c, 128}
+          | {:u, 64}
+          | :resource
+          | :variant
+          | {:u, 32}
 
   @spec new() :: nif_resource_ok() | nif_error()
   def new() do
@@ -65,7 +66,8 @@ defmodule TFLite.Interpreter do
     TFLite.Nif.interpreter_getOutputName(self, index)
   end
 
-  @spec output_tensor(reference(), non_neg_integer()) :: {:ok, tensor_type(), binary()} | nif_error()
+  @spec output_tensor(reference(), non_neg_integer()) ::
+          {:ok, tensor_type(), binary()} | nif_error()
   def output_tensor(self, index) do
     TFLite.Nif.interpreter_output_tensor(self, index)
   end
