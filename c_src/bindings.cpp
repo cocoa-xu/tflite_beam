@@ -58,7 +58,7 @@ static bool tensor_type_to_erl_term(const TfLiteType in_type, ErlNifEnv *env, ER
             break;
         case kTfLiteFloat32:
             out_term = enif_make_tuple2(env,
-                                    enif_make_atom(env, "s"),
+                                    enif_make_atom(env, "f"),
                                     enif_make_int(env, 32));
             break;
         case kTfLiteInt32:
