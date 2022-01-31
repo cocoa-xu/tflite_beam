@@ -17,6 +17,7 @@ defmodule TfliteElixir.MixProject do
       source_url: "https://github.com/cocox-xu/tflite_elixir",
       description: description(),
       package: package(),
+      test_coverage: [ignore_modules: [TFLite.Nif]],
       make_env: %{
         "TFLITE_VER" => tflite_versions(System.get_env("TFLITE_VER", @tflite_version)),
         "MAKE_BUILD_FLAGS" => System.get_env("MAKE_BUILD_FLAGS", "-j#{System.schedulers_online()}"),
