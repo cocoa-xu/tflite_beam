@@ -9,7 +9,8 @@ defmodule TFLite.InterpreterBuilder do
 
   @spec new!(reference(), reference()) :: reference()
   def new!(model, resolver) when is_reference(model) and is_reference(resolver) do
-    TFLite.Nif.interpreterBuilder_new(model, resolver)
+    {:ok, builder} = new(model, resolver)
+    builder
   end
 
   @spec build(reference(), reference()) :: :ok | nif_error()
