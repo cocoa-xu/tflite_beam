@@ -13,6 +13,10 @@ defmodule TFLite.Nif do
   end
 
   def flatBufferModel_buildFromFile(_filename), do: :erlang.nif_error(:not_loaded)
+  def flatBufferModel_buildFromBuffer(_buffer), do: :erlang.nif_error(:not_loaded)
+  def flatBufferModel_initialized(_self), do: :erlang.nif_error(:not_loaded)
+  def flatBufferModel_getMinimumRuntime(_self), do: :erlang.nif_error(:not_loaded)
+  def flatBufferModel_readAllMetadata(_self), do: :erlang.nif_error(:not_loaded)
 
   def ops_builtin_builtinResolver_new(), do: :erlang.nif_error(:not_loaded)
 
