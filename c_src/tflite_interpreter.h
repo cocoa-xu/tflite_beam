@@ -37,6 +37,8 @@ static ERL_NIF_TERM interpreter_allocateTensors(ErlNifEnv *env, int argc, const 
                     return erlang::nif::error(env, "DelegateDataWriteError");
                 case kTfLiteDelegateDataReadError:
                     return erlang::nif::error(env, "DelegateDataReadError");
+                default:
+                    return erlang::nif::error(env, "unknown error");
             }
         } else {
             return erlang::nif::error(env, "oh nyo erlang");
