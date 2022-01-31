@@ -20,11 +20,17 @@ defmodule TFLite.TfLiteTensor do
           | :variant
           | {:u, 32}
 
+  @doc """
+  Get the data type
+  """
   @spec type(reference()) :: tensor_type() | nif_error()
   def type(self) do
     TFLite.Nif.tflitetensor_type(self)
   end
 
+  @doc """
+  Get the dimensions
+  """
   @spec dims(reference()) :: {:ok, [integer()]} | nif_error()
   def dims(self) do
     TFLite.Nif.tflitetensor_dims(self)
