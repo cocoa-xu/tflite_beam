@@ -118,17 +118,17 @@ sr =
 
 ```elixir
 test_img_path
-|> OpenCV.imread!()
-|> then(&OpenCV.imencode!(".jpeg", &1))
-|> IO.iodata_to_binary()
-|> Kino.Image.new(:jpeg)
+  |> OpenCV.imread!()
+  |> then(&OpenCV.imencode!(".jpeg", &1))
+  |> IO.iodata_to_binary()
+  |> Kino.Image.new(:jpeg)
 ```
 
 ```elixir
 sr
-|> OpenCV.Nx.to_mat!()
-|> OpenCV.cvtColor!(OpenCV.cv_COLOR_RGB2BGR())
-|> then(&OpenCV.imencode!(".jpeg", &1))
-|> IO.iodata_to_binary()
-|> Kino.Image.new(:jpeg)
+  |> OpenCV.Nx.to_mat!()
+  |> OpenCV.cvtColor!(OpenCV.cv_COLOR_RGB2BGR())
+  |> then(&OpenCV.imencode!(".jpeg", &1))
+  |> IO.iodata_to_binary()
+  |> Kino.Image.new(:jpeg)
 ```
