@@ -1,4 +1,4 @@
-defmodule TFLite.TfLiteTensor do
+defmodule TFLiteElixir.TfLiteTensor do
   @type nif_resource_ok :: {:ok, reference()}
   @type nif_error :: {:error, String.t()}
   @type tensor_type ::
@@ -25,7 +25,7 @@ defmodule TFLite.TfLiteTensor do
   """
   @spec type(reference()) :: tensor_type() | nif_error()
   def type(self) do
-    TFLite.Nif.tflitetensor_type(self)
+    TFLiteElixir.Nif.tflitetensor_type(self)
   end
 
   @doc """
@@ -33,6 +33,6 @@ defmodule TFLite.TfLiteTensor do
   """
   @spec dims(reference()) :: {:ok, [integer()]} | nif_error()
   def dims(self) do
-    TFLite.Nif.tflitetensor_dims(self)
+    TFLiteElixir.Nif.tflitetensor_dims(self)
   end
 end

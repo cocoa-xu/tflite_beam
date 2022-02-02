@@ -74,11 +74,17 @@ Helper.download!(
 )
 ```
 
+## Alias modules
+```elixir
+alias Evision, as: OpenCV
+alias TFLiteElixir, as: TFLite
+```
+
 ## Generate a super resolution image using TensorFlow Lite
 
 ```elixir
-{:ok, lr} = OpenCV.imread(test_img_path)
-{:ok, lr} = OpenCV.cvtColor(lr, OpenCV.cv_COLOR_BGR2RGB())
+lr = OpenCV.imread!(test_img_path)
+lr = OpenCV.cvtColor!(lr, OpenCV.cv_COLOR_BGR2RGB())
 lr = OpenCV.Nx.to_nx(lr)
 lr = Nx.new_axis(lr, 0)
 lr = Nx.as_type(lr, {:f, 32})
@@ -112,22 +118,17 @@ sr =
 
 ```elixir
 test_img_path
-|> OpenCV.imread()
-|> elem(1)
-|> then(&OpenCV.imencode(".jpeg", &1))
-|> elem(1)
+|> OpenCV.imread!()
+|> then(&OpenCV.imencode!(".jpeg", &1))
 |> IO.iodata_to_binary()
 |> Kino.Image.new(:jpeg)
 ```
 
 ```elixir
 sr
-|> OpenCV.Nx.to_mat()
-|> elem(1)
-|> OpenCV.cvtColor(OpenCV.cv_COLOR_RGB2BGR())
-|> elem(1)
-|> then(&OpenCV.imencode(".jpeg", &1))
-|> elem(1)
+|> OpenCV.Nx.to_mat!()
+|> OpenCV.cvtColor!(OpenCV.cv_COLOR_RGB2BGR())
+|> then(&OpenCV.imencode!(".jpeg", &1))
 |> IO.iodata_to_binary()
 |> Kino.Image.new(:jpeg)
 ```

@@ -1,4 +1,4 @@
-defmodule TFLite.InterpreterBuilder do
+defmodule TFLiteElixir.InterpreterBuilder do
   @type nif_resource_ok :: {:ok, reference()}
   @type nif_error :: {:error, String.t()}
 
@@ -7,7 +7,7 @@ defmodule TFLite.InterpreterBuilder do
   """
   @spec new(reference(), reference()) :: nif_resource_ok() | nif_error()
   def new(model, resolver) when is_reference(model) and is_reference(resolver) do
-    TFLite.Nif.interpreterBuilder_new(model, resolver)
+    TFLiteElixir.Nif.interpreterBuilder_new(model, resolver)
   end
 
   @doc """
@@ -28,7 +28,7 @@ defmodule TFLite.InterpreterBuilder do
   """
   @spec build(reference(), reference()) :: :ok | nif_error()
   def build(self, interpreter) do
-    TFLite.Nif.interpreterBuilder_build(self, interpreter)
+    TFLiteElixir.Nif.interpreterBuilder_build(self, interpreter)
   end
 
   @doc """

@@ -1,4 +1,4 @@
-defmodule TFLite.Ops.Builtin.BuiltinResolver do
+defmodule TFLiteElixir.Ops.Builtin.BuiltinResolver do
   @type nif_resource_ok :: {:ok, reference()}
   @type nif_error :: {:error, String.t()}
 
@@ -10,7 +10,7 @@ defmodule TFLite.Ops.Builtin.BuiltinResolver do
   """
   @spec new() :: nif_resource_ok() | nif_error()
   def new() do
-    TFLite.Nif.ops_builtin_builtinResolver_new()
+    TFLiteElixir.Nif.ops_builtin_builtinResolver_new()
   end
 
   @doc """

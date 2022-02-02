@@ -1,4 +1,4 @@
-defmodule TFLite.FlatBufferModel do
+defmodule TFLiteElixir.FlatBufferModel do
   @type nif_resource_ok :: {:ok, reference()}
   @type nif_error :: {:error, String.t()}
 
@@ -10,7 +10,7 @@ defmodule TFLite.FlatBufferModel do
   """
   @spec buildFromFile(String.t()) :: nif_resource_ok() | nif_error()
   def buildFromFile(filename) when is_binary(filename) do
-    TFLite.Nif.flatBufferModel_buildFromFile(filename)
+    TFLiteElixir.Nif.flatBufferModel_buildFromFile(filename)
   end
 
   @doc """
@@ -29,12 +29,12 @@ defmodule TFLite.FlatBufferModel do
   """
   @spec buildFromBuffer(binary()) :: nif_resource_ok() | nif_error()
   def buildFromBuffer(buffer) when is_binary(buffer) do
-    TFLite.Nif.flatBufferModel_buildFromBuffer(buffer)
+    TFLiteElixir.Nif.flatBufferModel_buildFromBuffer(buffer)
   end
 
   @spec initialized(reference()) :: bool() | nif_error()
   def initialized(self) when is_reference(self) do
-    TFLite.Nif.flatBufferModel_initialized(self)
+    TFLiteElixir.Nif.flatBufferModel_initialized(self)
   end
 
   @doc """
@@ -50,7 +50,7 @@ defmodule TFLite.FlatBufferModel do
   """
   @spec getMinimumRuntime(reference()) :: String.t() | nif_error()
   def getMinimumRuntime(self) when is_reference(self) do
-    TFLite.Nif.flatBufferModel_getMinimumRuntime(self)
+    TFLiteElixir.Nif.flatBufferModel_getMinimumRuntime(self)
   end
 
   @doc """
@@ -60,6 +60,6 @@ defmodule TFLite.FlatBufferModel do
   """
   @spec readAllMetadata(reference()) :: %{String.t() => String.t()} | nif_error()
   def readAllMetadata(self) when is_reference(self) do
-    TFLite.Nif.flatBufferModel_readAllMetadata(self)
+    TFLiteElixir.Nif.flatBufferModel_readAllMetadata(self)
   end
 end

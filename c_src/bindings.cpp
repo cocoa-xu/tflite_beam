@@ -306,4 +306,4 @@ static ErlNifFunc nif_functions[] = {
     F_IO(tflite_printInterpreterState, 1)
 };
 
-ERL_NIF_INIT(Elixir.TFLite.Nif, nif_functions, on_load, on_reload, on_upgrade, NULL);
+ERL_NIF_INIT(Elixir.TFLiteElixir.Nif, nif_functions, on_load, on_reload, on_upgrade, NULL);
