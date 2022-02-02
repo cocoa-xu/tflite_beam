@@ -3,9 +3,9 @@ defmodule TfliteElixir.MixProject do
   require Logger
 
   @app :tflite_elixir
-  @tflite_version "2.7.0"
+  @tflite_version "2.8.0"
   # only means compatible. need to write more tests
-  @compatible_tflite_versions ["2.7.0"]
+  @compatible_tflite_versions ["2.7.0", "2.8.0"]
   def project do
     [
       app: @app,
