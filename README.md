@@ -23,6 +23,9 @@ Input image:
 Labels: [inat_bird_labels.txt](https://github.com/google-coral/edgetpu/blob/master/test_data/inat_bird_labels.txt)
 
 ```elixir
+alias Evision, as: OpenCV
+alias TFLiteElixir, as: TFLite
+
 # load labels
 labels = File.read!("inat_bird_labels.txt") |> String.split("\n")
 
