@@ -32,7 +32,7 @@ defmodule TFLiteElixir.InterpreterBuilder do
   Sets the number of CPU threads to use for the interpreter.
   Returns `true` on success, `{:error, reason}` on error.
   """
-  @spec setNumThreads(reference(), integer()) :: true | nif_error()
+  @spec setNumThreads(reference(), integer()) :: :ok | nif_error()
   def setNumThreads(self, num_threads) when is_integer(num_threads) and num_threads >= -1 do
     TFLiteElixir.Nif.interpreterBuilder_setNumThreads(self, num_threads)
   end
