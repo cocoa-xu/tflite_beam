@@ -1,4 +1,6 @@
 defmodule TFLiteElixir.Interpreter do
+  import TFLiteElixir.Errorize
+
   @type nif_resource_ok :: {:ok, reference()}
   @type nif_error :: {:error, String.t()}
   @type tensor_type ::
@@ -28,14 +30,7 @@ defmodule TFLiteElixir.Interpreter do
     TFLiteElixir.Nif.interpreter_new()
   end
 
-  @doc """
-  New interpreter
-  """
-  @spec new!() :: reference()
-  def new!() do
-    {:ok, interpreter} = new()
-    interpreter
-  end
+  deferror new()
 
   @doc """
   New interpreter with model
@@ -54,14 +49,7 @@ defmodule TFLiteElixir.Interpreter do
     end
   end
 
-  @doc """
-  New interpreter with model
-  """
-  @spec new!(String.t()) :: reference()
-  def new!(model_path) do
-    {:ok, interpreter} = new(model_path)
-    interpreter
-  end
+  deferror new(model_path)
 
   @doc """
   Allocate memory for tensors in the graph
@@ -70,6 +58,8 @@ defmodule TFLiteElixir.Interpreter do
   def allocateTensors(self) when is_reference(self) do
     TFLiteElixir.Nif.interpreter_allocateTensors(self)
   end
+
+  deferror allocateTensors(self)
 
   @doc """
   Get the list of input tensors.
@@ -80,6 +70,8 @@ defmodule TFLiteElixir.Interpreter do
   def inputs(self) when is_reference(self) do
     TFLiteElixir.Nif.interpreter_inputs(self)
   end
+
+  deferror inputs(self)
 
   @doc """
   Get the name of the input tensor
@@ -92,6 +84,8 @@ defmodule TFLiteElixir.Interpreter do
   def getInputName(self, index) when is_reference(self) and index >= 0 do
     TFLiteElixir.Nif.interpreter_getInputName(self, index)
   end
+
+  deferror getInputName(self, index)
 
   @doc """
   Fill data to the specified input tensor
@@ -112,6 +106,8 @@ defmodule TFLiteElixir.Interpreter do
     TFLiteElixir.Nif.interpreter_input_tensor(self, index, data)
   end
 
+  deferror input_tensor(self, index, data)
+
   @doc """
   Run forwarding
   """
@@ -119,6 +115,8 @@ defmodule TFLiteElixir.Interpreter do
   def invoke(self) when is_reference(self) do
     TFLiteElixir.Nif.interpreter_invoke(self)
   end
+
+  deferror invoke(self)
 
   @doc """
   Get the list of output tensors.
@@ -130,6 +128,8 @@ defmodule TFLiteElixir.Interpreter do
     TFLiteElixir.Nif.interpreter_outputs(self)
   end
 
+  deferror outputs(self)
+
   @doc """
   Get the list of output tensors.
 
@@ -139,6 +139,8 @@ defmodule TFLiteElixir.Interpreter do
   def getOutputName(self, index) when is_reference(self) and index >= 0 do
     TFLiteElixir.Nif.interpreter_getOutputName(self, index)
   end
+
+  deferror getOutputName(self, index)
 
   @doc """
   Get the name of the input tensor
@@ -153,6 +155,8 @@ defmodule TFLiteElixir.Interpreter do
     TFLiteElixir.Nif.interpreter_output_tensor(self, index)
   end
 
+  deferror output_tensor(self, index)
+
   @doc """
   Get any tensor in the graph by its id
 
@@ -163,6 +167,8 @@ defmodule TFLiteElixir.Interpreter do
   def tensor(self, tensor_index) when is_reference(self) and tensor_index >= 0 do
     TFLiteElixir.Nif.interpreter_tensor(self, tensor_index)
   end
+
+  deferror tensor(self, tensor_index)
 
   @doc """
   Set the number of threads available to the interpreter.
@@ -187,4 +193,6 @@ defmodule TFLiteElixir.Interpreter do
   def setNumThreads(self, num_threads) when is_integer(num_threads) and num_threads >= -1 do
     TFLiteElixir.Nif.interpreter_setNumThreads(self, num_threads)
   end
+
+  deferror setNumThreads(self, num_threads)
 end

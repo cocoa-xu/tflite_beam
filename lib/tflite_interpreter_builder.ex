@@ -1,4 +1,6 @@
 defmodule TFLiteElixir.InterpreterBuilder do
+  import TFLiteElixir.Errorize
+
   @type nif_resource_ok :: {:ok, reference()}
   @type nif_error :: {:error, String.t()}
 
@@ -10,14 +12,7 @@ defmodule TFLiteElixir.InterpreterBuilder do
     TFLiteElixir.Nif.interpreterBuilder_new(model, resolver)
   end
 
-  @doc """
-  New InterpreterBuilder
-  """
-  @spec new!(reference(), reference()) :: reference()
-  def new!(model, resolver) when is_reference(model) and is_reference(resolver) do
-    {:ok, builder} = new(model, resolver)
-    builder
-  end
+  deferror new(model, resolver)
 
   @doc """
   Build the interpreter with the InterpreterBuilder.
@@ -31,18 +26,7 @@ defmodule TFLiteElixir.InterpreterBuilder do
     TFLiteElixir.Nif.interpreterBuilder_build(self, interpreter)
   end
 
-  @doc """
-  Build the interpreter with the InterpreterBuilder.
-
-  Note: all Interpreters should be built with the InterpreterBuilder,
-  which allocates memory for the Interpreter and does various set up
-  tasks so that the Interpreter can read the provided model.
-  """
-  @spec build!(reference(), reference()) :: :ok
-  def build!(self, interpreter) do
-    :ok = build(self, interpreter)
-    :ok
-  end
+  deferror build(self, interpreter)
 
   @doc """
   Sets the number of CPU threads to use for the interpreter.
@@ -52,4 +36,6 @@ defmodule TFLiteElixir.InterpreterBuilder do
   def setNumThreads(self, num_threads) when is_integer(num_threads) and num_threads >= -1 do
     TFLiteElixir.Nif.interpreterBuilder_setNumThreads(self, num_threads)
   end
+
+  deferror setNumThreads(self, num_threads)
 end

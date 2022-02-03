@@ -1,4 +1,6 @@
 defmodule TFLiteElixir.FlatBufferModel do
+  import TFLiteElixir.Errorize
+
   @type nif_resource_ok :: {:ok, reference()}
   @type nif_error :: {:error, String.t()}
 
@@ -12,6 +14,8 @@ defmodule TFLiteElixir.FlatBufferModel do
   def buildFromFile(filename) when is_binary(filename) do
     TFLiteElixir.Nif.flatBufferModel_buildFromFile(filename)
   end
+
+  deferror buildFromFile(filename)
 
   @doc """
   Build model from caller owned memory buffer
@@ -32,10 +36,14 @@ defmodule TFLiteElixir.FlatBufferModel do
     TFLiteElixir.Nif.flatBufferModel_buildFromBuffer(buffer)
   end
 
+  deferror buildFromBuffer(buffer)
+
   @spec initialized(reference()) :: bool() | nif_error()
   def initialized(self) when is_reference(self) do
     TFLiteElixir.Nif.flatBufferModel_initialized(self)
   end
+
+  deferror initialized(self)
 
   @doc """
   Returns the minimum runtime version from the flatbuffer. This runtime
@@ -53,6 +61,8 @@ defmodule TFLiteElixir.FlatBufferModel do
     TFLiteElixir.Nif.flatBufferModel_getMinimumRuntime(self)
   end
 
+  deferror getMinimumRuntime(self)
+
   @doc """
   Return model metadata as a mapping of name & buffer strings.
 
@@ -62,4 +72,6 @@ defmodule TFLiteElixir.FlatBufferModel do
   def readAllMetadata(self) when is_reference(self) do
     TFLiteElixir.Nif.flatBufferModel_readAllMetadata(self)
   end
+
+  deferror readAllMetadata(self)
 end

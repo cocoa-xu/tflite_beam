@@ -6,35 +6,38 @@ defmodule TFLiteElixir.Test do
              is_boolean(print_state) do
     # build interpreter
     %{"TFLITE_METADATA" => <<28>>, "min_runtime_version" => "1.5.0"} =
-      TFLiteElixir.FlatBufferModel.readAllMetadata(model)
+      TFLiteElixir.FlatBufferModel.readAllMetadata!(model)
 
-    true = TFLiteElixir.FlatBufferModel.initialized(model)
-    "1.5.0" = TFLiteElixir.FlatBufferModel.getMinimumRuntime(model)
+    true = TFLiteElixir.FlatBufferModel.initialized!(model)
+    "1.5.0" = TFLiteElixir.FlatBufferModel.getMinimumRuntime!(model)
     resolver = TFLiteElixir.Ops.Builtin.BuiltinResolver.new!()
     builder = TFLiteElixir.InterpreterBuilder.new!(model, resolver)
     interpreter = TFLiteElixir.Interpreter.new!()
+    TFLiteElixir.InterpreterBuilder.setNumThreads!(builder, 2)
     :ok = TFLiteElixir.InterpreterBuilder.build!(builder, interpreter)
+    TFLiteElixir.Interpreter.setNumThreads!(interpreter, 2)
 
     # verify
-    {:ok, [0]} = TFLiteElixir.Interpreter.inputs(interpreter)
-    {:ok, [171]} = TFLiteElixir.Interpreter.outputs(interpreter)
+    [0] = TFLiteElixir.Interpreter.inputs!(interpreter)
+    [171] = TFLiteElixir.Interpreter.outputs!(interpreter)
 
-    {:ok, "map/TensorArrayStack/TensorArrayGatherV3"} =
-      TFLiteElixir.Interpreter.getInputName(interpreter, 0)
 
-    {:ok, "prediction"} = TFLiteElixir.Interpreter.getOutputName(interpreter, 0)
-    {:ok, input_tensor} = TFLiteElixir.Interpreter.tensor(interpreter, 0)
-    {:ok, [1, 224, 224, 3]} = TFLiteElixir.TfLiteTensor.dims(input_tensor)
+    "map/TensorArrayStack/TensorArrayGatherV3" =
+      TFLiteElixir.Interpreter.getInputName!(interpreter, 0)
+
+    "prediction" = TFLiteElixir.Interpreter.getOutputName!(interpreter, 0)
+    input_tensor = TFLiteElixir.Interpreter.tensor!(interpreter, 0)
+    [1, 224, 224, 3] = TFLiteElixir.TfLiteTensor.dims!(input_tensor)
     {:u, 8} = TFLiteElixir.TfLiteTensor.type(input_tensor)
-    {:ok, output_tensor} = TFLiteElixir.Interpreter.tensor(interpreter, 171)
-    {:ok, [1, 965]} = TFLiteElixir.TfLiteTensor.dims(output_tensor)
-    {:u, 8} = TFLiteElixir.TfLiteTensor.type(output_tensor)
+    output_tensor = TFLiteElixir.Interpreter.tensor!(interpreter, 171)
+    [1, 965] = TFLiteElixir.TfLiteTensor.dims!(output_tensor)
+    {:u, 8} = TFLiteElixir.TfLiteTensor.type!(output_tensor)
 
     # run forwarding
-    :ok = TFLiteElixir.Interpreter.allocateTensors(interpreter)
-    TFLiteElixir.Interpreter.input_tensor(interpreter, 0, input_data)
-    TFLiteElixir.Interpreter.invoke(interpreter)
-    {:ok, output_data} = TFLiteElixir.Interpreter.output_tensor(interpreter, 0)
+    :ok = TFLiteElixir.Interpreter.allocateTensors!(interpreter)
+    TFLiteElixir.Interpreter.input_tensor!(interpreter, 0, input_data)
+    TFLiteElixir.Interpreter.invoke!(interpreter)
+    output_data = TFLiteElixir.Interpreter.output_tensor!(interpreter, 0)
     true = expected_out == output_data
 
     if print_state, do: TFLiteElixir.printInterpreterState(interpreter)
@@ -45,7 +48,7 @@ defmodule TFLiteElixir.Test do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
     expected_out = Path.join([__DIR__, "test_data", "parrot-expected-out.bin"]) |> File.read!()
-    {:ok, model} = TFLiteElixir.FlatBufferModel.buildFromFile(filename)
+    model = TFLiteElixir.FlatBufferModel.buildFromFile!(filename)
     :ok = verify_loaded_model(model, input_data, expected_out, true)
   end
 
@@ -63,7 +66,7 @@ defmodule TFLiteElixir.Test do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
     expected_out = Path.join([__DIR__, "test_data", "parrot-expected-out.bin"]) |> File.read!()
-    {:ok, model} = TFLiteElixir.FlatBufferModel.buildFromBuffer(File.read!(filename))
+    model = TFLiteElixir.FlatBufferModel.buildFromBuffer!(File.read!(filename))
     :ok = verify_loaded_model(model, input_data, expected_out, false)
   end
 end

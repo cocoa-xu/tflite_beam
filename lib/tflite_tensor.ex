@@ -1,4 +1,6 @@
 defmodule TFLiteElixir.TfLiteTensor do
+  import TFLiteElixir.Errorize
+
   @type nif_resource_ok :: {:ok, reference()}
   @type nif_error :: {:error, String.t()}
   @type tensor_type ::
@@ -28,6 +30,8 @@ defmodule TFLiteElixir.TfLiteTensor do
     TFLiteElixir.Nif.tflitetensor_type(self)
   end
 
+  deferror type(self)
+
   @doc """
   Get the dimensions
   """
@@ -35,4 +39,6 @@ defmodule TFLiteElixir.TfLiteTensor do
   def dims(self) do
     TFLiteElixir.Nif.tflitetensor_dims(self)
   end
+
+  deferror dims(self)
 end
