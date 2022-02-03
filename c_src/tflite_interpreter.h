@@ -131,24 +131,7 @@ static ERL_NIF_TERM interpreter_invoke(ErlNifEnv *env, int argc, const ERL_NIF_T
     erlang_nif_res<tflite::Interpreter *> *self_res;
     if (enif_get_resource(env, self_nif, erlang_nif_res<tflite::Interpreter *>::type, (void **) &self_res)) {
         if (self_res->val) {
-            switch (self_res->val->Invoke()) {
-                case kTfLiteOk:
-                    return erlang::nif::atom(env, "ok");
-                case kTfLiteError:
-                    return erlang::nif::error(env, "General runtime error");
-                case kTfLiteDelegateError:
-                    return erlang::nif::error(env, "TfLiteDelegate");
-                case kTfLiteApplicationError:
-                    return erlang::nif::error(env, "Application");
-                case kTfLiteDelegateDataNotFound:
-                    return erlang::nif::error(env, "DelegateDataNotFound");
-                case kTfLiteDelegateDataWriteError:
-                    return erlang::nif::error(env, "DelegateDataWriteError");
-                case kTfLiteDelegateDataReadError:
-                    return erlang::nif::error(env, "DelegateDataReadError");
-                default:
-                    return erlang::nif::error(env, "unknown error");
-            }
+            return tflite_status_to_erl_term(self_res->val->Invoke(), env);
         } else {
             return erlang::nif::error(env, "oh nyo erlang");
         }
@@ -247,6 +230,26 @@ static ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_T
             } else {
                 return erlang::nif::error(env, "cannot allocate memory for resource");
             }
+        } else {
+            return erlang::nif::error(env, "oh nyo erlang");
+        }
+    } else {
+        return erlang::nif::error(env, "cannot access resource");
+    }
+}
+
+static ERL_NIF_TERM interpreter_setNumThreads(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 2) return enif_make_badarg(env);
+
+    ERL_NIF_TERM self_nif = argv[0];
+    ERL_NIF_TERM num_threads_nif = argv[1];
+    int num_threads = -1;
+    erlang_nif_res<tflite::InterpreterBuilder *> * self_res;
+    if (enif_get_resource(env, self_nif, erlang_nif_res<tflite::Interpreter *>::type, (void **)&self_res) &&
+        erlang::nif::get(env, num_threads_nif, &num_threads)) {
+        if (self_res->val) {
+            auto status = self_res->val->SetNumThreads(num_threads);
+            return tflite_status_to_erl_term(status, env);
         } else {
             return erlang::nif::error(env, "oh nyo erlang");
         }

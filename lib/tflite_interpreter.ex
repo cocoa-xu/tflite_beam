@@ -163,4 +163,28 @@ defmodule TFLiteElixir.Interpreter do
   def tensor(self, tensor_index) when is_reference(self) and tensor_index >= 0 do
     TFLiteElixir.Nif.interpreter_tensor(self, tensor_index)
   end
+
+  @doc """
+  Set the number of threads available to the interpreter.
+
+  NOTE: num_threads should be >= -1. Setting num_threads to 0 has the effect
+  to disable multithreading, which is equivalent to setting num_threads
+  to 1. If set to the value -1, the number of threads used will be
+  implementation-defined and platform-dependent.
+
+  As TfLite interpreter could internally apply a TfLite delegate by default
+  (i.e. XNNPACK), the number of threads that are available to the default
+  delegate *should be* set via InterpreterBuilder APIs as follows:
+
+  ```elixir
+  interpreter = TFLiteElixir.Interpreter.new!()
+  builder = TFLiteElixir.InterpreterBuilder.new!(tflite model, op resolver)
+  TFLiteElixir.InterpreterBuilder.setNumThreads(builder, ...)
+  assert :ok == TFLiteElixir.InterpreterBuilder.build!(builder, interpreter)
+  ```
+  """
+  @spec setNumThreads(reference(), integer()) :: :ok | nif_error()
+  def setNumThreads(self, num_threads) when is_integer(num_threads) and num_threads >= -1 do
+    TFLiteElixir.Nif.interpreter_setNumThreads(self, num_threads)
+  end
 end

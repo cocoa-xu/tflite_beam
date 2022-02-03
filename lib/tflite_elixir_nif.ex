@@ -22,6 +22,7 @@ defmodule TFLiteElixir.Nif do
 
   def interpreterBuilder_new(_model, _resolver), do: :erlang.nif_error(:not_loaded)
   def interpreterBuilder_build(_self, _builder), do: :erlang.nif_error(:not_loaded)
+  def interpreterBuilder_setNumThreads(_self, _num_threads), do: :erlang.nif_error(:not_loaded)
 
   def interpreter_new(), do: :erlang.nif_error(:not_loaded)
   def interpreter_allocateTensors(_self), do: :erlang.nif_error(:not_loaded)
@@ -33,6 +34,7 @@ defmodule TFLiteElixir.Nif do
   def interpreter_getOutputName(_self, _index), do: :erlang.nif_error(:not_loaded)
   def interpreter_output_tensor(_self, _index), do: :erlang.nif_error(:not_loaded)
   def interpreter_tensor(_self, _tensor_index), do: :erlang.nif_error(:not_loaded)
+  def interpreter_setNumThreads(_self, _num_threads), do: :erlang.nif_error(:not_loaded)
 
   def tflitetensor_type(_self), do: :erlang.nif_error(:not_loaded)
   def tflitetensor_dims(_self), do: :erlang.nif_error(:not_loaded)

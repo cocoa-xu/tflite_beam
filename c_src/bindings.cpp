@@ -229,6 +229,27 @@ static bool tensor_type_from_erl_term(ErlNifEnv *env, const ERL_NIF_TERM in_term
     return ok;
 }
 
+static ERL_NIF_TERM tflite_status_to_erl_term(const TfLiteStatus status, ErlNifEnv *env) {
+    switch (status) {
+        case kTfLiteOk:
+            return erlang::nif::ok(env);
+        case kTfLiteError:
+            return erlang::nif::error(env, "General runtime error");
+        case kTfLiteDelegateError:
+            return erlang::nif::error(env, "TfLiteDelegate");
+        case kTfLiteApplicationError:
+            return erlang::nif::error(env, "Application");
+        case kTfLiteDelegateDataNotFound:
+            return erlang::nif::error(env, "DelegateDataNotFound");
+        case kTfLiteDelegateDataWriteError:
+            return erlang::nif::error(env, "DelegateDataWriteError");
+        case kTfLiteDelegateDataReadError:
+            return erlang::nif::error(env, "DelegateDataReadError");
+        default:
+            return erlang::nif::error(env, "unknown error");
+    }
+}
+
 #include "tflite_flatbuffermodel.h"
 #include "tflite_ops_builtin_builtinresolver.h"
 #include "tflite_interpreter_builder.h"
@@ -288,6 +309,7 @@ static ErlNifFunc nif_functions[] = {
 
     F(interpreterBuilder_new, 2),
     F(interpreterBuilder_build, 2),
+    F(interpreterBuilder_setNumThreads, 2),
 
     F(interpreter_new, 0),
     F(interpreter_allocateTensors, 1),
@@ -299,6 +321,7 @@ static ErlNifFunc nif_functions[] = {
     F(interpreter_getOutputName, 2),
     F_CPU(interpreter_output_tensor, 2),
     F(interpreter_tensor, 2),
+    F(interpreter_setNumThreads, 2),
 
     F(tflitetensor_type, 1),
     F(tflitetensor_dims, 1),

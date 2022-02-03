@@ -50,4 +50,24 @@ static ERL_NIF_TERM interpreterBuilder_build(ErlNifEnv *env, int argc, const ERL
     }
 }
 
+static ERL_NIF_TERM interpreterBuilder_setNumThreads(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 2) return enif_make_badarg(env);
+
+    ERL_NIF_TERM self_nif = argv[0];
+    ERL_NIF_TERM num_threads_nif = argv[1];
+    int num_threads = -1;
+    erlang_nif_res<tflite::InterpreterBuilder *> * self_res;
+    if (enif_get_resource(env, self_nif, erlang_nif_res<tflite::InterpreterBuilder *>::type, (void **)&self_res) &&
+        erlang::nif::get(env, num_threads_nif, &num_threads)) {
+        if (self_res->val) {
+            auto status = self_res->val->SetNumThreads(num_threads);
+            return tflite_status_to_erl_term(status, env);
+        } else {
+            return erlang::nif::error(env, "oh nyo erlang");
+        }
+    } else {
+        return erlang::nif::error(env, "cannot access resource");
+    }
+}
+
 #endif // TFLITE_INTERPRETER_BUILDER_BINDINGS_H
