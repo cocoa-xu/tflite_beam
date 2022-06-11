@@ -23,7 +23,7 @@ Input image:
 Labels: [inat_bird_labels.txt](https://github.com/google-coral/edgetpu/blob/master/test_data/inat_bird_labels.txt)
 
 ```elixir
-alias Evision, as: OpenCV
+alias Evision, as: Cv
 alias TFLiteElixir, as: TFLite
 
 # load labels
@@ -31,12 +31,12 @@ labels = File.read!("inat_bird_labels.txt") |> String.split("\n")
 
 # load tflite model
 filename = "mobilenet_v2_1.0_224_inat_bird_quant.tflite"
-{:ok, model} = TFLite.FlatBufferModel.buildFromFile(filename)
-{:ok, resolver} = TFLite.Ops.Builtin.BuiltinResolver.new()
-{:ok, builder} = TFLite.InterpreterBuilder.new(model, resolver)
-{:ok, interpreter} = TFLite.Interpreter.new()
-:ok = TFLite.InterpreterBuilder.build(builder, interpreter)
-:ok = TFLite.Interpreter.allocateTensors(interpreter)
+model = TFLite.FlatBufferModel.buildFromFile!(filename)
+resolver = TFLite.Ops.Builtin.BuiltinResolver.new!()
+builder = TFLite.InterpreterBuilder.new!(model, resolver)
+interpreter = TFLite.Interpreter.new!()
+:ok = TFLite.InterpreterBuilder.build!(builder, interpreter)
+:ok = TFLite.Interpreter.allocateTensors!(interpreter)
 
 # verify loaded model, feel free to skip
 # {:ok, [0]} = TFLite.Interpreter.inputs(interpreter)
@@ -54,15 +54,16 @@ filename = "mobilenet_v2_1.0_224_inat_bird_quant.tflite"
 binary = File.read!("parrot.bin")
 # parrot.jpg - if you have :evision
 # load image, resize it, covert to RGB and to binary 
-{:ok, mat} = OpenCV.imread("parrot.jpg")
-{:ok, mat} = OpenCV.resize(mat, [224, 224])
-{:ok, mat} = OpenCV.cvtColor(mat, OpenCV.cv_COLOR_BGR2RGB)
-{:ok, binary} = OpenCV.Mat.to_binary(mat)
+binary = 
+  Cv.imread!("parrot.jpg")
+  |> Cv.resize([224, 224])
+  |> Cv.cvtColor!(Cv.cv_COLOR_BGR2RGB)
+  |> Cv.Mat.to_binary(mat)
 
 # set input, run forwarding, get output
 TFLite.Interpreter.input_tensor(interpreter, 0, binary)
 TFLite.Interpreter.invoke(interpreter)
-{:ok, output_data} = TFLite.Interpreter.output_tensor(interpreter, 0)
+output_data = TFLite.Interpreter.output_tensor!(interpreter, 0)
 
 # if you have :nx
 # get predicted label
