@@ -40,7 +40,7 @@ defmodule TfliteElixir.MixProject do
 
   defp deps do
     [
-      {:elixir_make, "~> 0.6"},
+      {:elixir_make, "~> 0.6", runtime: false},
       {:excoveralls, "~> 0.10", only: :test},
       {:ex_doc, "~> 0.27", only: [:dev, :test], runtime: false},
       {:nx, "~> 0.1", optional: true}

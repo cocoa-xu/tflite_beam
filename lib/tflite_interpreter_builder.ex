@@ -1,5 +1,6 @@
 defmodule TFLiteElixir.InterpreterBuilder do
   import TFLiteElixir.Errorize
+  alias TFLiteElixir.FlatBufferModel, as: FlatBufferModel
 
   @type nif_resource_ok :: {:ok, reference()}
   @type nif_error :: {:error, String.t()}
@@ -7,8 +8,8 @@ defmodule TFLiteElixir.InterpreterBuilder do
   @doc """
   New InterpreterBuilder
   """
-  @spec new(reference(), reference()) :: nif_resource_ok() | nif_error()
-  def new(model, resolver) when is_reference(model) and is_reference(resolver) do
+  @spec new(%FlatBufferModel{}, reference()) :: nif_resource_ok() | nif_error()
+  def new(%FlatBufferModel{model: model}, resolver) when is_reference(resolver) do
     TFLiteElixir.Nif.interpreterBuilder_new(model, resolver)
   end
 

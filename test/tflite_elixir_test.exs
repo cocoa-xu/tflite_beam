@@ -2,7 +2,7 @@ defmodule TFLiteElixir.Test do
   use ExUnit.Case
 
   def verify_loaded_model(model, input_data, expected_out, print_state)
-      when is_reference(model) and is_binary(input_data) and is_binary(expected_out) and
+      when is_binary(input_data) and is_binary(expected_out) and
              is_boolean(print_state) do
     # build interpreter
     %{"TFLITE_METADATA" => <<28>>, "min_runtime_version" => "1.5.0"} =
@@ -54,8 +54,7 @@ defmodule TFLiteElixir.Test do
 
   test "TFLite.Interpreter.new(model_path)" do
     model_path = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
-    interpreter = TFLiteElixir.Interpreter.new!(model_path)
-    assert is_reference(interpreter)
+    _interpreter = TFLiteElixir.Interpreter.new!(model_path)
 
     {error_at_stage, {:error, reason}} = TFLiteElixir.Interpreter.new("/dev/null")
     assert :build_from_file == error_at_stage
