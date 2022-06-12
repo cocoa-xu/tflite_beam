@@ -13,10 +13,11 @@ defmodule TfliteElixir.MixProject do
   @throttle_coral_usb "YES"
 
   def project do
-    enable_coral_support = case Application.get_env(@app, :enable_coral_support) do
-      true -> "YES"
-      _ -> "NO"
-    end
+    enable_coral_support =
+      case Application.Application.compile_env(@app, :enable_coral_support, false) do
+        true -> "YES"
+        _ -> "NO"
+      end
     System.put_env("TFLITE_ELIXIR_CORAL_SUPPORT", enable_coral_support)
     unless enable_coral_support == "NO" do
       edgetpu_runtime = System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME", @default_edgetpu_runtime)
