@@ -75,13 +75,13 @@ output_data
 ```
 
 ## Coral Support
+### Enable Coral Support
+In `config/config.exs`
+```elixir
+config :tflite_elixir, :enable_coral_support, true
+```
+
 ### Compile-Time Environment Variable
-- `TFLITE_ELIXIR_CORAL_SUPPORT`
-  
-  Set to any value rather than `NO` to enable the support for coral devices.
-
-  Default value is `NO`.
-
 - `TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME`
 
   Select the [libedgetpu runtime](https://coral.ai/software/#edgetpu-runtime).

@@ -28,14 +28,6 @@ limitations under the License.
 #endif
 
 template<typename R>
-struct erlang_nif_res {
-    R val;
-    int peak;
-    static ErlNifResourceType * type;
-};
-template<typename R> ErlNifResourceType * erlang_nif_res<R>::type = nullptr;
-
-template<typename R>
 int alloc_resource(erlang_nif_res<R> **res) {
     *res = (erlang_nif_res<R> *)enif_alloc_resource(erlang_nif_res<R>::type, sizeof(erlang_nif_res<R>));
     return (*res != nullptr);
@@ -258,6 +250,7 @@ static ERL_NIF_TERM tflite_status_to_erl_term(const TfLiteStatus status, ErlNifE
 #include "tflite/tflite.h"
 
 #ifdef CORAL_SUPPORT_ENABLED
+#include "tflite/public/edgetpu.h"
 #include "coral/coral.h"
 #endif
 
@@ -284,6 +277,12 @@ on_load(ErlNifEnv* env, void**, ERL_NIF_TERM)
     rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "TfLiteTensor", destruct_raw_ptr<TfLiteTensor>, ERL_NIF_RT_CREATE, NULL);                                                             \
     if (!rt) return -1;
     erlang_nif_res<TfLiteTensor *>::type = rt;
+
+#ifdef CORAL_SUPPORT_ENABLED
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "EdgeTpuContext", destruct_egdetpu_context, ERL_NIF_RT_CREATE, NULL);                                                             \
+    if (!rt) return -1;
+    erlang_nif_res<edgetpu::EdgeTpuContext *>::type = rt;
+#endif
 
     return 0;
 }
@@ -334,7 +333,9 @@ static ErlNifFunc nif_functions[] = {
 
     /* ======= Coral ======= */
 #ifdef CORAL_SUPPORT_ENABLED
-    F(coral_contains_edgetpu_custom_op, 1)
+    F(coral_contains_edgetpu_custom_op, 1),
+    F_IO(coral_edgetpu_devices, 0),
+    F(coral_get_edgetpu_context, 2)
 #endif
 };
 

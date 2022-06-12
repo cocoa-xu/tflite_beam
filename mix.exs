@@ -8,13 +8,15 @@ defmodule TfliteElixir.MixProject do
   @compatible_tflite_versions ["2.7.0", "2.8.0"]
 
   # coral related
-  @enable_coral_by_default "NO"
   @default_edgetpu_runtime "edgetpu_runtime_20220308"
   @default_edgetpu_libraries "native"
   @throttle_coral_usb "YES"
 
   def project do
-    enable_coral_support = System.get_env("TFLITE_ELIXIR_CORAL_SUPPORT", @enable_coral_by_default)
+    enable_coral_support = case Application.get_env(@app, :enable_coral_support) do
+      true -> "YES"
+      _ -> "NO"
+    end
     System.put_env("TFLITE_ELIXIR_CORAL_SUPPORT", enable_coral_support)
     unless enable_coral_support == "NO" do
       edgetpu_runtime = System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME", @default_edgetpu_runtime)

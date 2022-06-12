@@ -6,6 +6,14 @@
 #include <string>
 #include <vector>
 
+template<typename R>
+struct erlang_nif_res {
+    R val;
+    int peak;
+    static ErlNifResourceType * type;
+};
+template<typename R> ErlNifResourceType * erlang_nif_res<R>::type = nullptr;
+
 #define GET(ARGN, VAR)                      \
   if (!erlang::nif::get(env, argv[ARGN], &VAR)) \
     return erlang::nif::error(env, "Unable to get " #VAR " param.");
