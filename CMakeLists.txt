@@ -20,20 +20,17 @@ if(${TFLITE_ELIXIR_CORAL_SUPPORT})
     file(GLOB_RECURSE CORAL_SUPPORT_SOURCES "${C_SRC}/coral/*.cpp")
     list(APPEND SOURCE_FILES "${CORAL_SUPPORT_SOURCES}")
 endif()
-message(${SOURCE_FILES})
+
 add_library(tflite_elixir SHARED
     ${SOURCE_FILES}
 )
+set(TFLITE_ELIXIR_LINK_LIBRARIES "tensorflow-lite")
 if(${TFLITE_ELIXIR_CORAL_SUPPORT})
-    target_link_libraries(tflite_elixir
-        tensorflow-lite
-        edgetpu.1.0
-    )
-else()
-    target_link_libraries(tflite_elixir
-        tensorflow-lite
-    )
+    list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES "edgetpu.1.0")
 endif()
+target_link_libraries(tflite_elixir
+    ${TFLITE_ELIXIR_LINK_LIBRARIES}
+)
 set_target_properties(tflite_elixir PROPERTIES PREFIX "")
 set_target_properties(tflite_elixir PROPERTIES SUFFIX ".so")
 
