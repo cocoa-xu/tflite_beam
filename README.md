@@ -74,6 +74,46 @@ output_data
 |> then(&Enum.at(labels, &1))
 ```
 
+## Coral Support
+### Compile-Time Environment Variable
+- `TFLITE_ELIXIR_CORAL_SUPPORT`
+  Set to any value rather than `NO` to enable the support for coral devices.
+
+  Default value is `NO`.
+
+- `TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME`
+  Select the [libedgetpu runtime](https://coral.ai/software/#edgetpu-runtime).
+
+  Default runtime version is `edgetpu_runtime_20220308`.
+- `TFLITE_ELIXIR_CORAL_USB_THROTTLE`
+  Throttling USB Coral devices. Please see the official warning here, [google-coral/libedgetpu](https://github.com/google-coral/libedgetpu#warning).
+
+  Default value is `YES`.
+
+  Note that only when `ELIXIR_CORAL_THROTTLE_USB` is set to `NO`, `:elixir_coral` will use the non-throttled libedgetpu libraries.
+- `TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES`
+  Choose which ones of the libedgetpu libraries to copy to the `priv` directory of the `:elixir_coral` app.
+
+  Default value is `native` - only native libraries will be copied. `native` corresponds to the host OS and CPU architecture when compiling this library.
+
+  When set to a specific value, e.g, `darwin_arm64` or `darwin_x86_64`, then the corresponding one will be copied. This option is expected to be used for cross-compiling. 
+  Available values for this option are:
+
+  | Value            | OS/CPU              |
+  |------------------|---------------------|
+  | `aarch64`        | Linux arm64         |
+  | `armv7a`         | Linux armv7         |
+  | `k8`             | Linux x86_64        |
+  | `darwin_arm64`   | macOS Apple Silicon |
+  | `darwin_x86_64`  | macOS x86_64        |
+  | `x64_windows`    | Windows x86_64      |
+
+
+- `TFLITE_ELIXIR_CACHE_DIR`
+  Cache directory for the runtime zip file.
+
+  Default value is `./3rd_party/cache`.
+
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed

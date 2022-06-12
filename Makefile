@@ -14,9 +14,9 @@ TFLITE_VER_V = v$(TFLITE_VER)
 ifneq ($(TFLITE_USE_GIT_HEAD), false)
 	TFLITE_VER_V=$(TFLITE_USE_GIT_BRANCH)
 endif
-TFLITE_CACHE_DIR = $(shell pwd)/3rd_party/cache
+TFLITE_ELIXIR_CACHE_DIR ?= $(shell pwd)/3rd_party/cache
 TFLITE_SOURCE_URL = "https://github.com/tensorflow/tensorflow/archive/refs/tags/$(TFLITE_VER_V).zip"
-TFLITE_SOURCE_ZIP = $(TFLITE_CACHE_DIR)/tensorflow-$(TFLITE_VER_V).zip
+TFLITE_SOURCE_ZIP = $(TFLITE_ELIXIR_CACHE_DIR)/tensorflow-$(TFLITE_VER_V).zip
 UNZIP_TARGET_DIR = $(shell pwd)/3rd_party/tensorflow
 TENSORFLOW_ROOT_DIR = $(UNZIP_TARGET_DIR)/tensorflow-$(TFLITE_VER)
 TFLITE_ROOT_DIR = $(TENSORFLOW_ROOT_DIR)/tensorflow/lite
@@ -36,7 +36,7 @@ MAKE_BUILD_FLAGS ?= "-j1"
 build: $(NATIVE_BINDINGS_SO)
 
 $(TFLITE_SOURCE_ZIP):
-	@ mkdir -p "$(TFLITE_CACHE_DIR)"
+	@ mkdir -p "$(TFLITE_ELIXIR_CACHE_DIR)"
 	@ if [ "$(TFLITE_USE_GIT_HEAD)" = "false" ] && [ ! -e "$(TFLITE_SOURCE_ZIP)" ]; then \
 		if [ -e "$(shell which curl)" ]; then \
 			curl -fSL "$(TFLITE_SOURCE_URL)" -o $(TFLITE_SOURCE_ZIP) ; \
@@ -70,7 +70,7 @@ $(NATIVE_BINDINGS_SO): unarchive_source_code
  		  $(CMAKE_OPTIONS) \
  		  "$(shell pwd)" ; \
 	fi
-	@ { rm -rf "$(PRIV_DIR)" && mkdir -p $(PRIV_DIR) && \
+	@ { mkdir -p $(PRIV_DIR) && \
  		cd "$(CMAKE_BINDINGS_BUILD_DIR)" && make "$(MAKE_BUILD_FLAGS)" \
  		  || { echo "\033[0;31mincomplete build of Tensorflow Lite found in '$(CMAKE_TFLITE_BUILD_DIR)', please delete that directory and retry\033[0m" && exit 1 ; } ; } \
  		&& cp "$(CMAKE_BINDINGS_BUILD_DIR)/tflite_elixir.so" "$(NATIVE_BINDINGS_SO)"
