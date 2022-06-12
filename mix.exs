@@ -14,7 +14,7 @@ defmodule TfliteElixir.MixProject do
 
   def project do
     enable_coral_support =
-      case Application.Application.compile_env(@app, :enable_coral_support, false) do
+      case Application.compile_env(@app, :enable_coral_support, false) do
         true -> "YES"
         _ -> "NO"
       end
