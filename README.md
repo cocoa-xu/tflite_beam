@@ -75,6 +75,17 @@ output_data
 ```
 
 ## Coral Support
+### Dependencies
+For macOS
+```shell
+brew install pkg-config glog libusb
+```
+
+For DEBIAN/Ubuntu
+```shell
+sudo apt install pkg-config libgoogle-glog-dev libusb-1.0-0-dev
+```
+
 ### Compile-Time Environment Variable
 - `TFLITE_ELIXIR_CORAL_SUPPORT`
 
