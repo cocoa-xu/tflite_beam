@@ -69,6 +69,7 @@ $(NATIVE_BINDINGS_SO): unarchive_source_code
 		mkdir -p $(CMAKE_BINDINGS_BUILD_DIR) && \
 		if [ "$(TFLITE_ELIXIR_CORAL_SUPPORT)" = "YES" ]; then \
 			bash scripts/macos_fix_libusb.sh "$(PRIV_DIR)/libedgetpu/libedgetpu.1.0.dylib" ; \
+			bash scripts/linux_fix_edgetpu_version.sh "$(PRIV_DIR)/libedgetpu" ; \
 		fi && \
 		git submodule update --init c_src/libcoral && \
 		cd c_src/libcoral && git submodule update --init libedgetpu && cd ../.. && \
