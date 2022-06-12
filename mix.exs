@@ -24,7 +24,7 @@ defmodule TfliteElixir.MixProject do
       edgetpu_libraries = System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", @default_edgetpu_libraries)
 
       :ok = download_edgetpu_runtime(edgetpu_runtime)
-      {:ok, runtime_dir} = install_edgetpu_runtime(edgetpu_runtime, throttle_coral_usb, edgetpu_libraries)
+      {:ok, _} = install_edgetpu_runtime(edgetpu_runtime, throttle_coral_usb, edgetpu_libraries)
       System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME", edgetpu_runtime)
     end
 
