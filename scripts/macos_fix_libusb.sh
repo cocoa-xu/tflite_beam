@@ -1,7 +1,7 @@
 #!/bin/bash
 
 case "$(uname -s)" in
-  darwin*)
+  Darwin*)
     LIBEDGETPU_FILE="$1"
     LIBUSB_IN_LIBEDGETPU="$(otool -L "${LIBEDGETPU_FILE}" | grep libusb | awk -F' \\(compatibility' '/,/{gsub(/[ \t]/, "", $1);print $1}')"
     LIBUSB="$(brew --prefix libusb)/lib/libusb-1.0.0.dylib"
