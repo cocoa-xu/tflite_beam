@@ -65,6 +65,8 @@ $(NATIVE_BINDINGS_SO): unarchive_source_code
 		if [ "$(TFLITE_ELIXIR_CORAL_SUPPORT)" == "YES" ]; then \
 			bash scripts/macos_fix_libusb.sh "$(PRIV_DIR)/libedgetpu/libedgetpu.1.0.dylib" ; \
 		fi && \
+		git submodule update --init c_src/libcoral && \
+		cd c_src/libcoral && git submodule update --init libedgetpu && cd ../.. && \
 		cd "$(CMAKE_BINDINGS_BUILD_DIR)" && \
  		cmake -D C_SRC="$(C_SRC)" \
  		  -D PRIV_DIR="$(PRIV_DIR)" \
