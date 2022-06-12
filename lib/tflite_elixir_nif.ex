@@ -42,9 +42,7 @@ defmodule TFLiteElixir.Nif do
   def tflite_printInterpreterState(_interpreter), do: :erlang.nif_error(:not_loaded)
 
   # ================ Coral ===================
-  if Application.compile_env(:tflite_elixir, :enable_coral_support, false) do
-    def coral_contains_edgetpu_custom_op(_model), do: :erlang.nif_error(:not_loaded)
-    def coral_edgetpu_devices(), do: :erlang.nif_error(:not_loaded)
-    def coral_get_edgetpu_context(_device, _options), do: :erlang.nif_error(:not_loaded)
-  end
+  def coral_contains_edgetpu_custom_op(_model), do: :erlang.nif_error(:not_loaded)
+  def coral_edgetpu_devices(), do: :erlang.nif_error(:not_loaded)
+  def coral_get_edgetpu_context(_device, _options), do: :erlang.nif_error(:not_loaded)
 end

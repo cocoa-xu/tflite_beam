@@ -254,6 +254,10 @@ static ERL_NIF_TERM tflite_status_to_erl_term(const TfLiteStatus status, ErlNifE
 #include "coral/coral.h"
 #endif
 
+static ERL_NIF_TERM not_compiled(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    return erlang::nif::error(env, "Coral support is disabled when compiling this library. Please enable Coral support and recompile this library.");
+}
+
 static int
 on_load(ErlNifEnv* env, void**, ERL_NIF_TERM)
 {
@@ -298,6 +302,7 @@ static int on_upgrade(ErlNifEnv*, void**, void**, ERL_NIF_TERM)
 }
 
 #define F(NAME, ARITY) {#NAME, ARITY, NAME, 0}
+#define F_NOT_COMPILED(FAKE_AS, ARITY) {#FAKE_AS, ARITY, not_compiled, 0}
 #define F_CPU(NAME, ARITY) {#NAME, ARITY, NAME, ERL_NIF_DIRTY_JOB_CPU_BOUND}
 #define F_IO(NAME, ARITY) {#NAME, ARITY, NAME, ERL_NIF_DIRTY_JOB_IO_BOUND}
 
@@ -336,6 +341,10 @@ static ErlNifFunc nif_functions[] = {
     F(coral_contains_edgetpu_custom_op, 1),
     F_IO(coral_edgetpu_devices, 0),
     F(coral_get_edgetpu_context, 2)
+#else
+    F_NOT_COMPILED(coral_contains_edgetpu_custom_op, 1),
+    F_NOT_COMPILED(coral_edgetpu_devices, 0),
+    F_NOT_COMPILED(coral_get_edgetpu_context, 2)
 #endif
 };
 

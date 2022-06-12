@@ -75,25 +75,21 @@ output_data
 ```
 
 ## Coral Support
-### Enable Coral Support
-In `config/config.exs`
-```elixir
-config :tflite_elixir, :enable_coral_support, true
-```
-
-### Throttling USB Coral Devices
-In `config/config.exs`
-```elixir
-config :tflite_elixir, :throttle_coral_usb, true
-```
-
-Please see the official warning here, [google-coral/libedgetpu](https://github.com/google-coral/libedgetpu#warning).
-
-Default value is `true`.
-
-Note that only when `throttle_coral_usb` is set to `false`, `:tflite_elixir` will use the non-throttled libedgetpu libraries.
-
 ### Compile-Time Environment Variable
+- `TFLITE_ELIXIR_CORAL_SUPPORT`
+
+  Enable Coral Support.
+
+  Default to `NO`.
+
+- `TFLITE_ELIXIR_CORAL_USB_THROTTLE`
+
+  Throttling USB Coral Devices. Please see the official warning here, [google-coral/libedgetpu](https://github.com/google-coral/libedgetpu#warning).
+  
+  Default value is `YES`.
+  
+  Note that only when `TFLITE_ELIXIR_CORAL_USB_THROTTLE` is set to `NO`, `:tflite_elixir` will use the non-throttled libedgetpu libraries.
+
 - `TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME`
 
   Select the [libedgetpu runtime](https://coral.ai/software/#edgetpu-runtime).
