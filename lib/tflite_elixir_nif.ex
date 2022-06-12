@@ -40,4 +40,7 @@ defmodule TFLiteElixir.Nif do
   def tflitetensor_dims(_self), do: :erlang.nif_error(:not_loaded)
 
   def tflite_printInterpreterState(_interpreter), do: :erlang.nif_error(:not_loaded)
+
+  # ================ Coral ===================
+  def coral_contains_edgetpu_custom_op(_model), do: :erlang.nif_error(:not_loaded)
 end

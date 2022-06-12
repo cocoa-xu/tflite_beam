@@ -16,9 +16,39 @@ add_subdirectory(
 set(CMAKE_CXX_STANDARD 11)
 set(SOURCE_FILES "${C_SRC}/bindings.cpp")
 if(${TFLITE_ELIXIR_CORAL_SUPPORT})
-    include_directories("${TFLITE_ELIXIR_CACHE_DIR}/${TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME}/edgetpu_runtime/libedgetpu")
-    file(GLOB_RECURSE CORAL_SUPPORT_SOURCES "${C_SRC}/coral/*.cpp")
-    list(APPEND SOURCE_FILES "${CORAL_SUPPORT_SOURCES}")
+    include_directories("${C_SRC}/libcoral")
+    include_directories("${C_SRC}/libcoral/libedgetpu")
+
+    set(CORAL_CLASSIFICATION_SOURCES "${C_SRC}/libcoral/coral/classification/adapter.cc")
+    set(CORAL_DETECTION_SOURCES "${C_SRC}/libcoral/coral/detection/adapter.cc")
+#    set(CORAL_LEARN_SOURCES
+#        "${C_SRC}/libcoral/coral/learn/imprinting_engine.cc"
+#        "${C_SRC}/libcoral/coral/learn/utils.cc"
+#        "${C_SRC}/libcoral/coral/learn/backprop/layers.cc"
+#        "${C_SRC}/libcoral/coral/learn/backprop/multi_variate_normal_distribution.cc"
+#        "${C_SRC}/libcoral/coral/learn/backprop/softmax_regression_model.cc"
+#    )
+#    set(CORAL_PIPELINE_SOURCES
+#        "${C_SRC}/libcoral/coral/pipeline/pipelined_model_runner.cc"
+#        "${C_SRC}/libcoral/coral/pipeline/internal/memory_pool_allocator.cc"
+#        "${C_SRC}/libcoral/coral/pipeline/internal/segment_runner.cc"
+#    )
+    set(CORAL_POSE_ESTIMATION_SOURCES
+        "${C_SRC}/libcoral/coral/pose_estimation/posenet_decoder.cc"
+        "${C_SRC}/libcoral/coral/pose_estimation/posenet_decoder_op.cc"
+        "${C_SRC}/libcoral/coral/pose_estimation/posenet_decoder_tflite_plugin.cc"
+    )
+    set(CORAL_COMMON_SOURCES
+        "${C_SRC}/libcoral/coral/error_reporter.cc"
+        "${C_SRC}/libcoral/coral/tflite_utils.cc"
+    )
+
+    list(APPEND SOURCE_FILES "${CORAL_CLASSIFICATION_SOURCES}")
+    list(APPEND SOURCE_FILES "${CORAL_DETECTION_SOURCES}")
+    list(APPEND SOURCE_FILES "${CORAL_LEARN_SOURCES}")
+    list(APPEND SOURCE_FILES "${CORAL_PIPELINE_SOURCES}")
+    list(APPEND SOURCE_FILES "${CORAL_POSE_ESTIMATION_SOURCES}")
+    list(APPEND SOURCE_FILES "${CORAL_COMMON_SOURCES}")
 endif()
 
 add_library(tflite_elixir SHARED
@@ -27,6 +57,9 @@ add_library(tflite_elixir SHARED
 set(TFLITE_ELIXIR_LINK_LIBRARIES "tensorflow-lite")
 if(${TFLITE_ELIXIR_CORAL_SUPPORT})
     list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES "edgetpu.1.0")
+    find_package(glog REQUIRED)
+    include_directories(${glog_INCLUDE_DIRECTORIES})
+    list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES "glog::glog")
 endif()
 target_link_libraries(tflite_elixir
     ${TFLITE_ELIXIR_LINK_LIBRARIES}
@@ -46,5 +79,6 @@ endif()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -I${ERTS_INCLUDE_DIR}")
 if(${TFLITE_ELIXIR_CORAL_SUPPORT})
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -L${PRIV_DIR}/libedgetpu")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DCORAL_SUPPORT_ENABLED=1")
 endif()
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wno-deprecated-declarations")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-deprecated-declarations")

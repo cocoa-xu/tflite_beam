@@ -250,12 +250,16 @@ static ERL_NIF_TERM tflite_status_to_erl_term(const TfLiteStatus status, ErlNifE
     }
 }
 
-#include "tflite_flatbuffermodel.h"
-#include "tflite_ops_builtin_builtinresolver.h"
-#include "tflite_interpreter_builder.h"
-#include "tflite_interpreter.h"
-#include "tflite_tflitetensor.h"
-#include "tflite.h"
+#include "tflite/tflite_flatbuffermodel.h"
+#include "tflite/tflite_ops_builtin_builtinresolver.h"
+#include "tflite/tflite_interpreter_builder.h"
+#include "tflite/tflite_interpreter.h"
+#include "tflite/tflite_tflitetensor.h"
+#include "tflite/tflite.h"
+
+#ifdef CORAL_SUPPORT_ENABLED
+#include "coral/coral.h"
+#endif
 
 static int
 on_load(ErlNifEnv* env, void**, ERL_NIF_TERM)
@@ -326,7 +330,12 @@ static ErlNifFunc nif_functions[] = {
     F(tflitetensor_type, 1),
     F(tflitetensor_dims, 1),
 
-    F_IO(tflite_printInterpreterState, 1)
+    F_IO(tflite_printInterpreterState, 1),
+
+    /* ======= Coral ======= */
+#ifdef CORAL_SUPPORT_ENABLED
+    F(coral_contains_edgetpu_custom_op, 1)
+#endif
 };
 
 ERL_NIF_INIT(Elixir.TFLiteElixir.Nif, nif_functions, on_load, on_reload, on_upgrade, NULL);
