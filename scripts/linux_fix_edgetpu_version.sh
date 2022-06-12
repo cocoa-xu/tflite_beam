@@ -6,6 +6,7 @@ case "$(uname -s)" in
     LIBEDGETPU_WRONG_NAME="$(find "${LIBEDGETPU_DIR}" -size 1M -type f)"
     if [ "${LIBEDGETPU_WRONG_NAME}" != "${LIBEDGETPU_DIR}/libedgetpu.so" ]; then
       mv "${LIBEDGETPU_WRONG_NAME}" "${LIBEDGETPU_DIR}/libedgetpu.so" ;
+      find "${LIBEDGETPU_DIR}" -size -1024c -exec rm -f '{}' \;
     fi
     ;;
   *)
