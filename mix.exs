@@ -15,6 +15,7 @@ defmodule TfliteElixir.MixProject do
 
   def project do
     enable_coral_support = System.get_env("TFLITE_ELIXIR_CORAL_SUPPORT", @enable_coral_by_default)
+    System.put_env("TFLITE_ELIXIR_CORAL_SUPPORT", enable_coral_support)
     unless enable_coral_support == "NO" do
       edgetpu_runtime = System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME", @default_edgetpu_runtime)
       throttle_coral_usb = System.get_env("TFLITE_ELIXIR_CORAL_USB_THROTTLE", @throttle_coral_usb)
@@ -22,7 +23,7 @@ defmodule TfliteElixir.MixProject do
 
       :ok = download_edgetpu_runtime(edgetpu_runtime)
       {:ok, runtime_dir} = install_edgetpu_runtime(edgetpu_runtime, throttle_coral_usb, edgetpu_libraries)
-      runtime_dir
+      System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME", edgetpu_runtime)
     end
 
     [

@@ -14,12 +14,26 @@ add_subdirectory(
 )
 
 set(CMAKE_CXX_STANDARD 11)
+set(SOURCE_FILES "${C_SRC}/bindings.cpp")
+if(${TFLITE_ELIXIR_CORAL_SUPPORT})
+    include_directories("${TFLITE_ELIXIR_CACHE_DIR}/${TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME}/edgetpu_runtime/libedgetpu")
+    file(GLOB_RECURSE CORAL_SUPPORT_SOURCES "${C_SRC}/coral/*.cpp")
+    list(APPEND SOURCE_FILES "${CORAL_SUPPORT_SOURCES}")
+endif()
+message(${SOURCE_FILES})
 add_library(tflite_elixir SHARED
-    "${C_SRC}/bindings.cpp"
+    ${SOURCE_FILES}
 )
-target_link_libraries(tflite_elixir
-    tensorflow-lite
-)
+if(${TFLITE_ELIXIR_CORAL_SUPPORT})
+    target_link_libraries(tflite_elixir
+        tensorflow-lite
+        edgetpu.1.0
+    )
+else()
+    target_link_libraries(tflite_elixir
+        tensorflow-lite
+    )
+endif()
 set_target_properties(tflite_elixir PROPERTIES PREFIX "")
 set_target_properties(tflite_elixir PROPERTIES SUFFIX ".so")
 
@@ -32,4 +46,8 @@ else()
     set(CMAKE_SHARED_LINKER_FLAGS "-flat_namespace -undefined suppress -undefined dynamic_lookup")
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -I${ERTS_INCLUDE_DIR} -O3 -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wno-deprecated-declarations")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -I${ERTS_INCLUDE_DIR}")
+if(${TFLITE_ELIXIR_CORAL_SUPPORT})
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -L${PRIV_DIR}/libedgetpu")
+endif()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wno-deprecated-declarations")
