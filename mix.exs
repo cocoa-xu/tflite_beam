@@ -10,18 +10,25 @@ defmodule TfliteElixir.MixProject do
   # coral related
   @default_edgetpu_runtime "edgetpu_runtime_20220308"
   @default_edgetpu_libraries "native"
-  @throttle_coral_usb "YES"
+
+  @throttle_coral_usb Application.compile_env(@app, :throttle_coral_usb, false)
+  @enable_coral_support Application.compile_env(@app, :enable_coral_support, false)
 
   def project do
-    enable_coral_support =
-      case Application.compile_env(@app, :enable_coral_support, false) do
-        true -> "YES"
-        _ -> "NO"
-      end
+    enable_coral_support = case @enable_coral_support do
+      true -> "YES"
+      _ -> "NO"
+    end
     System.put_env("TFLITE_ELIXIR_CORAL_SUPPORT", enable_coral_support)
-    unless enable_coral_support == "NO" do
+
+    throttle_coral_usb = case @throttle_coral_usb do
+      false -> "NO"
+      _ -> "YES"
+    end
+
+    unless @enable_coral_support == "NO" do
       edgetpu_runtime = System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME", @default_edgetpu_runtime)
-      throttle_coral_usb = System.get_env("TFLITE_ELIXIR_CORAL_USB_THROTTLE", @throttle_coral_usb)
+      throttle_coral_usb = System.get_env("TFLITE_ELIXIR_CORAL_USB_THROTTLE", throttle_coral_usb)
       edgetpu_libraries = System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", @default_edgetpu_libraries)
 
       :ok = download_edgetpu_runtime(edgetpu_runtime)

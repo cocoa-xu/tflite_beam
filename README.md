@@ -81,19 +81,24 @@ In `config/config.exs`
 config :tflite_elixir, :enable_coral_support, true
 ```
 
+### Throttling USB Coral Devices
+In `config/config.exs`
+```elixir
+config :tflite_elixir, :throttle_coral_usb, true
+```
+
+Please see the official warning here, [google-coral/libedgetpu](https://github.com/google-coral/libedgetpu#warning).
+
+Default value is `true`.
+
+Note that only when `throttle_coral_usb` is set to `false`, `:tflite_elixir` will use the non-throttled libedgetpu libraries.
+
 ### Compile-Time Environment Variable
 - `TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME`
 
   Select the [libedgetpu runtime](https://coral.ai/software/#edgetpu-runtime).
 
   Default runtime version is `edgetpu_runtime_20220308`.
-- `TFLITE_ELIXIR_CORAL_USB_THROTTLE`
-  
-  Throttling USB Coral devices. Please see the official warning here, [google-coral/libedgetpu](https://github.com/google-coral/libedgetpu#warning).
-
-  Default value is `YES`.
-
-  Note that only when `ELIXIR_CORAL_THROTTLE_USB` is set to `NO`, `:elixir_coral` will use the non-throttled libedgetpu libraries.
 - `TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES`
   
   Choose which ones of the libedgetpu libraries to copy to the `priv` directory of the `:elixir_coral` app.
