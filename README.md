@@ -39,15 +39,15 @@ interpreter = TFLite.Interpreter.new!()
 :ok = TFLite.Interpreter.allocateTensors!(interpreter)
 
 # verify loaded model, feel free to skip
-# {:ok, [0]} = TFLite.Interpreter.inputs(interpreter)
-# {:ok, [171]} = TFLite.Interpreter.outputs(interpreter)
-# {:ok, "map/TensorArrayStack/TensorArrayGatherV3"} = TFLite.Interpreter.getInputName(interpreter, 0)
-# {:ok, "prediction"} = TFLite.Interpreter.getOutputName(interpreter, 0)
-# {:ok, input_tensor} = TFLite.Interpreter.tensor(interpreter, 0)
-# {:ok, [1, 224, 224, 3]} = TFLite.TfLiteTensor.dims(input_tensor)
+# [0] = TFLite.Interpreter.inputs!(interpreter)
+# [171] = TFLite.Interpreter.outputs!(interpreter)
+# "map/TensorArrayStack/TensorArrayGatherV3" = TFLite.Interpreter.getInputName!(interpreter, 0)
+# "prediction" = TFLite.Interpreter.getOutputName!(interpreter, 0)
+# input_tensor = TFLite.Interpreter.tensor!(interpreter, 0)
+# [1, 224, 224, 3] = TFLite.TfLiteTensor.dims!(input_tensor)
 # {:u, 8} = TFLite.TfLiteTensor.type(input_tensor)
-# {:ok, output_tensor} = TFLite.Interpreter.tensor(interpreter, 171)
-# {:ok, [1, 965]} = TFLite.TfLiteTensor.dims(output_tensor)
+# output_tensor = TFLite.Interpreter.tensor!(interpreter, 171)
+# [1, 965] = TFLite.TfLiteTensor.dims!(output_tensor)
 # {:u, 8} = TFLite.TfLiteTensor.type(output_tensor)
 
 # parrot.bin - if you don't have :evision
