@@ -26,7 +26,7 @@ defmodule TfliteElixir.MixProject do
       _ -> "YES"
     end
 
-    unless @enable_coral_support == "NO" do
+    if enable_coral_support == "YES" do
       edgetpu_runtime = System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME", @default_edgetpu_runtime)
       throttle_coral_usb = System.get_env("TFLITE_ELIXIR_CORAL_USB_THROTTLE", throttle_coral_usb)
       edgetpu_libraries = System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", @default_edgetpu_libraries)
