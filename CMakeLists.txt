@@ -70,12 +70,10 @@ if(${TFLITE_ELIXIR_CORAL_SUPPORT})
     target_link_directories(tflite_elixir PUBLIC ${GLOG_LIBRARY_DIRS})
     list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES "${GLOG_LIBRARIES}")
 
-    if("$ENV{MIX_ENV}" STREQUAL "test")
-        pkg_check_modules(GFLAGS REQUIRED gflags)
-        include_directories(${GFLAGS_INCLUDE_DIRS})
-        target_link_directories(tflite_elixir PUBLIC ${GFLAGS_LIBRARY_DIRS})
-        list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES "${GFLAGS_LIBRARIES}")
-    endif()
+    pkg_check_modules(GFLAGS REQUIRED gflags)
+    include_directories(${GFLAGS_INCLUDE_DIRS})
+    target_link_directories(tflite_elixir PUBLIC ${GFLAGS_LIBRARY_DIRS})
+    list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES "${GFLAGS_LIBRARIES}")
 endif()
 target_link_libraries(tflite_elixir
     ${TFLITE_ELIXIR_LINK_LIBRARIES}
