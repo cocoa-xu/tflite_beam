@@ -62,16 +62,16 @@ unarchive_source_code: $(TFLITE_SOURCE_ZIP)
 	fi
 
 $(NATIVE_BINDINGS_SO): unarchive_source_code
-	@ echo "CORAL SUPPORT: $(TFLITE_ELIXIR_CORAL_SUPPORT)"
-	@ echo "  LIBEDGETPU runtime: $(TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME)"
-	@ echo "  Throttle USB Coral Devices: $(TFLITE_ELIXIR_CORAL_USB_THROTTLE)"
-	@ if [ "$(TFLITE_ELIXIR_CORAL_SUPPORT)" = "YES" ]; then \
-		bash scripts/macos_fix_libusb.sh "$(PRIV_DIR)/libedgetpu/libedgetpu.1.0.dylib" ; \
-		bash scripts/linux_fix_edgetpu_version.sh "$(PRIV_DIR)/libedgetpu" ; \
-		git submodule update --init c_src/libcoral ; \
-		cd c_src/libcoral && git submodule update --init libedgetpu && cd ../.. ; \
-	fi
 	@ if [ ! -e "$(NATIVE_BINDINGS_SO)" ]; then \
+		echo "CORAL SUPPORT: $(TFLITE_ELIXIR_CORAL_SUPPORT)" ; \
+		echo "  LIBEDGETPU runtime: $(TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME)" ; \
+		if [ "$(TFLITE_ELIXIR_CORAL_SUPPORT)" = "YES" ]; then \
+		  	echo "  Throttle USB Coral Devices: $(TFLITE_ELIXIR_CORAL_USB_THROTTLE)" ; \
+			bash scripts/macos_fix_libusb.sh "$(PRIV_DIR)/libedgetpu/libedgetpu.1.0.dylib" ; \
+			bash scripts/linux_fix_edgetpu_version.sh "$(PRIV_DIR)/libedgetpu" ; \
+			git submodule update --init c_src/libcoral ; \
+			cd c_src/libcoral && git submodule update --init libedgetpu && cd ../.. ; \
+		fi ; \
 		mkdir -p $(CMAKE_BINDINGS_BUILD_DIR) && \
 		cd "$(CMAKE_BINDINGS_BUILD_DIR)" && \
  		cmake -D C_SRC="$(C_SRC)" \
@@ -83,8 +83,8 @@ $(NATIVE_BINDINGS_SO): unarchive_source_code
  		  -D TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME="$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME)" \
  		  $(CMAKE_OPTIONS) \
  		  "$(shell pwd)" ; \
+ 		{ mkdir -p $(PRIV_DIR) && \
+			cd "$(CMAKE_BINDINGS_BUILD_DIR)" && make "$(MAKE_BUILD_FLAGS)" \
+			  || { echo "\033[0;31mincomplete build of Tensorflow Lite found in '$(CMAKE_TFLITE_BUILD_DIR)', please delete that directory and retry\033[0m" && exit 1 ; } ; } \
+			&& cp "$(CMAKE_BINDINGS_BUILD_DIR)/tflite_elixir.so" "$(NATIVE_BINDINGS_SO)" ; \
 	fi
-	@ { mkdir -p $(PRIV_DIR) && \
- 		cd "$(CMAKE_BINDINGS_BUILD_DIR)" && make "$(MAKE_BUILD_FLAGS)" \
- 		  || { echo "\033[0;31mincomplete build of Tensorflow Lite found in '$(CMAKE_TFLITE_BUILD_DIR)', please delete that directory and retry\033[0m" && exit 1 ; } ; } \
- 		&& cp "$(CMAKE_BINDINGS_BUILD_DIR)/tflite_elixir.so" "$(NATIVE_BINDINGS_SO)"
