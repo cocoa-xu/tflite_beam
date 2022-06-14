@@ -5,7 +5,7 @@ defmodule TfliteElixir.MixProject do
   @app :tflite_elixir
   @tflite_version "2.8.0"
   # only means compatible. need to write more tests
-  @compatible_tflite_versions ["2.7.0", "2.8.0"]
+  @compatible_tflite_versions ["2.7.0", "2.8.0", "2.9.0"]
 
   # coral related
   @default_edgetpu_runtime "edgetpu_runtime_20220308"
@@ -60,22 +60,23 @@ defmodule TfliteElixir.MixProject do
 
   defp deps do
     [
+      {:nx, "~> 0.2"},
+      {:stb_image, "~> 0.5"},
       {:elixir_make, "~> 0.6", runtime: false},
       {:excoveralls, "~> 0.10", only: :test},
       {:ex_doc, "~> 0.27", only: [:dev, :test], runtime: false},
-      {:nx, "~> 0.1", optional: true}
     ]
   end
 
   defp description() do
-    "TensorflowLite-Elixir bindings."
+    "TensorFlowLite-Elixir bindings."
   end
 
   defp package() do
     [
       name: "tflite_elixir",
       # These are the default files included in the package
-      files: ~w(lib c_src 3rd_party .formatter.exs mix.exs README* LICENSE*),
+      files: ~w(lib c_src 3rd_party scripts CMakeLists.txt Makefile .gitmodules .formatter.exs mix.exs README* LICENSE*),
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => "https://github.com/cocoa-xu/tflite_elixir"}
     ]
