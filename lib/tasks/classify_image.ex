@@ -76,7 +76,7 @@ defmodule Mix.Tasks.ClassifyImage do
         shape ->
           raise RuntimeError, "not sure the input shape, got #{inspect(shape)}"
       end
-    %StbImage{data: input_data} = StbImage.resize(input_image, h, w)
+    input_image = StbImage.resize(input_image, h, w)
 
     [scale] = input_tensor.quantization_params.scale
     [zero_point] = input_tensor.quantization_params.zero_point
@@ -85,8 +85,19 @@ defmodule Mix.Tasks.ClassifyImage do
 
     if abs(scale * std - 1) < 0.00001 and abs(mean - zero_point) < 0.00001 do
       # Input data does not require preprocessing.
-      Interpreter.input_tensor!(interpreter, input_tensor_number, input_data)
+      %StbImage{data: input_data} = input_image
+      input_data
+    else
+      # Input data requires preprocessing
+      StbImage.to_nx(input_image)
+      |> Nx.subtract(mean)
+      |> Nx.divide(std * scale)
+      |> Nx.add(zero_point)
+      |> Nx.clip(0, 255)
+      |> Nx.as_type(:u8)
+      |> Nx.to_binary()
     end
+    |> then(&Interpreter.input_tensor!(interpreter, input_tensor_number, &1))
 
     IO.puts("----INFERENCE TIME----")
     for _ <- 1..args[:count] do
