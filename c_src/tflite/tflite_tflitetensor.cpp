@@ -217,3 +217,52 @@ ERL_NIF_TERM tflitetensor_quantization_params(ErlNifEnv *env, int argc, const ER
         return erlang::nif::error(env, "cannot access resource");
     }
 }
+
+ERL_NIF_TERM tflitetensor_to_binary(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+
+    ERL_NIF_TERM self_nif = argv[0];
+    erlang_nif_res<TfLiteTensor *> *self_res;
+    if (enif_get_resource(env, self_nif, erlang_nif_res<TfLiteTensor *>::type, (void **) &self_res)) {
+        if (self_res->val) {
+            ErlNifBinary tensor_data;
+            size_t tensor_size = self_res->val->bytes;
+            if (!enif_alloc_binary(tensor_size, &tensor_data))
+                return erlang::nif::error(env, "cannot allocate enough memory for the tensor");
+
+            memcpy(tensor_data.data, self_res->val->data.raw, tensor_size);
+            return erlang::nif::ok(env, enif_make_binary(env, &tensor_data));
+        } else {
+            return erlang::nif::error(env, "oh nyo erlang");
+        }
+    } else {
+        return erlang::nif::error(env, "cannot access resource");
+    }
+}
+
+ERL_NIF_TERM tflitetensor_set_data(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 2) return enif_make_badarg(env);
+
+    ERL_NIF_TERM self_nif = argv[0];
+    ERL_NIF_TERM data_nif = argv[1];
+    ErlNifBinary data;
+    erlang_nif_res<TfLiteTensor *> *self_res;
+    if (enif_get_resource(env, self_nif, erlang_nif_res<TfLiteTensor *>::type, (void **) &self_res)) {
+        if (self_res->val) {
+            if (enif_inspect_binary(env, data_nif, &data)) {
+                if (self_res->val->data.data == nullptr) {
+                    return erlang::nif::error(env, "tensor is not allocated yet? Please call TFLite.Interpreter.allocateTensors first");
+                } else {
+                    memcpy(self_res->val->data.data, data.data, data.size);
+                    return erlang::nif::ok(env);
+                }
+            } else {
+                return erlang::nif::error(env, "cannot get input data");
+            }
+        } else {
+            return erlang::nif::error(env, "oh nyo erlang");
+        }
+    } else {
+        return erlang::nif::error(env, "cannot access resource");
+    }
+}
