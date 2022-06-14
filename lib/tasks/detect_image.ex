@@ -93,24 +93,55 @@ defmodule Mix.Tasks.DetectImage do
       IO.puts("#{Float.round(inference_time, 1)}ms")
     end
 
-    output_tensor_3 = Interpreter.tensor!(interpreter, Enum.at(output_tensor_numbers, 3))
-    {boxes, class_ids, scores, count} =
-      if output_tensor_3.shape == [1] do
-        boxes =
-          Interpreter.tensor!(interpreter, Enum.at(output_tensor_numbers, 0))
-          |> TFTensor.to_nx()
-          |> take_first_and_reshape()
-        class_ids =
-          Interpreter.tensor!(interpreter, Enum.at(output_tensor_numbers, 1))
-          |> TFTensor.to_nx()
-          |> take_first_and_reshape()
-        scores =
-          Interpreter.tensor!(interpreter, Enum.at(output_tensor_numbers, 2))
-          |> TFTensor.to_nx()
-          |> take_first_and_reshape()
-        count = TFTensor.to_nx(output_tensor_3) |> Nx.to_flat_list() |> hd() |> trunc()
-        {boxes, class_ids, scores, count}
+    signature_list = Interpreter.get_full_signature_list!(interpreter)
+
+    {count_tensor_id, scores_tensor_id, class_ids_tensor_id, boxes_tensor_id} =
+      if signature_list != nil do
+        signature_list = Map.values(signature_list)
+        if Enum.count(signature_list) > 1 do
+          raise ArgumentError, "Only support model with one signature."
+        else
+          count_tensor_id = signature_list[:outputs][:output_0]
+          scores_tensor_id = signature_list[:outputs][:output_1]
+          class_ids_tensor_id = signature_list[:outputs][:output_2]
+          boxes_tensor_id = signature_list[:outputs][:output_3]
+          {count_tensor_id, scores_tensor_id, class_ids_tensor_id, boxes_tensor_id}
+        end
+      else
+        output_tensor_3 = Interpreter.tensor!(interpreter, Enum.at(output_tensor_numbers, 3))
+        if output_tensor_3.shape == [1] do
+          boxes_tensor_id = Enum.at(output_tensor_numbers, 0)
+          class_ids_tensor_id = Enum.at(output_tensor_numbers, 1)
+          scores_tensor_id = Enum.at(output_tensor_numbers, 2)
+          count_tensor_id = Enum.at(output_tensor_numbers, 3)
+          {count_tensor_id, scores_tensor_id, class_ids_tensor_id, boxes_tensor_id}
+        else
+          boxes_tensor_id = Enum.at(output_tensor_numbers, 1)
+          class_ids_tensor_id = Enum.at(output_tensor_numbers, 3)
+          scores_tensor_id = Enum.at(output_tensor_numbers, 0)
+          count_tensor_id = Enum.at(output_tensor_numbers, 2)
+          {count_tensor_id, scores_tensor_id, class_ids_tensor_id, boxes_tensor_id}
+        end
       end
+
+    boxes =
+      Interpreter.tensor!(interpreter, boxes_tensor_id)
+      |> TFTensor.to_nx()
+      |> take_first_and_reshape()
+    class_ids =
+      Interpreter.tensor!(interpreter, class_ids_tensor_id)
+      |> TFTensor.to_nx()
+      |> take_first_and_reshape()
+    scores =
+      Interpreter.tensor!(interpreter, scores_tensor_id)
+      |> TFTensor.to_nx()
+      |> take_first_and_reshape()
+    count =
+      Interpreter.tensor!(interpreter,count_tensor_id)
+      |> TFTensor.to_nx()
+      |> Nx.to_flat_list()
+      |> hd()
+      |> trunc()
 
     {sx, sy} = {height / scale, width / scale}
     Enum.each(0..count-1, fn index ->
