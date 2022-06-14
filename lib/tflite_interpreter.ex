@@ -1,5 +1,7 @@
 defmodule TFLiteElixir.Interpreter do
   import TFLiteElixir.Errorize
+  alias TFLiteElixir.TfLiteTensor, as: Tensor
+  alias TFLiteElixir.TFLiteQuantizationParams, as: TFLiteQuantizationParams
 
   @type nif_resource_ok :: {:ok, reference()}
   @type nif_error :: {:error, String.t()}
@@ -163,9 +165,26 @@ defmodule TFLiteElixir.Interpreter do
   Note that the `tensor_index` here means the id of a tensor. For example,
   if `inputs/1` returns `[42, 314]`, then `42` should be passed here to get tensor `42`.
   """
-  @spec tensor(reference(), non_neg_integer()) :: {:ok, reference()} | nif_error()
+  @spec tensor(reference(), non_neg_integer()) :: {:ok, %Tensor{}} | nif_error()
   def tensor(self, tensor_index) when is_reference(self) and tensor_index >= 0 do
-    TFLiteElixir.Nif.interpreter_tensor(self, tensor_index)
+    with {:ok, {name, index, shape, shape_signature, type, {scale, zero_point, quantized_dimension}, sparsity_params, ref}} <- TFLiteElixir.Nif.interpreter_tensor(self, tensor_index) do
+      {:ok, %Tensor{
+        name: name,
+        index: index,
+        shape: shape,
+        shape_signature: shape_signature,
+        type: type,
+        quantization_params: %TFLiteQuantizationParams{
+          scale: scale,
+          zero_point: zero_point,
+          quantized_dimension: quantized_dimension
+        },
+        sparsity_params: sparsity_params,
+        reference: ref
+      }}
+    else
+      e -> e
+    end
   end
 
   deferror tensor(self, tensor_index)

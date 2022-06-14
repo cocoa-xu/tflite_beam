@@ -14,7 +14,13 @@ add_subdirectory(
 )
 
 set(CMAKE_CXX_STANDARD 11)
-set(SOURCE_FILES "${C_SRC}/bindings.cpp")
+set(SOURCE_FILES
+    "${C_SRC}/helper.cpp"
+    "${C_SRC}/nif_utils.cpp"
+    "${C_SRC}/tflite/tflite_tflitetensor.cpp"
+    "${C_SRC}/tflite/tflite_interpreter.cpp"
+    "${C_SRC}/bindings.cpp"
+)
 if(${TFLITE_ELIXIR_CORAL_SUPPORT})
     include_directories("${C_SRC}/libcoral")
     include_directories("${C_SRC}/libcoral/libedgetpu")
@@ -95,4 +101,4 @@ if(${TFLITE_ELIXIR_CORAL_SUPPORT})
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -L${PRIV_DIR}/libedgetpu")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DCORAL_SUPPORT_ENABLED=1")
 endif()
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-deprecated-declarations")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -Wno-unused-function -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-deprecated-declarations")

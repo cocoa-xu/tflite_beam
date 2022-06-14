@@ -26,7 +26,19 @@ defmodule TFLiteElixir.Test do
       TFLiteElixir.Interpreter.getInputName!(interpreter, 0)
 
     "prediction" = TFLiteElixir.Interpreter.getOutputName!(interpreter, 0)
-    input_tensor = TFLiteElixir.Interpreter.tensor!(interpreter, 0)
+    input_tensor = %TFLiteElixir.TfLiteTensor{
+      name: "map/TensorArrayStack/TensorArrayGatherV3",
+      index: 0,
+      shape: [1, 224, 224, 3],
+      shape_signature: [1, 224, 224, 3],
+      type: {:u, 8},
+      quantization_params: %TFLiteElixir.TFLiteQuantizationParams{
+        scale: [0.0078125],
+        zero_point: [128],
+        quantized_dimension: 0
+      },
+      sparsity_params: %{},
+    } = TFLiteElixir.Interpreter.tensor!(interpreter, 0)
     [1, 224, 224, 3] = TFLiteElixir.TfLiteTensor.dims!(input_tensor)
     {:u, 8} = TFLiteElixir.TfLiteTensor.type(input_tensor)
     output_tensor = TFLiteElixir.Interpreter.tensor!(interpreter, 171)
