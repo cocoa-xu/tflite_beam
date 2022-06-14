@@ -89,8 +89,6 @@ defmodule Mix.Tasks.ClassifyImage do
     end
 
     IO.puts("----INFERENCE TIME----")
-    IO.puts("Note: The first inference on Edge TPU is slow because it includes, " <>
-            "loading the model into Edge TPU memory.")
     for _ <- 1..args[:count] do
       start_time = :os.system_time(:microsecond)
       Interpreter.invoke!(interpreter)

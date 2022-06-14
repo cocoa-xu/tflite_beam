@@ -18,6 +18,8 @@ from TensorFlow Lite available in Elixir.
 ```shell
 mix help classify_image
 
+# Note: The first inference on Edge TPU is slow because it includes,
+# loading the model into Edge TPU memory
 mix classify_image \
   --model test/test_data/mobilenet_v2_1.0_224_inat_bird_quant.tflite \
   --input test/test_data/parrot.jpeg \
