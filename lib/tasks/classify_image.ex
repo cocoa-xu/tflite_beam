@@ -12,7 +12,10 @@ defmodule Mix.Tasks.ClassifyImage do
   - `-c`, `--count`: Default to `1`. Number of times to run inference.
   - `-a`, `--mean`: Default to `128.0`. Mean value for input normalization.
   - `-s`, `--std`: Default to `128.0`. STD value for input normalization.
+
+  Code based on [classify_image.py](https://github.com/google-coral/pycoral/blob/master/examples/classify_image.py)
   """
+
   use Mix.Task
 
   alias TFLiteElixir.Interpreter, as: Interpreter

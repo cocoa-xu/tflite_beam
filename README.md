@@ -13,7 +13,29 @@ from TensorFlow Lite available in Elixir.
 | Ubuntu 20.04     | x86_64  | [![CI](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-x86_64.yml/badge.svg)](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-x86_64.yml) |
 | macOS 11 Big Sur | x86_64  | [![CI](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/macos-x86_64.yml/badge.svg)](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/macos-x86_64.yml) |
 
-## Demo code
+## Demo
+### Mix Task Demo
+```shell
+mix help classify_image
+
+mix classify_image \
+  --model test/test_data/mobilenet_v2_1.0_224_inat_bird_quant.tflite \
+  --input test/test_data/parrot.jpeg \
+  --labels test/test_data/inat_bird_labels.txt
+```
+
+Output from the mix task
+```
+----INFERENCE TIME----
+Note: The first inference on Edge TPU is slow because it includes, loading the model into Edge TPU memory.
+6.7ms
+-------RESULTS--------
+Ara macao (Scarlet Macaw): 0.70703
+```
+
+test files used here are downloaded from [google-coral/test_data](https://github.com/google-coral/test_data).
+
+### Demo code
 Model: [mobilenet_v2_1.0_224_inat_bird_quant.tflite](https://github.com/google-coral/edgetpu/blob/master/test_data/mobilenet_v2_1.0_224_inat_bird_quant.tflite)
 
 Input image: 
