@@ -1,6 +1,6 @@
 defmodule Mix.Tasks.DetectImage do
   @moduledoc """
-  Image classification mix task: `mix help detect_image`
+  Image detection mix task: `mix help detect_image`
 
   Command line arguments:
 
