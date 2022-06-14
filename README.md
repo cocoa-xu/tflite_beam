@@ -15,6 +15,7 @@ from TensorFlow Lite available in Elixir.
 
 ## Demo
 ### Mix Task Demo
+1. Image classification
 ```shell
 mix help classify_image
 
@@ -35,7 +36,30 @@ Note: The first inference on Edge TPU is slow because it includes, loading the m
 Ara macao (Scarlet Macaw): 0.70703
 ```
 
-test files used here are downloaded from [google-coral/test_data](https://github.com/google-coral/test_data).
+2. Object detection
+```shell
+mix help detect_image
+
+# Note: The first inference on Edge TPU is slow because it includes,
+# loading the model into Edge TPU memory
+mix detect_image \
+  --model test/test_data/ssd_mobilenet_v2_coco_quant_postprocess.tflite \
+  --input test/test_data/cat.jpeg \
+  --labels test/test_data/coco_labels.txt
+```
+
+Output from the mix task
+```
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+----INFERENCE TIME----
+13.2ms
+cat
+  id   : 16
+  score: 0.953
+  bbox : [3, -1, 294, 240]
+```
+
+test files used here are downloaded from [google-coral/test_data](https://github.com/google-coral/test_data) and [wikipedia](https://commons.wikimedia.org/wiki/File:Cat03.jpg).
 
 ### Demo code
 Model: [mobilenet_v2_1.0_224_inat_bird_quant.tflite](https://github.com/google-coral/edgetpu/blob/master/test_data/mobilenet_v2_1.0_224_inat_bird_quant.tflite)
