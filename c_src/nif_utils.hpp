@@ -7,6 +7,7 @@
 #include <stdarg.h>
 #include <map>
 #include <string>
+#include <cstring>
 #include <vector>
 #include "erlang_nif_resource.hpp"
 
