@@ -197,3 +197,23 @@ ERL_NIF_TERM tflitetensor_dims(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv
         return erlang::nif::error(env, "cannot access resource");
     }
 }
+
+ERL_NIF_TERM tflitetensor_quantization_params(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+
+    ERL_NIF_TERM self_nif = argv[0];
+    erlang_nif_res<TfLiteTensor *> *self_res;
+    if (enif_get_resource(env, self_nif, erlang_nif_res<TfLiteTensor *>::type, (void **) &self_res)) {
+        if (self_res->val) {
+            ERL_NIF_TERM tensor_quantization_params;
+            if (_tflitetensor_quantization_params(env, self_res->val, tensor_quantization_params)) {
+                return erlang::nif::error(env, "cannot allocate memory for storing tensor quantization params");
+            }
+            return erlang::nif::ok(env, tensor_quantization_params);
+        } else {
+            return erlang::nif::error(env, "oh nyo erlang");
+        }
+    } else {
+        return erlang::nif::error(env, "cannot access resource");
+    }
+}
