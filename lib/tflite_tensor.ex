@@ -50,4 +50,15 @@ defmodule TFLiteElixir.TfLiteTensor do
   def dims(%T{shape: shape}), do: shape
 
   deferror dims(self)
+
+  @doc """
+  Get the quantization params
+  """
+  def quantization_params(self) do
+    TFLiteElixir.Nif.tflitetensor_quantization_params(self)
+  end
+
+  def quantization_params(%T{quantization_params: quantization_params}), do: quantization_params
+
+  deferror quantization_params(self)
 end

@@ -38,6 +38,7 @@ defmodule TFLiteElixir.Nif do
 
   def tflitetensor_type(_self), do: :erlang.nif_error(:not_loaded)
   def tflitetensor_dims(_self), do: :erlang.nif_error(:not_loaded)
+  def tflitetensor_quantization_params(_self), do: :erlang.nif_error(:not_loaded)
 
   def tflite_printInterpreterState(_interpreter), do: :erlang.nif_error(:not_loaded)
 
