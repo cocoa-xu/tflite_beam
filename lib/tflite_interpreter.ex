@@ -214,4 +214,18 @@ defmodule TFLiteElixir.Interpreter do
   end
 
   deferror setNumThreads(self, num_threads)
+
+  @spec getSignatureDefs(reference()) :: Map.t()
+  def getSignatureDefs(self) do
+    TFLiteElixir.Nif.interpreter_get_signature_defs(self)
+  end
+
+  deferror getSignatureDefs(self)
+
+  @spec get_full_signature_list(reference()) :: Map.t()
+  def get_full_signature_list(self) do
+    getSignatureDefs(self)
+  end
+
+  deferror get_full_signature_list(self)
 end
