@@ -1,5 +1,8 @@
 defmodule TFLiteElixir.Coral do
+  import TFLiteElixir.Errorize
+
   alias TFLiteElixir.FlatBufferModel, as: FlatBufferModel
+
   def containsEdgeTpuCustomOp?(%FlatBufferModel{model: model}) do
     TFLiteElixir.Nif.coral_contains_edgetpu_custom_op(model)
   end
@@ -46,18 +49,66 @@ defmodule TFLiteElixir.Coral do
     The generic way to reference all devices (no assumption about device type):
         ":0", ":1", ":2", ":3", ":4", ":5".
   """
-  @spec getEdgeTpuContext() :: :ok
+  @spec getEdgeTpuContext() :: {:ok, reference()} | {:error, String.t()}
   def getEdgeTpuContext() do
     TFLiteElixir.Nif.coral_get_edgetpu_context("", %{})
   end
 
-  @spec getEdgeTpuContext(String.t()) :: :ok
+  deferror(getEdgeTpuContext())
+
+  @spec getEdgeTpuContext(String.t()) :: {:ok, reference()} | {:error, String.t()}
   def getEdgeTpuContext(device) do
     TFLiteElixir.Nif.coral_get_edgetpu_context(device, %{})
   end
 
-  @spec getEdgeTpuContext(String.t(), Map.t()) :: :ok
+  deferror(getEdgeTpuContext(device))
+
+  @spec getEdgeTpuContext(String.t(), Map.t()) :: {:ok, reference()} | {:error, String.t()}
   def getEdgeTpuContext(device, options) do
     TFLiteElixir.Nif.coral_get_edgetpu_context(device, options)
   end
+
+  deferror(getEdgeTpuContext(device, options))
+
+  @spec makeEdgeTpuInterpreter(%FlatBufferModel{}, reference()) :: {:ok, reference()} | {:error, String.t()}
+  def makeEdgeTpuInterpreter(%FlatBufferModel{model: model}, edgetpu_context) do
+    TFLiteElixir.Nif.coral_make_edgetpu_interpreter(model, edgetpu_context)
+  end
+
+  deferror(makeEdgeTpuInterpreter(model, edgetpu_context))
+
+  def dequantizeTensor(interpreter, tensor_index) do
+    TFLiteElixir.Nif.coral_dequantize_tensor(interpreter, tensor_index, nil)
+  end
+
+  def dequantizeTensor(interpreter, tensor_index, as_type) do
+    as_type = map_type(as_type)
+    TFLiteElixir.Nif.coral_dequantize_tensor(interpreter, tensor_index, as_type)
+  end
+
+  defp map_type({:f, 32}), do: :f32
+  defp map_type({:f, 64}), do: :f64
+  defp map_type(:f32), do: :f32
+  defp map_type(:f64), do: :f64
+
+  defp map_type({:u, 8}), do: :u8
+  defp map_type({:u, 16}), do: :u16
+  defp map_type({:u, 32}), do: :u32
+  defp map_type({:u, 64}), do: :u64
+  defp map_type(:u8), do: :u8
+  defp map_type(:u16), do: :u16
+  defp map_type(:u32), do: :u32
+  defp map_type(:u64), do: :u64
+
+  defp map_type({:s, 8}), do: :s8
+  defp map_type({:s, 16}), do: :s16
+  defp map_type({:s, 32}), do: :s32
+  defp map_type({:s, 64}), do: :s64
+  defp map_type(:s8), do: :s8
+  defp map_type(:s16), do: :s16
+  defp map_type(:s32), do: :s32
+  defp map_type(:s64), do: :s64
+
+  defp map_type(nil), do: nil
+  defp map_type(not_supported), do: raise ArgumentError, "#{inspect(not_supported)} is not supported"
 end

@@ -61,6 +61,25 @@ namespace erlang {
         }
 
         template<typename T>
+        int make_u64_list_from_c_array(ErlNifEnv *env, size_t count, T *data, ERL_NIF_TERM &out) {
+            if (count == 0) {
+                out = enif_make_list_from_array(env, nullptr, 0);
+                return 0;
+            }
+
+            ERL_NIF_TERM *terms = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * count);
+            if (terms == nullptr) {
+                return 1;
+            }
+            for (size_t i = 0; i < count; ++i) {
+                terms[i] = enif_make_uint64(env, (uint64_t)(data[i]));
+            }
+            out = enif_make_list_from_array(env, terms, (unsigned) count);
+            enif_free(terms);
+            return 0;
+        }
+
+        template<typename T>
         int make_i32_list_from_c_array(ErlNifEnv *env, size_t count, T *data, ERL_NIF_TERM &out) {
             if (count == 0) {
                 out = enif_make_list_from_array(env, nullptr, 0);
@@ -73,6 +92,25 @@ namespace erlang {
             }
             for (size_t i = 0; i < count; ++i) {
                 terms[i] = enif_make_int(env, (int32_t)(data[i]));
+            }
+            out = enif_make_list_from_array(env, terms, (unsigned) count);
+            enif_free(terms);
+            return 0;
+        }
+
+        template<typename T>
+        int make_u32_list_from_c_array(ErlNifEnv *env, size_t count, T *data, ERL_NIF_TERM &out) {
+            if (count == 0) {
+                out = enif_make_list_from_array(env, nullptr, 0);
+                return 0;
+            }
+
+            ERL_NIF_TERM *terms = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * count);
+            if (terms == nullptr) {
+                return 1;
+            }
+            for (size_t i = 0; i < count; ++i) {
+                terms[i] = enif_make_uint(env, (uint32_t)(data[i]));
             }
             out = enif_make_list_from_array(env, terms, (unsigned) count);
             enif_free(terms);
@@ -104,6 +142,17 @@ namespace erlang {
         ERL_NIF_TERM make(ErlNifEnv *env, std::string var);
 
         ERL_NIF_TERM make(ErlNifEnv *env, const char *string);
+
+        int make(ErlNifEnv *env, const std::vector<uint8_t>& array, ERL_NIF_TERM &out);
+        int make(ErlNifEnv *env, const std::vector<uint16_t>& array, ERL_NIF_TERM &out);
+        int make(ErlNifEnv *env, const std::vector<uint32_t>& array, ERL_NIF_TERM &out);
+        int make(ErlNifEnv *env, const std::vector<uint64_t>& array, ERL_NIF_TERM &out);
+        int make(ErlNifEnv *env, const std::vector<int8_t>& array, ERL_NIF_TERM &out);
+        int make(ErlNifEnv *env, const std::vector<int16_t>& array, ERL_NIF_TERM &out);
+        int make(ErlNifEnv *env, const std::vector<int32_t>& array, ERL_NIF_TERM &out);
+        int make(ErlNifEnv *env, const std::vector<int64_t>& array, ERL_NIF_TERM &out);
+        int make(ErlNifEnv *env, const std::vector<float>& array, ERL_NIF_TERM &out);
+        int make(ErlNifEnv *env, const std::vector<double>& array, ERL_NIF_TERM &out);
 
         ERL_NIF_TERM make_binary(ErlNifEnv *env, const char *c_string);
 

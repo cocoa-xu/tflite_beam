@@ -33,7 +33,9 @@ defmodule Mix.Tasks.ClassifyImage do
       threshold: :float,
       count: :integer,
       mean: :float,
-      std: :float
+      std: :float,
+      use_tpu: :boolean,
+      tpu: :string
     ], aliases: [
       m: :model,
       i: :input,
@@ -45,7 +47,7 @@ defmodule Mix.Tasks.ClassifyImage do
       s: :std
     ])
 
-    default_values = [top: 1, threshold: 0.0, count: 1, mean: 128.0, std: 128.0]
+    default_values = [top: 1, threshold: 0.0, count: 1, mean: 128.0, std: 128.0, use_tpu: false, tpu: ""]
     args = Keyword.merge(args, default_values, fn _k, user, default ->
       if user == nil do
         default
@@ -57,7 +59,13 @@ defmodule Mix.Tasks.ClassifyImage do
     model = load_model(args[:model])
     input_image = load_input(args[:input])
     labels = load_labels(args[:labels])
-    interpreter = make_interpreter(model)
+    tpu_context =
+      if args[:use_tpu] do
+        TFLiteElixir.Coral.getEdgeTpuContext!(args[:tpu])
+      else
+        :nil
+      end
+    interpreter = make_interpreter(model, args[:use_tpu], tpu_context)
     Interpreter.allocateTensors!(interpreter)
 
     [input_tensor_number | _] = Interpreter.inputs!(interpreter)
@@ -158,7 +166,7 @@ defmodule Mix.Tasks.ClassifyImage do
     |> String.split("\n")
   end
 
-  defp make_interpreter(model) do
+  defp make_interpreter(model, false, _tpu_context) do
     resolver = TFLiteElixir.Ops.Builtin.BuiltinResolver.new!()
     builder = InterpreterBuilder.new!(model, resolver)
     interpreter = Interpreter.new!()
@@ -166,6 +174,10 @@ defmodule Mix.Tasks.ClassifyImage do
     :ok = InterpreterBuilder.build!(builder, interpreter)
     Interpreter.setNumThreads!(interpreter, 2)
     interpreter
+  end
+
+  defp make_interpreter(model, true, tpu_context) do
+    TFLiteElixir.Coral.makeEdgeTpuInterpreter!(model, tpu_context)
   end
 
   defp get_scores(output_data, %TFTensor{type: dtype={:u, _}}=output_tensor) do

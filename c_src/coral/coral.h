@@ -14,6 +14,8 @@
 std::map<void *, std::shared_ptr<edgetpu::EdgeTpuContext>> managedContext;
 
 using NifResEdgeTpuContext = erlang_nif_res<edgetpu::EdgeTpuContext *>;
+using NifResFlatBufferModel = erlang_nif_res<tflite::FlatBufferModel *>;
+using NifResInterpreter = erlang_nif_res<tflite::Interpreter *>;
 
 static void destruct_egdetpu_context(ErlNifEnv *env, void *args) {
     auto res = (NifResEdgeTpuContext *)args;
@@ -102,6 +104,126 @@ static ERL_NIF_TERM coral_get_edgetpu_context(ErlNifEnv *env, int argc, const ER
     } else {
         return erlang::nif::error(env, "invalid device name");
     }
+}
+
+static ERL_NIF_TERM coral_make_edgetpu_interpreter(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 2) return enif_make_badarg(env);
+
+    ERL_NIF_TERM model_term = argv[0];
+    ERL_NIF_TERM context_term = argv[1];
+    NifResFlatBufferModel * model_res;
+    NifResEdgeTpuContext * context_res;
+    NifResInterpreter * interpreter_res;
+
+    if (!enif_get_resource(env, model_term, NifResFlatBufferModel::type, (void **)&model_res)) {
+        return erlang::nif::error(env, "cannot access model resource");
+    }
+    if (!enif_get_resource(env, context_term, NifResEdgeTpuContext::type, (void **)&context_res)) {
+        return erlang::nif::error(env, "cannot access context resource");
+    }
+
+    if (model_res->val == nullptr || context_res->val == nullptr) {
+        return erlang::nif::error(env, "oh nyo erlang");
+    }
+    if (!alloc_resource(&interpreter_res)) {
+        return erlang::nif::error(env, "cannot allocate memory for interpreter resource");
+    }
+
+    auto model = model_res->val;
+    auto context = context_res->val;
+    std::unique_ptr<tflite::Interpreter> tmp;
+
+    auto status = coral::MakeEdgeTpuInterpreter(*model, context, nullptr, nullptr, &tmp);
+    if (status == absl::OkStatus()) {
+        interpreter_res->val = tmp.release();
+        ERL_NIF_TERM ret = enif_make_resource(env, interpreter_res);
+        enif_release_resource(interpreter_res);
+        return erlang::nif::ok(env, ret);
+    } else {
+        return erlang::nif::error(env, "cannot make edgetpu interpreter");
+    }
+}
+
+static ERL_NIF_TERM coral_dequantize_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 3) return enif_make_badarg(env);
+
+    ERL_NIF_TERM interpreter_term = argv[0];
+    ERL_NIF_TERM tensor_index_term = argv[1];
+    ERL_NIF_TERM as_type_term = argv[2];
+
+    NifResInterpreter * interpreter_res;
+
+    if (!enif_get_resource(env, interpreter_term, NifResInterpreter::type, (void **)&interpreter_res)) {
+        return erlang::nif::error(env, "cannot access interpreter resource");
+    }
+
+    if (interpreter_res->val == nullptr) {
+        return erlang::nif::error(env, "oh nyo erlang");
+    }
+
+    int64_t tensor_index;
+    if (!erlang::nif::get(env, tensor_index_term, &tensor_index)) {
+        return erlang::nif::error(env, "cannot get value of parameter 'tensor_index' in nif");
+    }
+
+    std::string type;
+    if (!erlang::nif::get(env, as_type_term, type)) {
+        return erlang::nif::error(env, "cannot get value of parameter 'type' in nif");
+    }
+
+    auto interpreter = interpreter_res->val;
+    const auto& tensor = *interpreter->tensor(tensor_index);
+    ERL_NIF_TERM out;
+    int ret_status;
+    if (type == "nil") {
+        if (tensor.type == kTfLiteUInt8) {
+            auto vec = coral::DequantizeTensor<uint8_t>(tensor);
+            ret_status = erlang::nif::make(env, vec, out);
+        } else if (tensor.type == kTfLiteInt8) {
+            auto vec = coral::DequantizeTensor<int8_t>(tensor);
+            ret_status = erlang::nif::make(env, vec, out);
+        } else {
+            return erlang::nif::error(env, "only support tensor with its data type as 'uint8_t' or 'int8_t'");
+        }
+    } else if (type == "u8") {
+        auto vec = coral::DequantizeTensor<uint8_t>(tensor);
+        ret_status = erlang::nif::make(env, vec, out);
+    } else if (type == "u16") {
+        auto vec = coral::DequantizeTensor<uint16_t>(tensor);
+        ret_status = erlang::nif::make(env, vec, out);
+    } else if (type == "u32") {
+        auto vec = coral::DequantizeTensor<uint32_t>(tensor);
+        ret_status = erlang::nif::make(env, vec, out);
+    } else if (type == "u64") {
+        auto vec = coral::DequantizeTensor<uint64_t>(tensor);
+        ret_status = erlang::nif::make(env, vec, out);
+    } else if (type == "s8") {
+        auto vec = coral::DequantizeTensor<int8_t>(tensor);
+        ret_status = erlang::nif::make(env, vec, out);
+    } else if (type == "s16") {
+        auto vec = coral::DequantizeTensor<int16_t>(tensor);
+        ret_status = erlang::nif::make(env, vec, out);
+    } else if (type == "s32") {
+        auto vec = coral::DequantizeTensor<int32_t>(tensor);
+        ret_status = erlang::nif::make(env, vec, out);
+    } else if (type == "s64") {
+        auto vec = coral::DequantizeTensor<int64_t>(tensor);
+        ret_status = erlang::nif::make(env, vec, out);
+    } else if (type == "f32") {
+        auto vec = coral::DequantizeTensor<float>(tensor);
+        ret_status = erlang::nif::make(env, vec, out);
+    } else if (type == "f64") {
+        auto vec = coral::DequantizeTensor<double>(tensor);
+        ret_status = erlang::nif::make(env, vec, out);
+    } else {
+        return erlang::nif::error(env, "invalid value for parameter 'type' in nif");
+    }
+
+    if (ret_status != 0) {
+        return erlang::nif::error(env, "cannot dequantize tensor");
+    }
+
+    return erlang::nif::ok(env, out);
 }
 
 #endif // TFLITE_CORAL_BINDINGS_H

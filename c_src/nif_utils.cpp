@@ -108,6 +108,66 @@ namespace erlang {
             return enif_make_string(env, string, ERL_NIF_LATIN1);
         }
 
+        int make(ErlNifEnv *env, const std::vector<uint8_t>& array, ERL_NIF_TERM &out) {
+            size_t count = array.size();
+            uint8_t * data = (uint8_t *)array.data();
+            return make_u32_list_from_c_array(env, count, data, out);
+        }
+
+        int make(ErlNifEnv *env, const std::vector<uint16_t>& array, ERL_NIF_TERM &out) {
+            size_t count = array.size();
+            uint16_t * data = (uint16_t *)array.data();
+            return make_u32_list_from_c_array(env, count, data, out);
+        }
+
+        int make(ErlNifEnv *env, const std::vector<uint32_t>& array, ERL_NIF_TERM &out) {
+            size_t count = array.size();
+            uint32_t * data = (uint32_t *)array.data();
+            return make_u32_list_from_c_array(env, count, data, out);
+        }
+
+        int make(ErlNifEnv *env, const std::vector<uint64_t>& array, ERL_NIF_TERM &out) {
+            size_t count = array.size();
+            uint64_t * data = (uint64_t *)array.data();
+            return make_u64_list_from_c_array(env, count, data, out);
+        }
+
+        int make(ErlNifEnv *env, const std::vector<int8_t>& array, ERL_NIF_TERM &out) {
+            size_t count = array.size();
+            int8_t * data = (int8_t *)array.data();
+            return make_i32_list_from_c_array(env, count, data, out);
+        }
+
+        int make(ErlNifEnv *env, const std::vector<int16_t>& array, ERL_NIF_TERM &out) {
+            size_t count = array.size();
+            int16_t * data = (int16_t *)array.data();
+            return make_i32_list_from_c_array(env, count, data, out);
+        }
+
+        int make(ErlNifEnv *env, const std::vector<int32_t>& array, ERL_NIF_TERM &out) {
+            size_t count = array.size();
+            int32_t * data = (int32_t *)array.data();
+            return make_i32_list_from_c_array(env, count, data, out);
+        }
+
+        int make(ErlNifEnv *env, const std::vector<int64_t>& array, ERL_NIF_TERM &out) {
+            size_t count = array.size();
+            int64_t * data = (int64_t *)array.data();
+            return make_i64_list_from_c_array(env, count, data, out);
+        }
+
+        int make(ErlNifEnv *env, const std::vector<float>& array, ERL_NIF_TERM &out) {
+            size_t count = array.size();
+            float * data = (float *)array.data();
+            return make_f64_list_from_c_array(env, count, data, out);
+        }
+
+        int make(ErlNifEnv *env, const std::vector<double>& array, ERL_NIF_TERM &out) {
+            size_t count = array.size();
+            double * data = (double *)array.data();
+            return make_f64_list_from_c_array(env, count, data, out);
+        }
+
         ERL_NIF_TERM make_binary(ErlNifEnv *env, const char *c_string) {
             ERL_NIF_TERM binary_str;
             unsigned char *ptr;
