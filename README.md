@@ -139,7 +139,7 @@ sudo apt install pkg-config libgoogle-glog-dev libusb-1.0-0-dev
 
   Enable Coral Support.
 
-  Default to `NO`.
+  Default to `YES`.
 
 - `TFLITE_ELIXIR_CORAL_USB_THROTTLE`
 
