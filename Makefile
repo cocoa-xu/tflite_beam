@@ -61,17 +61,26 @@ unarchive_source_code: $(TFLITE_SOURCE_ZIP)
 		fi \
 	fi
 
-$(NATIVE_BINDINGS_SO): unarchive_source_code
+install_libedgetpu_runtime:
+	@ if [ "$(TFLITE_ELIXIR_CORAL_SUPPORT)" = "YES" ]; then \
+   		mkdir -p "$(PRIV_DIR)/libedgetpu" ; \
+   		cp -a "$(TFLITE_ELIXIR_CACHE_DIR)/$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME)/edgetpu_runtime/libedgetpu/*.h" "$(PRIV_DIR)/libedgetpu" ; \
+   		echo "Throttle USB Coral Devices: $(TFLITE_ELIXIR_CORAL_USB_THROTTLE)" ; \
+   		if [ "$(TFLITE_ELIXIR_CORAL_USB_THROTTLE)" = "NO" ]; then \
+   		  cp -a "$(TFLITE_ELIXIR_CACHE_DIR)/$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME)/edgetpu_runtime/libedgetpu/direct/*" "$(PRIV_DIR)/libedgetpu" ; \
+   		else \
+   		  cp -a "$(TFLITE_ELIXIR_CACHE_DIR)/$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME)/edgetpu_runtime/libedgetpu/throttled/*" "$(PRIV_DIR)/libedgetpu" ; \
+	  	fi \
+		bash scripts/macos_fix_libusb.sh "$(PRIV_DIR)/libedgetpu/libedgetpu.1.0.dylib" ; \
+		bash scripts/linux_fix_edgetpu_version.sh "$(PRIV_DIR)/libedgetpu" ; \
+		git submodule update --init c_src/libcoral ; \
+		cd c_src/libcoral && git submodule update --init libedgetpu && cd ../.. ; \
+	fi ; \
+
+$(NATIVE_BINDINGS_SO): unarchive_source_code install_libedgetpu_runtime
 	@ if [ ! -e "$(NATIVE_BINDINGS_SO)" ]; then \
 		echo "CORAL SUPPORT: $(TFLITE_ELIXIR_CORAL_SUPPORT)" ; \
 		echo "  LIBEDGETPU runtime: $(TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME)" ; \
-		if [ "$(TFLITE_ELIXIR_CORAL_SUPPORT)" = "YES" ]; then \
-		  	echo "  Throttle USB Coral Devices: $(TFLITE_ELIXIR_CORAL_USB_THROTTLE)" ; \
-			bash scripts/macos_fix_libusb.sh "$(PRIV_DIR)/libedgetpu/libedgetpu.1.0.dylib" ; \
-			bash scripts/linux_fix_edgetpu_version.sh "$(PRIV_DIR)/libedgetpu" ; \
-			git submodule update --init c_src/libcoral ; \
-			cd c_src/libcoral && git submodule update --init libedgetpu && cd ../.. ; \
-		fi ; \
 		mkdir -p $(CMAKE_BINDINGS_BUILD_DIR) && \
 		cd "$(CMAKE_BINDINGS_BUILD_DIR)" && \
  		cmake -D C_SRC="$(C_SRC)" \

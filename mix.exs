@@ -25,7 +25,6 @@ defmodule TfliteElixir.MixProject do
       edgetpu_libraries = System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", @default_edgetpu_libraries)
 
       :ok = download_edgetpu_runtime(edgetpu_runtime, edgetpu_runtime_release_name)
-      {:ok, _} = install_edgetpu_runtime(edgetpu_runtime, throttle_coral_usb, edgetpu_libraries)
       System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME", edgetpu_runtime)
     end
 
@@ -103,54 +102,6 @@ defmodule TfliteElixir.MixProject do
 
   defp cache_dir() do
     System.get_env("TFLITE_ELIXIR_CACHE_DIR", "./3rd_party/cache")
-  end
-
-  defp install_edgetpu_runtime(runtime, throttle, edgetpu_libraries) do
-    copy_to = Path.join([Mix.Project.build_path(), "lib/tflite_elixir/priv/libedgetpu"])
-    unless File.exists?(copy_to) do
-      File.mkdir_p!(copy_to)
-
-      runtime_dir =
-        if throttle == "NO" do
-          "direct"
-        else
-          "throttled"
-        end
-      unzipped_location = Path.join([cache_dir(), runtime, "edgetpu_runtime/libedgetpu", runtime_dir])
-
-      edgetpu_libraries =
-        case edgetpu_libraries do
-          "native" ->
-            case :os.type() do
-              {:unix, :darwin} ->
-                case :os.cmd('uname -p') do
-                  'arm\n' ->
-                    "darwin_arm64"
-                  _ ->
-                    "darwin_x86_64"
-                end
-              {:unix, _} ->
-                case :os.cmd('uname -m') do
-                  'aarch64\n' ->
-                    "aarch64"
-                  'x86_64\n' ->
-                    "k8"
-                  'armv7l\n' ->
-                    "armv7a"
-                  unsupported ->
-                    raise RuntimeError, "#{inspect(unsupported)} is not supported"
-                end
-              {:win32, :nt} ->
-                "x64_windows"
-            end
-          specific ->
-            specific
-        end
-
-      File.cp_r!(Path.join([unzipped_location, edgetpu_libraries]), copy_to)
-    end
-
-    {:ok, copy_to}
   end
 
   defp download_edgetpu_runtime(runtime, release_name) do
