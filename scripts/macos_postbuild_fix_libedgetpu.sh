@@ -19,8 +19,9 @@ case "$(uname -s)" in
       exit 1
     fi
 
-    rm -f "${LIBEDGETPU_DIR}/libedgetpu.1.dylib"
-    ln -s "${LIBEDGETPU_WRONG_NAME}" "libedgetpu.1.dylib"
+    mv "${LIBEDGETPU_WRONG_NAME}" "libedgetpu.1.0.dylib"
+    rm -f "libedgetpu.1.dylib"
+    ln -s "libedgetpu.1.0.dylib" "libedgetpu.1.dylib"
     ;;
   *)
     ;;

@@ -1,5 +1,6 @@
 PRIV_DIR = $(MIX_APP_PATH)/priv
 NATIVE_BINDINGS_SO = $(PRIV_DIR)/tflite_elixir.so
+LIBEDGETPU_RUNTIME_PRIV = $(PRIV_DIR)/libedgetpu
 C_SRC = $(shell pwd)/c_src
 LIB_SRC = $(shell pwd)/lib
 ifdef CMAKE_TOOLCHAIN_FILE
@@ -24,6 +25,8 @@ TFLITE_CMAKELISTS_TXT = $(TFLITE_ROOT_DIR)/CMakeLists.txt
 CMAKE_TFLITE_BUILD_DIR = $(MIX_APP_PATH)/cmake_tflite_$(TFLITE_VER)
 
 TFLITE_ELIXIR_CORAL_USB_THROTTLE ?= "YES"
+TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES ?= "native"
+TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR = $(TFLITE_ELIXIR_CACHE_DIR)/$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME)/edgetpu_runtime/libedgetpu
 
 CMAKE_TFLITE_OPTIONS ?= ""
 CMAKE_OPTIONS ?= $(CMAKE_TFLITE_OPTIONS)
@@ -63,14 +66,8 @@ unarchive_source_code: $(TFLITE_SOURCE_ZIP)
 
 install_libedgetpu_runtime:
 	@ if [ "$(TFLITE_ELIXIR_CORAL_SUPPORT)" = "YES" ]; then \
-   		mkdir -p "$(PRIV_DIR)/libedgetpu" ; \
-   		cp -a "$(TFLITE_ELIXIR_CACHE_DIR)/$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME)/edgetpu_runtime/libedgetpu/*.h" "$(PRIV_DIR)/libedgetpu" ; \
    		echo "Throttle USB Coral Devices: $(TFLITE_ELIXIR_CORAL_USB_THROTTLE)" ; \
-   		if [ "$(TFLITE_ELIXIR_CORAL_USB_THROTTLE)" = "NO" ]; then \
-   		  cp -a "$(TFLITE_ELIXIR_CACHE_DIR)/$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME)/edgetpu_runtime/libedgetpu/direct/*" "$(PRIV_DIR)/libedgetpu" ; \
-   		else \
-   		  cp -a "$(TFLITE_ELIXIR_CACHE_DIR)/$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME)/edgetpu_runtime/libedgetpu/throttled/*" "$(PRIV_DIR)/libedgetpu" ; \
-	  	fi \
+   		bash scripts/copy_libedgetpu_runtime.sh "$(LIBEDGETPU_RUNTIME_PRIV)" "$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR)" "$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES)" "$(TFLITE_ELIXIR_CORAL_USB_THROTTLE)"; \
 		bash scripts/macos_fix_libusb.sh "$(PRIV_DIR)/libedgetpu/libedgetpu.1.0.dylib" ; \
 		bash scripts/linux_fix_edgetpu_version.sh "$(PRIV_DIR)/libedgetpu" ; \
 		git submodule update --init c_src/libcoral ; \
@@ -80,7 +77,7 @@ install_libedgetpu_runtime:
 $(NATIVE_BINDINGS_SO): unarchive_source_code install_libedgetpu_runtime
 	@ if [ ! -e "$(NATIVE_BINDINGS_SO)" ]; then \
 		echo "CORAL SUPPORT: $(TFLITE_ELIXIR_CORAL_SUPPORT)" ; \
-		echo "  LIBEDGETPU runtime: $(TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME)" ; \
+		echo "LIBEDGETPU runtime: $(TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME)" ; \
 		mkdir -p $(CMAKE_BINDINGS_BUILD_DIR) && \
 		cd "$(CMAKE_BINDINGS_BUILD_DIR)" && \
  		cmake -D C_SRC="$(C_SRC)" \
