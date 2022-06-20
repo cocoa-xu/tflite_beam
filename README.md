@@ -159,6 +159,34 @@ sudo apt install pkg-config libgoogle-glog-dev libusb-1.0-0-dev
   Select the [libedgetpu runtime](https://coral.ai/software/#edgetpu-runtime).
 
   Default runtime version is `edgetpu_runtime_20220308`.
+
+ `TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME_RELEASE_NAME`
+
+  Check the [google-coral/libedgetpu](https://github.com/google-coral/libedgetpu) for more details.
+
+  Default release name is `grouper`.
+
+  | Release Name | Runtime Version            | 
+  |--------------|----------------------------|
+  | `grouper`    | `edgetpu_runtime_20220308` |
+  | `frogfish`   | `edgetpu_runtime_20210119` |
+  | `frogfish`   | `edgetpu_runtime_20201204` |
+  | `frogfish`   | `edgetpu_runtime_20201105` |
+  | `frogfish`   | `edgetpu_runtime_20200728` |
+  | `frogfish`   | `edgetpu_runtime_20200331` |
+  | `frogfish`   | `edgetpu_runtime_20200128` |
+
+  For macOS, `TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME_RELEASE_NAME=grouper` and `TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME=edgetpu_runtime_20220308`
+
+  For Linux, `edgetpu_runtime_20220308` seems to have some compatibility issues. `TFLiteElixir.Coral.makeEdgeTpuContext/2` is likely to fail.
+
+  Using `edgetpu_runtime_20210119` solves the issue for now on Linux. 
+
+  ```shell
+  export TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME_RELEASE_NAME=frogfish
+  export TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME=edgetpu_runtime_20210119
+  ```
+
 - `TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES`
   
   Choose which ones of the libedgetpu libraries to copy to the `priv` directory of the `:elixir_coral` app.
