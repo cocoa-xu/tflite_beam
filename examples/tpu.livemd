@@ -363,8 +363,6 @@ interpreter =
     use_tpu: true,
     tpu: "usb"
   )
-
-interpreter = nil
 ```
 
 <!-- livebook:{"output":true} -->
@@ -380,10 +378,4 @@ interpreter = nil
 Ara macao (Scarlet Macaw): 0.71875
 Platycercus elegans (Crimson Rosella): 0.07031
 Coracias caudatus (Lilac-breasted Roller): 0.01953
-```
-
-<!-- livebook:{"output":true} -->
-
-```
-nil
 ```

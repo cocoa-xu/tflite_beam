@@ -31,7 +31,6 @@ jobs:
           brew install elixir
           mix local.hex --force
           mix local.rebar --force
-          brew install pkg-config glog libusb
 
       - name: Compile and Test
         run: |
