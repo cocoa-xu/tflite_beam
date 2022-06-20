@@ -9,6 +9,7 @@ defmodule Mix.Tasks.DetectImage do
   - `-l`, `--labels`: File path of labels file.
   - `-t`, `--threshold`: Default to `0.4`. Score threshold for detected objects.
   - `-c`, `--count`: Default to `1`. Number of times to run inference.
+  - `-j`, `--jobs`: Number of threads for the interpreter (only valid for CPU).
 
   Code based on [detect_image.py](https://github.com/google-coral/pycoral/blob/master/examples/detect_image.py)
   """
@@ -28,15 +29,17 @@ defmodule Mix.Tasks.DetectImage do
       labels: :string,
       threshold: :float,
       count: :integer,
+      jobs: :integer
     ], aliases: [
       m: :model,
       i: :input,
       l: :labels,
       t: :threshold,
       c: :count,
+      j: :jobs
     ])
 
-    default_values = [threshold: 0.4, count: 1]
+    default_values = [threshold: 0.4, count: 1, jobs: System.schedulers_online()]
     args = Keyword.merge(args, default_values, fn _k, user, default ->
       if user == nil do
         default
@@ -48,7 +51,7 @@ defmodule Mix.Tasks.DetectImage do
     model = load_model(args[:model])
     input_image = %StbImage{shape: {h, w, _c}} = load_input(args[:input])
     labels = load_labels(args[:labels])
-    interpreter = make_interpreter(model)
+    interpreter = make_interpreter(model, args[:jobs])
     Interpreter.allocateTensors!(interpreter)
 
     [input_tensor_number | _] = Interpreter.inputs!(interpreter)
@@ -205,13 +208,13 @@ defmodule Mix.Tasks.DetectImage do
     |> String.split("\n")
   end
 
-  defp make_interpreter(model) do
+  defp make_interpreter(model, num_jobs) do
     resolver = TFLiteElixir.Ops.Builtin.BuiltinResolver.new!()
     builder = InterpreterBuilder.new!(model, resolver)
     interpreter = Interpreter.new!()
-    InterpreterBuilder.setNumThreads!(builder, 2)
+    InterpreterBuilder.setNumThreads!(builder, num_jobs)
     :ok = InterpreterBuilder.build!(builder, interpreter)
-    Interpreter.setNumThreads!(interpreter, 2)
+    Interpreter.setNumThreads!(interpreter, num_jobs)
     interpreter
   end
 

@@ -98,6 +98,7 @@ defmodule ClassifyImage do
   - `-c`, `--count`: Default to `1`. Number of times to run inference.
   - `-a`, `--mean`: Default to `128.0`. Mean value for input normalization.
   - `-s`, `--std`: Default to `128.0`. STD value for input normalization.
+  - `-j`, `--jobs`: Number of threads for the interpreter (only valid for CPU).
   - `--use-tpu`: Default to false. Add this option to use Coral device.
   - `--tpu`: Default to `""`. Coral device name.
     - `""`      -- any TPU device
@@ -124,7 +125,8 @@ defmodule ClassifyImage do
       mean: 128.0,
       std: 128.0,
       use_tpu: false,
-      tpu: ""
+      tpu: "",
+      jobs: System.schedulers_online()
     ]
 
     args =
@@ -147,7 +149,7 @@ defmodule ClassifyImage do
         nil
       end
 
-    interpreter = make_interpreter(model, args[:use_tpu], tpu_context)
+    interpreter = make_interpreter(model, args[:jobs], args[:use_tpu], tpu_context)
     Interpreter.allocateTensors!(interpreter)
 
     [input_tensor_number | _] = Interpreter.inputs!(interpreter)
@@ -256,17 +258,17 @@ defmodule ClassifyImage do
     |> String.split("\n")
   end
 
-  defp make_interpreter(model, false, _tpu_context) do
+  defp make_interpreter(model, num_jobs, false, _tpu_context) do
     resolver = TFLiteElixir.Ops.Builtin.BuiltinResolver.new!()
     builder = InterpreterBuilder.new!(model, resolver)
     interpreter = Interpreter.new!()
-    InterpreterBuilder.setNumThreads!(builder, 2)
+    InterpreterBuilder.setNumThreads!(builder, num_jobs)
     :ok = InterpreterBuilder.build!(builder, interpreter)
-    Interpreter.setNumThreads!(interpreter, 2)
+    Interpreter.setNumThreads!(interpreter, num_jobs)
     interpreter
   end
 
-  defp make_interpreter(model, true, tpu_context) do
+  defp make_interpreter(model, _num_jobs, true, tpu_context) do
     TFLiteElixir.Coral.makeEdgeTpuInterpreter!(model, tpu_context)
   end
 
@@ -332,11 +334,11 @@ interpreter = nil
 
 ```
 ----INFERENCE TIME----
-47.4ms
-46.9ms
-45.9ms
-45.8ms
-45.7ms
+37.6ms
+29.4ms
+27.7ms
+28.4ms
+27.8ms
 -------RESULTS--------
 Ara macao (Scarlet Macaw): 0.70703
 Platycercus elegans (Crimson Rosella): 0.07813

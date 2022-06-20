@@ -12,6 +12,7 @@ defmodule Mix.Tasks.ClassifyImage do
   - `-c`, `--count`: Default to `1`. Number of times to run inference.
   - `-a`, `--mean`: Default to `128.0`. Mean value for input normalization.
   - `-s`, `--std`: Default to `128.0`. STD value for input normalization.
+  - `-j`, `--jobs`: Number of threads for the interpreter (only valid for CPU).
   - `--use-tpu`: Default to false. Add this option to use Coral device.
   - `--tpu`: Default to `""`. Coral device name.
     - `""`      -- any TPU device
@@ -43,7 +44,8 @@ defmodule Mix.Tasks.ClassifyImage do
       mean: :float,
       std: :float,
       use_tpu: :boolean,
-      tpu: :string
+      tpu: :string,
+      jobs: :integer
     ], aliases: [
       m: :model,
       i: :input,
@@ -52,10 +54,11 @@ defmodule Mix.Tasks.ClassifyImage do
       t: :threshold,
       c: :count,
       a: :mean,
-      s: :std
+      s: :std,
+      j: :jobs
     ])
 
-    default_values = [top: 1, threshold: 0.0, count: 1, mean: 128.0, std: 128.0, use_tpu: false, tpu: ""]
+    default_values = [top: 1, threshold: 0.0, count: 1, mean: 128.0, std: 128.0, jobs: System.schedulers_online(), use_tpu: false, tpu: ""]
     args = Keyword.merge(args, default_values, fn _k, user, default ->
       if user == nil do
         default
@@ -73,7 +76,7 @@ defmodule Mix.Tasks.ClassifyImage do
       else
         :nil
       end
-    interpreter = make_interpreter(model, args[:use_tpu], tpu_context)
+    interpreter = make_interpreter(model, args[:jobs], args[:use_tpu], tpu_context)
     Interpreter.allocateTensors!(interpreter)
 
     [input_tensor_number | _] = Interpreter.inputs!(interpreter)
@@ -174,17 +177,17 @@ defmodule Mix.Tasks.ClassifyImage do
     |> String.split("\n")
   end
 
-  defp make_interpreter(model, false, _tpu_context) do
+  defp make_interpreter(model, num_jobs, false, _tpu_context) do
     resolver = TFLiteElixir.Ops.Builtin.BuiltinResolver.new!()
     builder = InterpreterBuilder.new!(model, resolver)
     interpreter = Interpreter.new!()
-    InterpreterBuilder.setNumThreads!(builder, 2)
+    InterpreterBuilder.setNumThreads!(builder, num_jobs)
     :ok = InterpreterBuilder.build!(builder, interpreter)
-    Interpreter.setNumThreads!(interpreter, 2)
+    Interpreter.setNumThreads!(interpreter, num_jobs)
     interpreter
   end
 
-  defp make_interpreter(model, true, tpu_context) do
+  defp make_interpreter(model, _num_jobs, true, tpu_context) do
     TFLiteElixir.Coral.makeEdgeTpuInterpreter!(model, tpu_context)
   end
 
