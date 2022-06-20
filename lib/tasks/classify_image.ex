@@ -12,6 +12,14 @@ defmodule Mix.Tasks.ClassifyImage do
   - `-c`, `--count`: Default to `1`. Number of times to run inference.
   - `-a`, `--mean`: Default to `128.0`. Mean value for input normalization.
   - `-s`, `--std`: Default to `128.0`. STD value for input normalization.
+  - `--use-tpu`: Default to false. Add this option to use Coral device.
+  - `--tpu`: Default to `""`. Coral device name.
+    - `""`      -- any TPU device
+    - `"usb"`   -- any TPU device on USB bus
+    - `"pci"`   -- any TPU device on PCIe bus
+    - `":N"`    -- N-th TPU device, e.g. `":0"`
+    - `"usb:N"` -- N-th TPU device on USB bus, e.g. `"usb:0"`
+    - `"pci:N"` -- N-th TPU device on PCIe bus, e.g. `"pci:0"`
 
   Code based on [classify_image.py](https://github.com/google-coral/pycoral/blob/master/examples/classify_image.py)
   """
