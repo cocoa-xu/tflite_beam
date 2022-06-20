@@ -88,3 +88,6 @@ $(NATIVE_BINDINGS_SO): unarchive_source_code
 			  || { echo "\033[0;31mincomplete build of Tensorflow Lite found in '$(CMAKE_TFLITE_BUILD_DIR)', please delete that directory and retry\033[0m" && exit 1 ; } ; } \
 			&& cp "$(CMAKE_BINDINGS_BUILD_DIR)/tflite_elixir.so" "$(NATIVE_BINDINGS_SO)" ; \
 	fi
+	@ if [ "$(TFLITE_ELIXIR_CORAL_SUPPORT)" = "YES" ]; then \
+		bash scripts/macos_postbuild_fix_libedgetpu.sh "$(NATIVE_BINDINGS_SO)" ; \
+	fi
