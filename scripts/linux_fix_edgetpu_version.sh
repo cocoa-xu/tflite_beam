@@ -3,6 +3,7 @@
 case "$(uname -s)" in
   Linux*)
     LIBEDGETPU_DIR="$1"
+    mkdir -p "${LIBEDGETPU_DIR}"
     cd "${LIBEDGETPU_DIR}"
     LIBEDGETPU_WRONG_NAME="$(find . -size +1M -type f | head -n1)"
     if [ -z "${LIBEDGETPU_WRONG_NAME}" ]; then
