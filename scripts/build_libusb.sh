@@ -16,14 +16,17 @@ cd 3rd_party/libusb
 make DESTDIR="${DESTDIR}" install
 
 LIBUSB_SO="libusb-1.0.0.dylib"
+LIBUSB_SO_SYMLINK="libusb-1.0.0.dylib"
 if [ -n "${CROSSCOMPILE}" ]; then
   export LIBUSB_SO="libusb-1.0.so.0.3.0"
+  export LIBUSB_SO_SYMLINK="libusb-1.0.so.0"
 fi
 case "$(uname -s)" in
   Linux*)
     export LIBUSB_SO="libusb-1.0.so.0.3.0"
+    export LIBUSB_SO_SYMLINK="libusb-1.0.so.0"
   ;;
 esac
 cd "${DESTDIR}"
-rm -f "${LIBUSB_SO}"
-ln -s "lib/${LIBUSB_SO}" "${LIBUSB_SO}"
+rm -f "${LIBUSB_SO_SYMLINK}"
+ln -s "lib/${LIBUSB_SO}" "${LIBUSB_SO_SYMLINK}"
