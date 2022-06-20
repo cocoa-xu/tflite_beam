@@ -21,6 +21,8 @@ TFLITE_SOURCE_ZIP = $(TFLITE_ELIXIR_CACHE_DIR)/tensorflow-$(TFLITE_VER_V).zip
 UNZIP_TARGET_DIR = $(shell pwd)/3rd_party/tensorflow
 TENSORFLOW_ROOT_DIR = $(UNZIP_TARGET_DIR)/tensorflow-$(TFLITE_VER)
 TFLITE_ROOT_DIR = $(TENSORFLOW_ROOT_DIR)/tensorflow/lite
+GFLAGS_ROOT_DIR = $(shell pwd)/3rd_party/gflags
+GLOG_ROOT_DIR = $(shell pwd)/3rd_party/glog
 TFLITE_CMAKELISTS_TXT = $(TFLITE_ROOT_DIR)/CMakeLists.txt
 CMAKE_TFLITE_BUILD_DIR = $(MIX_APP_PATH)/cmake_tflite_$(TFLITE_VER)
 
@@ -78,12 +80,16 @@ $(NATIVE_BINDINGS_SO): unarchive_source_code install_libedgetpu_runtime
 	@ if [ ! -e "$(NATIVE_BINDINGS_SO)" ]; then \
 		echo "CORAL SUPPORT: $(TFLITE_ELIXIR_CORAL_SUPPORT)" ; \
 		echo "LIBEDGETPU runtime: $(TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME)" ; \
+		git submodule update --init 3rd_party/gflags && \
+		git submodule update --init 3rd_party/glog && \
 		mkdir -p $(CMAKE_BINDINGS_BUILD_DIR) && \
 		cd "$(CMAKE_BINDINGS_BUILD_DIR)" && \
  		cmake -D C_SRC="$(C_SRC)" \
  		  -D PRIV_DIR="$(PRIV_DIR)" \
  		  -D ERTS_INCLUDE_DIR="$(ERTS_INCLUDE_DIR)" \
  		  -D TFLITE_ROOT_DIR="$(TFLITE_ROOT_DIR)" \
+ 		  -D GFLAGS_ROOT_DIR="$(GFLAGS_ROOT_DIR)" \
+ 		  -D GLOG_ROOT_DIR="$(GLOG_ROOT_DIR)" \
  		  -D TFLITE_ELIXIR_CACHE_DIR="$(TFLITE_ELIXIR_CACHE_DIR)" \
  		  -D TFLITE_ELIXIR_CORAL_SUPPORT="$(TFLITE_ELIXIR_CORAL_SUPPORT)" \
  		  -D TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME="$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME)" \

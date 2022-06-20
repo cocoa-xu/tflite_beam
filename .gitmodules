@@ -1,3 +1,9 @@
 [submodule "c_src/libcoral"]
 	path = c_src/libcoral
 	url = https://github.com/cocoa-xu/libcoral.git
+[submodule "3rd_party/gflags"]
+	path = 3rd_party/gflags
+	url = https://github.com/gflags/gflags.git
+[submodule "3rd_party/glog"]
+	path = 3rd_party/glog
+	url = https://github.com/google/glog.git
