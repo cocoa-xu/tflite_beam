@@ -128,7 +128,7 @@ defmodule TfliteElixir.MixProject do
                     "darwin_x86_64"
                 end
               {:unix, _} ->
-                case :os.cmd('uname -p') do
+                case :os.cmd('uname -m') do
                   'aarch64\n' ->
                     "aarch64"
                   'x86_64\n' ->
