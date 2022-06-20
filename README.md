@@ -139,6 +139,18 @@ For DEBIAN/Ubuntu
 sudo apt install pkg-config libgoogle-glog-dev libusb-1.0-0-dev
 ```
 
+For some Linux OSes you need to manually execute the following command to update udev rules, otherwise, libedgetpu will
+fail to initialize Coral devices.
+
+```shell
+# possible values for these env vars are listed in the next section
+export TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME_RELEASE_NAME=grouper
+export TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME=edgetpu_runtime_20220308
+
+mix deps.get
+bash "3rd_party/cache/${TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME}/edgetpu_runtime/install.sh"
+```
+
 ### Compile-Time Environment Variable
 - `TFLITE_ELIXIR_CORAL_SUPPORT`
 
