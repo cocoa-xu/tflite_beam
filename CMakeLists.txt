@@ -106,6 +106,10 @@ target_link_libraries(tflite_elixir
 )
 set_target_properties(tflite_elixir PROPERTIES PREFIX "")
 set_target_properties(tflite_elixir PROPERTIES SUFFIX ".so")
+set_target_properties(tflite_elixir PROPERTIES
+    INSTALL_RPATH_USE_LINK_PATH TRUE
+    BUILD_WITH_INSTALL_RPATH TRUE
+)
 
 if(UNIX AND NOT APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -shared")
@@ -113,6 +117,7 @@ if(UNIX AND NOT APPLE)
     set_target_properties(tflite_elixir PROPERTIES INSTALL_RPATH "\$ORIGIN/libedgetpu")
 elseif(UNIX AND APPLE)
     set(CMAKE_SHARED_LINKER_FLAGS "-flat_namespace -undefined suppress -undefined dynamic_lookup")
+    set_target_properties(tflite_elixir PROPERTIES INSTALL_RPATH "@loader_path/libedgetpu")
 endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -I${ERTS_INCLUDE_DIR}")
