@@ -81,24 +81,12 @@ libedgetpu_dependency_libusb:
 		case "$(shell uname -s)" in \
 			Darwin*) \
 				if [ ! -e "$(LIBEDGETPU_RUNTIME_PRIV)/lib/libusb-1.0.0.dylib" ]; then \
-  					git submodule update --init 3rd_party/libusb ; \
-					cd 3rd_party/libusb ; \
-					./autogen.sh ; \
-					./configure CC="$(CC)" --enable-shared --enable-udev=no --prefix=/ ; \
-					mkdir -p "$(LIBEDGETPU_RUNTIME_PRIV)" ; \
-					make DESTDIR="$(LIBEDGETPU_RUNTIME_PRIV)" install ; \
-					cd ../.. ; \
+  					bash scripts/build_libusb.sh "$(shell pwd)" "$(LIBEDGETPU_RUNTIME_PRIV)"; \
 				fi \
 			;; \
 			Linux*) \
 				if [ ! -e "$(LIBEDGETPU_RUNTIME_PRIV)/lib/libusb-1.0.so.0.3.0" ]; then \
-					git submodule update --init 3rd_party/libusb ; \
-					cd 3rd_party/libusb ; \
-					./autogen.sh ; \
-					./configure CC="$(CC)" --enable-shared --enable-udev=no --prefix=/ ; \
-					mkdir -p "$(LIBEDGETPU_RUNTIME_PRIV)" ; \
-					make DESTDIR="$(LIBEDGETPU_RUNTIME_PRIV)" install ; \
-					cd ../.. ; \
+					bash scripts/build_libusb.sh "$(shell pwd)" "$(LIBEDGETPU_RUNTIME_PRIV)"; \
 				fi \
 			;; \
 		esac ; \
