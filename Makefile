@@ -66,7 +66,7 @@ unarchive_source_code: $(TFLITE_SOURCE_ZIP)
 		fi \
 	fi
 
-install_libedgetpu_runtime:
+install_libedgetpu_runtime: libedgetpu_dependency_libusb
 	@ if [ "$(TFLITE_ELIXIR_CORAL_SUPPORT)" = "YES" ]; then \
    		echo "Throttle USB Coral Devices: $(TFLITE_ELIXIR_CORAL_USB_THROTTLE)" ; \
    		bash scripts/copy_libedgetpu_runtime.sh "$(LIBEDGETPU_RUNTIME_PRIV)" "$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR)" "$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES)" "$(TFLITE_ELIXIR_CORAL_USB_THROTTLE)"; \
@@ -74,7 +74,32 @@ install_libedgetpu_runtime:
 		bash scripts/linux_fix_edgetpu_version.sh "$(PRIV_DIR)/libedgetpu" ; \
 		git submodule update --init c_src/libcoral ; \
 		cd c_src/libcoral && git submodule update --init libedgetpu && cd ../.. ; \
-	fi ; \
+	fi
+
+libedgetpu_dependency_libusb:
+	@ if [ "$(TFLITE_ELIXIR_CORAL_SUPPORT)" = "YES" ]; then \
+		git submodule update --init 3rd_party/libusb ; \
+		cd 3rd_party/libusb ; \
+		NEED_COMPILE="NO" ; \
+		case "$(shell uname -s)" in \
+			Darwin*) \
+				if [ ! -e "$(LIBEDGETPU_RUNTIME_PRIV)/lib/libusb-1.0.0.dylib" ]; then \
+  					NEED_COMPILE="YES" ; \
+				fi \
+			;; \
+			Linux*) \
+				if [ ! -e "$(LIBEDGETPU_RUNTIME_PRIV)/lib/libusb-1.0.so.0.3.0" ]; then \
+					NEED_COMPILE="YES" ; \
+				fi \
+			;; \
+		esac ; \
+		if [ -n "${NEED_COMPILE}" ]; then \
+			./autogen.sh ; \
+			./configure CC="$(CC)" --enable-shared --enable-udev=no --prefix=/ ; \
+			mkdir -p "$(LIBEDGETPU_RUNTIME_PRIV)" ; \
+			make DESTDIR="$(LIBEDGETPU_RUNTIME_PRIV)" install ; \
+		fi \
+	fi
 
 $(NATIVE_BINDINGS_SO): unarchive_source_code install_libedgetpu_runtime
 	@ if [ ! -e "$(NATIVE_BINDINGS_SO)" ]; then \

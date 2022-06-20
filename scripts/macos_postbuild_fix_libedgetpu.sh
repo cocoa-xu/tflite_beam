@@ -13,7 +13,7 @@ case "$(uname -s)" in
 
     LIBEDGETPU_DIR="$(dirname "${NATIVE_BINDINGS_SO}")/libedgetpu"
     cd "${LIBEDGETPU_DIR}"
-    LIBEDGETPU_WRONG_NAME="$(find . -size +100k -type f | head -n1)"
+    LIBEDGETPU_WRONG_NAME="$(find . -name '*edgetpu*' -size +100k -type f | head -n1)"
     if [ -z "${LIBEDGETPU_WRONG_NAME}" ]; then
       echo "cannot find libedgetpu.1.0.dylib in ${LIBEDGETPU_DIR}"
       exit 1

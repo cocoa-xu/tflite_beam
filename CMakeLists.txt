@@ -29,6 +29,7 @@ if(${TFLITE_ELIXIR_CORAL_SUPPORT})
         EXCLUDE_FROM_ALL
     )
 
+    set(BUILD_SHARED_LIBS OFF)
     set(GLOG_ROOT_DIR "" CACHE PATH
         "Directory that contains the glog project"
     )

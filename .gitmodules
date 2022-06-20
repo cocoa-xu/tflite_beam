@@ -7,3 +7,6 @@
 [submodule "3rd_party/glog"]
 	path = 3rd_party/glog
 	url = https://github.com/google/glog.git
+[submodule "3rd_party/libusb"]
+	path = 3rd_party/libusb
+	url = https://github.com/libusb/libusb.git
