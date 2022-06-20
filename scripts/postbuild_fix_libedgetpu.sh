@@ -1,5 +1,6 @@
 #!/bin/bash
 
+NATIVE_BINDINGS_SO="$1"
 case "$(uname -s)" in
   Linux*)
     LIBEDGETPU_DIR="$(dirname "${NATIVE_BINDINGS_SO}")/libedgetpu"
@@ -7,7 +8,6 @@ case "$(uname -s)" in
     patchelf --replace-needed libusb-1.0.so.0 \$ORIGIN/lib/libusb-1.0.so.0 libedgetpu.so.1.0
     ;;
   Darwin*)
-    NATIVE_BINDINGS_SO="$1"
     LIBEDGETPU_PATH="$(otool -L "${NATIVE_BINDINGS_SO}" | grep 'libedgetpu.1.dylib' | awk -F' \\(compatibility' '/,/{gsub(/[ \t]/, "", $1);print $1}')"
     EXPECTED_PATH="@loader_path/libedgetpu/libedgetpu.1.dylib"
     if [ -n "${LIBEDGETPU_PATH}" ]; then
