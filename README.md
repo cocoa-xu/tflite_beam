@@ -13,7 +13,60 @@ from TensorFlow Lite available in Elixir.
 | Ubuntu 20.04     | x86_64  | [![CI](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-x86_64.yml/badge.svg)](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-x86_64.yml) |
 | macOS 11 Big Sur | x86_64  | [![CI](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/macos-x86_64.yml/badge.svg)](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/macos-x86_64.yml) |
 
-## Demo code
+## Demo
+### Mix Task Demo
+0. List all available Edge TPU
+```shell
+mix list_edgetpu
+```
+
+1. Image classification
+```shell
+mix help classify_image
+
+# Note: The first inference on Edge TPU is slow because it includes,
+# loading the model into Edge TPU memory
+mix classify_image \
+  --model test/test_data/mobilenet_v2_1.0_224_inat_bird_quant.tflite \
+  --input test/test_data/parrot.jpeg \
+  --labels test/test_data/inat_bird_labels.txt
+```
+
+Output from the mix task
+```
+----INFERENCE TIME----
+Note: The first inference on Edge TPU is slow because it includes, loading the model into Edge TPU memory.
+6.7ms
+-------RESULTS--------
+Ara macao (Scarlet Macaw): 0.70703
+```
+
+2. Object detection
+```shell
+mix help detect_image
+
+# Note: The first inference on Edge TPU is slow because it includes,
+# loading the model into Edge TPU memory
+mix detect_image \
+  --model test/test_data/ssd_mobilenet_v2_coco_quant_postprocess.tflite \
+  --input test/test_data/cat.jpeg \
+  --labels test/test_data/coco_labels.txt
+```
+
+Output from the mix task
+```
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+----INFERENCE TIME----
+13.2ms
+cat
+  id   : 16
+  score: 0.953
+  bbox : [3, -1, 294, 240]
+```
+
+test files used here are downloaded from [google-coral/test_data](https://github.com/google-coral/test_data) and [wikipedia](https://commons.wikimedia.org/wiki/File:Cat03.jpg).
+
+### Demo code
 Model: [mobilenet_v2_1.0_224_inat_bird_quant.tflite](https://github.com/google-coral/edgetpu/blob/master/test_data/mobilenet_v2_1.0_224_inat_bird_quant.tflite)
 
 Input image: 
@@ -73,6 +126,63 @@ output_data
 |> Nx.to_scalar()
 |> then(&Enum.at(labels, &1))
 ```
+
+## Coral Support
+### Dependencies
+For macOS
+```shell
+brew install pkg-config glog libusb
+```
+
+For DEBIAN/Ubuntu
+```shell
+sudo apt install pkg-config libgoogle-glog-dev libusb-1.0-0-dev
+```
+
+### Compile-Time Environment Variable
+- `TFLITE_ELIXIR_CORAL_SUPPORT`
+
+  Enable Coral Support.
+
+  Default to `YES`.
+
+- `TFLITE_ELIXIR_CORAL_USB_THROTTLE`
+
+  Throttling USB Coral Devices. Please see the official warning here, [google-coral/libedgetpu](https://github.com/google-coral/libedgetpu#warning).
+  
+  Default value is `YES`.
+  
+  Note that only when `TFLITE_ELIXIR_CORAL_USB_THROTTLE` is set to `NO`, `:tflite_elixir` will use the non-throttled libedgetpu libraries.
+
+- `TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME`
+
+  Select the [libedgetpu runtime](https://coral.ai/software/#edgetpu-runtime).
+
+  Default runtime version is `edgetpu_runtime_20220308`.
+- `TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES`
+  
+  Choose which ones of the libedgetpu libraries to copy to the `priv` directory of the `:elixir_coral` app.
+
+  Default value is `native` - only native libraries will be copied. `native` corresponds to the host OS and CPU architecture when compiling this library.
+
+  When set to a specific value, e.g, `darwin_arm64` or `darwin_x86_64`, then the corresponding one will be copied. This option is expected to be used for cross-compiling. 
+  Available values for this option are:
+
+  | Value            | OS/CPU              |
+  |------------------|---------------------|
+  | `aarch64`        | Linux arm64         |
+  | `armv7a`         | Linux armv7         |
+  | `k8`             | Linux x86_64        |
+  | `darwin_arm64`   | macOS Apple Silicon |
+  | `darwin_x86_64`  | macOS x86_64        |
+  | `x64_windows`    | Windows x86_64      |
+
+
+- `TFLITE_ELIXIR_CACHE_DIR`
+  
+  Cache directory for the runtime zip file.
+
+  Default value is `./3rd_party/cache`.
 
 ## Installation
 

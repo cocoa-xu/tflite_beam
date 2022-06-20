@@ -1,0 +1,3 @@
+[submodule "c_src/libcoral"]
+	path = c_src/libcoral
+	url = https://github.com/cocoa-xu/libcoral.git

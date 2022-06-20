@@ -35,9 +35,20 @@ defmodule TFLiteElixir.Nif do
   def interpreter_output_tensor(_self, _index), do: :erlang.nif_error(:not_loaded)
   def interpreter_tensor(_self, _tensor_index), do: :erlang.nif_error(:not_loaded)
   def interpreter_setNumThreads(_self, _num_threads), do: :erlang.nif_error(:not_loaded)
+  def interpreter_get_signature_defs(_self), do: :erlang.nif_error(:not_loaded)
 
   def tflitetensor_type(_self), do: :erlang.nif_error(:not_loaded)
   def tflitetensor_dims(_self), do: :erlang.nif_error(:not_loaded)
+  def tflitetensor_quantization_params(_self), do: :erlang.nif_error(:not_loaded)
+  def tflitetensor_to_binary(_self), do: :erlang.nif_error(:not_loaded)
+  def tflitetensor_set_data(_self, _data), do: :erlang.nif_error(:not_loaded)
 
   def tflite_printInterpreterState(_interpreter), do: :erlang.nif_error(:not_loaded)
+
+  # ================ Coral ===================
+  def coral_contains_edgetpu_custom_op(_model), do: :erlang.nif_error(:not_loaded)
+  def coral_edgetpu_devices(), do: :erlang.nif_error(:not_loaded)
+  def coral_get_edgetpu_context(_device, _options), do: :erlang.nif_error(:not_loaded)
+  def coral_make_edgetpu_interpreter(_model, _context), do: :erlang.nif_error(:not_loaded)
+  def coral_dequantize_tensor(_interpreter, _tensor_index, _as_type), do: :erlang.nif_error(:not_loaded)
 end
