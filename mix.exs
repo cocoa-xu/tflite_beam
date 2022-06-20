@@ -78,7 +78,7 @@ defmodule TfliteElixir.MixProject do
     [
       name: "tflite_elixir",
       # These are the default files included in the package
-      files: ~w(lib c_src 3rd_party scripts CMakeLists.txt Makefile .gitmodules .formatter.exs mix.exs README* LICENSE*),
+      files: ~w(lib c_src 3rd_party priv scripts CMakeLists.txt Makefile .gitmodules .formatter.exs mix.exs README* LICENSE*),
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => "https://github.com/cocoa-xu/tflite_elixir"}
     ]
