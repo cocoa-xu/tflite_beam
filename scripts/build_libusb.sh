@@ -14,3 +14,16 @@ cd 3rd_party/libusb
 ./autogen.sh
 ./configure CC="${CC}" "${CROSSCOMPILE}" --enable-shared --enable-udev=no --prefix=/
 make DESTDIR="${DESTDIR}" install
+
+LIBUSB_SO="libusb-1.0.0.dylib"
+if [ -n "${CROSSCOMPILE}" ]; then
+  export LIBUSB_SO="libusb-1.0.so.0.3.0"
+fi
+case "$(uname -s)" in
+  Linux*)
+    export LIBUSB_SO="libusb-1.0.so.0.3.0"
+  ;;
+esac
+cd "${DESTDIR}"
+rm -f "${LIBUSB_SO}"
+ln -s "lib/${LIBUSB_SO}" "${LIBUSB_SO}"

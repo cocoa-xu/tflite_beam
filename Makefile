@@ -68,7 +68,6 @@ unarchive_source_code: $(TFLITE_SOURCE_ZIP)
 
 install_libedgetpu_runtime: libedgetpu_dependency_libusb
 	@ if [ "$(TFLITE_ELIXIR_CORAL_SUPPORT)" = "YES" ]; then \
-   		echo "Throttle USB Coral Devices: $(TFLITE_ELIXIR_CORAL_USB_THROTTLE)" ; \
    		bash scripts/copy_libedgetpu_runtime.sh "$(LIBEDGETPU_RUNTIME_PRIV)" "$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR)" "$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES)" "$(TFLITE_ELIXIR_CORAL_USB_THROTTLE)"; \
 		bash scripts/macos_fix_libusb.sh "$(PRIV_DIR)/libedgetpu/libedgetpu.1.0.dylib" ; \
 		bash scripts/linux_fix_edgetpu_version.sh "$(PRIV_DIR)/libedgetpu" ; \
@@ -96,6 +95,7 @@ $(NATIVE_BINDINGS_SO): unarchive_source_code install_libedgetpu_runtime
 	@ if [ ! -e "$(NATIVE_BINDINGS_SO)" ]; then \
 		echo "CORAL SUPPORT: $(TFLITE_ELIXIR_CORAL_SUPPORT)" ; \
 		echo "LIBEDGETPU runtime: $(TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME)" ; \
+		echo "Throttle USB Coral Devices: $(TFLITE_ELIXIR_CORAL_USB_THROTTLE)" ; \
 		git submodule update --init 3rd_party/gflags && \
 		git submodule update --init 3rd_party/glog && \
 		mkdir -p $(CMAKE_BINDINGS_BUILD_DIR) && \
