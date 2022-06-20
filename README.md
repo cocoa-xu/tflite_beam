@@ -129,16 +129,6 @@ output_data
 
 ## Coral Support
 ### Dependencies
-For macOS
-```shell
-brew install pkg-config glog libusb
-```
-
-For DEBIAN/Ubuntu
-```shell
-sudo apt install pkg-config libgoogle-glog-dev libusb-1.0-0-dev
-```
-
 For some Linux OSes you need to manually execute the following command to update udev rules, otherwise, libedgetpu will
 fail to initialize Coral devices.
 
