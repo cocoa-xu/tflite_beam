@@ -8,12 +8,41 @@ if(NOT TFLITE_ROOT_DIR)
     message(FATAL_ERROR "TFLITE_ROOT_DIR is not set.")
 endif()
 
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+
 add_subdirectory(
     "${TFLITE_ROOT_DIR}"
     EXCLUDE_FROM_ALL
 )
 
-set(CMAKE_CXX_STANDARD 11)
+if(${TFLITE_ELIXIR_CORAL_SUPPORT})
+    set(GFLAGS_ROOT_DIR "" CACHE PATH
+        "Directory that contains the gflags project"
+    )
+    if(NOT GFLAGS_ROOT_DIR)
+        message(FATAL_ERROR "GFLAGS_ROOT_DIR is not set.")
+    endif()
+
+    add_subdirectory(
+        "${GFLAGS_ROOT_DIR}"
+        EXCLUDE_FROM_ALL
+    )
+
+    set(BUILD_SHARED_LIBS OFF)
+    set(GLOG_ROOT_DIR "" CACHE PATH
+        "Directory that contains the glog project"
+    )
+    if(NOT GLOG_ROOT_DIR)
+        message(FATAL_ERROR "GLOG_ROOT_DIR is not set.")
+    endif()
+
+    add_subdirectory(
+        "${GLOG_ROOT_DIR}"
+        EXCLUDE_FROM_ALL
+    )
+endif()
+
 set(SOURCE_FILES
     "${C_SRC}/helper.cpp"
     "${C_SRC}/nif_utils.cpp"
@@ -68,24 +97,19 @@ if(${TFLITE_ELIXIR_CORAL_SUPPORT})
     elseif(UNIX AND APPLE)
         list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES "edgetpu.1.0")
     endif()
-
-    find_package(PkgConfig REQUIRED)
-
-    pkg_check_modules(GLOG REQUIRED libglog)
-    include_directories(${GLOG_INCLUDE_DIRS})
-    target_link_directories(tflite_elixir PUBLIC ${GLOG_LIBRARY_DIRS})
-    list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES "${GLOG_LIBRARIES}")
-
-    pkg_check_modules(GFLAGS REQUIRED gflags)
-    include_directories(${GFLAGS_INCLUDE_DIRS})
-    target_link_directories(tflite_elixir PUBLIC ${GFLAGS_LIBRARY_DIRS})
-    list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES "${GFLAGS_LIBRARIES}")
+    list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES "gflags")
+    list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES "glog")
 endif()
+
 target_link_libraries(tflite_elixir
     ${TFLITE_ELIXIR_LINK_LIBRARIES}
 )
 set_target_properties(tflite_elixir PROPERTIES PREFIX "")
 set_target_properties(tflite_elixir PROPERTIES SUFFIX ".so")
+set_target_properties(tflite_elixir PROPERTIES
+    INSTALL_RPATH_USE_LINK_PATH TRUE
+    BUILD_WITH_INSTALL_RPATH TRUE
+)
 
 if(UNIX AND NOT APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -shared")
@@ -93,6 +117,7 @@ if(UNIX AND NOT APPLE)
     set_target_properties(tflite_elixir PROPERTIES INSTALL_RPATH "\$ORIGIN/libedgetpu")
 elseif(UNIX AND APPLE)
     set(CMAKE_SHARED_LINKER_FLAGS "-flat_namespace -undefined suppress -undefined dynamic_lookup")
+    set_target_properties(tflite_elixir PROPERTIES INSTALL_RPATH "@loader_path/libedgetpu")
 endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -I${ERTS_INCLUDE_DIR}")
