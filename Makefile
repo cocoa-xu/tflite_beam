@@ -78,27 +78,30 @@ install_libedgetpu_runtime: libedgetpu_dependency_libusb
 
 libedgetpu_dependency_libusb:
 	@ if [ "$(TFLITE_ELIXIR_CORAL_SUPPORT)" = "YES" ]; then \
-		git submodule update --init 3rd_party/libusb ; \
-		cd 3rd_party/libusb ; \
-		NEED_COMPILE="NO" ; \
 		case "$(shell uname -s)" in \
 			Darwin*) \
 				if [ ! -e "$(LIBEDGETPU_RUNTIME_PRIV)/lib/libusb-1.0.0.dylib" ]; then \
-  					NEED_COMPILE="YES" ; \
+  					git submodule update --init 3rd_party/libusb ; \
+					cd 3rd_party/libusb ; \
+					./autogen.sh ; \
+					./configure CC="$(CC)" --enable-shared --enable-udev=no --prefix=/ ; \
+					mkdir -p "$(LIBEDGETPU_RUNTIME_PRIV)" ; \
+					make DESTDIR="$(LIBEDGETPU_RUNTIME_PRIV)" install ; \
+					cd ../.. ; \
 				fi \
 			;; \
 			Linux*) \
 				if [ ! -e "$(LIBEDGETPU_RUNTIME_PRIV)/lib/libusb-1.0.so.0.3.0" ]; then \
-					NEED_COMPILE="YES" ; \
+					git submodule update --init 3rd_party/libusb ; \
+					cd 3rd_party/libusb ; \
+					./autogen.sh ; \
+					./configure CC="$(CC)" --enable-shared --enable-udev=no --prefix=/ ; \
+					mkdir -p "$(LIBEDGETPU_RUNTIME_PRIV)" ; \
+					make DESTDIR="$(LIBEDGETPU_RUNTIME_PRIV)" install ; \
+					cd ../.. ; \
 				fi \
 			;; \
 		esac ; \
-		if [ -n "${NEED_COMPILE}" ]; then \
-			./autogen.sh ; \
-			./configure CC="$(CC)" --enable-shared --enable-udev=no --prefix=/ ; \
-			mkdir -p "$(LIBEDGETPU_RUNTIME_PRIV)" ; \
-			make DESTDIR="$(LIBEDGETPU_RUNTIME_PRIV)" install ; \
-		fi \
 	fi
 
 $(NATIVE_BINDINGS_SO): unarchive_source_code install_libedgetpu_runtime
