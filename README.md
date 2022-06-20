@@ -129,6 +129,18 @@ output_data
 
 ## Coral Support
 ### Dependencies
+For macOS
+```shell
+# for compiling libusb
+brew install autoconf automake
+```
+
+For DEBIAN/Ubuntu
+```shell
+# to change rpath
+sudo apt install patchelf
+```
+
 For some Linux OSes you need to manually execute the following command to update udev rules, otherwise, libedgetpu will
 fail to initialize Coral devices.
 
