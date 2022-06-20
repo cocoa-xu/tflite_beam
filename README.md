@@ -15,6 +15,11 @@ from TensorFlow Lite available in Elixir.
 
 ## Demo
 ### Mix Task Demo
+0. List all available Edge TPU
+```shell
+mix list_edgetpu
+```
+
 1. Image classification
 ```shell
 mix help classify_image
