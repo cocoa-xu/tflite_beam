@@ -85,11 +85,25 @@ defmodule TFLiteElixir.Test do
     test "Contains EdgeTpu Custom Op" do
       filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
       model = TFLiteElixir.FlatBufferModel.buildFromBuffer!(File.read!(filename))
-      false = TFLiteElixir.Coral.containsEdgeTpuCustomOp?(model)
+      ret = TFLiteElixir.Coral.containsEdgeTpuCustomOp?(model)
+      :ok =
+        case ret do
+          false -> :ok
+          {:error, "Coral support is disabled when compiling this library. Please enable Coral support and recompile this library."} ->
+            :ok
+          other -> false
+        end
 
       filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant_edgetpu.tflite"])
       model = TFLiteElixir.FlatBufferModel.buildFromBuffer!(File.read!(filename))
-      true = TFLiteElixir.Coral.containsEdgeTpuCustomOp?(model)
+      ret = TFLiteElixir.Coral.containsEdgeTpuCustomOp?(model)
+      :ok =
+        case ret do
+          true -> :ok
+          {:error, "Coral support is disabled when compiling this library. Please enable Coral support and recompile this library."} ->
+            :ok
+          other -> false
+        end
     end
   end
 end
