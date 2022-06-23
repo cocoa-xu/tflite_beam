@@ -10,6 +10,7 @@ defmodule Mix.Tasks.ListEdgetpu do
     case TFLiteElixir.Coral.edgeTpuDevices() do
       {:error, error} ->
         IO.puts("Error: #{error}")
+
       devices ->
         Enum.each(devices, fn name ->
           IO.puts(name)

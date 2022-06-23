@@ -22,7 +22,17 @@ defmodule TFLiteElixir.TfLiteTensor do
           | :variant
           | {:u, 32}
 
-  defstruct [:name, :index, :shape, :shape_signature, :type, :quantization_params, :sparsity_params, :reference]
+  defstruct [
+    :name,
+    :index,
+    :shape,
+    :shape_signature,
+    :type,
+    :quantization_params,
+    :sparsity_params,
+    :reference
+  ]
+
   alias __MODULE__, as: T
 
   @doc """
@@ -36,7 +46,7 @@ defmodule TFLiteElixir.TfLiteTensor do
     TFLiteElixir.Nif.tflitetensor_type(self)
   end
 
-  deferror type(self)
+  deferror(type(self))
 
   @doc """
   Get the dimensions
@@ -49,7 +59,7 @@ defmodule TFLiteElixir.TfLiteTensor do
     TFLiteElixir.Nif.tflitetensor_dims(self)
   end
 
-  deferror dims(self)
+  deferror(dims(self))
 
   @doc """
   Get the quantization params
@@ -60,14 +70,14 @@ defmodule TFLiteElixir.TfLiteTensor do
     TFLiteElixir.Nif.tflitetensor_quantization_params(self)
   end
 
-  deferror quantization_params(self)
+  deferror(quantization_params(self))
 
   @doc """
   Set tensor data
   """
   def set_data(%T{reference: reference}, data), do: set_data(reference, data)
 
-  def set_data(self, %Nx.Tensor{}=data) when is_reference(self) do
+  def set_data(self, %Nx.Tensor{} = data) when is_reference(self) do
     TFLiteElixir.Nif.tflitetensor_set_data(self, Nx.to_binary(data))
   end
 
@@ -75,7 +85,7 @@ defmodule TFLiteElixir.TfLiteTensor do
     TFLiteElixir.Nif.tflitetensor_set_data(self, data)
   end
 
-  deferror set_data(self, data)
+  deferror(set_data(self, data))
 
   @doc """
   Get binary data
@@ -88,13 +98,13 @@ defmodule TFLiteElixir.TfLiteTensor do
     TFLiteElixir.Nif.tflitetensor_to_binary(self)
   end
 
-  deferror to_binary(self)
+  deferror(to_binary(self))
 
   @doc """
   To Nx.Tensor
   """
   @spec to_nx(%T{}) :: binary()
-  def to_nx(%T{}=self) do
+  def to_nx(%T{} = self) do
     Nx.from_binary(to_binary!(self), self.type)
     |> Nx.reshape(List.to_tuple(self.shape))
   end
@@ -105,5 +115,5 @@ defmodule TFLiteElixir.TfLiteTensor do
     |> Nx.reshape(List.to_tuple(dims!(self)))
   end
 
-  deferror to_nx(self)
+  deferror(to_nx(self))
 end

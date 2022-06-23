@@ -23,30 +23,36 @@ defmodule Mix.Tasks.DetectImage do
 
   @shortdoc "Object Detection"
   def run(argv) do
-    {args, _, _} = OptionParser.parse(argv, strict: [
-      model: :string,
-      input: :string,
-      labels: :string,
-      threshold: :float,
-      count: :integer,
-      jobs: :integer
-    ], aliases: [
-      m: :model,
-      i: :input,
-      l: :labels,
-      t: :threshold,
-      c: :count,
-      j: :jobs
-    ])
+    {args, _, _} =
+      OptionParser.parse(argv,
+        strict: [
+          model: :string,
+          input: :string,
+          labels: :string,
+          threshold: :float,
+          count: :integer,
+          jobs: :integer
+        ],
+        aliases: [
+          m: :model,
+          i: :input,
+          l: :labels,
+          t: :threshold,
+          c: :count,
+          j: :jobs
+        ]
+      )
 
     default_values = [threshold: 0.4, count: 1, jobs: System.schedulers_online()]
-    args = Keyword.merge(args, default_values, fn _k, user, default ->
-      if user == nil do
-        default
-      else
-        user
-      end
-    end)
+
+    args =
+      Keyword.merge(args, default_values, fn _k, user, default ->
+        if user == nil do
+          default
+        else
+          user
+        end
+      end)
 
     model = load_model(args[:model])
     input_image = %StbImage{shape: {h, w, _c}} = load_input(args[:input])
@@ -56,11 +62,13 @@ defmodule Mix.Tasks.DetectImage do
 
     [input_tensor_number | _] = Interpreter.inputs!(interpreter)
     output_tensor_numbers = Interpreter.outputs!(interpreter)
+
     if Enum.count(output_tensor_numbers) != 4 do
       raise ArgumentError, "Object detection models should have 4 output tensors"
     end
 
     input_tensor = Interpreter.tensor!(interpreter, input_tensor_number)
+
     if input_tensor.type != {:u, 8} do
       raise ArgumentError, "Only support uint8 input type."
     end
@@ -69,13 +77,17 @@ defmodule Mix.Tasks.DetectImage do
       case input_tensor.shape do
         [_n, height, width, _c] ->
           {height, width}
+
         [_n, height, width] ->
           {height, width}
+
         shape ->
           raise RuntimeError, "not sure the input shape, got #{inspect(shape)}"
       end
+
     scale = min(height / h, width / w)
     {h, w} = {trunc(h * scale), trunc(w * scale)}
+
     input_image =
       StbImage.resize(input_image, h, w)
       |> StbImage.to_nx()
@@ -88,6 +100,7 @@ defmodule Mix.Tasks.DetectImage do
     |> then(&TFTensor.set_data(input_tensor, &1))
 
     IO.puts("----INFERENCE TIME----")
+
     for _ <- 1..args[:count] do
       start_time = :os.system_time(:microsecond)
       Interpreter.invoke!(interpreter)
@@ -101,6 +114,7 @@ defmodule Mix.Tasks.DetectImage do
     {count_tensor_id, scores_tensor_id, class_ids_tensor_id, boxes_tensor_id} =
       if signature_list != nil do
         signature_list = Map.values(signature_list)
+
         if Enum.count(signature_list) > 1 do
           raise ArgumentError, "Only support model with one signature."
         else
@@ -112,6 +126,7 @@ defmodule Mix.Tasks.DetectImage do
         end
       else
         output_tensor_3 = Interpreter.tensor!(interpreter, Enum.at(output_tensor_numbers, 3))
+
         if output_tensor_3.shape == [1] do
           boxes_tensor_id = Enum.at(output_tensor_numbers, 0)
           class_ids_tensor_id = Enum.at(output_tensor_numbers, 1)
@@ -131,32 +146,38 @@ defmodule Mix.Tasks.DetectImage do
       Interpreter.tensor!(interpreter, boxes_tensor_id)
       |> TFTensor.to_nx()
       |> take_first_and_reshape()
+
     class_ids =
       Interpreter.tensor!(interpreter, class_ids_tensor_id)
       |> TFTensor.to_nx()
       |> take_first_and_reshape()
+
     scores =
       Interpreter.tensor!(interpreter, scores_tensor_id)
       |> TFTensor.to_nx()
       |> take_first_and_reshape()
+
     count =
-      Interpreter.tensor!(interpreter,count_tensor_id)
+      Interpreter.tensor!(interpreter, count_tensor_id)
       |> TFTensor.to_nx()
       |> Nx.to_flat_list()
       |> hd()
       |> trunc()
 
     {sx, sy} = {height / scale, width / scale}
-    Enum.each(0..count-1, fn index ->
+
+    Enum.each(0..(count - 1), fn index ->
       score =
         Nx.take(scores, index)
         |> Nx.to_flat_list()
         |> hd()
+
       if score >= args[:threshold] do
         [ymin, xmin, ymax, xmax] =
           Nx.take(boxes, index)
           |> Nx.multiply(scale)
           |> Nx.to_flat_list()
+
         {xmin, xmax} = {trunc(sx * xmin), trunc(sx * xmax)}
         {ymin, ymax} = {trunc(sy * ymin), trunc(sy * ymax)}
 
@@ -165,6 +186,7 @@ defmodule Mix.Tasks.DetectImage do
           |> Nx.to_flat_list()
           |> hd()
           |> trunc()
+
         class_str =
           if labels != nil do
             Enum.at(labels, class_id)
@@ -220,6 +242,7 @@ defmodule Mix.Tasks.DetectImage do
 
   defp take_first_and_reshape(tensor) do
     shape = Tuple.delete_at(Nx.shape(tensor), 0)
+
     Nx.take(tensor, 0)
     |> Nx.reshape(shape)
   end

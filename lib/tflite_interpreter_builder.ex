@@ -13,7 +13,7 @@ defmodule TFLiteElixir.InterpreterBuilder do
     TFLiteElixir.Nif.interpreterBuilder_new(model, resolver)
   end
 
-  deferror new(model, resolver)
+  deferror(new(model, resolver))
 
   @doc """
   Build the interpreter with the InterpreterBuilder.
@@ -27,7 +27,7 @@ defmodule TFLiteElixir.InterpreterBuilder do
     TFLiteElixir.Nif.interpreterBuilder_build(self, interpreter)
   end
 
-  deferror build(self, interpreter)
+  deferror(build(self, interpreter))
 
   @doc """
   Sets the number of CPU threads to use for the interpreter.
@@ -38,5 +38,5 @@ defmodule TFLiteElixir.InterpreterBuilder do
     TFLiteElixir.Nif.interpreterBuilder_setNumThreads(self, num_threads)
   end
 
-  deferror setNumThreads(self, num_threads)
+  deferror(setNumThreads(self, num_threads))
 end

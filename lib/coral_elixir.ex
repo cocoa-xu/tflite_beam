@@ -70,7 +70,8 @@ defmodule TFLiteElixir.Coral do
 
   deferror(getEdgeTpuContext(device, options))
 
-  @spec makeEdgeTpuInterpreter(%FlatBufferModel{}, reference()) :: {:ok, reference()} | {:error, String.t()}
+  @spec makeEdgeTpuInterpreter(%FlatBufferModel{}, reference()) ::
+          {:ok, reference()} | {:error, String.t()}
   def makeEdgeTpuInterpreter(%FlatBufferModel{model: model}, edgetpu_context) do
     TFLiteElixir.Nif.coral_make_edgetpu_interpreter(model, edgetpu_context)
   end
@@ -110,5 +111,7 @@ defmodule TFLiteElixir.Coral do
   defp map_type(:s64), do: :s64
 
   defp map_type(nil), do: nil
-  defp map_type(not_supported), do: raise ArgumentError, "#{inspect(not_supported)} is not supported"
+
+  defp map_type(not_supported),
+    do: raise(ArgumentError, "#{inspect(not_supported)} is not supported")
 end
