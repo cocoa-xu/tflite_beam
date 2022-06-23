@@ -12,7 +12,7 @@ fi
 git submodule update --init 3rd_party/libusb
 cd 3rd_party/libusb
 ./autogen.sh
-./configure CC="${CC}" "${CROSSCOMPILE}" --enable-shared --enable-udev=no --prefix=/
+./configure CC="${CC}" "${CROSSCOMPILE}" --enable-shared --disable-udev --prefix=/
 make DESTDIR="${DESTDIR}" install
 
 LIBUSB_SO="libusb-1.0.0.dylib"

@@ -8,8 +8,7 @@ defmodule TfliteElixir.MixProject do
   @compatible_tflite_versions ["2.7.0", "2.8.0", "2.9.0"]
 
   # coral related
-  @default_edgetpu_runtime "edgetpu_runtime_20220308"
-  @default_edgetpu_runtime_release_name "grouper"
+  @default_edgetpu_runtime "edgetpu_runtime_20220623"
   @default_edgetpu_libraries "native"
   @enable_coral_support_by_default "YES"
 
@@ -19,10 +18,9 @@ defmodule TfliteElixir.MixProject do
 
     if enable_coral_support == "YES" do
       edgetpu_runtime = System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME", @default_edgetpu_runtime)
-      edgetpu_runtime_release_name = System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME_RELEASE_NAME", @default_edgetpu_runtime_release_name)
       edgetpu_libraries = System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", @default_edgetpu_libraries)
 
-      :ok = download_edgetpu_runtime(edgetpu_runtime, edgetpu_runtime_release_name)
+      :ok = download_edgetpu_runtime(edgetpu_runtime)
       System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME", edgetpu_runtime)
       System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", edgetpu_libraries)
     end
@@ -103,10 +101,23 @@ defmodule TfliteElixir.MixProject do
     System.get_env("TFLITE_ELIXIR_CACHE_DIR", "./3rd_party/cache")
   end
 
-  defp download_edgetpu_runtime(runtime, release_name) do
-    filename = "#{runtime}.zip"
-    runtime_url = "https://github.com/google-coral/libedgetpu/releases/download/release-#{release_name}/#{filename}"
-    unzip_to = Path.join([cache_dir(), runtime])
+  defp download_edgetpu_runtime(runtime) do
+    linux_runtime = "#{runtime}_linux"
+    filename = "#{linux_runtime}.zip"
+    runtime_url = "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
+    unzip_to = Path.join([cache_dir(), linux_runtime])
+    download_zip_file(filename, runtime_url, unzip_to)
+
+    macos_runtime = "#{runtime}_macos"
+    filename = "#{macos_runtime}.zip"
+    runtime_url = "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
+    unzip_to = Path.join([cache_dir(), macos_runtime])
+    download_zip_file(filename, runtime_url, unzip_to)
+
+    windows_runtime = "#{runtime}_windows"
+    filename = "#{windows_runtime}.zip"
+    runtime_url = "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
+    unzip_to = Path.join([cache_dir(), windows_runtime])
     download_zip_file(filename, runtime_url, unzip_to)
   end
 
@@ -143,6 +154,7 @@ defmodule TfliteElixir.MixProject do
     http_opts = []
     opts = [body_format: :binary]
     arg = {url, []}
+    IO.puts("download...: #{url}")
 
     body =
       case :httpc.request(:get, arg, http_opts, opts) do
