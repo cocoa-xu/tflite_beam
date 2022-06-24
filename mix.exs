@@ -118,23 +118,28 @@ defmodule TfliteElixir.MixProject do
   end
 
   defp download_edgetpu_runtime(runtime) do
+    # always download edgetpu runtime for linux
     linux_runtime = "#{runtime}_linux"
     filename = "#{linux_runtime}.zip"
     runtime_url = "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
     unzip_to = Path.join([cache_dir(), linux_runtime])
     download_zip_file(filename, runtime_url, unzip_to)
 
-    macos_runtime = "#{runtime}_macos"
-    filename = "#{macos_runtime}.zip"
-    runtime_url = "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
-    unzip_to = Path.join([cache_dir(), macos_runtime])
-    download_zip_file(filename, runtime_url, unzip_to)
+    case :os.type() do
+      {:unix, :darwin} ->
+        macos_runtime = "#{runtime}_macos"
+        filename = "#{macos_runtime}.zip"
+        runtime_url = "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
+        unzip_to = Path.join([cache_dir(), macos_runtime])
+        download_zip_file(filename, runtime_url, unzip_to)
 
-    windows_runtime = "#{runtime}_windows"
-    filename = "#{windows_runtime}.zip"
-    runtime_url = "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
-    unzip_to = Path.join([cache_dir(), windows_runtime])
-    download_zip_file(filename, runtime_url, unzip_to)
+      {:win32, :nt} ->
+        windows_runtime = "#{runtime}_windows"
+        filename = "#{windows_runtime}.zip"
+        runtime_url = "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
+        unzip_to = Path.join([cache_dir(), windows_runtime])
+        download_zip_file(filename, runtime_url, unzip_to)
+    end
   end
 
   defp download_zip_file(filename, url, unzip_to) do
