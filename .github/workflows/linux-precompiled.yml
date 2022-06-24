@@ -70,8 +70,10 @@ jobs:
             export CMAKE_TOOLCHAIN_FILE="$(pwd)/${{ matrix.pair.cmake_toolchain_file }}"
           fi
           export TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES="${{ matrix.pair.libedgetpu_library }}"
+          export TFLITE_ELIXIR_PREFER_PRECOMPILED="NO"
           echo "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}"
           echo "TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES: ${TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES}"
+          echo "TFLITE_ELIXIR_PREFER_PRECOMPILED: ${TFLITE_ELIXIR_PREFER_PRECOMPILED}"
           mix deps.get
           mix compile
           export PKG_NAME=tflite_elixir-linux-${{ matrix.pair.arch_name }}-0.1.0
