@@ -1,0 +1,81 @@
+name: linux-precompile
+
+on:
+  push:
+    tags:
+      - '*-dev'
+      - '*-prod'
+      - '*-dev-linux'
+
+jobs:
+  mix_test:
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - pair:
+              arch_name: x86_64
+              cmake_toolchain_file: ""
+              c_compiler: gcc
+              cpp_compiler: g++
+          - pair:
+              arch_name: aarch64
+              cmake_toolchain_file: cc_toolchain/linux-aarch64.cmake
+              c_compiler: gcc-aarch64-linux-gnu
+              cpp_compiler: g++-aarch64-linux-gnu
+          - pair:
+              arch_name: armv7l
+              cmake_toolchain_file: cc_toolchain/linux-armv7l.cmake
+              c_compiler: gcc-arm-linux-gnueabihf
+              cpp_compiler: g++-arm-linux-gnueabihf
+          - pair:
+              arch_name: ppc64el
+              cmake_toolchain_file: cc_toolchain/linux-ppc64el.cmake
+              c_compiler: gcc-powerpc64le-linux-gnu
+              cpp_compiler: g++-powerpc64le-linux-gnu
+          - pair:
+              arch_name: s390x
+              cmake_toolchain_file: cc_toolchain/linux-s390x.cmake
+              c_compiler: gcc-s390x-linux-gnu
+              cpp_compiler: g++-s390x-linux-gnu
+          - pair:
+              arch_name: riscv64
+              cmake_toolchain_file: cc_toolchain/linux-riscv64.cmake
+              c_compiler: gcc-riscv64-linux-gnu
+              cpp_compiler: g++-riscv64-linux-gnu
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "25.0.2"
+          elixir-version: "1.13.4"
+
+      - name: Install system dependecies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential automake autoconf pkg-config bc m4 unzip zip curl git libssl-dev gzip libncurses5-dev python3 ca-certificates ${{ matrix.pair.c_compiler }} ${{ matrix.pair.cpp_compiler }}
+
+      - name: Create precompiled library
+        run: |
+          if [ "${{ matrix.pair.cmake_toolchain_file }}" != "" ]; then
+            export CMAKE_TOOLCHAIN_FILE="$(pwd)/${{ matrix.pair.cmake_toolchain_file }}"
+          fi
+          echo "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}"
+          mix deps.get
+          mix compile
+          export PKG_NAME=tflite_elixir-linux-${{ matrix.pair.arch_name }}-0.1.0
+          mkdir -p "${PKG_NAME}"
+          cp -a _build/dev/lib/tflite_elixir/priv "${PKG_NAME}"
+          tar -czf "${PKG_NAME}.tar.gz" "${PKG_NAME}"
+          rm -rf "${PKG_NAME}"
+          ls -lah "${PKG_NAME}.tar.gz"
+          mkdir -p artifacts
+          mv "${PKG_NAME}.tar.gz" artifacts
+
+      - uses: softprops/action-gh-release@v1
+        with:
+          tag_name: 0.1.0
+          files: artifacts/*.tar.gz
