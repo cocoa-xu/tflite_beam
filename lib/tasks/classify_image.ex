@@ -34,54 +34,72 @@ defmodule Mix.Tasks.ClassifyImage do
 
   @shortdoc "Image Classification"
   def run(argv) do
-    {args, _, _} = OptionParser.parse(argv, strict: [
-      model: :string,
-      input: :string,
-      labels: :string,
-      top: :integer,
-      threshold: :float,
-      count: :integer,
-      mean: :float,
-      std: :float,
-      use_tpu: :boolean,
-      tpu: :string,
-      jobs: :integer
-    ], aliases: [
-      m: :model,
-      i: :input,
-      l: :labels,
-      k: :top,
-      t: :threshold,
-      c: :count,
-      a: :mean,
-      s: :std,
-      j: :jobs
-    ])
+    {args, _, _} =
+      OptionParser.parse(argv,
+        strict: [
+          model: :string,
+          input: :string,
+          labels: :string,
+          top: :integer,
+          threshold: :float,
+          count: :integer,
+          mean: :float,
+          std: :float,
+          use_tpu: :boolean,
+          tpu: :string,
+          jobs: :integer
+        ],
+        aliases: [
+          m: :model,
+          i: :input,
+          l: :labels,
+          k: :top,
+          t: :threshold,
+          c: :count,
+          a: :mean,
+          s: :std,
+          j: :jobs
+        ]
+      )
 
-    default_values = [top: 1, threshold: 0.0, count: 1, mean: 128.0, std: 128.0, jobs: System.schedulers_online(), use_tpu: false, tpu: ""]
-    args = Keyword.merge(args, default_values, fn _k, user, default ->
-      if user == nil do
-        default
-      else
-        user
-      end
-    end)
+    default_values = [
+      top: 1,
+      threshold: 0.0,
+      count: 1,
+      mean: 128.0,
+      std: 128.0,
+      jobs: System.schedulers_online(),
+      use_tpu: false,
+      tpu: ""
+    ]
+
+    args =
+      Keyword.merge(args, default_values, fn _k, user, default ->
+        if user == nil do
+          default
+        else
+          user
+        end
+      end)
 
     model = load_model(args[:model])
     input_image = load_input(args[:input])
     labels = load_labels(args[:labels])
+
     tpu_context =
       if args[:use_tpu] do
         TFLiteElixir.Coral.getEdgeTpuContext!(args[:tpu])
       else
-        :nil
+        nil
       end
+
     interpreter = make_interpreter(model, args[:jobs], args[:use_tpu], tpu_context)
     Interpreter.allocateTensors!(interpreter)
 
     [input_tensor_number | _] = Interpreter.inputs!(interpreter)
     [output_tensor_number | _] = Interpreter.outputs!(interpreter)
     input_tensor = Interpreter.tensor!(interpreter, input_tensor_number)
+
     if input_tensor.type != {:u, 8} do
       raise ArgumentError, "Only support uint8 input type."
     end
@@ -90,11 +108,14 @@ defmodule Mix.Tasks.ClassifyImage do
       case input_tensor.shape do
         [_n, h, w, _c] ->
           {h, w}
+
         [_n, h, w] ->
           {h, w}
+
         shape ->
           raise RuntimeError, "not sure the input shape, got #{inspect(shape)}"
       end
+
     input_image = StbImage.resize(input_image, h, w)
 
     [scale] = input_tensor.quantization_params.scale
@@ -119,6 +140,7 @@ defmodule Mix.Tasks.ClassifyImage do
     |> then(&TFTensor.set_data!(input_tensor, &1))
 
     IO.puts("----INFERENCE TIME----")
+
     for _ <- 1..args[:count] do
       start_time = :os.system_time(:microsecond)
       Interpreter.invoke!(interpreter)
@@ -136,14 +158,15 @@ defmodule Mix.Tasks.ClassifyImage do
     top_k = Nx.to_flat_list(top_k)
 
     IO.puts("-------RESULTS--------")
+
     if labels != nil do
       Enum.zip(top_k, scores)
-      |>  Enum.each(fn {class_id, score} ->
+      |> Enum.each(fn {class_id, score} ->
         IO.puts("#{Enum.at(labels, class_id)}: #{Float.round(score, 5)}")
       end)
     else
       Enum.zip(top_k, scores)
-      |>  Enum.each(fn {class_id, score} ->
+      |> Enum.each(fn {class_id, score} ->
         IO.puts("#{class_id}: #{Float.round(score, 5)}")
       end)
     end
@@ -191,18 +214,20 @@ defmodule Mix.Tasks.ClassifyImage do
     TFLiteElixir.Coral.makeEdgeTpuInterpreter!(model, tpu_context)
   end
 
-  defp get_scores(output_data, %TFTensor{type: dtype={:u, _}}=output_tensor) do
+  defp get_scores(output_data, %TFTensor{type: dtype = {:u, _}} = output_tensor) do
     scale = Nx.tensor(output_tensor.quantization_params.scale)
     zero_point = Nx.tensor(output_tensor.quantization_params.zero_point)
+
     Nx.from_binary(output_data, dtype)
     |> Nx.as_type({:s, 64})
     |> Nx.subtract(zero_point)
     |> Nx.multiply(scale)
   end
 
-  defp get_scores(output_data, %TFTensor{type: dtype={:s, _}}=output_tensor) do
+  defp get_scores(output_data, %TFTensor{type: dtype = {:s, _}} = output_tensor) do
     [scale] = output_tensor.quantization_params.scale
     [zero_point] = output_tensor.quantization_params.zero_point
+
     Nx.from_binary(output_data, dtype)
     |> Nx.as_type({:s, 64})
     |> Nx.subtract(zero_point)

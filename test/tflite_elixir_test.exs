@@ -21,24 +21,26 @@ defmodule TFLiteElixir.Test do
     [0] = TFLiteElixir.Interpreter.inputs!(interpreter)
     [171] = TFLiteElixir.Interpreter.outputs!(interpreter)
 
-
     "map/TensorArrayStack/TensorArrayGatherV3" =
       TFLiteElixir.Interpreter.getInputName!(interpreter, 0)
 
     "prediction" = TFLiteElixir.Interpreter.getOutputName!(interpreter, 0)
-    input_tensor = %TFLiteElixir.TfLiteTensor{
-      name: "map/TensorArrayStack/TensorArrayGatherV3",
-      index: 0,
-      shape: [1, 224, 224, 3],
-      shape_signature: [1, 224, 224, 3],
-      type: {:u, 8},
-      quantization_params: %TFLiteElixir.TFLiteQuantizationParams{
-        scale: [0.0078125],
-        zero_point: [128],
-        quantized_dimension: 0
-      },
-      sparsity_params: %{},
-    } = TFLiteElixir.Interpreter.tensor!(interpreter, 0)
+
+    input_tensor =
+      %TFLiteElixir.TfLiteTensor{
+        name: "map/TensorArrayStack/TensorArrayGatherV3",
+        index: 0,
+        shape: [1, 224, 224, 3],
+        shape_signature: [1, 224, 224, 3],
+        type: {:u, 8},
+        quantization_params: %TFLiteElixir.TFLiteQuantizationParams{
+          scale: [0.0078125],
+          zero_point: [128],
+          quantized_dimension: 0
+        },
+        sparsity_params: %{}
+      } = TFLiteElixir.Interpreter.tensor!(interpreter, 0)
+
     [1, 224, 224, 3] = TFLiteElixir.TfLiteTensor.dims!(input_tensor)
     {:u, 8} = TFLiteElixir.TfLiteTensor.type(input_tensor)
     output_tensor = TFLiteElixir.Interpreter.tensor!(interpreter, 171)
@@ -86,23 +88,37 @@ defmodule TFLiteElixir.Test do
       filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
       model = TFLiteElixir.FlatBufferModel.buildFromBuffer!(File.read!(filename))
       ret = TFLiteElixir.Coral.containsEdgeTpuCustomOp?(model)
+
       :ok =
         case ret do
-          false -> :ok
-          {:error, "Coral support is disabled when compiling this library. Please enable Coral support and recompile this library."} ->
+          false ->
             :ok
-          other -> false
+
+          {:error,
+           "Coral support is disabled when compiling this library. Please enable Coral support and recompile this library."} ->
+            :ok
+
+          other ->
+            false
         end
 
-      filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant_edgetpu.tflite"])
+      filename =
+        Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant_edgetpu.tflite"])
+
       model = TFLiteElixir.FlatBufferModel.buildFromBuffer!(File.read!(filename))
       ret = TFLiteElixir.Coral.containsEdgeTpuCustomOp?(model)
+
       :ok =
         case ret do
-          true -> :ok
-          {:error, "Coral support is disabled when compiling this library. Please enable Coral support and recompile this library."} ->
+          true ->
             :ok
-          other -> false
+
+          {:error,
+           "Coral support is disabled when compiling this library. Please enable Coral support and recompile this library."} ->
+            :ok
+
+          other ->
+            false
         end
     end
   end

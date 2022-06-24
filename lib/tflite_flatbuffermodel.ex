@@ -22,7 +22,7 @@ defmodule TFLiteElixir.FlatBufferModel do
     end
   end
 
-  deferror buildFromFile(filename)
+  deferror(buildFromFile(filename))
 
   @doc """
   Build model from caller owned memory buffer
@@ -47,14 +47,14 @@ defmodule TFLiteElixir.FlatBufferModel do
     end
   end
 
-  deferror buildFromBuffer(buffer)
+  deferror(buildFromBuffer(buffer))
 
   @spec initialized(%T{}) :: bool() | nif_error()
   def initialized(%T{model: self}) when is_reference(self) do
     TFLiteElixir.Nif.flatBufferModel_initialized(self)
   end
 
-  deferror initialized(self)
+  deferror(initialized(self))
 
   @doc """
   Returns the minimum runtime version from the flatbuffer. This runtime
@@ -72,7 +72,7 @@ defmodule TFLiteElixir.FlatBufferModel do
     TFLiteElixir.Nif.flatBufferModel_getMinimumRuntime(self)
   end
 
-  deferror getMinimumRuntime(self)
+  deferror(getMinimumRuntime(self))
 
   @doc """
   Return model metadata as a mapping of name & buffer strings.
@@ -84,7 +84,7 @@ defmodule TFLiteElixir.FlatBufferModel do
     TFLiteElixir.Nif.flatBufferModel_readAllMetadata(self)
   end
 
-  deferror readAllMetadata(self)
+  deferror(readAllMetadata(self))
 
   @doc false
   @impl true
@@ -116,11 +116,18 @@ defmodule TFLiteElixir.FlatBufferModel do
     import Inspect.Algebra
 
     def inspect(self, opts) do
-      concat(["#FlatBufferModel<", to_doc(%{
-        "initialized" => T.initialized(self),
-        "metadata" => T.readAllMetadata(self),
-        "minimum_runtime" => T.getMinimumRuntime(self)
-      }, opts), ">"])
+      concat([
+        "#FlatBufferModel<",
+        to_doc(
+          %{
+            "initialized" => T.initialized(self),
+            "metadata" => T.readAllMetadata(self),
+            "minimum_runtime" => T.getMinimumRuntime(self)
+          },
+          opts
+        ),
+        ">"
+      ])
     end
   end
 end
