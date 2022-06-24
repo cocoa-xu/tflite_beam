@@ -21,6 +21,8 @@ jobs:
     runs-on: macos-11
     env:
       MIX_ENV: test
+      TFLITE_ELIXIR_CORAL_SUPPORT: "YES"
+      TFLITE_ELIXIR_PREFER_PRECOMPILED: NO
 
     steps:
       - uses: actions/checkout@v2

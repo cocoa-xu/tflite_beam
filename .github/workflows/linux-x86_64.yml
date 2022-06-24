@@ -25,7 +25,8 @@ jobs:
     env:
       MIX_ENV: test
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      TFLITE_ELIXIR_CORAL_SUPPORT: "NO"
+      TFLITE_ELIXIR_CORAL_SUPPORT: "YES"
+      TFLITE_ELIXIR_PREFER_PRECOMPILED: NO
 
     steps:
       - uses: actions/checkout@v2
