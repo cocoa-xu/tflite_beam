@@ -50,7 +50,7 @@ case "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES}" in
             copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}_linux/edgetpu_runtime/libedgetpu/edgetpu.h" "${LIBEDGETPU_RUNTIME_PRIV}/edgetpu.h"
             copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}_linux/edgetpu_runtime/libedgetpu/edgetpu_c.h" "${LIBEDGETPU_RUNTIME_PRIV}/edgetpu_c.h"
           ;;
-          armv7l*)
+          armv7a*)
             copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}_linux/edgetpu_runtime/libedgetpu/${LIBEDGETPU_TFLITE_ELIXIR_CORAL_USB_THROTTLE}/armv7a/libedgetpu.so.1.0" "${LIBEDGETPU_RUNTIME_PRIV}/libedgetpu.so.1.0"
             copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}_linux/edgetpu_runtime/libedgetpu/edgetpu.h" "${LIBEDGETPU_RUNTIME_PRIV}/edgetpu.h"
             copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}_linux/edgetpu_runtime/libedgetpu/edgetpu_c.h" "${LIBEDGETPU_RUNTIME_PRIV}/edgetpu_c.h"
@@ -65,7 +65,7 @@ case "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES}" in
             copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}_linux/edgetpu_runtime/libedgetpu/edgetpu.h" "${LIBEDGETPU_RUNTIME_PRIV}/edgetpu.h"
             copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}_linux/edgetpu_runtime/libedgetpu/edgetpu_c.h" "${LIBEDGETPU_RUNTIME_PRIV}/edgetpu_c.h"
           ;;
-          ppc64le*)
+          ppc64el*)
             copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}_linux/edgetpu_runtime/libedgetpu/${LIBEDGETPU_TFLITE_ELIXIR_CORAL_USB_THROTTLE}/ppc64el/libedgetpu.so.1.0" "${LIBEDGETPU_RUNTIME_PRIV}/libedgetpu.so.1.0"
             copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}_linux/edgetpu_runtime/libedgetpu/edgetpu.h" "${LIBEDGETPU_RUNTIME_PRIV}/edgetpu.h"
             copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}_linux/edgetpu_runtime/libedgetpu/edgetpu_c.h" "${LIBEDGETPU_RUNTIME_PRIV}/edgetpu_c.h"
@@ -95,7 +95,7 @@ case "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES}" in
     copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}_linux/edgetpu_runtime/libedgetpu/edgetpu.h" "${LIBEDGETPU_RUNTIME_PRIV}/edgetpu.h"
     copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}_linux/edgetpu_runtime/libedgetpu/edgetpu_c.h" "${LIBEDGETPU_RUNTIME_PRIV}/edgetpu_c.h"
   ;;
-  armv7l*)
+  armv7a*)
     copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}_linux/edgetpu_runtime/libedgetpu/${LIBEDGETPU_TFLITE_ELIXIR_CORAL_USB_THROTTLE}/armv7a/libedgetpu.so.1.0" "${LIBEDGETPU_RUNTIME_PRIV}/libedgetpu.so.1.0"
     copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}_linux/edgetpu_runtime/libedgetpu/edgetpu.h" "${LIBEDGETPU_RUNTIME_PRIV}/edgetpu.h"
     copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}_linux/edgetpu_runtime/libedgetpu/edgetpu_c.h" "${LIBEDGETPU_RUNTIME_PRIV}/edgetpu_c.h"
@@ -110,7 +110,7 @@ case "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES}" in
     copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}_linux/edgetpu_runtime/libedgetpu/edgetpu.h" "${LIBEDGETPU_RUNTIME_PRIV}/edgetpu.h"
     copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}_linux/edgetpu_runtime/libedgetpu/edgetpu_c.h" "${LIBEDGETPU_RUNTIME_PRIV}/edgetpu_c.h"
   ;;
-  ppc64le*)
+  ppc64el*)
     copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}_linux/edgetpu_runtime/libedgetpu/${LIBEDGETPU_TFLITE_ELIXIR_CORAL_USB_THROTTLE}/ppc64el/libedgetpu.so.1.0" "${LIBEDGETPU_RUNTIME_PRIV}/libedgetpu.so.1.0"
     copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}_linux/edgetpu_runtime/libedgetpu/edgetpu.h" "${LIBEDGETPU_RUNTIME_PRIV}/edgetpu.h"
     copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}_linux/edgetpu_runtime/libedgetpu/edgetpu_c.h" "${LIBEDGETPU_RUNTIME_PRIV}/edgetpu_c.h"
