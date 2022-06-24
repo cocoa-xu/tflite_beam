@@ -61,6 +61,7 @@ defmodule TfliteElixir.MixProject do
     edgetpu_libraries =
       System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", @default_edgetpu_libraries)
     {precompiled_available, url, filename} = has_precompiled_binaries(tflite_version, enable_coral_support, edgetpu_libraries)
+
     if precompiled_available do
       unarchive_to = Path.join([cache_dir(), "precompiled", filename])
       with :ok <- download_precompiled(filename, url, unarchive_to) do
@@ -138,7 +139,7 @@ defmodule TfliteElixir.MixProject do
   end
 
   defp description() do
-    "TensorFlowLite-Elixir bindings."
+    "TensorFlow Lite-Elixir binding with TPU support."
   end
 
   defp package() do
@@ -228,37 +229,23 @@ defmodule TfliteElixir.MixProject do
   defp download_archived_file(filename, url, unarchive_to, type) do
     if !File.exists?(unarchive_to) do
       File.mkdir_p!(unarchive_to)
+    end
 
-      cache_location = Path.join([cache_dir(), filename])
+    cache_location = Path.join([cache_dir(), filename])
 
-      if !File.exists?(cache_location) do
-        :ssl.start()
-        :inets.start()
-        :ok = download!(url, cache_location)
-      end
+    if !File.exists?(cache_location) do
+      :ssl.start()
+      :inets.start()
+      :ok = download!(url, cache_location)
+    end
 
-      case type do
-        :zip -> unzip_file(cache_location, unarchive_to)
-        :targz -> unarchive_file(cache_location, unarchive_to)
-        _ -> :ok
-      end
-    else
-      :ok
+    case type do
+      :zip -> unzip_file(cache_location, unarchive_to)
+      _ -> :ok
     end
   end
 
   defp unzip_file(filepath, unzip_to) do
-    with {:ok, _} <-
-           :zip.unzip(String.to_charlist(filepath), [
-             {:cwd, String.to_charlist(unzip_to)}
-           ]) do
-      :ok
-    else
-      _ -> {:error, "failed to unzip file #{filepath}"}
-    end
-  end
-
-  defp unarchive_file(filepath, unzip_to) do
     with {:ok, _} <-
            :zip.unzip(String.to_charlist(filepath), [
              {:cwd, String.to_charlist(unzip_to)}
