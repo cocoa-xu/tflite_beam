@@ -33,18 +33,6 @@ jobs:
               cpp_compiler: g++-arm-linux-gnueabihf
               libedgetpu_library: "armv7a"
           - pair:
-              arch_name: ppc64el
-              cmake_toolchain_file: cc_toolchain/linux-ppc64el.cmake
-              c_compiler: gcc-powerpc64le-linux-gnu
-              cpp_compiler: g++-powerpc64le-linux-gnu
-              libedgetpu_library: "ppc64el"
-          - pair:
-              arch_name: s390x
-              cmake_toolchain_file: cc_toolchain/linux-s390x.cmake
-              c_compiler: gcc-s390x-linux-gnu
-              cpp_compiler: g++-s390x-linux-gnu
-              libedgetpu_library: "s390x"
-          - pair:
               arch_name: riscv64
               cmake_toolchain_file: cc_toolchain/linux-riscv64.cmake
               c_compiler: gcc-riscv64-linux-gnu
