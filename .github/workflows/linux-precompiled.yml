@@ -19,31 +19,37 @@ jobs:
               cmake_toolchain_file: ""
               c_compiler: gcc
               cpp_compiler: g++
+              libedgetpu_library: "k8"
           - pair:
               arch_name: aarch64
               cmake_toolchain_file: cc_toolchain/linux-aarch64.cmake
               c_compiler: gcc-aarch64-linux-gnu
               cpp_compiler: g++-aarch64-linux-gnu
+              libedgetpu_library: "aarch64"
           - pair:
               arch_name: armv7l
               cmake_toolchain_file: cc_toolchain/linux-armv7l.cmake
               c_compiler: gcc-arm-linux-gnueabihf
               cpp_compiler: g++-arm-linux-gnueabihf
+              libedgetpu_library: "armv7a"
           - pair:
               arch_name: ppc64el
               cmake_toolchain_file: cc_toolchain/linux-ppc64el.cmake
               c_compiler: gcc-powerpc64le-linux-gnu
               cpp_compiler: g++-powerpc64le-linux-gnu
+              libedgetpu_library: "ppc64el"
           - pair:
               arch_name: s390x
               cmake_toolchain_file: cc_toolchain/linux-s390x.cmake
               c_compiler: gcc-s390x-linux-gnu
               cpp_compiler: g++-s390x-linux-gnu
+              libedgetpu_library: "s390x"
           - pair:
               arch_name: riscv64
               cmake_toolchain_file: cc_toolchain/linux-riscv64.cmake
               c_compiler: gcc-riscv64-linux-gnu
               cpp_compiler: g++-riscv64-linux-gnu
+              libedgetpu_library: "riscv64"
 
     steps:
       - uses: actions/checkout@v2
@@ -63,7 +69,9 @@ jobs:
           if [ "${{ matrix.pair.cmake_toolchain_file }}" != "" ]; then
             export CMAKE_TOOLCHAIN_FILE="$(pwd)/${{ matrix.pair.cmake_toolchain_file }}"
           fi
+          export TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES="${{ matrix.pair.libedgetpu_library }}"
           echo "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}"
+          echo "TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES: ${TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES}"
           mix deps.get
           mix compile
           export PKG_NAME=tflite_elixir-linux-${{ matrix.pair.arch_name }}-0.1.0
