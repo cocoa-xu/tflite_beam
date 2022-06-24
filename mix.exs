@@ -97,6 +97,12 @@ defmodule TfliteElixir.MixProject do
   defp has_precompiled_binaries(tflite_version=@tflite_version, _enable_coral_support="YES", edgetpu_libraries) do
     case edgetpu_libraries do
       lib when lib in ["k8", "x86_64", "aarch64", "armv7a", "riscv64"] ->
+        lib =
+          if lib == "k8" do
+            "x86_64"
+          else
+            lib
+          end
         filename = "tflite_elixir-linux-#{lib}-#{@version}"
         {true, "#{@github_url}/releases/download/#{@version}/#{filename}.tar.gz", filename}
       lib when lib in ["darwin_arm64", "darwin_x86_64"] ->
