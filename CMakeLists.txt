@@ -11,6 +11,11 @@ endif()
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
 
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "armv7.*")
+    # Disable XNNPACK in TensorFlow Lite
+    set(TFLITE_ENABLE_XNNPACK OFF)
+endif()
+
 add_subdirectory(
     "${TFLITE_ROOT_DIR}"
     EXCLUDE_FROM_ALL
