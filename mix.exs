@@ -18,7 +18,7 @@ defmodule TfliteElixir.MixProject do
   ]
 
   # coral related
-  @default_edgetpu_runtime "edgetpu_runtime_20220623"
+  @default_edgetpu_runtime "edgetpu_runtime_20220624"
   @default_edgetpu_libraries "native"
   @enable_coral_support_by_default "YES"
 
