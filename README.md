@@ -146,8 +146,7 @@ fail to initialize Coral devices.
 
 ```shell
 # possible values for these env vars are listed in the next section
-export TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME_RELEASE_NAME=grouper
-export TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME=edgetpu_runtime_20220308
+export TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME=edgetpu_runtime_20220623
 
 mix deps.get
 bash "3rd_party/cache/${TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME}/edgetpu_runtime/install.sh"
@@ -168,40 +167,7 @@ bash "3rd_party/cache/${TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME}/edgetpu_runtime/
   
   Note that only when `TFLITE_ELIXIR_CORAL_USB_THROTTLE` is set to `NO`, `:tflite_elixir` will use the non-throttled libedgetpu libraries.
 
-- `TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME`
-
-  Select the [libedgetpu runtime](https://coral.ai/software/#edgetpu-runtime).
-
-  Default runtime version is `edgetpu_runtime_20220308`.
-
- `TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME_RELEASE_NAME`
-
-  Check the [google-coral/libedgetpu](https://github.com/google-coral/libedgetpu) for more details.
-
-  Default release name is `grouper`.
-
-  | Release Name | Runtime Version            | 
-  |--------------|----------------------------|
-  | `grouper`    | `edgetpu_runtime_20220308` |
-  | `frogfish`   | `edgetpu_runtime_20210119` |
-  | `frogfish`   | `edgetpu_runtime_20201204` |
-  | `frogfish`   | `edgetpu_runtime_20201105` |
-  | `frogfish`   | `edgetpu_runtime_20200728` |
-  | `frogfish`   | `edgetpu_runtime_20200331` |
-  | `frogfish`   | `edgetpu_runtime_20200128` |
-
-  For macOS, `TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME_RELEASE_NAME=grouper` and `TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME=edgetpu_runtime_20220308`
-
-  For Linux, `edgetpu_runtime_20220308` seems to have some compatibility issues. `TFLiteElixir.Coral.makeEdgeTpuContext/2` is likely to fail.
-
-  Using `edgetpu_runtime_20210119` solves the issue for now on Linux. 
-
-  ```shell
-  export TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME_RELEASE_NAME=frogfish
-  export TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME=edgetpu_runtime_20210119
-  ```
-
-- `TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES`
+ `TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES`
   
   Choose which ones of the libedgetpu libraries to copy to the `priv` directory of the `:elixir_coral` app.
 
@@ -215,6 +181,9 @@ bash "3rd_party/cache/${TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME}/edgetpu_runtime/
   | `aarch64`        | Linux arm64         |
   | `armv7a`         | Linux armv7         |
   | `k8`             | Linux x86_64        |
+  | `riscv64`        | Linux riscv64       |
+  | `s390x`          | Linux s390x         |
+  | `ppe64el`        | Linux ppe64el       |
   | `darwin_arm64`   | macOS Apple Silicon |
   | `darwin_x86_64`  | macOS x86_64        |
   | `x64_windows`    | Windows x86_64      |
