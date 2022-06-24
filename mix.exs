@@ -35,7 +35,7 @@ defmodule TfliteElixir.MixProject do
       edgetpu_libraries =
         System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", @default_edgetpu_libraries)
 
-      :ok = download_edgetpu_runtime(edgetpu_runtime)
+      :ok = download_edgetpu_runtime(edgetpu_runtime, edgetpu_libraries)
       System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME", edgetpu_runtime)
       System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", edgetpu_libraries)
     end
@@ -117,29 +117,56 @@ defmodule TfliteElixir.MixProject do
     System.get_env("TFLITE_ELIXIR_CACHE_DIR", "./3rd_party/cache")
   end
 
-  defp download_edgetpu_runtime(runtime) do
-    # always download edgetpu runtime for linux
-    linux_runtime = "#{runtime}_linux"
-    filename = "#{linux_runtime}.zip"
-    runtime_url = "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
-    unzip_to = Path.join([cache_dir(), linux_runtime])
-    download_zip_file(filename, runtime_url, unzip_to)
+  defp download_edgetpu_runtime(runtime, edgetpu_libraries) do
+    {filename, runtime_url, unzip_to} =
+      case edgetpu_libraries do
+        "native" ->
+          case :os.type() do
+            {:unix, :darwin} ->
+              macos_runtime = "#{runtime}_macos"
+              filename = "#{macos_runtime}.zip"
+              runtime_url = "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
+              unzip_to = Path.join([cache_dir(), macos_runtime])
+              {filename, runtime_url, unzip_to}
 
-    case :os.type() do
-      {:unix, :darwin} ->
-        macos_runtime = "#{runtime}_macos"
-        filename = "#{macos_runtime}.zip"
-        runtime_url = "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
-        unzip_to = Path.join([cache_dir(), macos_runtime])
-        download_zip_file(filename, runtime_url, unzip_to)
+            {:unix, _} ->
+              linux_runtime = "#{runtime}_linux"
+              filename = "#{linux_runtime}.zip"
+              runtime_url = "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
+              unzip_to = Path.join([cache_dir(), linux_runtime])
+              {filename, runtime_url, unzip_to}
 
-      {:win32, :nt} ->
-        windows_runtime = "#{runtime}_windows"
-        filename = "#{windows_runtime}.zip"
-        runtime_url = "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
-        unzip_to = Path.join([cache_dir(), windows_runtime])
-        download_zip_file(filename, runtime_url, unzip_to)
+            {:win32, :nt} ->
+              windows_runtime = "#{runtime}_windows"
+              filename = "#{windows_runtime}.zip"
+              runtime_url = "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
+              unzip_to = Path.join([cache_dir(), windows_runtime])
+              {filename, runtime_url, unzip_to}
+          end
+
+        "x64_windows" ->
+          windows_runtime = "#{runtime}_windows"
+          filename = "#{windows_runtime}.zip"
+          runtime_url = "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
+          unzip_to = Path.join([cache_dir(), windows_runtime])
+          {filename, runtime_url, unzip_to}
+
+        lib when lib in ["darwin_arm64", "darwin_x86_64"] ->
+          macos_runtime = "#{runtime}_macos"
+          filename = "#{macos_runtime}.zip"
+          runtime_url = "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
+          unzip_to = Path.join([cache_dir(), macos_runtime])
+          {filename, runtime_url, unzip_to}
+
+        lib when lib in ["k8", "x86_64", "aarch64", "armv7a", "riscv64", "s390x", "ppc64el"] ->
+          linux_runtime = "#{runtime}_linux"
+          filename = "#{linux_runtime}.zip"
+          runtime_url = "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
+          unzip_to = Path.join([cache_dir(), linux_runtime])
+          {filename, runtime_url, unzip_to}
     end
+
+    download_zip_file(filename, runtime_url, unzip_to)
   end
 
   defp download_zip_file(filename, url, unzip_to) do

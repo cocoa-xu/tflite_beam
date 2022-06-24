@@ -146,7 +146,7 @@ fail to initialize Coral devices.
 
 ```shell
 # possible values for these env vars are listed in the next section
-export TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME=edgetpu_runtime_20220623
+export TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME=edgetpu_runtime_20220624
 
 mix deps.get
 bash "3rd_party/cache/${TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME}/edgetpu_runtime/install.sh"
@@ -171,9 +171,9 @@ bash "3rd_party/cache/${TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME}/edgetpu_runtime/
   
   Choose which ones of the libedgetpu libraries to copy to the `priv` directory of the `:elixir_coral` app.
 
-  Default value is `native` - only native libraries will be copied. `native` corresponds to the host OS and CPU architecture when compiling this library.
+  Default value is `native` - only native libraries will be downloaded and copied. `native` corresponds to the host OS and CPU architecture when compiling this library.
 
-  When set to a specific value, e.g, `darwin_arm64` or `darwin_x86_64`, then the corresponding one will be copied. This option is expected to be used for cross-compiling. 
+  When set to a specific value, e.g, `darwin_arm64` or `darwin_x86_64`, then the corresponding one will be downloaded and copied. This option is expected to be used for cross-compiling, like with nerves. 
   Available values for this option are:
 
   | Value            | OS/CPU              |
@@ -181,6 +181,7 @@ bash "3rd_party/cache/${TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME}/edgetpu_runtime/
   | `aarch64`        | Linux arm64         |
   | `armv7a`         | Linux armv7         |
   | `k8`             | Linux x86_64        |
+  | `x86_64`         | Linux x86_64        |
   | `riscv64`        | Linux riscv64       |
   | `s390x`          | Linux s390x         |
   | `ppe64el`        | Linux ppe64el       |
