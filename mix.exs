@@ -56,17 +56,28 @@ defmodule TfliteElixir.MixProject do
 
   defp use_precompiled("YES") do
     tflite_version = System.get_env("TFLITE_VER", @tflite_version)
+
     enable_coral_support =
       System.get_env("TFLITE_ELIXIR_CORAL_SUPPORT", @enable_coral_support_by_default)
+    System.put_env("TFLITE_ELIXIR_CORAL_SUPPORT", enable_coral_support)
+
     edgetpu_libraries =
       System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", @default_edgetpu_libraries)
-    {precompiled_available, url, filename} = has_precompiled_binaries(tflite_version, enable_coral_support, edgetpu_libraries)
+    System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", edgetpu_libraries)
+
+    {precompiled_available, url, filename} =
+      has_precompiled_binaries(tflite_version, enable_coral_support, edgetpu_libraries)
 
     if precompiled_available do
       unarchive_to = Path.join([cache_dir(), "precompiled", filename])
+
       with :ok <- download_precompiled(filename, url, unarchive_to) do
-        System.put_env("TFLITE_ELIXIR_ONLY_COPY_PRIV", Path.join([unarchive_to, filename, "priv"]))
-        {:ok, [:elixir_make] ++Mix.compilers()}
+        System.put_env(
+          "TFLITE_ELIXIR_ONLY_COPY_PRIV",
+          Path.join([unarchive_to, filename, "priv"])
+        )
+
+        {:ok, [:elixir_make] ++ Mix.compilers()}
       else
         _ ->
           use_precompiled("NO")
@@ -79,6 +90,7 @@ defmodule TfliteElixir.MixProject do
   defp use_precompiled("NO") do
     enable_coral_support =
       System.get_env("TFLITE_ELIXIR_CORAL_SUPPORT", @enable_coral_support_by_default)
+
     System.put_env("TFLITE_ELIXIR_CORAL_SUPPORT", enable_coral_support)
 
     if enable_coral_support == "YES" do
@@ -96,7 +108,39 @@ defmodule TfliteElixir.MixProject do
     {:ok, [:elixir_make] ++ Mix.compilers()}
   end
 
-  defp has_precompiled_binaries(tflite_version=@tflite_version, _enable_coral_support="YES", edgetpu_libraries) do
+  defp has_precompiled_binaries(
+         _tflite_version = @tflite_version,
+         _enable_coral_support = "YES",
+         edgetpu_libraries
+       ) do
+    edgetpu_libraries =
+      if edgetpu_libraries == "native" do
+        case :os.type() do
+          {:unix, :darwin} ->
+            {machine, 0} = System.cmd("uname", ["-m"])
+            [machine | _] = String.split(machine, "\n")
+            "darwin_#{machine}"
+
+          {:unix, _} ->
+            {machine, 0} = System.cmd("uname", ["-m"])
+            [machine | _] = String.split(machine, "\n")
+
+            case machine do
+              "armv7" <> _ ->
+                "armv7a"
+
+              _ ->
+                machine
+            end
+
+          {:win32, :nt} ->
+            "x64_windows"
+
+          _ ->
+            nil
+        end
+      end
+
     case edgetpu_libraries do
       lib when lib in ["k8", "x86_64", "aarch64", "armv7a", "riscv64"] ->
         lib =
@@ -105,11 +149,19 @@ defmodule TfliteElixir.MixProject do
           else
             lib
           end
+
         filename = "tflite_elixir-linux-#{lib}-v#{@version}"
         {true, "#{@github_url}/releases/download/v#{@version}/#{filename}.zip", filename}
+
       lib when lib in ["darwin_arm64", "darwin_x86_64"] ->
-        filename = "tflite_elixir-macos-#{lib}-v#{@version}"
+        filename =
+          case lib do
+            "darwin_arm64" -> "tflite_elixir-macos-arm64-v#{@version}"
+            "darwin_x86_64" -> "tflite_elixir-macos-x86_64-v#{@version}"
+          end
+
         {true, "#{@github_url}/releases/download/v#{@version}/#{filename}.zip", filename}
+
       _ ->
         {false, nil, nil}
     end
@@ -183,21 +235,30 @@ defmodule TfliteElixir.MixProject do
             {:unix, :darwin} ->
               macos_runtime = "#{runtime}_macos"
               filename = "#{macos_runtime}.zip"
-              runtime_url = "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
+
+              runtime_url =
+                "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
+
               unzip_to = Path.join([cache_dir(), macos_runtime])
               {filename, runtime_url, unzip_to}
 
             {:unix, _} ->
               linux_runtime = "#{runtime}_linux"
               filename = "#{linux_runtime}.zip"
-              runtime_url = "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
+
+              runtime_url =
+                "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
+
               unzip_to = Path.join([cache_dir(), linux_runtime])
               {filename, runtime_url, unzip_to}
 
             {:win32, :nt} ->
               windows_runtime = "#{runtime}_windows"
               filename = "#{windows_runtime}.zip"
-              runtime_url = "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
+
+              runtime_url =
+                "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
+
               unzip_to = Path.join([cache_dir(), windows_runtime])
               {filename, runtime_url, unzip_to}
           end
@@ -205,24 +266,33 @@ defmodule TfliteElixir.MixProject do
         "x64_windows" ->
           windows_runtime = "#{runtime}_windows"
           filename = "#{windows_runtime}.zip"
-          runtime_url = "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
+
+          runtime_url =
+            "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
+
           unzip_to = Path.join([cache_dir(), windows_runtime])
           {filename, runtime_url, unzip_to}
 
         lib when lib in ["darwin_arm64", "darwin_x86_64"] ->
           macos_runtime = "#{runtime}_macos"
           filename = "#{macos_runtime}.zip"
-          runtime_url = "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
+
+          runtime_url =
+            "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
+
           unzip_to = Path.join([cache_dir(), macos_runtime])
           {filename, runtime_url, unzip_to}
 
         lib when lib in ["k8", "x86_64", "aarch64", "armv7a", "riscv64", "s390x", "ppc64el"] ->
           linux_runtime = "#{runtime}_linux"
           filename = "#{linux_runtime}.zip"
-          runtime_url = "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
+
+          runtime_url =
+            "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
+
           unzip_to = Path.join([cache_dir(), linux_runtime])
           {filename, runtime_url, unzip_to}
-    end
+      end
 
     download_archived_file(filename, runtime_url, unzip_to, :zip)
   end
