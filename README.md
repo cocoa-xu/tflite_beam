@@ -7,10 +7,11 @@ TensorFlow Lite-Elixir binding with TPU support.
 | OS               | arch    | Build Status | Has Precompiled Library |
 |------------------|---------|--------------|-------------------------|
 | Ubuntu 20.04     | x86_64  | [![CI](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-x86_64.yml/badge.svg)](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-x86_64.yml) | Yes |
-| Ubuntu 20.04     | arm64   | [![CI](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-precompiled.yml/badge.svg)](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-precompiled.yml) | Yes |
-| Ubuntu 20.04     | armv7l  | [![CI](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-precompiled.yml/badge.svg)](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-precompiled.yml) | Yes |
-| Ubuntu 20.04     | riscv64 | [![CI](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-precompiled.yml/badge.svg)](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-precompiled.yml) | Yes |
+| Ubuntu 20.04     | arm64   | [![CI](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-precompile.yml/badge.svg)](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-precompile.yml) | Yes |
+| Ubuntu 20.04     | armv7l  | [![CI](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-precompile.yml/badge.svg)](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-precompile.yml) | Yes |
+| Ubuntu 20.04     | riscv64 | [![CI](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-precompile.yml/badge.svg)](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-precompile.yml) | Yes |
 | macOS 11 Big Sur | x86_64  | [![CI](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/macos-x86_64.yml/badge.svg)](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/macos-x86_64.yml) | Yes |
+| macOS 11 Big Sur | arm64   | [![CI](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/macos-precompile.yml/badge.svg)](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/macos-precompile.yml) | Yes |
 
 ## Nerves Support
 1. Make sure `nerves_system_br` >= v1.20.2, otherwise, xnnpack (or one of its dependency) will fail to compile because 
