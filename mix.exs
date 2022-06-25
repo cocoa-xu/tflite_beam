@@ -107,7 +107,7 @@ defmodule TfliteElixir.MixProject do
   end
 
   defp has_precompiled_binaries(
-         tflite_version = @tflite_version,
+         _tflite_version = @tflite_version,
          _enable_coral_support = "YES",
          edgetpu_libraries
        ) do
