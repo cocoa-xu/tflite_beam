@@ -2,6 +2,7 @@ PRIV_DIR = $(MIX_APP_PATH)/priv
 NATIVE_BINDINGS_SO = $(PRIV_DIR)/tflite_elixir.so
 LIBEDGETPU_RUNTIME_PRIV = $(PRIV_DIR)/libedgetpu
 TFLITE_ELIXIR_ONLY_COPY_PRIV ?= "NO"
+SCRIPTS_DIR = $(shell pwd)/scripts
 C_SRC = $(shell pwd)/c_src
 LIB_SRC = $(shell pwd)/lib
 ifdef CMAKE_TOOLCHAIN_FILE
@@ -128,7 +129,7 @@ $(NATIVE_BINDINGS_SO): unarchive_source_code install_libedgetpu_runtime
 				&& cp "$(CMAKE_BINDINGS_BUILD_DIR)/tflite_elixir.so" "$(NATIVE_BINDINGS_SO)" ; \
 		fi ; \
 		if [ "$(TFLITE_ELIXIR_CORAL_SUPPORT)" = "YES" ]; then \
-			bash scripts/postbuild_fix_libedgetpu.sh "$(NATIVE_BINDINGS_SO)" ; \
+			bash $(SCRIPTS_DIR)/scripts/postbuild_fix_libedgetpu.sh "$(NATIVE_BINDINGS_SO)" ; \
 		fi ; \
 	else \
 		cp -a "$(TFLITE_ELIXIR_ONLY_COPY_PRIV)" "$(PRIV_DIR)" ; \
