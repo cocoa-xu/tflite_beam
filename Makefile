@@ -132,5 +132,6 @@ $(NATIVE_BINDINGS_SO): unarchive_source_code install_libedgetpu_runtime
 			bash $(SCRIPTS_DIR)/postbuild_fix_libedgetpu.sh "$(NATIVE_BINDINGS_SO)" ; \
 		fi ; \
 	else \
-		cp -a "$(TFLITE_ELIXIR_ONLY_COPY_PRIV)" "$(PRIV_DIR)" ; \
+		mkdir -p "$(PRIV_DIR)" ; \
+		cp -a "$(TFLITE_ELIXIR_ONLY_COPY_PRIV)/*" "$(PRIV_DIR)" ; \
 	fi
