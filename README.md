@@ -151,13 +151,15 @@ output_data
 ### Dependencies
 For macOS
 ```shell
+# only required if not using precompiled binaries
 # for compiling libusb
 brew install autoconf automake
 ```
 
 For DEBIAN/Ubuntu
 ```shell
-# to change rpath
+# only required if not using precompiled binaries
+# for changing rpath
 sudo apt install patchelf
 ```
 
