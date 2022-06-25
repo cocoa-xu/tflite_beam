@@ -19,6 +19,7 @@ symlinks =
       [
         {"libedgetpu.so.1.0", "libedgetpu.so.1"},
         {"libedgetpu.so.1", "libedgetpu.so"},
+        {"libusb-1.0.so.0.3.0", "lib/libusb-1.0.so.0"},
         {"lib/libusb-1.0.so.0", "libusb-1.0.so.0"}
       ]
   end
