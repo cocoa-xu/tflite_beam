@@ -13,6 +13,16 @@ TensorFlow Lite-Elixir binding with TPU support.
 | macOS 11 Big Sur | x86_64  | [![CI](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/macos-x86_64.yml/badge.svg)](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/macos-x86_64.yml) | Yes |
 | macOS 11 Big Sur | arm64   | [![CI](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/macos-precompile.yml/badge.svg)](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/macos-precompile.yml) | Yes |
 
+## Try it in Livebook
+```elixir
+# will download and install precompiled version
+Mix.install([
+  {:tflite_elixir, "~> 0.1.0", github: "cocoa-xu/tflite_elixir"}
+])
+```
+
+Some livebook examples can be found in the [examples](examples) directory. 
+
 ## Nerves Support
 1. Make sure `nerves_system_br` >= v1.20.2, otherwise, xnnpack (or one of its dependency) will fail to compile because 
 `CMAKE_SYSTEM_PROCESSOR` is not set before v1.20.2. 
