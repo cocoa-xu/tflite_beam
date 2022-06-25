@@ -78,7 +78,7 @@ jobs:
           export PKG_NAME=tflite_elixir-linux-${{ matrix.pair.arch_name }}-0.1.0
           mkdir -p "${PKG_NAME}"
           cp -a _build/dev/lib/tflite_elixir/priv "${PKG_NAME}"
-          zip -r -9 -y "${PKG_NAME}" "${PKG_NAME}"
+          zip -r -9 -y "${PKG_NAME}.zip" "${PKG_NAME}"
           rm -rf "${PKG_NAME}"
           ls -lah "${PKG_NAME}.zip"
           mkdir -p artifacts
