@@ -34,8 +34,8 @@ jobs:
       
       - uses: erlef/setup-beam@v1
         with:
-          otp-version: 24.2
-          elixir-version: 1.13.2
+          otp-version: 25.0.2
+          elixir-version: 1.13.4
 
       - name: Install system dependecies
         run: |
@@ -45,5 +45,4 @@ jobs:
       - name: Compile and Test
         run: |
           mix deps.get
-          export MAKE_BUILD_FLAGS="-j1"
           mix coveralls.github

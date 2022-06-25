@@ -77,7 +77,7 @@ defmodule TfliteElixir.MixProject do
           Path.join([unarchive_to, filename, "priv"])
         )
 
-        {:ok, [:elixir_make] ++ Mix.compilers()}
+        {:ok, [:elixir_precompiled_deployer] ++ Mix.compilers()}
       else
         _ ->
           use_precompiled("NO")
@@ -105,7 +105,7 @@ defmodule TfliteElixir.MixProject do
       System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", edgetpu_libraries)
     end
 
-    {:ok, [:elixir_make] ++ Mix.compilers()}
+    {:ok, [:elixir_make, :elixir_precompiled_deployer] ++ Mix.compilers()}
   end
 
   defp has_precompiled_binaries(
@@ -186,6 +186,7 @@ defmodule TfliteElixir.MixProject do
       {:nx, "~> 0.2"},
       {:stb_image, "~> 0.5"},
       {:elixir_make, "~> 0.6", runtime: false},
+      {:elixir_precompiled_deployer, "~> 0.1.0", runtime: false},
       {:excoveralls, "~> 0.10", only: :test},
       {:ex_doc, "~> 0.27", only: [:dev, :test], runtime: false}
     ]
@@ -197,10 +198,11 @@ defmodule TfliteElixir.MixProject do
 
   defp package() do
     [
-      name: "tflite_elixir",
+      name: to_string(@app),
       # These are the default files included in the package
       files:
-        ~w(lib c_src 3rd_party priv scripts CMakeLists.txt Makefile .gitmodules .formatter.exs mix.exs README* LICENSE*),
+        ~w(lib c_src 3rd_party priv scripts CMakeLists.txt Makefile .gitmodules
+        precompiled_deploy.exs .formatter.exs mix.exs README* LICENSE*),
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => @github_url}
     ]
