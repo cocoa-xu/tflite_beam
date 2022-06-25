@@ -187,7 +187,7 @@ bash "3rd_party/cache/${TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME}/edgetpu_runtime/
   
   Note that only when `TFLITE_ELIXIR_CORAL_USB_THROTTLE` is set to `NO`, `:tflite_elixir` will use the non-throttled libedgetpu libraries.
 
- `TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES`
+- `TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES`
   
   Choose which ones of the libedgetpu libraries to copy to the `priv` directory of the `:tflite_elixir` app.
 
