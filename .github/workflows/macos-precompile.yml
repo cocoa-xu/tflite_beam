@@ -31,6 +31,7 @@ jobs:
           brew install elixir
           mix local.hex --force
           mix local.rebar --force
+          brew install autoconf automake
 
       - name: Create precompiled library
         run: |
@@ -38,6 +39,7 @@ jobs:
             export TARGET_ARCH="${{ matrix.pair.arch }}"
             export TARGET_OS="apple"
             export TARGET_ABI="darwin"
+            export CPPFLAGS="-arch arm64"
           fi
           export TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES="${{ matrix.pair.libedgetpu_library }}"
           export TFLITE_ELIXIR_PREFER_PRECOMPILED="NO"
