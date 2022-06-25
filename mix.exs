@@ -111,6 +111,34 @@ defmodule TfliteElixir.MixProject do
          _enable_coral_support = "YES",
          edgetpu_libraries
        ) do
+    edgetpu_libraries =
+      if edgetpu_libraries == "native" do
+        case :os.type() do
+          {:unix, :darwin} ->
+            {machine, 0} = System.cmd("uname", ["-m"])
+            [machine | _] = String.split(machine, "\n")
+            "darwin_#{machine}"
+
+          {:unix, _} ->
+            {machine, 0} = System.cmd("uname", ["-m"])
+            [machine | _] = String.split(machine, "\n")
+
+            case machine do
+              "armv7" <> _ ->
+                "armv7a"
+
+              _ ->
+                machine
+            end
+
+          {:win32, :nt} ->
+            "x64_windows"
+
+          _ ->
+            nil
+        end
+      end
+
     case edgetpu_libraries do
       lib when lib in ["k8", "x86_64", "aarch64", "armv7a", "riscv64"] ->
         lib =
