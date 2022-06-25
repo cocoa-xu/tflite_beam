@@ -7,6 +7,7 @@ mkdir -p "${DESTDIR}"
 
 git submodule update --init 3rd_party/libusb
 cd 3rd_party/libusb
+make clean
 CROSSCOMPILE=""
 if [ -n "${TARGET_ARCH}" ] && [ -n "${TARGET_OS}" ] && [ -n "${TARGET_ABI}" ]; then
   export CROSSCOMPILE="--host=${TARGET_ARCH}-${TARGET_OS}-${TARGET_ABI}"
