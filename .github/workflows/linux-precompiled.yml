@@ -3,9 +3,6 @@ name: linux-precompile
 on:
   push:
     tags:
-      - '*-dev'
-      - '*-prod'
-      - '*-dev-linux'
       - 'v*'
 
 jobs:
