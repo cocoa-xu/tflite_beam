@@ -119,7 +119,7 @@ defmodule TfliteElixir.MixProject do
   end
 
   defp download_precompiled(filename, url, unarchive_to) do
-    download_archived_file(filename, url, unarchive_to, :targz)
+    download_archived_file(filename, url, unarchive_to, :zip)
   end
 
   def application do
