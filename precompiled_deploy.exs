@@ -28,13 +28,8 @@ saved_cwd = File.cwd!()
 File.cd!(libedgetpu_dir)
 
 Enum.each(symlinks, fn {original, symlink} ->
-  if File.regular?(symlink) or File.dir?(symlink) do
-    File.rm_rf!(symlink)
-  end
-
-  if !File.exists?(symlink) do
-    :ok = File.ln_s!(original, symlink)
-  end
+  File.rm_rf!(symlink)
+  File.ln_s!(original, symlink)
 end)
 
 File.cd!(saved_cwd)
