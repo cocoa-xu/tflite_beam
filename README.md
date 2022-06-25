@@ -189,11 +189,12 @@ bash "3rd_party/cache/${TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME}/edgetpu_runtime/
 
  `TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES`
   
-  Choose which ones of the libedgetpu libraries to copy to the `priv` directory of the `:elixir_coral` app.
+  Choose which ones of the libedgetpu libraries to copy to the `priv` directory of the `:tflite_elixir` app.
 
   Default value is `native` - only native libraries will be downloaded and copied. `native` corresponds to the host OS and CPU architecture when compiling this library.
 
   When set to a specific value, e.g, `darwin_arm64` or `darwin_x86_64`, then the corresponding one will be downloaded and copied. This option is expected to be used for cross-compiling, like with nerves. 
+
   Available values for this option are:
 
   | Value            | OS/CPU              |
@@ -203,8 +204,6 @@ bash "3rd_party/cache/${TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME}/edgetpu_runtime/
   | `k8`             | Linux x86_64        |
   | `x86_64`         | Linux x86_64        |
   | `riscv64`        | Linux riscv64       |
-  | `s390x`          | Linux s390x         |
-  | `ppe64el`        | Linux ppe64el       |
   | `darwin_arm64`   | macOS Apple Silicon |
   | `darwin_x86_64`  | macOS x86_64        |
   | `x64_windows`    | Windows x86_64      |
