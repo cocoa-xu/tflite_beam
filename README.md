@@ -120,7 +120,7 @@ output_data = TFLite.Interpreter.output_tensor!(interpreter, 0)
 # if you have :nx
 # get predicted label
 output_data
-|> Nx.from_binary({:u, 8})
+|> Nx.from_binary(:u8)
 |> Nx.argmax()
 |> Nx.to_scalar()
 |> then(&Enum.at(labels, &1))
