@@ -17,7 +17,6 @@ symlinks =
       ]
     {:unix, _} ->
       [
-        {"libedgetpu.so.1.0.0", "libedgetpu.so.1.0"},
         {"libedgetpu.so.1.0", "libedgetpu.so.1"},
         {"libedgetpu.so.1", "libedgetpu.so"},
         {"lib/libusb-1.0.so.0", "libusb-1.0.so.0"}

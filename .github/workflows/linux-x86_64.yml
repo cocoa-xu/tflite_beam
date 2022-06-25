@@ -45,5 +45,4 @@ jobs:
       - name: Compile and Test
         run: |
           mix deps.get
-          export MAKE_BUILD_FLAGS="-j1"
           mix coveralls.github
