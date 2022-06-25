@@ -3,7 +3,10 @@ defmodule TfliteElixir.MixProject do
   require Logger
 
   @app :tflite_elixir
+  @version "0.1.0"
   @tflite_version "2.9.1"
+  @prefer_precompiled "YES"
+  @github_url "https://github.com/cocoa-xu/tflite_elixir"
   # only means compatible. need to write more tests
   @compatible_tflite_versions [
     "2.7.0",
@@ -23,31 +26,17 @@ defmodule TfliteElixir.MixProject do
   @enable_coral_support_by_default "YES"
 
   def project do
-    enable_coral_support =
-      System.get_env("TFLITE_ELIXIR_CORAL_SUPPORT", @enable_coral_support_by_default)
-
-    System.put_env("TFLITE_ELIXIR_CORAL_SUPPORT", enable_coral_support)
-
-    if enable_coral_support == "YES" do
-      edgetpu_runtime =
-        System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME", @default_edgetpu_runtime)
-
-      edgetpu_libraries =
-        System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", @default_edgetpu_libraries)
-
-      :ok = download_edgetpu_runtime(edgetpu_runtime, edgetpu_libraries)
-      System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME", edgetpu_runtime)
-      System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", edgetpu_libraries)
-    end
+    prefer_precompiled = System.get_env("TFLITE_ELIXIR_PREFER_PRECOMPILED", @prefer_precompiled)
+    {:ok, compilers} = use_precompiled(prefer_precompiled)
 
     [
       app: @app,
-      version: "0.1.0",
+      version: @version,
       elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
-      compilers: [:elixir_make] ++ Mix.compilers(),
+      compilers: compilers,
       deps: deps(),
-      source_url: "https://github.com/cocox-xu/tflite_elixir",
+      source_url: @github_url,
       description: description(),
       package: package(),
       test_coverage: [ignore_modules: [TFLite.Nif, TFLiteElixir.Coral], tool: ExCoveralls],
@@ -63,6 +52,75 @@ defmodule TfliteElixir.MixProject do
           System.get_env("MAKE_BUILD_FLAGS", "-j#{System.schedulers_online()}")
       }
     ]
+  end
+
+  defp use_precompiled("YES") do
+    tflite_version = System.get_env("TFLITE_VER", @tflite_version)
+    enable_coral_support =
+      System.get_env("TFLITE_ELIXIR_CORAL_SUPPORT", @enable_coral_support_by_default)
+    edgetpu_libraries =
+      System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", @default_edgetpu_libraries)
+    {precompiled_available, url, filename} = has_precompiled_binaries(tflite_version, enable_coral_support, edgetpu_libraries)
+
+    if precompiled_available do
+      unarchive_to = Path.join([cache_dir(), "precompiled", filename])
+      with :ok <- download_precompiled(filename, url, unarchive_to) do
+        System.put_env("TFLITE_ELIXIR_ONLY_COPY_PRIV", Path.join([unarchive_to, filename, "priv"]))
+        {:ok, [:elixir_make] ++Mix.compilers()}
+      else
+        _ ->
+          use_precompiled("NO")
+      end
+    else
+      use_precompiled("NO")
+    end
+  end
+
+  defp use_precompiled("NO") do
+    enable_coral_support =
+      System.get_env("TFLITE_ELIXIR_CORAL_SUPPORT", @enable_coral_support_by_default)
+    System.put_env("TFLITE_ELIXIR_CORAL_SUPPORT", enable_coral_support)
+
+    if enable_coral_support == "YES" do
+      edgetpu_runtime =
+        System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME", @default_edgetpu_runtime)
+
+      edgetpu_libraries =
+        System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", @default_edgetpu_libraries)
+
+      :ok = download_edgetpu_runtime(edgetpu_runtime, edgetpu_libraries)
+      System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME", edgetpu_runtime)
+      System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", edgetpu_libraries)
+    end
+
+    {:ok, [:elixir_make] ++ Mix.compilers()}
+  end
+
+  defp has_precompiled_binaries(tflite_version=@tflite_version, _enable_coral_support="YES", edgetpu_libraries) do
+    case edgetpu_libraries do
+      lib when lib in ["k8", "x86_64", "aarch64", "armv7a", "riscv64"] ->
+        lib =
+          if lib == "k8" do
+            "x86_64"
+          else
+            lib
+          end
+        filename = "tflite_elixir-linux-#{lib}-v#{@version}"
+        {true, "#{@github_url}/releases/download/v#{@version}/#{filename}.zip", filename}
+      lib when lib in ["darwin_arm64", "darwin_x86_64"] ->
+        filename = "tflite_elixir-macos-#{lib}-v#{@version}"
+        {true, "#{@github_url}/releases/download/v#{@version}/#{filename}.zip", filename}
+      _ ->
+        {false, nil, nil}
+    end
+  end
+
+  defp has_precompiled_binaries(_tflite_version, _enable_coral_support, _edgetpu_libraries) do
+    false
+  end
+
+  defp download_precompiled(filename, url, unarchive_to) do
+    download_archived_file(filename, url, unarchive_to, :zip)
   end
 
   def application do
@@ -82,7 +140,7 @@ defmodule TfliteElixir.MixProject do
   end
 
   defp description() do
-    "TensorFlowLite-Elixir bindings."
+    "TensorFlow Lite-Elixir binding with TPU support."
   end
 
   defp package() do
@@ -92,7 +150,7 @@ defmodule TfliteElixir.MixProject do
       files:
         ~w(lib c_src 3rd_party priv scripts CMakeLists.txt Makefile .gitmodules .formatter.exs mix.exs README* LICENSE*),
       licenses: ["Apache-2.0"],
-      links: %{"GitHub" => "https://github.com/cocoa-xu/tflite_elixir"}
+      links: %{"GitHub" => @github_url}
     ]
   end
 
@@ -166,31 +224,36 @@ defmodule TfliteElixir.MixProject do
           {filename, runtime_url, unzip_to}
     end
 
-    download_zip_file(filename, runtime_url, unzip_to)
+    download_archived_file(filename, runtime_url, unzip_to, :zip)
   end
 
-  defp download_zip_file(filename, url, unzip_to) do
-    if !File.exists?(unzip_to) do
-      File.mkdir_p!(unzip_to)
+  defp download_archived_file(filename, url, unarchive_to, type) do
+    if !File.exists?(unarchive_to) do
+      File.mkdir_p!(unarchive_to)
+    end
 
-      cache_location = Path.join([cache_dir(), filename])
+    cache_location = Path.join([cache_dir(), filename])
 
-      if !File.exists?(cache_location) do
-        :ssl.start()
-        :inets.start()
-        :ok = download!(url, cache_location)
-      end
+    if !File.exists?(cache_location) do
+      :ssl.start()
+      :inets.start()
+      :ok = download!(url, cache_location)
+    end
 
-      with {:ok, _} <-
-             :zip.unzip(String.to_charlist(cache_location), [
-               {:cwd, String.to_charlist(unzip_to)}
-             ]) do
-        :ok
-      else
-        _ -> {:error, "failed to unzip file #{filename}"}
-      end
-    else
+    case type do
+      :zip -> unzip_file(cache_location, unarchive_to)
+      _ -> :ok
+    end
+  end
+
+  defp unzip_file(filepath, unzip_to) do
+    with {:ok, _} <-
+           :zip.unzip(String.to_charlist(filepath), [
+             {:cwd, String.to_charlist(unzip_to)}
+           ]) do
       :ok
+    else
+      _ -> {:error, "failed to unzip file #{filepath}"}
     end
   end
 

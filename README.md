@@ -1,17 +1,38 @@
-# TFLite-Elixir [WIP]
+# TFLite-Elixir
 
-There are mainly two reasons why I write this library.
-
-1. `Port` has limited throughput.
-2. It would be easier and more flexible to make changes in Elixir if we have all the basic building blocks (i.e., functions)
-from TensorFlow Lite available in Elixir.
+TensorFlow Lite-Elixir binding with TPU support.
 
 [![Coverage Status](https://coveralls.io/repos/github/cocoa-xu/tflite_elixir/badge.svg?branch=main)](https://coveralls.io/github/cocoa-xu/tflite_elixir?branch=main)
 
-| OS               | arch    | Build Status |
-|------------------|---------|--------------|
-| Ubuntu 20.04     | x86_64  | [![CI](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-x86_64.yml/badge.svg)](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-x86_64.yml) |
-| macOS 11 Big Sur | x86_64  | [![CI](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/macos-x86_64.yml/badge.svg)](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/macos-x86_64.yml) |
+| OS               | arch    | Build Status | Has Precompiled Library |
+|------------------|---------|--------------|-------------------------|
+| Ubuntu 20.04     | x86_64  | [![CI](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-x86_64.yml/badge.svg)](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-x86_64.yml) | Yes |
+| Ubuntu 20.04     | arm64   | [![CI](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-precompiled.yml/badge.svg)](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-precompiled.yml) | Yes |
+| Ubuntu 20.04     | armv7l  | [![CI](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-precompiled.yml/badge.svg)](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-precompiled.yml) | Yes |
+| Ubuntu 20.04     | riscv64 | [![CI](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-precompiled.yml/badge.svg)](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/linux-precompiled.yml) | Yes |
+| macOS 11 Big Sur | x86_64  | [![CI](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/macos-x86_64.yml/badge.svg)](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/macos-x86_64.yml) | Yes |
+
+## Nerves Support
+1. Make sure `nerves_system_br` >= v1.20.2, otherwise, xnnpack (or one of its dependency) will fail to compile because 
+`CMAKE_SYSTEM_PROCESSOR` is not set before v1.20.2. 
+
+2. Prefer precompiled?
+```shell
+# if you'd like to compile everything
+# please set env var TFLITE_ELIXIR_PREFER_PRECOMPILED to NO
+export TFLITE_ELIXIR_PREFER_PRECOMPILED=NO
+# otherwise this library will download precompiled binaries
+```
+
+3. Set correct CPU architecture for libedgetpu if prefer precompiled binaries
+```shell
+# aarch64 for rpi4
+export TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES=aarch64
+# other values including
+- armv7a
+- riscv64
+- x86_64
+```
 
 ## Demo
 ### Mix Task Demo
@@ -121,7 +142,7 @@ output_data = TFLite.Interpreter.output_tensor!(interpreter, 0)
 # if you have :nx
 # get predicted label
 output_data
-|> Nx.from_binary({:u, 8})
+|> Nx.from_binary(:u8)
 |> Nx.argmax()
 |> Nx.to_scalar()
 |> then(&Enum.at(labels, &1))

@@ -12,7 +12,8 @@ on:
       - 'nerves/**'
       - '.github/FUNDING.yml'
       - '.github/workflows/nerves-*'
-      - '.github/workflows/linux-x86_64.yml'
+      - '.github/workflows/linux-*.yml'
+      - '.github/workflows/macos-precompiled.yml'
       - '.github/workflows/test-*.yml'
   workflow_dispatch:
 
