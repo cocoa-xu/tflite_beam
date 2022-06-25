@@ -75,7 +75,7 @@ jobs:
           echo "CXX: ${CXX}"
           mix deps.get
           mix compile
-          export PKG_NAME=tflite_elixir-linux-${{ matrix.pair.arch_name }}-0.1.0
+          export PKG_NAME=tflite_elixir-linux-${{ matrix.pair.arch_name }}-${GITHUB_REF##*/}
           mkdir -p "${PKG_NAME}"
           cp -a _build/dev/lib/tflite_elixir/priv "${PKG_NAME}"
           zip -r -9 -y "${PKG_NAME}.zip" "${PKG_NAME}"
@@ -85,6 +85,6 @@ jobs:
           mv "${PKG_NAME}.zip" artifacts
 
       - uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          tag_name: 0.1.0
-          files: artifacts/*.zip
+          files: artifacts/tflite_elixir-linux-*.zip

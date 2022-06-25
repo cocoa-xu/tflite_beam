@@ -104,11 +104,11 @@ defmodule TfliteElixir.MixProject do
           else
             lib
           end
-        filename = "tflite_elixir-linux-#{lib}-#{@version}"
-        {true, "#{@github_url}/releases/download/#{@version}/#{filename}.tar.gz", filename}
+        filename = "tflite_elixir-linux-#{lib}-v#{@version}"
+        {true, "#{@github_url}/releases/download/v#{@version}/#{filename}.tar.gz", filename}
       lib when lib in ["darwin_arm64", "darwin_x86_64"] ->
-        filename = "tflite_elixir-macos-#{lib}-#{@version}"
-        {true, "#{@github_url}/releases/download/#{@version}/#{filename}.tar.gz", filename}
+        filename = "tflite_elixir-macos-#{lib}-v#{@version}"
+        {true, "#{@github_url}/releases/download/v#{@version}/#{filename}.tar.gz", filename}
       _ ->
         {false, nil, nil}
     end
