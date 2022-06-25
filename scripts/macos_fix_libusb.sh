@@ -8,6 +8,13 @@ case "$(uname -s)" in
     if [ "${LIBUSB_IN_LIBEDGETPU}" != "${LIBUSB}" ]; then
       install_name_tool -change "${LIBUSB_IN_LIBEDGETPU}" "${LIBUSB}" "${LIBEDGETPU_FILE}"
     fi
+
+    LIBEDGETPU_DIR="$(dirname "${LIBEDGETPU_FILE}")"
+    cd "${LIBEDGETPU_DIR}"
+    if [ ! -L "libusb-1.0.0.dylib" ]; then
+      rm -f "libusb-1.0.0.dylib"
+      ln -s "lib/libusb-1.0.0.dylib" "libusb-1.0.0.dylib"
+    fi
     ;;
   *)
     ;;

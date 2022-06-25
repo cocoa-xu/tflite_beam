@@ -135,5 +135,6 @@ $(NATIVE_BINDINGS_SO): unarchive_source_code install_libedgetpu_runtime
 		fi \
 	fi
 	@ if [ "$(TFLITE_ELIXIR_CORAL_SUPPORT)" = "YES" ]; then \
+		bash scripts/macos_fix_libusb.sh "$(PRIV_DIR)/libedgetpu/libedgetpu.1.0.dylib" ; \
 		bash $(SCRIPTS_DIR)/postbuild_fix_libedgetpu.sh "$(NATIVE_BINDINGS_SO)" ; \
 	fi
