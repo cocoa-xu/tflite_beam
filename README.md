@@ -19,18 +19,23 @@ TensorFlow Lite-Elixir binding with TPU support.
 
 2. If prefer precompiled binaries
 ```shell
-# if you'd like to compile everything
-# please set env var TFLITE_ELIXIR_PREFER_PRECOMPILED to NO
-# otherwise this library will download precompiled binaries
-export TFLITE_ELIXIR_PREFER_PRECOMPILED=NO
-
-# Then set correct CPU architecture for libedgetpu if prefer precompiled binaries
+# for example
+export MIX_TARGET=rpi4
+# set correct CPU architecture for libedgetpu if prefer precompiled binaries
 # e.g., aarch64 for rpi4
 export TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES=aarch64
 # other values including
 # armv7a
 # riscv64
 # x86_64
+```
+
+3. If not prefer precompiled binaries
+```shell
+# for example
+export MIX_TARGET=rpi4
+# then set env var TFLITE_ELIXIR_PREFER_PRECOMPILED to NO
+export TFLITE_ELIXIR_PREFER_PRECOMPILED="NO"
 ```
 
 ## Demo
