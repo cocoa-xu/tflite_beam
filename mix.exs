@@ -59,9 +59,11 @@ defmodule TfliteElixir.MixProject do
 
     enable_coral_support =
       System.get_env("TFLITE_ELIXIR_CORAL_SUPPORT", @enable_coral_support_by_default)
+    System.put_env("TFLITE_ELIXIR_CORAL_SUPPORT", enable_coral_support)
 
     edgetpu_libraries =
       System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", @default_edgetpu_libraries)
+    System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", edgetpu_libraries)
 
     {precompiled_available, url, filename} =
       has_precompiled_binaries(tflite_version, enable_coral_support, edgetpu_libraries)
