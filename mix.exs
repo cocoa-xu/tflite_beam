@@ -6,7 +6,7 @@ defmodule TfliteElixir.MixProject do
   @version "0.1.0"
   @tflite_version "2.9.1"
   @prefer_precompiled "YES"
-  @github_url "https://github.com/cocox-xu/tflite_elixir"
+  @github_url "https://github.com/cocoa-xu/tflite_elixir"
   # only means compatible. need to write more tests
   @compatible_tflite_versions [
     "2.7.0",
