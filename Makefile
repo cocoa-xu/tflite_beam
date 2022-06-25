@@ -129,7 +129,7 @@ $(NATIVE_BINDINGS_SO): unarchive_source_code install_libedgetpu_runtime
 				&& cp "$(CMAKE_BINDINGS_BUILD_DIR)/tflite_elixir.so" "$(NATIVE_BINDINGS_SO)" ; \
 		fi ; \
 		if [ "$(TFLITE_ELIXIR_CORAL_SUPPORT)" = "YES" ]; then \
-			bash $(SCRIPTS_DIR)/scripts/postbuild_fix_libedgetpu.sh "$(NATIVE_BINDINGS_SO)" ; \
+			bash $(SCRIPTS_DIR)/postbuild_fix_libedgetpu.sh "$(NATIVE_BINDINGS_SO)" ; \
 		fi ; \
 	else \
 		cp -a "$(TFLITE_ELIXIR_ONLY_COPY_PRIV)" "$(PRIV_DIR)" ; \
