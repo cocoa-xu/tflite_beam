@@ -65,7 +65,8 @@ defmodule TfliteElixir.MixProject do
     if precompiled_available do
       unarchive_to = Path.join([cache_dir(), "precompiled", filename])
       with :ok <- download_precompiled(filename, url, unarchive_to) do
-        {:ok, [:elixir_make]}
+        System.put_env("TFLITE_ELIXIR_ONLY_COPY_PRIV", Path.join([unarchive_to, filename, "priv"]))
+        {:ok, [:elixir_make] ++Mix.compilers()}
       else
         _ ->
           use_precompiled("NO")
