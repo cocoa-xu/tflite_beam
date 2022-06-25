@@ -17,22 +17,20 @@ TensorFlow Lite-Elixir binding with TPU support.
 1. Make sure `nerves_system_br` >= v1.20.2, otherwise, xnnpack (or one of its dependency) will fail to compile because 
 `CMAKE_SYSTEM_PROCESSOR` is not set before v1.20.2. 
 
-2. Prefer precompiled?
+2. If prefer precompiled binaries
 ```shell
 # if you'd like to compile everything
 # please set env var TFLITE_ELIXIR_PREFER_PRECOMPILED to NO
-export TFLITE_ELIXIR_PREFER_PRECOMPILED=NO
 # otherwise this library will download precompiled binaries
-```
+export TFLITE_ELIXIR_PREFER_PRECOMPILED=NO
 
-3. Set correct CPU architecture for libedgetpu if prefer precompiled binaries
-```shell
-# aarch64 for rpi4
+# Then set correct CPU architecture for libedgetpu if prefer precompiled binaries
+# e.g., aarch64 for rpi4
 export TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES=aarch64
 # other values including
-- armv7a
-- riscv64
-- x86_64
+# armv7a
+# riscv64
+# x86_64
 ```
 
 ## Demo
