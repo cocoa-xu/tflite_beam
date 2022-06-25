@@ -78,7 +78,6 @@ install_libedgetpu_runtime: libedgetpu_dependency_libusb
    		if [ "$(TFLITE_ELIXIR_CORAL_SUPPORT)" = "YES" ]; then \
 			bash scripts/copy_libedgetpu_runtime.sh "$(LIBEDGETPU_RUNTIME_PRIV)" "$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR)" "$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES)" "$(TFLITE_ELIXIR_CORAL_USB_THROTTLE)"; \
 			bash scripts/macos_fix_libusb.sh "$(PRIV_DIR)/libedgetpu/libedgetpu.1.0.dylib" ; \
-			bash scripts/linux_fix_edgetpu_version.sh "$(PRIV_DIR)/libedgetpu" ; \
 			git submodule update --init c_src/libcoral ; \
 			cd c_src/libcoral && git submodule update --init libedgetpu && cd ../.. ; \
 		fi \
