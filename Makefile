@@ -30,6 +30,7 @@ CMAKE_TFLITE_BUILD_DIR = $(MIX_APP_PATH)/cmake_tflite_$(TFLITE_VER)
 
 TFLITE_ELIXIR_CORAL_USB_THROTTLE ?= "YES"
 TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES ?= "native"
+TFLITE_ELIXIR_CORAL_LIBEDGETPU_TRIPLET ?= ""
 TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR = $(TFLITE_ELIXIR_CACHE_DIR)/$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME)
 
 CMAKE_TFLITE_OPTIONS ?= ""
@@ -76,7 +77,7 @@ unarchive_source_code: $(TFLITE_SOURCE_ZIP)
 install_libedgetpu_runtime: libedgetpu_dependency_libusb
 	@ if [ "$(TFLITE_ELIXIR_ONLY_COPY_PRIV)" = "NO" ]; then \
    		if [ "$(TFLITE_ELIXIR_CORAL_SUPPORT)" = "YES" ]; then \
-			bash scripts/copy_libedgetpu_runtime.sh "$(LIBEDGETPU_RUNTIME_PRIV)" "$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR)" "$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES)" "$(TFLITE_ELIXIR_CORAL_USB_THROTTLE)"; \
+			bash scripts/copy_libedgetpu_runtime.sh "$(LIBEDGETPU_RUNTIME_PRIV)" "$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR)" "$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_TRIPLET)" "$(TFLITE_ELIXIR_CORAL_USB_THROTTLE)"; \
 			bash scripts/macos_fix_libusb.sh "$(PRIV_DIR)/libedgetpu/libedgetpu.1.0.dylib" ; \
 			bash scripts/linux_fix_edgetpu_version.sh "$(PRIV_DIR)/libedgetpu" ; \
 			git submodule update --init c_src/libcoral ; \
@@ -120,7 +121,6 @@ $(NATIVE_BINDINGS_SO): unarchive_source_code install_libedgetpu_runtime
 			  -D GLOG_ROOT_DIR="$(GLOG_ROOT_DIR)" \
 			  -D TFLITE_ELIXIR_CACHE_DIR="$(TFLITE_ELIXIR_CACHE_DIR)" \
 			  -D TFLITE_ELIXIR_CORAL_SUPPORT="$(TFLITE_ELIXIR_CORAL_SUPPORT)" \
-			  -D TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME="$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME)" \
 			  $(CMAKE_OPTIONS) \
 			  "$(shell pwd)" ; \
 			{ mkdir -p $(PRIV_DIR) && \

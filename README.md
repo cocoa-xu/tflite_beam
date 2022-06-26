@@ -188,9 +188,6 @@ For some Linux OSes you need to manually execute the following command to update
 fail to initialize Coral devices.
 
 ```shell
-# possible values for these env vars are listed in the next section
-export TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME=edgetpu_runtime_20220624
-
 mix deps.get
 bash "3rd_party/cache/${TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME}/edgetpu_runtime/install.sh"
 ```

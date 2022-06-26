@@ -7,6 +7,7 @@ defmodule TfliteElixir.MixProject do
   @tflite_version "2.9.1"
   @prefer_precompiled "YES"
   @github_url "https://github.com/cocoa-xu/tflite_elixir"
+  @libedgetpu_runtime_github_url "https://github.com/cocoa-xu/libedgetpu"
   # only means compatible. need to write more tests
   @compatible_tflite_versions [
     "2.7.0",
@@ -39,7 +40,6 @@ defmodule TfliteElixir.MixProject do
   }
 
   # coral related
-  @default_edgetpu_runtime "edgetpu_runtime_20220624"
   @default_edgetpu_libraries "native"
   @enable_coral_support_by_default "YES"
 
@@ -117,18 +117,62 @@ defmodule TfliteElixir.MixProject do
     System.put_env("TFLITE_ELIXIR_CORAL_SUPPORT", enable_coral_support)
 
     if enable_coral_support == "YES" do
-      edgetpu_runtime =
-        System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME", @default_edgetpu_runtime)
-
       edgetpu_libraries =
         System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", @default_edgetpu_libraries)
 
-      :ok = download_edgetpu_runtime(edgetpu_runtime, edgetpu_libraries)
-      System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME", edgetpu_runtime)
-      System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", edgetpu_libraries)
+      {:ok, filename, triplet} = download_edgetpu_runtime(edgetpu_libraries)
+      System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_TRIPLET", triplet)
+      System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME", filename)
     end
 
     {:ok, [:elixir_make, :elixir_precompiled_deployer] ++ Mix.compilers()}
+  end
+
+  defp get_triplet(edgetpu_libraries) do
+    edgetpu_libraries =
+      if edgetpu_libraries == "native" do
+        case :os.type() do
+          {:unix, :darwin} ->
+            {machine, 0} = System.cmd("uname", ["-m"])
+            [machine | _] = String.split(machine, "\n")
+            "darwin_#{machine}"
+
+          {:unix, _} ->
+            {machine, 0} = System.cmd("uname", ["-m"])
+            [machine | _] = String.split(machine, "\n")
+
+            case machine do
+              "armv7" <> _ ->
+                "armv7a"
+
+              _ ->
+                machine
+            end
+
+          {:win32, :nt} ->
+            "x64_windows"
+
+          _ ->
+            nil
+        end
+      end
+
+    case edgetpu_libraries do
+      lib when lib in ["k8", "x86_64", "aarch64", "armv7a", "riscv64"] ->
+        lib =
+          if lib == "k8" do
+            "x86_64"
+          else
+            lib
+          end
+        get_triplet_if_possible(lib)
+
+      lib when lib in ["darwin_arm64", "darwin_x86_64"] ->
+        get_triplet_if_possible(lib)
+
+      _ ->
+        {:error, edgetpu_libraries, []}
+    end
   end
 
   defp get_triplet_if_possible(requested_arch) when requested_arch in ["darwin_arm64", "darwin_x86_64"] do
@@ -171,69 +215,18 @@ defmodule TfliteElixir.MixProject do
          _enable_coral_support = "YES",
          edgetpu_libraries
        ) do
-    edgetpu_libraries =
-      if edgetpu_libraries == "native" do
-        case :os.type() do
-          {:unix, :darwin} ->
-            {machine, 0} = System.cmd("uname", ["-m"])
-            [machine | _] = String.split(machine, "\n")
-            "darwin_#{machine}"
-
-          {:unix, _} ->
-            {machine, 0} = System.cmd("uname", ["-m"])
-            [machine | _] = String.split(machine, "\n")
-
-            case machine do
-              "armv7" <> _ ->
-                "armv7a"
-
-              _ ->
-                machine
-            end
-
-          {:win32, :nt} ->
-            "x64_windows"
-
-          _ ->
-            nil
-        end
-      end
-
-    case edgetpu_libraries do
-      lib when lib in ["k8", "x86_64", "aarch64", "armv7a", "riscv64"] ->
-        lib =
-          if lib == "k8" do
-            "x86_64"
-          else
-            lib
-          end
-
-        with {:ok, triplet} <- get_triplet_if_possible(lib) do
-          filename = "tflite_elixir-#{triplet}-v#{@version}"
-          {true, "#{@github_url}/releases/download/v#{@version}/#{filename}.zip", filename}
-        else
-          {:error, requested_triplet, _available_precompiled_triplets} ->
-            Logger.warn("No precompiled binaries for #{requested_triplet}, will try to build from source.")
-            {false, nil, nil}
-        end
-
-      lib when lib in ["darwin_arm64", "darwin_x86_64"] ->
-        with {:ok, triplet} <- get_triplet_if_possible(lib) do
-          filename = "tflite_elixir-#{triplet}-v#{@version}"
-          {true, "#{@github_url}/releases/download/v#{@version}/#{filename}.zip", filename}
-        else
-          {:error, requested_triplet, _available_precompiled_triplets} ->
-            Logger.warn("No precompiled binaries for #{requested_triplet}, will try to build from source.")
-            {false, nil, nil}
-        end
-
-      _ ->
+    with {:ok, triplet} <- get_triplet(edgetpu_libraries) do
+      filename = "tflite_elixir-#{triplet}-v#{@version}"
+      {true, "#{@github_url}/releases/download/v#{@version}/#{filename}.zip", filename}
+    else
+      {:error, requested_triplet, _available_precompiled_triplets} ->
+        Logger.warn("No precompiled binaries for #{requested_triplet}, will try to build from source.")
         {false, nil, nil}
     end
   end
 
   defp has_precompiled_binaries(_tflite_version, _enable_coral_support, _edgetpu_libraries) do
-    false
+    {false, nil, nil}
   end
 
   defp download_precompiled(filename, url, unarchive_to) do
@@ -294,74 +287,18 @@ defmodule TfliteElixir.MixProject do
     System.get_env("TFLITE_ELIXIR_CACHE_DIR", "./3rd_party/cache")
   end
 
-  defp download_edgetpu_runtime(runtime, edgetpu_libraries) do
-    {filename, runtime_url, unzip_to} =
-      case edgetpu_libraries do
-        "native" ->
-          case :os.type() do
-            {:unix, :darwin} ->
-              macos_runtime = "#{runtime}_macos"
-              filename = "#{macos_runtime}.zip"
-
-              runtime_url =
-                "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
-
-              unzip_to = Path.join([cache_dir(), macos_runtime])
-              {filename, runtime_url, unzip_to}
-
-            {:unix, _} ->
-              linux_runtime = "#{runtime}_linux"
-              filename = "#{linux_runtime}.zip"
-
-              runtime_url =
-                "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
-
-              unzip_to = Path.join([cache_dir(), linux_runtime])
-              {filename, runtime_url, unzip_to}
-
-            {:win32, :nt} ->
-              windows_runtime = "#{runtime}_windows"
-              filename = "#{windows_runtime}.zip"
-
-              runtime_url =
-                "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
-
-              unzip_to = Path.join([cache_dir(), windows_runtime])
-              {filename, runtime_url, unzip_to}
-          end
-
-        "x64_windows" ->
-          windows_runtime = "#{runtime}_windows"
-          filename = "#{windows_runtime}.zip"
-
-          runtime_url =
-            "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
-
-          unzip_to = Path.join([cache_dir(), windows_runtime])
-          {filename, runtime_url, unzip_to}
-
-        lib when lib in ["darwin_arm64", "darwin_x86_64"] ->
-          macos_runtime = "#{runtime}_macos"
-          filename = "#{macos_runtime}.zip"
-
-          runtime_url =
-            "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
-
-          unzip_to = Path.join([cache_dir(), macos_runtime])
-          {filename, runtime_url, unzip_to}
-
-        lib when lib in ["k8", "x86_64", "aarch64", "armv7a", "riscv64", "s390x", "ppc64el"] ->
-          linux_runtime = "#{runtime}_linux"
-          filename = "#{linux_runtime}.zip"
-
-          runtime_url =
-            "https://github.com/cocoa-xu/libedgetpu/releases/download/grouper/#{filename}"
-
-          unzip_to = Path.join([cache_dir(), linux_runtime])
-          {filename, runtime_url, unzip_to}
-      end
-
-    download_archived_file(filename, runtime_url, unzip_to, :zip)
+  defp download_edgetpu_runtime(edgetpu_libraries) do
+    with {:ok, triplet} <- get_triplet(edgetpu_libraries) do
+      filename = "edgetpu_runtime_#{triplet}_v#{@version}"
+      runtime_url = "#{@libedgetpu_runtime_github_url}/releases/download/v#{@version}/#{filename}.zip"
+      unzip_to = Path.join([cache_dir(), filename])
+      {download_archived_file("#{filename}.zip", runtime_url, unzip_to, :zip), filename, triplet}
+    else
+      {:error, requested_triplet, _available_precompiled_triplets} ->
+        msg = "No precompiled libedgetpu runtime binaries for #{requested_triplet}."
+        Logger.fatal(msg)
+        {:error, msg}
+    end
   end
 
   defp download_archived_file(filename, url, unarchive_to, type) do
