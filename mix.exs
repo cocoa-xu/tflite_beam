@@ -296,7 +296,7 @@ defmodule TfliteElixir.MixProject do
     else
       {:error, requested_triplet, _available_precompiled_triplets} ->
         msg = "No precompiled libedgetpu runtime binaries for #{requested_triplet}."
-        Logger.fatal(msg)
+        Logger.warn(msg)
         {:error, msg}
     end
   end
