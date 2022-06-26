@@ -20,6 +20,24 @@ defmodule TfliteElixir.MixProject do
     "2.9.1"
   ]
 
+  @precompiled_triplets %{
+    "x86_64": [
+      "x86_64-linux-gnu"
+    ],
+    "k8": [
+      "x86_64-linux-gnu"
+    ],
+    "aarch64": [
+      "aarch64-linux-gnu"
+    ],
+    "armv7a": [
+      "armv7l-linux-gnueabihf"
+    ],
+    "riscv64": [
+      "riscv64-linux-gnu"
+    ]
+  }
+
   # coral related
   @default_edgetpu_runtime "edgetpu_runtime_20220624"
   @default_edgetpu_libraries "native"
@@ -108,6 +126,41 @@ defmodule TfliteElixir.MixProject do
     {:ok, [:elixir_make, :elixir_precompiled_deployer] ++ Mix.compilers()}
   end
 
+  defp get_triplet_if_possible(requested_arch) when requested_arch in ["darwin_arm64", "darwin_x86_64"] do
+    requested_os = System.get_env("TARGET_OS", "apple")
+    requested_abi = System.get_env("TARGET_ABI", "darwin")
+    requested_triplet = "#{requested_arch}-#{requested_os}-#{requested_abi}"
+    case requested_arch do
+      "darwin_arm64" -> {:ok, "arm64-apple-darwin"}
+      "darwin_x86_64" -> {:ok, "x86_64-apple-darwin"}
+      _ -> {:error, requested_triplet, ["arm64-apple-darwin", "x86_64-apple-darwin"]}
+    end
+  end
+
+  defp get_triplet_if_possible(requested_arch) when requested_arch in ["k8", "x86_64", "aarch64", "riscv64"] do
+    requested_os = System.get_env("TARGET_OS", "linux")
+    requested_abi = System.get_env("TARGET_ABI", "gnu")
+    requested_triplet = "#{requested_arch}-#{requested_os}-#{requested_abi}"
+    available_precompiled_binaries = Map.get(@precompiled_triplets, requested_arch, [])
+    if requested_triplet in available_precompiled_binaries do
+      {:ok, requested_triplet}
+    else
+      {:error, requested_triplet, available_precompiled_binaries}
+    end
+  end
+
+  defp get_triplet_if_possible(requested_arch) when requested_arch in ["armv7a"] do
+    requested_os = System.get_env("TARGET_OS", "linux")
+    requested_abi = System.get_env("TARGET_ABI", "gnueabihf")
+    requested_triplet = "#{requested_arch}-#{requested_os}-#{requested_abi}"
+    available_precompiled_binaries = Map.get(@precompiled_triplets, requested_arch, [])
+    if requested_triplet in available_precompiled_binaries do
+      {:ok, requested_triplet}
+    else
+      {:error, requested_triplet, available_precompiled_binaries}
+    end
+  end
+
   defp has_precompiled_binaries(
          _tflite_version = @tflite_version,
          _enable_coral_support = "YES",
@@ -150,17 +203,24 @@ defmodule TfliteElixir.MixProject do
             lib
           end
 
-        filename = "tflite_elixir-linux-#{lib}-v#{@version}"
-        {true, "#{@github_url}/releases/download/v#{@version}/#{filename}.zip", filename}
+        with {:ok, triplet} <- get_triplet_if_possible(lib) do
+          filename = "tflite_elixir-#{lib}-v#{@version}"
+          {true, "#{@github_url}/releases/download/v#{@version}/#{filename}.zip", filename}
+        else
+          {:error, requested_triplet, _available_precompiled_triplets} ->
+            Logger.warn("No precompiled binaries for #{requested_triplet}, will try to build from source.")
+            {false, nil, nil}
+        end
 
       lib when lib in ["darwin_arm64", "darwin_x86_64"] ->
-        filename =
-          case lib do
-            "darwin_arm64" -> "tflite_elixir-macos-arm64-v#{@version}"
-            "darwin_x86_64" -> "tflite_elixir-macos-x86_64-v#{@version}"
-          end
-
-        {true, "#{@github_url}/releases/download/v#{@version}/#{filename}.zip", filename}
+        with {:ok, triplet} <- get_triplet_if_possible(lib) do
+          filename = "tflite_elixir-#{lib}-v#{@version}"
+          {true, "#{@github_url}/releases/download/v#{@version}/#{filename}.zip", filename}
+        else
+          {:error, requested_triplet, _available_precompiled_triplets} ->
+            Logger.warn("No precompiled binaries for #{requested_triplet}, will try to build from source.")
+            {false, nil, nil}
+        end
 
       _ ->
         {false, nil, nil}

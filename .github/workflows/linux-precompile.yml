@@ -93,7 +93,7 @@ jobs:
 
           mix deps.get
           mix compile
-          export PKG_NAME=tflite_elixir-linux-${{ matrix.pair.arch_name }}-${{ matrix.pair.target_os }}-${{ matrix.pair.target_abi }}-${GITHUB_REF##*/}
+          export PKG_NAME=tflite_elixir-${{ matrix.pair.arch_name }}-${{ matrix.pair.target_os }}-${{ matrix.pair.target_abi }}-${GITHUB_REF##*/}
           mkdir -p "${PKG_NAME}"
           cp -a _build/dev/lib/tflite_elixir/priv "${PKG_NAME}"
           zip -r -9 -y "${PKG_NAME}.zip" "${PKG_NAME}"
