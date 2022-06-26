@@ -209,8 +209,8 @@ defmodule TfliteElixir.MixProject do
   defp get_triplet_if_possible(requested_arch) when requested_arch in ["arm", "armv7a"] do
     requested_os = System.get_env("TARGET_OS", "linux")
     requested_abi = System.get_env("TARGET_ABI", "gnueabihf")
-    requested_triplet = "armv7a-#{requested_os}-#{requested_abi}"
-    available_precompiled_binaries = Map.get(@precompiled_triplets, "armv7a", [])
+    requested_triplet = "armv7l-#{requested_os}-#{requested_abi}"
+    available_precompiled_binaries = Map.get(@precompiled_triplets, "armv7l", [])
     if requested_triplet in available_precompiled_binaries do
       {:ok, requested_triplet}
     else
