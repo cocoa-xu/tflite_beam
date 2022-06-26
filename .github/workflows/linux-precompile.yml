@@ -68,6 +68,7 @@ jobs:
 
       - name: Create precompiled library
         run: |
+          export TFLITE_ELIXIR_PREFER_PRECOMPILED="NO"
           if [ "${{ matrix.pair.cmake_toolchain_file }}" != "" ]; then
             export CMAKE_TOOLCHAIN_FILE="$(pwd)/${{ matrix.pair.cmake_toolchain_file }}"
             export CC="${{ matrix.pair.cc }}"

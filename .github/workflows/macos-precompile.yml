@@ -36,6 +36,7 @@ jobs:
 
       - name: Create precompiled library
         run: |
+          export TFLITE_ELIXIR_PREFER_PRECOMPILED="NO"
           if [ "${{ matrix.pair.arch }}" = "arm64" ]; then
             export TARGET_ARCH="${{ matrix.pair.arch }}"
             export TARGET_OS="apple"
