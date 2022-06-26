@@ -31,13 +31,19 @@ Some livebook examples can be found in the [examples](examples) directory.
 ```shell
 # for example
 export MIX_TARGET=rpi4
-# set correct CPU architecture for libedgetpu if prefer precompiled binaries
-# e.g., aarch64 for rpi4
+
+# There is no need to explicitly set CPU architecture 
+#   for the precompiled libedgetpu binaries. The arch
+#   is automatically detected by the `TARGET_ARCH`,
+#   `TARGET_OS` and `TARGET_ABI` environment vars.
+# However, if you are using your own nerves target
+#   you can manually set the correct arch, e.g., 
+#   set `aarch64` for rpi4.
+# Other values including
+# - armv7a
+# - riscv64
+# - x86_64
 export TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES=aarch64
-# other values including
-# armv7a
-# riscv64
-# x86_64
 ```
 
 3. If not prefer precompiled binaries
