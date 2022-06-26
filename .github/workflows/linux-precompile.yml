@@ -4,7 +4,8 @@ on:
   push:
     tags:
       - 'v*'
-      - 'linux-release-test'
+      - 'precompile-test'
+      - 'precompile-test-macos'
 
 jobs:
   mix_test:
