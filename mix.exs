@@ -34,6 +34,9 @@ defmodule TfliteElixir.MixProject do
     "armv7a" => [
       "armv7l-linux-gnueabihf"
     ],
+    "armv7l" => [
+      "armv7l-linux-gnueabihf"
+    ],
     "arm" => [
       "armv7l-linux-gnueabihf"
     ],
