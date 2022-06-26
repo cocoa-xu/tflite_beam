@@ -47,10 +47,8 @@ jobs:
             export CPPFLAGS="-arch arm64"
             export CMAKE_TFLITE_OPTIONS="-DCMAKE_OSX_ARCHITECTURES=arm64"
           fi
-          export TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES="${{ matrix.pair.libedgetpu_library }}"
           export TFLITE_ELIXIR_PREFER_PRECOMPILED="NO"
 
-          echo "TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES: ${TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES}"
           echo "TFLITE_ELIXIR_PREFER_PRECOMPILED: ${TFLITE_ELIXIR_PREFER_PRECOMPILED}"
           echo "TARGET_ARCH: ${TARGET_ARCH}"
           echo "TARGET_OS: ${TARGET_OS}"
