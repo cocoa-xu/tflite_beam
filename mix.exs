@@ -120,12 +120,16 @@ defmodule TfliteElixir.MixProject do
       edgetpu_libraries =
         System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", @default_edgetpu_libraries)
 
-      {:ok, filename, triplet} = download_edgetpu_runtime(edgetpu_libraries)
-      System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_TRIPLET", triplet)
-      System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME", filename)
+      with {:ok, filename, triplet} <- download_edgetpu_runtime(edgetpu_libraries) do
+        System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_TRIPLET", triplet)
+        System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME", filename)
+        {:ok, [:elixir_make, :elixir_precompiled_deployer] ++ Mix.compilers()}
+      else
+        {:error, error} ->
+          Logger.warn(error)
+          {:ok, Mix.compilers()}
+      end
     end
-
-    {:ok, [:elixir_make, :elixir_precompiled_deployer] ++ Mix.compilers()}
   end
 
   defp get_triplet(edgetpu_libraries) do
