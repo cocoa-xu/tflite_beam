@@ -135,30 +135,31 @@ defmodule TfliteElixir.MixProject do
   defp get_triplet(edgetpu_libraries) do
     edgetpu_libraries =
       if edgetpu_libraries == "native" do
-        case :os.type() do
-          {:unix, :darwin} ->
-            {machine, 0} = System.cmd("uname", ["-m"])
-            [machine | _] = String.split(machine, "\n")
-            "darwin_#{machine}"
+        native_arch =
+          case :os.type() do
+            {:unix, :darwin} ->
+              {machine, 0} = System.cmd("uname", ["-m"])
+              [machine | _] = String.split(machine, "\n")
+              "darwin_#{machine}"
 
-          {:unix, _} ->
-            {machine, 0} = System.cmd("uname", ["-m"])
-            [machine | _] = String.split(machine, "\n")
+            {:unix, _} ->
+              {machine, 0} = System.cmd("uname", ["-m"])
+              [machine | _] = String.split(machine, "\n")
 
-            case machine do
-              "armv7" <> _ ->
-                "armv7a"
+              case machine do
+                "armv7" <> _ ->
+                  "armv7a"
 
-              _ ->
-                machine
-            end
+                _ ->
+                  machine
+              end
 
-          {:win32, :nt} ->
-            "x64_windows"
-
-          _ ->
-            nil
-        end
+            _ ->
+              nil
+          end
+        System.get_env("TARGET_ARCH", native_arch)
+      else
+        System.get_env("TARGET_ARCH", edgetpu_libraries)
       end
 
     case edgetpu_libraries do

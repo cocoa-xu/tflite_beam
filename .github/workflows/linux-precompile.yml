@@ -80,7 +80,7 @@ jobs:
             export TARGET_OS="${{ matrix.pair.target_os }}"
             export TARGET_ABI="${{ matrix.pair.target_abi }}"
           fi
-          export TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES="${{ matrix.pair.libedgetpu_library }}"
+
           export TFLITE_ELIXIR_PREFER_PRECOMPILED="NO"
 
           echo "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}"
