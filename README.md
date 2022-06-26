@@ -26,6 +26,15 @@ Some livebook examples can be found in the [examples](examples) directory.
 ## Nerves Support
 1. Make sure `nerves_system_br` >= v1.20.2, otherwise, xnnpack (or one of its dependency) will fail to compile because 
 `CMAKE_SYSTEM_PROCESSOR` is not set before v1.20.2. 
+```elixir
+defp deps do
+  [
+    # ...
+    {:nerves_system_br, "~> 1.20.2", runtime: false, override: true},
+    # ...
+  ]
+end
+```
 
 2. If prefer precompiled binaries
 ```shell

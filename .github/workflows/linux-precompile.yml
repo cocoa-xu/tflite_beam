@@ -4,7 +4,8 @@ on:
   push:
     tags:
       - 'v*'
-      - 'linux-release-test'
+      - 'precompile-test'
+      - 'precompile-test-linux'
 
 jobs:
   mix_test:
@@ -71,7 +72,6 @@ jobs:
 
       - name: Create precompiled library
         run: |
-          export TFLITE_ELIXIR_PREFER_PRECOMPILED="NO"
           if [ "${{ matrix.pair.cmake_toolchain_file }}" != "" ]; then
             export CMAKE_TOOLCHAIN_FILE="$(pwd)/${{ matrix.pair.cmake_toolchain_file }}"
             export CC="${{ matrix.pair.cc }}"
@@ -80,7 +80,7 @@ jobs:
             export TARGET_OS="${{ matrix.pair.target_os }}"
             export TARGET_ABI="${{ matrix.pair.target_abi }}"
           fi
-          export TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES="${{ matrix.pair.libedgetpu_library }}"
+
           export TFLITE_ELIXIR_PREFER_PRECOMPILED="NO"
 
           echo "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}"
