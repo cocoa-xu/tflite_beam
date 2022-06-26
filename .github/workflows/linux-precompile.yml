@@ -5,7 +5,7 @@ on:
     tags:
       - 'v*'
       - 'precompile-test'
-      - 'precompile-test-macos'
+      - 'precompile-test-linux'
 
 jobs:
   mix_test:
