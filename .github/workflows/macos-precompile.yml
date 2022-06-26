@@ -55,7 +55,7 @@ jobs:
 
           mix deps.get
           mix compile
-          export PKG_NAME=tflite_elixir-macos-${{ matrix.pair.arch }}-${GITHUB_REF##*/}
+          export PKG_NAME=tflite_elixir-${{ matrix.pair.arch }}-apple-darwin-${GITHUB_REF##*/}
           mkdir -p "${PKG_NAME}"
           cp -a _build/dev/lib/tflite_elixir/priv "${PKG_NAME}"
           zip -r -9 -y "${PKG_NAME}.zip" "${PKG_NAME}"
@@ -67,4 +67,4 @@ jobs:
       - uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/v')
         with:
-          files: artifacts/tflite_elixir-macos-*.zip
+          files: artifacts/tflite_elixir-*.zip
