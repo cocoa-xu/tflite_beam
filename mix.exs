@@ -375,8 +375,8 @@ defmodule TfliteElixir.MixProject do
         body
         File.write!(save_as, body)
 
-      {:error, reason} ->
-        {:error, reason}
+      _ ->
+        {:error, "error"}
     end
   end
 end
