@@ -278,8 +278,9 @@ defmodule TfliteElixir.MixProject do
       name: to_string(@app),
       # These are the default files included in the package
       files:
-        ~w(lib c_src 3rd_party priv scripts CMakeLists.txt Makefile .gitmodules
-        precompiled_deploy.exs .formatter.exs mix.exs README* LICENSE*),
+        ~w(c_src 3rd_party cc_toolchain scripts CMakeLists.txt Makefile .gitmodules
+          lib priv precompiled_deploy.exs .formatter.exs mix.exs
+          README* LICENSE*),
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => @github_url}
     ]
