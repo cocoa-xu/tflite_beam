@@ -21,19 +21,19 @@ defmodule TfliteElixir.MixProject do
   ]
 
   @precompiled_triplets %{
-    "x86_64": [
+    "x86_64" => [
       "x86_64-linux-gnu"
     ],
-    "k8": [
+    "k8" => [
       "x86_64-linux-gnu"
     ],
-    "aarch64": [
+    "aarch64" => [
       "aarch64-linux-gnu"
     ],
-    "armv7a": [
+    "armv7a" => [
       "armv7l-linux-gnueabihf"
     ],
-    "riscv64": [
+    "riscv64" => [
       "riscv64-linux-gnu"
     ]
   }
@@ -209,7 +209,7 @@ defmodule TfliteElixir.MixProject do
           end
 
         with {:ok, triplet} <- get_triplet_if_possible(lib) do
-          filename = "tflite_elixir-#{lib}-v#{@version}"
+          filename = "tflite_elixir-#{triplet}-v#{@version}"
           {true, "#{@github_url}/releases/download/v#{@version}/#{filename}.zip", filename}
         else
           {:error, requested_triplet, _available_precompiled_triplets} ->
@@ -219,7 +219,7 @@ defmodule TfliteElixir.MixProject do
 
       lib when lib in ["darwin_arm64", "darwin_x86_64"] ->
         with {:ok, triplet} <- get_triplet_if_possible(lib) do
-          filename = "tflite_elixir-#{lib}-v#{@version}"
+          filename = "tflite_elixir-#{triplet}-v#{@version}"
           {true, "#{@github_url}/releases/download/v#{@version}/#{filename}.zip", filename}
         else
           {:error, requested_triplet, _available_precompiled_triplets} ->
