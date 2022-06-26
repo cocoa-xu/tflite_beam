@@ -34,6 +34,9 @@ defmodule TfliteElixir.MixProject do
     "armv7a" => [
       "armv7l-linux-gnueabihf"
     ],
+    "arm" => [
+      "armv7l-linux-gnueabihf"
+    ],
     "riscv64" => [
       "riscv64-linux-gnu"
     ]
@@ -163,7 +166,7 @@ defmodule TfliteElixir.MixProject do
       end
 
     case edgetpu_libraries do
-      lib when lib in ["k8", "x86_64", "aarch64", "armv7a", "riscv64"] ->
+      lib when lib in ["k8", "x86_64", "aarch64", "arm", "armv7a", "riscv64"] ->
         lib =
           if lib == "k8" do
             "x86_64"
@@ -203,7 +206,7 @@ defmodule TfliteElixir.MixProject do
     end
   end
 
-  defp get_triplet_if_possible(requested_arch) when requested_arch in ["armv7a"] do
+  defp get_triplet_if_possible(requested_arch) when requested_arch in ["arm", "armv7a"] do
     requested_os = System.get_env("TARGET_OS", "linux")
     requested_abi = System.get_env("TARGET_ABI", "gnueabihf")
     requested_triplet = "#{requested_arch}-#{requested_os}-#{requested_abi}"
