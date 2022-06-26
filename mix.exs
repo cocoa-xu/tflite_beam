@@ -139,14 +139,14 @@ defmodule TfliteElixir.MixProject do
   end
 
   defp get_triplet(edgetpu_libraries) do
-    edgetpu_libraries =
+    {edgetpu_libraries, target_os} =
       if edgetpu_libraries == "native" do
-        native_arch =
+        {native_arch, native_os} =
           case :os.type() do
             {:unix, :darwin} ->
               {machine, 0} = System.cmd("uname", ["-m"])
               [machine | _] = String.split(machine, "\n")
-              "darwin_#{machine}"
+              {"darwin_#{machine}", "apple"}
 
             {:unix, _} ->
               {machine, 0} = System.cmd("uname", ["-m"])
@@ -154,22 +154,22 @@ defmodule TfliteElixir.MixProject do
 
               case machine do
                 "armv7" <> _ ->
-                  "armv7a"
+                  {"armv7a", "linux"}
 
                 _ ->
-                  machine
+                  {machine, "linux"}
               end
 
             _ ->
-              nil
+              {nil, nil}
           end
-        System.get_env("TARGET_ARCH", native_arch)
+        {System.get_env("TARGET_ARCH", native_arch), System.get_env("TARGET_OS", native_os)}
       else
-        System.get_env("TARGET_ARCH", edgetpu_libraries)
+        {System.get_env("TARGET_ARCH", edgetpu_libraries), System.get_env("TARGET_OS", nil)}
       end
 
-    case edgetpu_libraries do
-      lib when lib in ["k8", "x86_64", "aarch64", "arm", "armv7a", "riscv64"] ->
+    case {edgetpu_libraries, target_os} do
+      {lib, "linux"} when lib in ["k8", "x86_64", "aarch64", "arm", "armv7a", "riscv64"] ->
         lib =
           if lib == "k8" do
             "x86_64"
@@ -178,8 +178,15 @@ defmodule TfliteElixir.MixProject do
           end
         get_triplet_if_possible(lib)
 
-      lib when lib in ["darwin_arm64", "darwin_x86_64"] ->
-        get_triplet_if_possible(lib)
+      {lib, "apple"} when lib in ["darwin_arm64", "darwin_x86_64", "arm64", "x86_64"] ->
+        case lib do
+          "arm64" ->
+            get_triplet_if_possible("darwin_arm64")
+          "x86_64" ->
+            get_triplet_if_possible("darwin_x86_64")
+          _ ->
+            get_triplet_if_possible(lib)
+        end
 
       _ ->
         {:error, edgetpu_libraries, []}
@@ -189,7 +196,8 @@ defmodule TfliteElixir.MixProject do
   defp get_triplet_if_possible(requested_arch) when requested_arch in ["darwin_arm64", "darwin_x86_64"] do
     requested_os = System.get_env("TARGET_OS", "apple")
     requested_abi = System.get_env("TARGET_ABI", "darwin")
-    requested_triplet = "#{requested_arch}-#{requested_os}-#{requested_abi}"
+    "darwin_" <> target_arch = requested_arch
+    requested_triplet = "#{target_arch}-#{requested_os}-#{requested_abi}"
     case requested_arch do
       "darwin_arm64" -> {:ok, "arm64-apple-darwin"}
       "darwin_x86_64" -> {:ok, "x86_64-apple-darwin"}
