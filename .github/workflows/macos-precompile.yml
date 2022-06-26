@@ -31,9 +31,11 @@ jobs:
           brew install erlang
           brew install elixir
           brew install autoconf automake
+          export SRC_ROOT="$(pwd)"
           cd ..
           mix local.hex --force
           mix local.rebar --force
+          cd "${SRC_ROOT}"
 
       - name: Create precompiled library
         run: |
