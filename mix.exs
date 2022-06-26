@@ -45,6 +45,11 @@ defmodule TfliteElixir.MixProject do
 
   def project do
     prefer_precompiled = System.get_env("TFLITE_ELIXIR_PREFER_PRECOMPILED", @prefer_precompiled)
+    prefer_precompiled =
+      case prefer_precompiled do
+        "YES" -> true
+        _ -> false
+      end
     {:ok, compilers} = use_precompiled(prefer_precompiled)
 
     [
@@ -72,7 +77,7 @@ defmodule TfliteElixir.MixProject do
     ]
   end
 
-  defp use_precompiled("YES") do
+  defp use_precompiled(true) do
     tflite_version = System.get_env("TFLITE_VER", @tflite_version)
 
     enable_coral_support =
@@ -98,14 +103,14 @@ defmodule TfliteElixir.MixProject do
         {:ok, [:elixir_precompiled_deployer] ++ Mix.compilers()}
       else
         _ ->
-          use_precompiled("NO")
+          use_precompiled(false)
       end
     else
-      use_precompiled("NO")
+      use_precompiled(false)
     end
   end
 
-  defp use_precompiled("NO") do
+  defp use_precompiled(false) do
     enable_coral_support =
       System.get_env("TFLITE_ELIXIR_CORAL_SUPPORT", @enable_coral_support_by_default)
 
