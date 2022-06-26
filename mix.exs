@@ -327,15 +327,20 @@ defmodule TfliteElixir.MixProject do
 
     cache_location = Path.join([cache_dir(), filename])
 
-    if !File.exists?(cache_location) do
-      :ssl.start()
-      :inets.start()
-      :ok = download!(url, cache_location)
-    end
+    status =
+      if !File.exists?(cache_location) do
+        :ssl.start()
+        :inets.start()
+        download!(url, cache_location)
+      else
+        :ok
+      end
 
-    case type do
-      :zip -> unzip_file(cache_location, unarchive_to)
-      _ -> :ok
+    if status == :ok do
+      case type do
+        :zip -> unzip_file(cache_location, unarchive_to)
+        _ -> :ok
+      end
     end
   end
 
@@ -365,15 +370,13 @@ defmodule TfliteElixir.MixProject do
     opts = [body_format: :binary]
     arg = {url, []}
 
-    body =
-      case :httpc.request(:get, arg, http_opts, opts) do
-        {:ok, {{_, 200, _}, _, body}} ->
-          body
+    case :httpc.request(:get, arg, http_opts, opts) do
+      {:ok, {{_, 200, _}, _, body}} ->
+        body
+        File.write!(save_as, body)
 
-        {:error, reason} ->
-          raise inspect(reason)
-      end
-
-    File.write!(save_as, body)
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 end
