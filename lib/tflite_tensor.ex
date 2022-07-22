@@ -134,11 +134,14 @@ defmodule TFLiteElixir.TfLiteTensor do
       names: [],
       data: %__MODULE__{reference: check_shape_and_type!(self, shape, type)}
     }
-    # Nx.from_binary(to_binary(self), type(self))
-    # |> Nx.reshape(List.to_tuple(dims(self)))
   end
 
   deferror(to_nx(self))
+
+  def to_nx(%TB{}=self, backend) do
+    Nx.from_binary(to_binary(self), type(self), backend: backend)
+    |> Nx.reshape(List.to_tuple(dims!(self)))
+  end
 
   @doc false
   def to_nx(tensor_ref, %T{type: _type, shape: shape} = t)
@@ -171,7 +174,7 @@ defmodule TFLiteElixir.TfLiteTensor do
 
   @impl true
   def inspect(%T{data: %TB{reference: tensor_ref}} = tensor, inspect_opts) do
-    limit = if inspect_opts.limit == :infinity, do: :infinity, else: inspect_opts.limit + 1
+    _limit = if inspect_opts.limit == :infinity, do: :infinity, else: inspect_opts.limit + 1
 
     tensor_ref
     |> to_binary!(0)

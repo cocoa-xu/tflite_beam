@@ -144,22 +144,22 @@ defmodule Mix.Tasks.DetectImage do
 
     boxes =
       Interpreter.tensor!(interpreter, boxes_tensor_id)
-      |> TFTensor.to_nx()
+      |> TFTensor.to_nx(Nx.BinaryBackend)
       |> take_first_and_reshape()
 
     class_ids =
       Interpreter.tensor!(interpreter, class_ids_tensor_id)
-      |> TFTensor.to_nx()
+      |> TFTensor.to_nx(Nx.BinaryBackend)
       |> take_first_and_reshape()
 
     scores =
       Interpreter.tensor!(interpreter, scores_tensor_id)
-      |> TFTensor.to_nx()
+      |> TFTensor.to_nx(Nx.BinaryBackend)
       |> take_first_and_reshape()
 
     count =
       Interpreter.tensor!(interpreter, count_tensor_id)
-      |> TFTensor.to_nx()
+      |> TFTensor.to_nx(Nx.BinaryBackend)
       |> Nx.to_flat_list()
       |> hd()
       |> trunc()
