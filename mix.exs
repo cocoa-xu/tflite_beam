@@ -265,7 +265,7 @@ defmodule TfliteElixir.MixProject do
       {:elixir_make, "~> 0.6", runtime: false},
       {:elixir_precompiled_deployer, "~> 0.1.0", runtime: false},
       {:excoveralls, "~> 0.10", only: :test},
-      {:ex_doc, "~> 0.27", only: [:dev, :test], runtime: false}
+      {:ex_doc, "~> 0.27", only: :docs, runtime: false}
     ]
   end
 
