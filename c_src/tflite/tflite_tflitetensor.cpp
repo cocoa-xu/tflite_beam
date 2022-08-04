@@ -219,18 +219,25 @@ ERL_NIF_TERM tflitetensor_quantization_params(ErlNifEnv *env, int argc, const ER
 }
 
 ERL_NIF_TERM tflitetensor_to_binary(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    if (argc != 1) return enif_make_badarg(env);
+    if (argc != 2) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
+    ERL_NIF_TERM limit = argv[1];
     erlang_nif_res<TfLiteTensor *> *self_res;
-    if (enif_get_resource(env, self_nif, erlang_nif_res<TfLiteTensor *>::type, (void **) &self_res)) {
+    ErlNifUInt64 limit_len;
+    if (enif_get_resource(env, self_nif, erlang_nif_res<TfLiteTensor *>::type, (void **) &self_res) &&
+        enif_get_uint64(env, limit, (ErlNifUInt64 *)&limit_len)) {
         if (self_res->val) {
             ErlNifBinary tensor_data;
             size_t tensor_size = self_res->val->bytes;
-            if (!enif_alloc_binary(tensor_size, &tensor_data))
+            size_t bytes_to_return = tensor_size;
+            if (limit_len != 0 && limit_len < tensor_size) {
+                bytes_to_return = limit_len;
+            }
+            if (!enif_alloc_binary(bytes_to_return, &tensor_data))
                 return erlang::nif::error(env, "cannot allocate enough memory for the tensor");
 
-            memcpy(tensor_data.data, self_res->val->data.raw, tensor_size);
+            memcpy(tensor_data.data, self_res->val->data.raw, bytes_to_return);
             return erlang::nif::ok(env, enif_make_binary(env, &tensor_data));
         } else {
             return erlang::nif::error(env, "oh nyo erlang");

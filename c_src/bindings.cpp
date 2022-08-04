@@ -123,7 +123,7 @@ static ErlNifFunc nif_functions[] = {
     F(tflitetensor_type, 1),
     F(tflitetensor_dims, 1),
     F(tflitetensor_quantization_params, 1),
-    F(tflitetensor_to_binary, 1),
+    F(tflitetensor_to_binary, 2),
     F(tflitetensor_set_data, 2),
 
     F_IO(tflite_printInterpreterState, 1),
