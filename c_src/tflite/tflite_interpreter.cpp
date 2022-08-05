@@ -5,7 +5,7 @@
 #include "tensorflow/lite/interpreter.h"
 #include "tensorflow/lite/kernels/register.h"
 #include "tensorflow/lite/model.h"
-#include "tflite_TFLiteTensor.h"
+#include "tflite_tflitetensor.h"
 
 ERL_NIF_TERM interpreter_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     erlang_nif_res<tflite::Interpreter *> * res;
@@ -224,38 +224,38 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
     if (enif_get_resource(env, self_nif, erlang_nif_res<tflite::Interpreter *>::type, (void **) &self_res) &&
         enif_get_int(env, index_nif, &index)) {
         if (self_res->val) {
-            erlang_nif_res<TFLiteTensor *> * tensor_res;
+            erlang_nif_res<TfLiteTensor *> * tensor_res;
             if (alloc_resource(&tensor_res)) {
                 tensor_res->val = self_res->val->tensor(index);
                 tensor_res->peak = 1;
 
                 ERL_NIF_TERM tensor_type;
-                if (_TFLiteTensor_type(env, tensor_res->val, tensor_type)) {
+                if (_tflitetensor_type(env, tensor_res->val, tensor_type)) {
                     tensor_type = enif_make_atom(env, "unknown");
                 }
 
                 ERL_NIF_TERM tensor_shape;
-                if (_TFLiteTensor_shape(env, tensor_res->val, tensor_shape)) {
+                if (_tflitetensor_shape(env, tensor_res->val, tensor_shape)) {
                     return erlang::nif::error(env, "cannot allocate memory for storing tensor shape");
                 }
 
                 ERL_NIF_TERM tensor_shape_signature;
-                if (_TFLiteTensor_shape_signature(env, tensor_res->val, tensor_shape_signature)) {
+                if (_tflitetensor_shape_signature(env, tensor_res->val, tensor_shape_signature)) {
                     return erlang::nif::error(env, "cannot allocate memory for storing tensor shape signature");
                 }
 
                 ERL_NIF_TERM tensor_name;
-                if (_TFLiteTensor_name(env, tensor_res->val, tensor_name)) {
+                if (_tflitetensor_name(env, tensor_res->val, tensor_name)) {
                     return erlang::nif::error(env, "cannot allocate memory for storing tensor name");
                 }
 
                 ERL_NIF_TERM tensor_quantization_params;
-                if (_TFLiteTensor_quantization_params(env, tensor_res->val, tensor_quantization_params)) {
+                if (_tflitetensor_quantization_params(env, tensor_res->val, tensor_quantization_params)) {
                     return erlang::nif::error(env, "cannot allocate memory for storing tensor quantization params");
                 }
 
                 ERL_NIF_TERM tensor_sparsity_params;
-                if (_TFLiteTensor_sparsity_params(env, tensor_res->val, tensor_sparsity_params)) {
+                if (_tflitetensor_sparsity_params(env, tensor_res->val, tensor_sparsity_params)) {
                     return erlang::nif::error(env, "cannot allocate memory for storing tensor sparsity params");
                 }
 

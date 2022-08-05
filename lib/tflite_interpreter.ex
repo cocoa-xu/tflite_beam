@@ -87,15 +87,15 @@ defmodule TFLiteElixir.Interpreter do
 
   defp fill_input(interpreter, input_tensor_index, %Nx.Tensor{}=input)
   when is_integer(input_tensor_index) do
-    with {:ok, tensor} <- TFLiteElixir.Interpreter.tensor(interpreter, input_tensor_index),
-         {:match_type, _, _, _, true} <- {:match_type, tensor.name, tensor.type, Nx.type(input), tensor.type == Nx.type(input)},
-         {:match_shape, _, _, _, true} <- {:match_shape, tensor.name, List.to_tuple(tensor.shape), Nx.shape(input), (tensor.shape == Tuple.to_list(Nx.shape(input)) or tensor.shape == [1 | Tuple.to_list(Nx.shape(input))])} do
+    tensor = TFLiteElixir.Interpreter.tensor!(interpreter, input_tensor_index)
+    with {:match_type, _, _, true} <- {:match_type, tensor.type, Nx.type(input), tensor.type == Nx.type(input)},
+         {:match_shape, _, _, true} <- {:match_shape, List.to_tuple(tensor.shape), Nx.shape(input), (tensor.shape == Tuple.to_list(Nx.shape(input)) or tensor.shape == [1 | Tuple.to_list(Nx.shape(input))])} do
           Tensor.set_data(tensor, Nx.to_binary(input))
     else
-      {:match_type, tensor_name, tensor_type, input_type, _} ->
-        {:error, "input data type, #{inspect(input_type)}, does not match the data type of the tensor, #{inspect(tensor_type)}, tensor name: '#{tensor_name}', index: #{input_tensor_index}"}
-      {:match_shape, tensor_name, tensor_shape, input_shape, _} ->
-        {:error, "input data shape, #{inspect(input_shape)}, does not match the shape type of the tensor, #{inspect(tensor_shape)}, tensor name: '#{tensor_name}', index: #{input_tensor_index}"}
+      {:match_type, tensor_type, input_type, _} ->
+        {:error, "input data type, #{inspect(input_type)}, does not match the data type of the tensor, #{inspect(tensor_type)}, tensor index: #{input_tensor_index}"}
+      {:match_shape, tensor_shape, input_shape, _} ->
+        {:error, "input data shape, #{inspect(input_shape)}, does not match the shape type of the tensor, #{inspect(tensor_shape)}, tensor index: #{input_tensor_index}"}
       error -> error
     end
   end

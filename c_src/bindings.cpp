@@ -34,7 +34,7 @@ limitations under the License.
 #include "tflite/tflite_ops_builtin_builtinresolver.h"
 #include "tflite/tflite_interpreter_builder.h"
 #include "tflite/tflite_interpreter.h"
-#include "tflite/tflite_TFLiteTensor.h"
+#include "tflite/tflite_tflitetensor.h"
 #include "tflite/tflite.h"
 
 #ifdef CORAL_SUPPORT_ENABLED
@@ -66,9 +66,9 @@ on_load(ErlNifEnv* env, void**, ERL_NIF_TERM)
     if (!rt) return -1;
     erlang_nif_res<tflite::Interpreter *>::type = rt;
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "TFLiteTensor", destruct_raw_ptr<TFLiteTensor>, ERL_NIF_RT_CREATE, NULL);                                                             \
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "TfLiteTensor", destruct_raw_ptr<TfLiteTensor>, ERL_NIF_RT_CREATE, NULL);                                                             \
     if (!rt) return -1;
-    erlang_nif_res<TFLiteTensor *>::type = rt;
+    erlang_nif_res<TfLiteTensor *>::type = rt;
 
 #ifdef CORAL_SUPPORT_ENABLED
     rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "EdgeTpuContext", destruct_egdetpu_context, ERL_NIF_RT_CREATE, NULL);                                                             \
@@ -120,11 +120,11 @@ static ErlNifFunc nif_functions[] = {
     F(interpreter_setNumThreads, 2),
     F(interpreter_get_signature_defs, 1),
 
-    F(TFLiteTensor_type, 1),
-    F(TFLiteTensor_dims, 1),
-    F(TFLiteTensor_quantization_params, 1),
-    F(TFLiteTensor_to_binary, 2),
-    F(TFLiteTensor_set_data, 2),
+    F(tflitetensor_type, 1),
+    F(tflitetensor_dims, 1),
+    F(tflitetensor_quantization_params, 1),
+    F(tflitetensor_to_binary, 2),
+    F(tflitetensor_set_data, 2),
 
     F_IO(tflite_printInterpreterState, 1),
 
