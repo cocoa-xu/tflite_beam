@@ -29,9 +29,7 @@ jobs:
 
       - name: Install Erlang and Elixir
         run: |
-          brew install erlang
-          brew install elixir
-          brew install autoconf automake
+          brew install elixir erlang autoconf automake
           export SRC_ROOT="$(pwd)"
           cd ..
           mix local.hex --force
