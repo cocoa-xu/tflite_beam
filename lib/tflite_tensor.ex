@@ -1,4 +1,4 @@
-defmodule TFLiteElixir.TfLiteTensor do
+defmodule TFLiteElixir.TFLiteTensor do
   import TFLiteElixir.Errorize
 
   @behaviour Nx.Backend
@@ -44,6 +44,9 @@ defmodule TFLiteElixir.TfLiteTensor do
   @spec type(%TB{}) :: tensor_type()
   def type(%TB{type: type}), do: type
 
+  @spec type(%T{}) :: tensor_type()
+  def type(%T{}=self), do: Nx.type(self)
+
   @spec type(reference()) :: tensor_type() | nif_error()
   def type(self) when is_reference(self) do
     TFLiteElixir.Nif.tflitetensor_type(self)
@@ -56,6 +59,9 @@ defmodule TFLiteElixir.TfLiteTensor do
   """
   @spec dims(%TB{}) :: [integer()]
   def dims(%TB{shape: shape}), do: shape
+
+  @spec dims(%T{}) :: [integer()]
+  def dims(%T{}=self), do: Tuple.to_list(Nx.shape(self))
 
   @spec dims(reference()) :: {:ok, [integer()]} | nif_error()
   def dims(self) do
@@ -139,6 +145,11 @@ defmodule TFLiteElixir.TfLiteTensor do
   deferror(to_nx(self))
 
   def to_nx(%TB{}=self, backend) do
+    Nx.from_binary(to_binary(self), type(self), backend: backend)
+    |> Nx.reshape(List.to_tuple(dims!(self)))
+  end
+
+  def to_nx(%T{}=self, backend) do
     Nx.from_binary(to_binary(self), type(self), backend: backend)
     |> Nx.reshape(List.to_tuple(dims!(self)))
   end

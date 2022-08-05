@@ -29,7 +29,7 @@ defmodule Mix.Tasks.ClassifyImage do
 
   alias TFLiteElixir.Interpreter, as: Interpreter
   alias TFLiteElixir.InterpreterBuilder, as: InterpreterBuilder
-  alias TFLiteElixir.TfLiteTensor, as: TFTensor
+  alias TFLiteElixir.TFLiteTensor, as: TFTensor
   alias TFLiteElixir.FlatBufferModel, as: FlatBufferModel
 
   @shortdoc "Image Classification"

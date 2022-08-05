@@ -1,6 +1,6 @@
 defmodule TFLiteElixir.Interpreter do
   import TFLiteElixir.Errorize
-  alias TFLiteElixir.TfLiteTensor, as: Tensor
+  alias TFLiteElixir.TFLiteTensor, as: Tensor
   alias TFLiteElixir.TFLiteQuantizationParams, as: TFLiteQuantizationParams
 
   @type nif_resource_ok :: {:ok, reference()}
@@ -39,7 +39,7 @@ defmodule TFLiteElixir.Interpreter do
   """
   @spec new(String.t()) :: nif_resource_ok() | nif_error()
   def new(model_path) do
-    with {:build_from_file, {:ok, model}} <-
+    with {:build_from_file, %TFLiteElixir.FlatBufferModel{}=model} <-
            {:build_from_file, TFLiteElixir.FlatBufferModel.buildFromFile(model_path)},
          {:builtin_resolver, {:ok, resolver}} <-
            {:builtin_resolver, TFLiteElixir.Ops.Builtin.BuiltinResolver.new()},
@@ -58,6 +58,103 @@ defmodule TFLiteElixir.Interpreter do
   end
 
   deferror(new(model_path))
+
+  def predict(interpreter, input) do
+    with {:ok, input_tensors} <- TFLiteElixir.Interpreter.inputs(interpreter),
+         {:ok, output_tensors} <- TFLiteElixir.Interpreter.outputs(interpreter),
+         :ok <- fill_input(interpreter, input_tensors, input) do
+      TFLiteElixir.Interpreter.invoke(interpreter)
+      fetch_output(interpreter, output_tensors)
+    else
+      error -> error
+    end
+  end
+
+  defp fill_input(interpreter, input_tensors, input)
+  when is_list(input_tensors) and is_list(input) do
+    if length(input_tensors) == length(input) do
+      Enum.zip_with([input_tensors, input], fn [input_index, input_tensor] ->
+        fill_input(interpreter, input_index, input_tensor)
+      end)
+    end
+  end
+
+  defp fill_input(interpreter, input_tensors, %Nx.Tensor{}=input)
+  when is_list(input_tensors) and length(input_tensors) == 1 do
+    [tensor_index] = input_tensors
+    fill_input(interpreter, tensor_index, input)
+  end
+
+  defp fill_input(interpreter, input_tensor_index, %Nx.Tensor{}=input)
+  when is_integer(input_tensor_index) do
+    tensor = TFLiteElixir.Interpreter.tensor!(interpreter, input_tensor_index)
+    with {:match_type, _, _, true} <- {:match_type, tensor.type, Nx.type(input), tensor.type == Nx.type(input)},
+         {:match_shape, _, _, true} <- {:match_shape, List.to_tuple(tensor.shape), Nx.shape(input), (tensor.shape == Tuple.to_list(Nx.shape(input)) or tensor.shape == [1 | Tuple.to_list(Nx.shape(input))])} do
+          Tensor.set_data(tensor, Nx.to_binary(input))
+    else
+      {:match_type, tensor_type, input_type, _} ->
+        {:error, "input data type, #{inspect(input_type)}, does not match the data type of the tensor, #{inspect(tensor_type)}, tensor index: #{input_tensor_index}"}
+      {:match_shape, tensor_shape, input_shape, _} ->
+        {:error, "input data shape, #{inspect(input_shape)}, does not match the shape type of the tensor, #{inspect(tensor_shape)}, tensor index: #{input_tensor_index}"}
+      error -> error
+    end
+  end
+
+  defp fill_input(interpreter, input_tensor_index, input)
+  when is_integer(input_tensor_index) and is_binary(input) do
+    with {:ok, tensor} <- TFLiteElixir.Interpreter.tensor(interpreter, input_tensor_index) do
+      Tensor.set_data(tensor, input)
+    else
+      error -> error
+    end
+  end
+
+  defp fill_input(interpreter, input_tensors, input)
+  when is_list(input_tensors) and is_map(input) do
+    ret =
+      Enum.map(input_tensors, fn input_tensor_index ->
+        {:ok, out_tensor} = TFLiteElixir.Interpreter.tensor(interpreter, input_tensor_index)
+        name = out_tensor.name
+        data = Map.get(input, name, nil)
+        if data do
+          fill_input(out_tensor, data)
+          :ok
+        else
+          "missing input data for tensor #{name}, tensor index: #{input_tensor_index}"
+        end
+      end)
+      |> Enum.reject(fn r -> r == :ok end)
+    if ret == [] do
+      :ok
+    else
+      {:error, Enum.join(ret, "; ")}
+    end
+  end
+
+  defp fill_input(%Tensor{}=tensor, input)
+  when is_binary(input) do
+    Tensor.set_data(tensor, input)
+  end
+
+  defp fill_input(%Tensor{}=tensor, %Nx.Tensor{}=input)
+  do
+    Tensor.set_data(tensor, Nx.to_binary(input))
+  end
+
+  defp fetch_output(interpreter, output_tensors)
+  when is_list(output_tensors) do
+    Enum.map(output_tensors, fn output_index ->
+      fetch_output(interpreter, output_index)
+    end)
+  end
+
+  defp fetch_output(interpreter, output_index) when is_integer(output_index) do
+    with {:ok, tensor} <- TFLiteElixir.Interpreter.tensor(interpreter, output_index) do
+      Tensor.to_nx(tensor)
+    else
+      error -> error
+    end
+  end
 
   @doc """
   Allocate memory for tensors in the graph
@@ -104,8 +201,8 @@ defmodule TFLiteElixir.Interpreter do
   ## Example: Get the expected data type and shape for the input tensor
   ```elixir
   {:ok, tensor} = TFLite.Interpreter.tensor(interpreter, 0)
-  {:ok, [1, 224, 224, 3]} = TFLite.TfLiteTensor.dims(tensor)
-  {:u, 8} = TFLite.TfLiteTensor.type(tensor)
+  {:ok, [1, 224, 224, 3]} = TFLite.TFLiteTensor.dims(tensor)
+  {:u, 8} = TFLite.TFLiteTensor.type(tensor)
   ```
   """
   @spec input_tensor(reference(), non_neg_integer(), binary()) :: :ok | nif_error()

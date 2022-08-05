@@ -27,7 +27,7 @@ defmodule TFLiteElixir.Test do
     "prediction" = TFLiteElixir.Interpreter.getOutputName!(interpreter, 0)
 
     input_tensor =
-      %TFLiteElixir.TfLiteTensor{
+      %TFLiteElixir.TFLiteTensor{
         name: "map/TensorArrayStack/TensorArrayGatherV3",
         index: 0,
         shape: [1, 224, 224, 3],
@@ -41,11 +41,11 @@ defmodule TFLiteElixir.Test do
         sparsity_params: %{}
       } = TFLiteElixir.Interpreter.tensor!(interpreter, 0)
 
-    [1, 224, 224, 3] = TFLiteElixir.TfLiteTensor.dims!(input_tensor)
-    {:u, 8} = TFLiteElixir.TfLiteTensor.type(input_tensor)
+    [1, 224, 224, 3] = TFLiteElixir.TFLiteTensor.dims!(input_tensor)
+    {:u, 8} = TFLiteElixir.TFLiteTensor.type(input_tensor)
     output_tensor = TFLiteElixir.Interpreter.tensor!(interpreter, 171)
-    [1, 965] = TFLiteElixir.TfLiteTensor.dims!(output_tensor)
-    {:u, 8} = TFLiteElixir.TfLiteTensor.type!(output_tensor)
+    [1, 965] = TFLiteElixir.TFLiteTensor.dims!(output_tensor)
+    {:u, 8} = TFLiteElixir.TFLiteTensor.type!(output_tensor)
 
     # run forwarding
     :ok = TFLiteElixir.Interpreter.allocateTensors!(interpreter)

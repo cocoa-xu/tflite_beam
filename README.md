@@ -19,9 +19,17 @@ TensorFlow Lite-Elixir binding with TPU support.
 Mix.install([
   {:tflite_elixir, "~> 0.1.0", github: "cocoa-xu/tflite_elixir"}
 ])
+
+# test data can be found in the test directory
+interpreter = TFLiteElixir.Interpreter.new!("test/test_data/mobilenet_v2_1.0_224_inat_bird_quant.tflite")
+input = elem(StbImage.read_file("test/test_data/parrot.jpeg"), 1)
+  |> StbImage.resize(224, 224)
+  |> StbImage.to_nx()
+output = TFLiteElixir.Interpreter.predict(interpreter, input)
+  |> TFLiteElixir.TFLiteTensor.to_nx(Nx.BinaryBackend)
 ```
 
-Some livebook examples can be found in the [examples](examples) directory. 
+Some livebook examples can be found in the [examples](examples) directory.
 
 ## Nerves Support
 1. Make sure `nerves_system_br` >= v1.20.2, otherwise, xnnpack (or one of its dependency) will fail to compile because 
@@ -147,11 +155,11 @@ interpreter = TFLite.Interpreter.new!()
 # "map/TensorArrayStack/TensorArrayGatherV3" = TFLite.Interpreter.getInputName!(interpreter, 0)
 # "prediction" = TFLite.Interpreter.getOutputName!(interpreter, 0)
 # input_tensor = TFLite.Interpreter.tensor!(interpreter, 0)
-# [1, 224, 224, 3] = TFLite.TfLiteTensor.dims!(input_tensor)
-# {:u, 8} = TFLite.TfLiteTensor.type(input_tensor)
+# [1, 224, 224, 3] = TFLite.TFLiteTensor.dims!(input_tensor)
+# {:u, 8} = TFLite.TFLiteTensor.type(input_tensor)
 # output_tensor = TFLite.Interpreter.tensor!(interpreter, 171)
-# [1, 965] = TFLite.TfLiteTensor.dims!(output_tensor)
-# {:u, 8} = TFLite.TfLiteTensor.type(output_tensor)
+# [1, 965] = TFLite.TFLiteTensor.dims!(output_tensor)
+# {:u, 8} = TFLite.TFLiteTensor.type(output_tensor)
 
 # parrot.bin - if you don't have :evision
 binary = File.read!("parrot.bin")
