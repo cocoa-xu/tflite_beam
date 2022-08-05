@@ -8,6 +8,7 @@ defmodule TfliteElixir.MixProject do
   @prefer_precompiled "YES"
   @github_url "https://github.com/cocoa-xu/tflite_elixir"
   @libedgetpu_runtime_github_url "https://github.com/cocoa-xu/libedgetpu"
+  @libedgetpu_runtime_version "0.1.0"
   # only means compatible. need to write more tests
   @compatible_tflite_versions [
     "2.7.0",
@@ -309,8 +310,8 @@ defmodule TfliteElixir.MixProject do
 
   defp download_edgetpu_runtime(edgetpu_libraries) do
     with {:ok, triplet} <- get_triplet(edgetpu_libraries) do
-      filename = "edgetpu_runtime_#{triplet}_v#{@version}"
-      runtime_url = "#{@libedgetpu_runtime_github_url}/releases/download/v#{@version}/#{filename}.zip"
+      filename = "edgetpu_runtime_#{triplet}_v#{@libedgetpu_runtime_version}"
+      runtime_url = "#{@libedgetpu_runtime_github_url}/releases/download/v#{@libedgetpu_runtime_version}/#{filename}.zip"
       unzip_to = Path.join([cache_dir(), filename])
       {download_archived_file("#{filename}.zip", runtime_url, unzip_to, :zip), filename, triplet}
     else
