@@ -8,8 +8,10 @@ on:
       - 'precompile-test-linux'
 
 jobs:
-  mix_test:
+  precompile:
     runs-on: ubuntu-20.04
+    env:
+      TFLITE_ELIXIR_PREFER_PRECOMPILED: NO
     strategy:
       fail-fast: false
       matrix:

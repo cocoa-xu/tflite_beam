@@ -8,10 +8,11 @@ on:
       - 'precompile-test-macos'
 
 jobs:
-  mix_test:
+  precompile:
     runs-on: macos-11
     env:
       MIX_ENV: dev
+      TFLITE_ELIXIR_PREFER_PRECOMPILED: NO
 
     strategy:
       fail-fast: false
