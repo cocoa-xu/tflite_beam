@@ -103,8 +103,8 @@ TFLite.Interpreter.invoke(interpreter)
 # Extract the output and postprocess it
 {:ok, output_data} = TFLite.Interpreter.output_tensor(interpreter, 0)
 {:ok, out_tensor} = TFLite.Interpreter.tensor(interpreter, Enum.at(output_tensors, 0))
-{:ok, [1 | shape]} = TFLite.TfLiteTensor.dims(out_tensor)
-type = TFLite.TfLiteTensor.type(out_tensor)
+{:ok, [1 | shape]} = TFLite.TFLiteTensor.dims(out_tensor)
+type = TFLite.TFLiteTensor.type(out_tensor)
 
 sr =
   output_data

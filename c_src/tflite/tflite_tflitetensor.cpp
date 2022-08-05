@@ -1,11 +1,11 @@
-#include "tflite_tflitetensor.h"
+#include "tflite_TFLiteTensor.h"
 #include "tensorflow/lite/c/c_api.h"
 #include "tensorflow/lite/c/common.h"
 #include "../nif_utils.hpp"
 #include "../helper.h"
 
-int _tflitetensor_name(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF_TERM &out) {
-    auto tensor_name_str = TfLiteTensorName(tensor);
+int _TFLiteTensor_name(ErlNifEnv *env, TFLiteTensor * tensor, ERL_NIF_TERM &out) {
+    auto tensor_name_str = TFLiteTensorName(tensor);
     ERL_NIF_TERM tensor_name;
     unsigned char * ptr;
     size_t len = strlen(tensor_name_str);
@@ -18,14 +18,14 @@ int _tflitetensor_name(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF_TERM &out)
     }
 }
 
-int _tflitetensor_shape(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF_TERM &out) {
-    size_t num_dims = TfLiteTensorNumDims(tensor);
+int _TFLiteTensor_shape(ErlNifEnv *env, TFLiteTensor * tensor, ERL_NIF_TERM &out) {
+    size_t num_dims = TFLiteTensorNumDims(tensor);
     ERL_NIF_TERM * dims = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * num_dims);
     if (dims == nullptr) {
         return 1;
     }
     for (size_t i = 0; i < num_dims; ++i) {
-        size_t dim = TfLiteTensorDim(tensor, i);
+        size_t dim = TFLiteTensorDim(tensor, i);
         dims[i] = enif_make_uint64(env, dim);
     }
     out = enif_make_list_from_array(env, dims, (unsigned)num_dims);
@@ -33,7 +33,7 @@ int _tflitetensor_shape(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF_TERM &out
     return 0;
 }
 
-int _tflitetensor_shape_signature(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF_TERM &out) {
+int _TFLiteTensor_shape_signature(ErlNifEnv *env, TFLiteTensor * tensor, ERL_NIF_TERM &out) {
     if (tensor->dims_signature != nullptr && tensor->dims_signature->size != 0) {
         ERL_NIF_TERM shape_signature;
         if (erlang::nif::make_i64_list_from_c_array(env, tensor->dims_signature->size, (int64_t *)tensor->dims_signature, shape_signature)) {
@@ -42,13 +42,13 @@ int _tflitetensor_shape_signature(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF
         out = shape_signature;
         return 0;
     } else {
-        return _tflitetensor_shape(env, tensor, out);
+        return _TFLiteTensor_shape(env, tensor, out);
     }
 }
 
-int _tflitetensor_type(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF_TERM &out) {
+int _TFLiteTensor_type(ErlNifEnv *env, TFLiteTensor * tensor, ERL_NIF_TERM &out) {
     ERL_NIF_TERM tensor_type;
-    if (tensor_type_to_erl_term(TfLiteTensorType(tensor), env, tensor_type)) {
+    if (tensor_type_to_erl_term(TFLiteTensorType(tensor), env, tensor_type)) {
         out = tensor_type;
         return 0;
     } else {
@@ -56,7 +56,7 @@ int _tflitetensor_type(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF_TERM &out)
     }
 }
 
-int _tflitetensor_quantization_params(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF_TERM &out) {
+int _TFLiteTensor_quantization_params(ErlNifEnv *env, TFLiteTensor * tensor, ERL_NIF_TERM &out) {
     const TfLiteQuantization quantization = tensor->quantization;
     float* scales_data = nullptr;
     int32_t* zero_points_data = nullptr;
@@ -92,7 +92,7 @@ int _tflitetensor_quantization_params(ErlNifEnv *env, TfLiteTensor * tensor, ERL
     return 0;
 }
 
-int _tflitetensor_sparsity_params(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF_TERM &out) {
+int _TFLiteTensor_sparsity_params(ErlNifEnv *env, TFLiteTensor * tensor, ERL_NIF_TERM &out) {
     if (tensor->sparsity == nullptr) {
         out = enif_make_new_map(env);
         return 0;
@@ -160,15 +160,15 @@ int _tflitetensor_sparsity_params(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF
     }
 }
 
-ERL_NIF_TERM tflitetensor_type(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM TFLiteTensor_type(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
-    erlang_nif_res<TfLiteTensor *> *self_res;
-    if (enif_get_resource(env, self_nif, erlang_nif_res<TfLiteTensor *>::type, (void **) &self_res)) {
+    erlang_nif_res<TFLiteTensor *> *self_res;
+    if (enif_get_resource(env, self_nif, erlang_nif_res<TFLiteTensor *>::type, (void **) &self_res)) {
         if (self_res->val) {
             ERL_NIF_TERM ret = erlang::nif::error(env, "invalid tensor");
-            _tflitetensor_type(env, self_res->val, ret);
+            _TFLiteTensor_type(env, self_res->val, ret);
             return ret;
         } else {
             return erlang::nif::error(env, "oh nyo erlang");
@@ -178,15 +178,15 @@ ERL_NIF_TERM tflitetensor_type(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv
     }
 }
 
-ERL_NIF_TERM tflitetensor_dims(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM TFLiteTensor_dims(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
-    erlang_nif_res<TfLiteTensor *> *self_res;
-    if (enif_get_resource(env, self_nif, erlang_nif_res<TfLiteTensor *>::type, (void **) &self_res)) {
+    erlang_nif_res<TFLiteTensor *> *self_res;
+    if (enif_get_resource(env, self_nif, erlang_nif_res<TFLiteTensor *>::type, (void **) &self_res)) {
         if (self_res->val) {
             ERL_NIF_TERM tensor_shape;
-            if (_tflitetensor_shape(env, self_res->val, tensor_shape)) {
+            if (_TFLiteTensor_shape(env, self_res->val, tensor_shape)) {
                 return erlang::nif::error(env, "cannot allocate memory for storing tensor shape");
             }
             return erlang::nif::ok(env, tensor_shape);
@@ -198,15 +198,15 @@ ERL_NIF_TERM tflitetensor_dims(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv
     }
 }
 
-ERL_NIF_TERM tflitetensor_quantization_params(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM TFLiteTensor_quantization_params(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
-    erlang_nif_res<TfLiteTensor *> *self_res;
-    if (enif_get_resource(env, self_nif, erlang_nif_res<TfLiteTensor *>::type, (void **) &self_res)) {
+    erlang_nif_res<TFLiteTensor *> *self_res;
+    if (enif_get_resource(env, self_nif, erlang_nif_res<TFLiteTensor *>::type, (void **) &self_res)) {
         if (self_res->val) {
             ERL_NIF_TERM tensor_quantization_params;
-            if (_tflitetensor_quantization_params(env, self_res->val, tensor_quantization_params)) {
+            if (_TFLiteTensor_quantization_params(env, self_res->val, tensor_quantization_params)) {
                 return erlang::nif::error(env, "cannot allocate memory for storing tensor quantization params");
             }
             return erlang::nif::ok(env, tensor_quantization_params);
@@ -218,14 +218,14 @@ ERL_NIF_TERM tflitetensor_quantization_params(ErlNifEnv *env, int argc, const ER
     }
 }
 
-ERL_NIF_TERM tflitetensor_to_binary(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM TFLiteTensor_to_binary(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 2) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
     ERL_NIF_TERM limit = argv[1];
-    erlang_nif_res<TfLiteTensor *> *self_res;
+    erlang_nif_res<TFLiteTensor *> *self_res;
     ErlNifUInt64 limit_len;
-    if (enif_get_resource(env, self_nif, erlang_nif_res<TfLiteTensor *>::type, (void **) &self_res) &&
+    if (enif_get_resource(env, self_nif, erlang_nif_res<TFLiteTensor *>::type, (void **) &self_res) &&
         enif_get_uint64(env, limit, (ErlNifUInt64 *)&limit_len)) {
         if (self_res->val) {
             ErlNifBinary tensor_data;
@@ -247,14 +247,14 @@ ERL_NIF_TERM tflitetensor_to_binary(ErlNifEnv *env, int argc, const ERL_NIF_TERM
     }
 }
 
-ERL_NIF_TERM tflitetensor_set_data(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM TFLiteTensor_set_data(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 2) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
     ERL_NIF_TERM data_nif = argv[1];
     ErlNifBinary data;
-    erlang_nif_res<TfLiteTensor *> *self_res;
-    if (enif_get_resource(env, self_nif, erlang_nif_res<TfLiteTensor *>::type, (void **) &self_res)) {
+    erlang_nif_res<TFLiteTensor *> *self_res;
+    if (enif_get_resource(env, self_nif, erlang_nif_res<TFLiteTensor *>::type, (void **) &self_res)) {
         if (self_res->val) {
             if (enif_inspect_binary(env, data_nif, &data)) {
                 if (self_res->val->data.data == nullptr) {
