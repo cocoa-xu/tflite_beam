@@ -1,8 +1,36 @@
 #!/bin/bash
 
-LIBUSB_SRC="$1"
-DESTDIR="$2"
-PRIV_DIR="$3"
+LIBUSB_SOURCE_URL="$1"
+LIBUSB_SOURCE_ARCHIVE="$2"
+THIRD_PARTY_DIR="$3"
+LIBUSB_SRC="$4"
+DESTDIR="$5"
+PRIV_DIR="$6"
+
+download_libusb() {
+  if [ ! -e "${LIBUSB_SOURCE_ARCHIVE}" ]; then
+    echo "Downloading libusb..."
+    if [ -e "$(which curl)" ]; then
+      curl -fSL "${LIBUSB_SOURCE_URL}" -o "${LIBUSB_SOURCE_ARCHIVE}"
+    elif [ -e "$(which wget)" ]; then
+      wget "${LIBUSB_SOURCE_URL}" -O "${LIBUSB_SOURCE_ARCHIVE}"
+    else
+      echo "cannot find curl or wget, cannot download tensorflow source code"
+      exit 1
+    fi
+  fi
+}
+
+unarchive_libusb() {
+  if [ ! -d "${LIBUSB_SOURCE_DIR}" ]; then
+    echo "Unarchiving libusb..."
+    rm -rf "$(LIBUSB_SOURCE_DIR)" &&
+    tar -C "$(THIRD_PARTY_DIR)" -xf "$(LIBUSB_SOURCE_ARCHIVE)"
+  fi
+}
+
+download_libusb && unarchive_libusb
+
 cd "${LIBUSB_SRC}"
 mkdir -p "${DESTDIR}"
 
