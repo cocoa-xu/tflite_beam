@@ -237,7 +237,7 @@ bash "3rd_party/cache/${TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME}/edgetpu_runtime/
   | Value            | OS/CPU              |
   |------------------|---------------------|
   | `aarch64`        | Linux arm64         |
-  | `armv7a`         | Linux armv7         |
+  | `armv7l`         | Linux armv7         |
   | `k8`             | Linux x86_64        |
   | `x86_64`         | Linux x86_64        |
   | `riscv64`        | Linux riscv64       |
