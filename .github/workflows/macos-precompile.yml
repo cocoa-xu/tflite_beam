@@ -7,6 +7,10 @@ on:
       - 'precompile-test'
       - 'precompile-test-macos'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   precompile:
     runs-on: macos-11

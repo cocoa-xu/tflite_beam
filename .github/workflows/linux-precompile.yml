@@ -7,6 +7,10 @@ on:
       - 'precompile-test'
       - 'precompile-test-linux'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   precompile:
     runs-on: ubuntu-20.04
