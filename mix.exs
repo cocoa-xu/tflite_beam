@@ -52,11 +52,13 @@ defmodule TfliteElixir.MixProject do
 
   def project do
     prefer_precompiled = System.get_env("TFLITE_ELIXIR_PREFER_PRECOMPILED", @prefer_precompiled)
+
     prefer_precompiled =
       case prefer_precompiled do
         "YES" -> true
         _ -> false
       end
+
     {:ok, compilers} = use_precompiled(prefer_precompiled)
 
     [
@@ -89,10 +91,12 @@ defmodule TfliteElixir.MixProject do
 
     enable_coral_support =
       System.get_env("TFLITE_ELIXIR_CORAL_SUPPORT", @enable_coral_support_by_default)
+
     System.put_env("TFLITE_ELIXIR_CORAL_SUPPORT", enable_coral_support)
 
     edgetpu_libraries =
       System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", @default_edgetpu_libraries)
+
     System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", edgetpu_libraries)
 
     {precompiled_available, url, filename} =
@@ -107,7 +111,7 @@ defmodule TfliteElixir.MixProject do
           Path.join([unarchive_to, filename, "priv"])
         )
 
-        {:ok, [:elixir_precompiled_deployer] ++ Mix.compilers()}
+        {:ok, Mix.compilers()}
       else
         _ ->
           use_precompiled(false)
@@ -130,7 +134,7 @@ defmodule TfliteElixir.MixProject do
       with {:ok, filename, triplet} <- download_edgetpu_runtime(edgetpu_libraries) do
         System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_TRIPLET", triplet)
         System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME", filename)
-        {:ok, [:elixir_make, :elixir_precompiled_deployer] ++ Mix.compilers()}
+        {:ok, [:elixir_make] ++ Mix.compilers()}
       else
         {:error, error} ->
           Logger.warning(error)
@@ -164,6 +168,7 @@ defmodule TfliteElixir.MixProject do
             _ ->
               {nil, nil}
           end
+
         {System.get_env("TARGET_ARCH", native_arch), System.get_env("TARGET_OS", native_os)}
       else
         {System.get_env("TARGET_ARCH", edgetpu_libraries), System.get_env("TARGET_OS", nil)}
@@ -177,14 +182,17 @@ defmodule TfliteElixir.MixProject do
           else
             lib
           end
+
         get_triplet_if_possible(lib)
 
-      {lib, "apple"} when lib in ["darwin_arm64", "darwin_x86_64", "arm64", "x86_64"] ->
+      {lib, "apple"} when lib in ["darwin_aarch64", "darwin_arm64", "darwin_x86_64", "aarch64", "arm64", "x86_64"] ->
         case lib do
-          "arm64" ->
+          lib when lib in ["arm64", "aarch64"] ->
             get_triplet_if_possible("darwin_arm64")
+
           "x86_64" ->
             get_triplet_if_possible("darwin_x86_64")
+
           _ ->
             get_triplet_if_possible(lib)
         end
@@ -194,23 +202,28 @@ defmodule TfliteElixir.MixProject do
     end
   end
 
-  defp get_triplet_if_possible(requested_arch) when requested_arch in ["darwin_arm64", "darwin_x86_64"] do
+  defp get_triplet_if_possible(requested_arch)
+       when requested_arch in ["darwin_aarch64", "darwin_arm64", "darwin_x86_64"] do
     requested_os = System.get_env("TARGET_OS", "apple")
     requested_abi = System.get_env("TARGET_ABI", "darwin")
     "darwin_" <> target_arch = requested_arch
     requested_triplet = "#{target_arch}-#{requested_os}-#{requested_abi}"
+
     case requested_arch do
       "darwin_arm64" -> {:ok, "aarch64-apple-darwin"}
+      "darwin_aarch64" -> {:ok, "aarch64-apple-darwin"}
       "darwin_x86_64" -> {:ok, "x86_64-apple-darwin"}
       _ -> {:error, requested_triplet, ["aarch64-apple-darwin", "x86_64-apple-darwin"]}
     end
   end
 
-  defp get_triplet_if_possible(requested_arch) when requested_arch in ["k8", "x86_64", "aarch64", "riscv64"] do
+  defp get_triplet_if_possible(requested_arch)
+       when requested_arch in ["k8", "x86_64", "aarch64", "riscv64"] do
     requested_os = System.get_env("TARGET_OS", "linux")
     requested_abi = System.get_env("TARGET_ABI", "gnu")
     requested_triplet = "#{requested_arch}-#{requested_os}-#{requested_abi}"
     available_precompiled_binaries = Map.get(@precompiled_triplets, requested_arch, [])
+
     if requested_triplet in available_precompiled_binaries do
       {:ok, requested_triplet}
     else
@@ -223,6 +236,7 @@ defmodule TfliteElixir.MixProject do
     requested_abi = System.get_env("TARGET_ABI", "gnueabihf")
     requested_triplet = "armv7l-#{requested_os}-#{requested_abi}"
     available_precompiled_binaries = Map.get(@precompiled_triplets, "armv7l", [])
+
     if requested_triplet in available_precompiled_binaries do
       {:ok, requested_triplet}
     else
@@ -237,10 +251,13 @@ defmodule TfliteElixir.MixProject do
        ) do
     with {:ok, triplet} <- get_triplet(edgetpu_libraries) do
       filename = "tflite_elixir-#{triplet}-v#{@version}"
-      {true, "#{@github_url}/releases/download/v#{@version}/#{filename}.zip", filename}
+      {true, "#{@github_url}/releases/download/v#{@version}/#{filename}.tar.gz", filename}
     else
       {:error, requested_triplet, _available_precompiled_triplets} ->
-        Logger.warning("No precompiled binaries for #{requested_triplet}, will try to build from source.")
+        Logger.warning(
+          "No precompiled binaries for #{requested_triplet}, will try to build from source."
+        )
+
         {false, nil, nil}
     end
   end
@@ -261,10 +278,9 @@ defmodule TfliteElixir.MixProject do
 
   defp deps do
     [
-      {:nx, "~> 0.2"},
-      {:stb_image, "~> 0.5"},
-      {:elixir_make, "~> 0.6", runtime: false},
-      {:elixir_precompiled_deployer, "~> 0.1.0", runtime: false},
+      {:nx, "~> 0.5"},
+      {:stb_image, "~> 0.6"},
+      {:elixir_make, "~> 0.7", runtime: false},
       {:excoveralls, "~> 0.10", only: :test},
       {:ex_doc, "~> 0.27", only: :docs, runtime: false}
     ]
@@ -278,10 +294,16 @@ defmodule TfliteElixir.MixProject do
     [
       name: to_string(@app),
       # These are the default files included in the package
-      files:
-        ~w(c_src 3rd_party cc_toolchain scripts CMakeLists.txt Makefile .gitmodules
-          lib priv precompiled_deploy.exs .formatter.exs mix.exs
-          README* LICENSE*),
+      files: ~w(
+        c_src 3rd_party cc_toolchain
+        scripts CMakeLists.txt Makefile
+        .gitmodules
+        lib
+        .formatter.exs
+        mix.exs
+        README*
+        LICENSE*
+      ),
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => @github_url}
     ]
@@ -305,13 +327,19 @@ defmodule TfliteElixir.MixProject do
   end
 
   defp cache_dir() do
-    System.get_env("TFLITE_ELIXIR_CACHE_DIR", "./3rd_party/cache")
+    System.get_env(
+      "TFLITE_ELIXIR_CACHE_DIR",
+      Path.join(Path.dirname(Path.expand(__ENV__.file)), "3rd_party/cache")
+    )
   end
 
   defp download_edgetpu_runtime(edgetpu_libraries) do
     with {:ok, triplet} <- get_triplet(edgetpu_libraries) do
       filename = "edgetpu_runtime_#{triplet}_v#{@libedgetpu_runtime_version}"
-      runtime_url = "#{@libedgetpu_runtime_github_url}/releases/download/v#{@libedgetpu_runtime_version}/#{filename}.tar.gz"
+
+      runtime_url =
+        "#{@libedgetpu_runtime_github_url}/releases/download/v#{@libedgetpu_runtime_version}/#{filename}.tar.gz"
+
       unarchive_to = Path.join([cache_dir(), filename])
       {download_archived_file("#{filename}.tar.gz", runtime_url, unarchive_to), filename, triplet}
     else
@@ -347,17 +375,18 @@ defmodule TfliteElixir.MixProject do
     case File.read(filepath) do
       {:ok, contents} ->
         File.rm_rf!(unarchive_to)
+
         case :erl_tar.extract({:binary, contents}, [:compressed, {:cwd, unarchive_to}]) do
           :ok ->
             :ok
 
           {:error, term} ->
-            {:error,
-             "cannot decompress precompiled #{inspect(filepath)}: #{inspect(term)}"}
+            {:error, "cannot decompress precompiled #{inspect(filepath)}: #{inspect(term)}"}
         end
+
       {:error, reason} ->
         {:error,
-          "precompiled #{inspect(filepath)} does not exist or cannot download: #{inspect(reason)}"}
+         "precompiled #{inspect(filepath)} does not exist or cannot download: #{inspect(reason)}"}
     end
   end
 
