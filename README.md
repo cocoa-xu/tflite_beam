@@ -159,7 +159,7 @@ binary = File.read!("parrot.bin")
 # parrot.jpg - if you have :evision
 # load image, resize it, covert to RGB and to binary 
 binary = 
-  Cv.imread!("parrot.jpg")
+  Cv.imread("parrot.jpg")
   |> Cv.resize({224, 224})
   |> Cv.cvtColor(Cv.cv_COLOR_BGR2RGB)
   |> Cv.Mat.to_binary(mat)
