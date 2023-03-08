@@ -60,7 +60,7 @@ if [ -n "${TARGET_ARCH}" ] && [ -n "${TARGET_OS}" ] && [ -n "${TARGET_ABI}" ]; t
     ;;
   esac
 else
-  ./configure CC="${CC}" --enable-shared --disable-static --disable-udev --prefix=/
+  ./configure --enable-shared --disable-static --disable-udev --prefix=/
 fi
 
 make DESTDIR="${DESTDIR}" install
