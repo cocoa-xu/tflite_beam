@@ -41,7 +41,7 @@ jobs:
       - name: Create precompiled library
         run: |
           export NIF_VERSION="$(erl -noshell -s init stop -eval "io:format('~ts', [erlang:system_info(nif_version)]).")"
-          if [ "${{ matrix.pair.arch }}" = "arm64" ]; then
+          if [ "${{ matrix.pair.arch }}" = "aarch64" ]; then
             export TARGET_ARCH="${{ matrix.pair.arch }}"
             export TARGET_OS="apple"
             export TARGET_ABI="darwin"
