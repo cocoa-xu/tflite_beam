@@ -38,7 +38,7 @@ make clean
 if [ -n "${TARGET_ARCH}" ] && [ -n "${TARGET_OS}" ] && [ -n "${TARGET_ABI}" ]; then
   case "${TARGET_OS}" in
     apple*)
-      ./configure CFLAGS="-arch ${TARGET_ARCH}" LDFLAGS="-arch ${TARGET_ARCH}" --enable-shared --disable-static --disable-udev --prefix=/
+      ./configure CFLAGS="-fPIC -arch=${TARGET_ARCH}" LDFLAGS="-arch=${TARGET_ARCH}" --host="${TARGET_ARCH}-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/
     ;;
     linux*)
       ./configure CFLAGS="-fPIC" --host="${TARGET_ARCH}-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/
