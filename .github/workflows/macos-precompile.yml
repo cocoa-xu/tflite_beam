@@ -15,8 +15,8 @@ jobs:
   precompile:
     runs-on: macos-11
     env:
-      MIX_ENV: dev
-      TFLITE_ELIXIR_PREFER_PRECOMPILED: NO
+      MIX_ENV: prod
+      TFLITE_ELIXIR_PREFER_PRECOMPILED: "NO"
 
     strategy:
       fail-fast: false
@@ -30,19 +30,17 @@ jobs:
               libedgetpu_library: darwin_arm64
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Install Erlang and Elixir
         run: |
           brew install elixir erlang autoconf automake
-          export SRC_ROOT="$(pwd)"
-          cd ..
           mix local.hex --force
           mix local.rebar --force
-          cd "${SRC_ROOT}"
 
       - name: Create precompiled library
         run: |
+          export NIF_VERSION="$(erl -noshell -s init stop -eval "io:format('~ts', [erlang:system_info(nif_version)]).")"
           if [ "${{ matrix.pair.arch }}" = "arm64" ]; then
             export TARGET_ARCH="${{ matrix.pair.arch }}"
             export TARGET_OS="apple"
@@ -51,7 +49,6 @@ jobs:
             export CMAKE_TFLITE_OPTIONS="-DCMAKE_OSX_ARCHITECTURES=arm64"
             export TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES="aarch64"
           fi
-          export TFLITE_ELIXIR_PREFER_PRECOMPILED="NO"
 
           echo "TFLITE_ELIXIR_PREFER_PRECOMPILED: ${TFLITE_ELIXIR_PREFER_PRECOMPILED}"
           echo "TARGET_ARCH: ${TARGET_ARCH}"
@@ -60,12 +57,11 @@ jobs:
 
           mix deps.get
           mix compile
-          export PKG_NAME=tflite_elixir-${{ matrix.pair.arch }}-apple-darwin-${GITHUB_REF##*/}
+          export PKG_NAME=tflite_elixir-nif-${NIF_VERSION}-${{ matrix.pair.arch }}-apple-darwin-${GITHUB_REF##*/}
           mkdir -p "${PKG_NAME}"
-          cp -a _build/dev/lib/tflite_elixir/priv "${PKG_NAME}"
+          cp -a _build/${MIX_ENV}/lib/tflite_elixir/priv "${PKG_NAME}"
           tar -czf "${PKG_NAME}.tar.gz" "${PKG_NAME}"
           rm -rf "${PKG_NAME}"
-          ls -lah "${PKG_NAME}.tar.gz"
           mkdir -p artifacts
           mv "${PKG_NAME}.tar.gz" artifacts
 
