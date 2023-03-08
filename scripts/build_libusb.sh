@@ -53,7 +53,7 @@ else
   ./configure CC="${CC}" --enable-shared --disable-static --disable-udev --prefix=/
 fi
 
-make CC="${CC}" DESTDIR="${DESTDIR}" install
+make DESTDIR="${DESTDIR}" install
 
 LIBUSB_SO="libusb-1.0.0.dylib"
 LIBUSB_SO_SYMLINK="libusb-1.0.dylib"
