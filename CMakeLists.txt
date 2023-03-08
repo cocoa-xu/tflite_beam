@@ -7,6 +7,19 @@ set(TFLITE_ROOT_DIR "" CACHE PATH
 if(NOT TFLITE_ROOT_DIR)
     message(FATAL_ERROR "TFLITE_ROOT_DIR is not set.")
 endif()
+set(CMAKE_MODULE_PATH
+  "${TFLITE_ROOT_DIR}/tools/cmake/modules"
+  ${CMAKE_MODULE_PATH}
+)
+set(ABSL_PROPAGATE_CXX_STD ON)
+find_package(absl REQUIRED)
+
+if(UNIX AND NOT APPLE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -shared")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-but-set-variable")
+elseif(UNIX AND APPLE)
+    set(CMAKE_SHARED_LINKER_FLAGS "-flat_namespace -undefined suppress -undefined dynamic_lookup")
+endif()
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
@@ -106,6 +119,16 @@ add_library(tflite_elixir SHARED
     ${SOURCE_FILES}
 )
 set(TFLITE_ELIXIR_LINK_LIBRARIES "tensorflow-lite")
+list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES
+    absl::any
+    absl::flat_hash_map
+    absl::flags
+    absl::hash
+    absl::status
+    absl::strings
+    absl::synchronization
+    absl::variant
+)
 if(${TFLITE_ELIXIR_CORAL_SUPPORT})
     if(UNIX AND NOT APPLE)
         list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES "edgetpu")
