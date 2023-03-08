@@ -3,7 +3,7 @@ defmodule TFLiteElixir.Nif do
   @on_load :load_nif
   def load_nif do
     require Logger
-    nif_file = '#{:code.priv_dir(:tflite_elixir)}/tflite_elixir'
+    nif_file = ~c"#{:code.priv_dir(:tflite_elixir)}/tflite_elixir"
 
     case :erlang.load_nif(nif_file, 0) do
       :ok -> :ok

@@ -39,7 +39,7 @@ defmodule TFLiteElixir.Interpreter do
   """
   @spec new(String.t()) :: nif_resource_ok() | nif_error()
   def new(model_path) do
-    with {:build_from_file, %TFLiteElixir.FlatBufferModel{}=model} <-
+    with {:build_from_file, %TFLiteElixir.FlatBufferModel{} = model} <-
            {:build_from_file, TFLiteElixir.FlatBufferModel.buildFromFile(model_path)},
          {:builtin_resolver, {:ok, resolver}} <-
            {:builtin_resolver, TFLiteElixir.Ops.Builtin.BuiltinResolver.new()},
@@ -71,7 +71,7 @@ defmodule TFLiteElixir.Interpreter do
   end
 
   defp fill_input(interpreter, input_tensors, input)
-  when is_list(input_tensors) and is_list(input) do
+       when is_list(input_tensors) and is_list(input) do
     if length(input_tensors) == length(input) do
       Enum.zip_with([input_tensors, input], fn [input_index, input_tensor] ->
         fill_input(interpreter, input_index, input_tensor)
@@ -79,29 +79,39 @@ defmodule TFLiteElixir.Interpreter do
     end
   end
 
-  defp fill_input(interpreter, input_tensors, %Nx.Tensor{}=input)
-  when is_list(input_tensors) and length(input_tensors) == 1 do
+  defp fill_input(interpreter, input_tensors, %Nx.Tensor{} = input)
+       when is_list(input_tensors) and length(input_tensors) == 1 do
     [tensor_index] = input_tensors
     fill_input(interpreter, tensor_index, input)
   end
 
-  defp fill_input(interpreter, input_tensor_index, %Nx.Tensor{}=input)
-  when is_integer(input_tensor_index) do
+  defp fill_input(interpreter, input_tensor_index, %Nx.Tensor{} = input)
+       when is_integer(input_tensor_index) do
     tensor = TFLiteElixir.Interpreter.tensor!(interpreter, input_tensor_index)
-    with {:match_type, _, _, true} <- {:match_type, tensor.type, Nx.type(input), tensor.type == Nx.type(input)},
-         {:match_shape, _, _, true} <- {:match_shape, List.to_tuple(tensor.shape), Nx.shape(input), (tensor.shape == Tuple.to_list(Nx.shape(input)) or tensor.shape == [1 | Tuple.to_list(Nx.shape(input))])} do
-          Tensor.set_data(tensor, Nx.to_binary(input))
+
+    with {:match_type, _, _, true} <-
+           {:match_type, tensor.type, Nx.type(input), tensor.type == Nx.type(input)},
+         {:match_shape, _, _, true} <-
+           {:match_shape, List.to_tuple(tensor.shape), Nx.shape(input),
+            tensor.shape == Tuple.to_list(Nx.shape(input)) or
+              tensor.shape == [1 | Tuple.to_list(Nx.shape(input))]} do
+      Tensor.set_data(tensor, Nx.to_binary(input))
     else
       {:match_type, tensor_type, input_type, _} ->
-        {:error, "input data type, #{inspect(input_type)}, does not match the data type of the tensor, #{inspect(tensor_type)}, tensor index: #{input_tensor_index}"}
+        {:error,
+         "input data type, #{inspect(input_type)}, does not match the data type of the tensor, #{inspect(tensor_type)}, tensor index: #{input_tensor_index}"}
+
       {:match_shape, tensor_shape, input_shape, _} ->
-        {:error, "input data shape, #{inspect(input_shape)}, does not match the shape type of the tensor, #{inspect(tensor_shape)}, tensor index: #{input_tensor_index}"}
-      error -> error
+        {:error,
+         "input data shape, #{inspect(input_shape)}, does not match the shape type of the tensor, #{inspect(tensor_shape)}, tensor index: #{input_tensor_index}"}
+
+      error ->
+        error
     end
   end
 
   defp fill_input(interpreter, input_tensor_index, input)
-  when is_integer(input_tensor_index) and is_binary(input) do
+       when is_integer(input_tensor_index) and is_binary(input) do
     with {:ok, tensor} <- TFLiteElixir.Interpreter.tensor(interpreter, input_tensor_index) do
       Tensor.set_data(tensor, input)
     else
@@ -110,12 +120,13 @@ defmodule TFLiteElixir.Interpreter do
   end
 
   defp fill_input(interpreter, input_tensors, input)
-  when is_list(input_tensors) and is_map(input) do
+       when is_list(input_tensors) and is_map(input) do
     ret =
       Enum.map(input_tensors, fn input_tensor_index ->
         {:ok, out_tensor} = TFLiteElixir.Interpreter.tensor(interpreter, input_tensor_index)
         name = out_tensor.name
         data = Map.get(input, name, nil)
+
         if data do
           fill_input(out_tensor, data)
           :ok
@@ -124,6 +135,7 @@ defmodule TFLiteElixir.Interpreter do
         end
       end)
       |> Enum.reject(fn r -> r == :ok end)
+
     if ret == [] do
       :ok
     else
@@ -131,18 +143,17 @@ defmodule TFLiteElixir.Interpreter do
     end
   end
 
-  defp fill_input(%Tensor{}=tensor, input)
-  when is_binary(input) do
+  defp fill_input(%Tensor{} = tensor, input)
+       when is_binary(input) do
     Tensor.set_data(tensor, input)
   end
 
-  defp fill_input(%Tensor{}=tensor, %Nx.Tensor{}=input)
-  do
+  defp fill_input(%Tensor{} = tensor, %Nx.Tensor{} = input) do
     Tensor.set_data(tensor, Nx.to_binary(input))
   end
 
   defp fetch_output(interpreter, output_tensors)
-  when is_list(output_tensors) do
+       when is_list(output_tensors) do
     Enum.map(output_tensors, fn output_index ->
       fetch_output(interpreter, output_index)
     end)

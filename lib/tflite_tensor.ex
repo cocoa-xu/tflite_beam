@@ -45,7 +45,7 @@ defmodule TFLiteElixir.TFLiteTensor do
   def type(%TB{type: type}), do: type
 
   @spec type(%T{}) :: tensor_type()
-  def type(%T{}=self), do: Nx.type(self)
+  def type(%T{} = self), do: Nx.type(self)
 
   @spec type(reference()) :: tensor_type() | nif_error()
   def type(self) when is_reference(self) do
@@ -61,7 +61,7 @@ defmodule TFLiteElixir.TFLiteTensor do
   def dims(%TB{shape: shape}), do: shape
 
   @spec dims(%T{}) :: [integer()]
-  def dims(%T{}=self), do: Tuple.to_list(Nx.shape(self))
+  def dims(%T{} = self), do: Tuple.to_list(Nx.shape(self))
 
   @spec dims(reference()) :: {:ok, [integer()]} | nif_error()
   def dims(self) do
@@ -112,12 +112,14 @@ defmodule TFLiteElixir.TFLiteTensor do
   deferror(to_binary(self, limit))
 
   @impl true
-  def to_binary(%T{data: %TB{reference: tensor_ref}} = _tensor, limit) when is_reference(tensor_ref) and is_integer(limit) and limit >= 0 do
+  def to_binary(%T{data: %TB{reference: tensor_ref}} = _tensor, limit)
+      when is_reference(tensor_ref) and is_integer(limit) and limit >= 0 do
     to_binary!(tensor_ref, limit)
   end
 
   @doc false
   def from_nx(%T{data: %TB{reference: tensor_ref}}), do: tensor_ref
+
   def from_nx(%T{} = _tensor) do
     raise "cannot allocate tensor"
   end
@@ -134,6 +136,7 @@ defmodule TFLiteElixir.TFLiteTensor do
   def to_nx(self) when is_reference(self) do
     type = type!(self)
     shape = List.to_tuple(dims!(self))
+
     %T{
       type: type,
       shape: shape,
@@ -144,12 +147,12 @@ defmodule TFLiteElixir.TFLiteTensor do
 
   deferror(to_nx(self))
 
-  def to_nx(%TB{}=self, backend) do
+  def to_nx(%TB{} = self, backend) do
     Nx.from_binary(to_binary(self), type(self), backend: backend)
     |> Nx.reshape(List.to_tuple(dims!(self)))
   end
 
-  def to_nx(%T{}=self, backend) do
+  def to_nx(%T{} = self, backend) do
     Nx.from_binary(to_binary(self), type(self), backend: backend)
     |> Nx.reshape(List.to_tuple(dims!(self)))
   end
@@ -158,7 +161,12 @@ defmodule TFLiteElixir.TFLiteTensor do
   def to_nx(tensor_ref, %T{type: _type, shape: shape} = t)
       when is_reference(tensor_ref) do
     type = type!(tensor_ref)
-    %{t | type: type, data: %__MODULE__{reference: check_shape_and_type!(tensor_ref, shape, type)}}
+
+    %{
+      t
+      | type: type,
+        data: %__MODULE__{reference: check_shape_and_type!(tensor_ref, shape, type)}
+    }
   end
 
   if Application.compile_env(:tflite_elixir, :check_shape_and_type, false) do
@@ -167,14 +175,14 @@ defmodule TFLiteElixir.TFLiteTensor do
 
       if current_type != type do
         raise "type mismatch in TFLite: expected #{inspect(type)}, got: #{inspect(current_type)}. " <>
-              "Please report this bug"
+                "Please report this bug"
       end
 
       current_shape = List.to_tuple(dims!(tensor_ref))
 
       if current_shape != shape do
         raise "shape mismatch in TFLite: expected #{inspect(shape)}, got: #{inspect(current_shape)}. " <>
-              "Please report this bug"
+                "Please report this bug"
       end
 
       tensor_ref
