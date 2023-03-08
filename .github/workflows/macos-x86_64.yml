@@ -7,7 +7,7 @@ on:
       - main
       - test-*
     paths-ignore:
-      - '**/README.md'
+      - '**/*.md'
       - 'examples/**'
       - 'nerves/**'
       - '.github/FUNDING.yml'

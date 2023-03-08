@@ -10,7 +10,7 @@ on:
       - test-*
       - fix-*
     paths-ignore:
-      - '**/README.md'
+      - '**/*.md'
       - 'examples/**'
       - 'nerves/**'
       - '.github/FUNDING.yml'
