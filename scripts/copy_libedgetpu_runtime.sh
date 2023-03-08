@@ -25,7 +25,7 @@ case "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_TRIPLET}" in
     copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}/edgetpu_runtime/libedgetpu/edgetpu.h" "${LIBEDGETPU_RUNTIME_PRIV}/edgetpu.h"
     copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}/edgetpu_runtime/libedgetpu/edgetpu_c.h" "${LIBEDGETPU_RUNTIME_PRIV}/edgetpu_c.h"
   ;;
-  x86_64-apple-darwin|arm64-apple-darwin)
+  x86_64-apple-darwin|aarch64-apple-darwin)
     copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}/edgetpu_runtime/libedgetpu/${LIBEDGETPU_TFLITE_ELIXIR_CORAL_USB_THROTTLE}/${TFLITE_ELIXIR_CORAL_LIBEDGETPU_TRIPLET}/libedgetpu.1.0.dylib" "${LIBEDGETPU_RUNTIME_PRIV}/libedgetpu.1.0.dylib"
     copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}/edgetpu_runtime/libedgetpu/edgetpu.h" "${LIBEDGETPU_RUNTIME_PRIV}/edgetpu.h"
     copy_if_not_exists "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR}/edgetpu_runtime/libedgetpu/edgetpu_c.h" "${LIBEDGETPU_RUNTIME_PRIV}/edgetpu_c.h"
