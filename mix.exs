@@ -93,18 +93,17 @@ defmodule TfliteElixir.MixProject do
 
     System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", edgetpu_libraries)
 
-    {precompiled_available, url, filename} =
     case has_precompiled_binaries(tflite_version, enable_coral_support, edgetpu_libraries) do
       {true, url, filename} ->
         unarchive_to = Path.join([cache_dir(), "precompiled", filename])
 
-        with :ok <- download_precompiled(filename, url, unarchive_to) do
+        with :ok <- download_precompiled("#{filename}.tar.gz", url, unarchive_to) do
           System.put_env(
             "TFLITE_ELIXIR_ONLY_COPY_PRIV",
             Path.join([unarchive_to, filename, "priv"])
           )
 
-          {:ok, Mix.compilers()}
+          {:ok, [:elixir_make] ++ Mix.compilers()}
         else
           _ ->
             use_precompiled(false)
@@ -179,7 +178,15 @@ defmodule TfliteElixir.MixProject do
 
         get_triplet_if_possible(lib)
 
-      {lib, "apple"} when lib in ["darwin_aarch64", "darwin_arm64", "darwin_x86_64", "aarch64", "arm64", "x86_64"] ->
+      {lib, "apple"}
+      when lib in [
+             "darwin_aarch64",
+             "darwin_arm64",
+             "darwin_x86_64",
+             "aarch64",
+             "arm64",
+             "x86_64"
+           ] ->
         case lib do
           lib when lib in ["arm64", "aarch64"] ->
             get_triplet_if_possible("darwin_arm64")
@@ -239,12 +246,12 @@ defmodule TfliteElixir.MixProject do
           "No precompiled binaries for #{requested_triplet}, will try to build from source."
         )
 
-        {false, nil, nil}
+        false
     end
   end
 
   defp has_precompiled_binaries(_tflite_version, _enable_coral_support, _edgetpu_libraries) do
-    {false, nil, nil}
+    false
   end
 
   defp download_precompiled(filename, url, unarchive_to) do

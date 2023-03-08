@@ -167,8 +167,8 @@ binary = File.read!("parrot.bin")
 # load image, resize it, covert to RGB and to binary 
 binary = 
   Cv.imread!("parrot.jpg")
-  |> Cv.resize([224, 224])
-  |> Cv.cvtColor!(Cv.cv_COLOR_BGR2RGB)
+  |> Cv.resize({224, 224})
+  |> Cv.cvtColor(Cv.cv_COLOR_BGR2RGB)
   |> Cv.Mat.to_binary(mat)
 
 # set input, run forwarding, get output
@@ -194,15 +194,7 @@ For macOS
 brew install autoconf automake
 ```
 
-For DEBIAN/Ubuntu
-```shell
-# only required if not using precompiled binaries
-# for changing rpath
-sudo apt install patchelf
-```
-
-For some Linux OSes you need to manually execute the following command to update udev rules, otherwise, libedgetpu will
-fail to initialize Coral devices.
+For some Linux OSes you need to manually execute the following command to update udev rules, otherwise, libedgetpu will fail to initialize Coral devices.
 
 ```shell
 mix deps.get
