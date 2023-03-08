@@ -17,16 +17,23 @@ TFLITE_VER_V = v$(TFLITE_VER)
 ifneq ($(TFLITE_USE_GIT_HEAD), false)
 	TFLITE_VER_V=$(TFLITE_USE_GIT_BRANCH)
 endif
-TFLITE_ELIXIR_CACHE_DIR ?= $(shell pwd)/3rd_party/cache
+THIRD_PARTY_DIR = $(shell pwd)/3rd_party
+TFLITE_ELIXIR_CACHE_DIR = $(THIRD_PARTY_DIR)/cache
 TFLITE_SOURCE_URL = "https://github.com/tensorflow/tensorflow/archive/refs/tags/$(TFLITE_VER_V).zip"
 TFLITE_SOURCE_ZIP = $(TFLITE_ELIXIR_CACHE_DIR)/tensorflow-$(TFLITE_VER_V).zip
-UNZIP_TARGET_DIR = $(shell pwd)/3rd_party/tensorflow
+UNZIP_TARGET_DIR = $(THIRD_PARTY_DIR)/tensorflow
 TENSORFLOW_ROOT_DIR = $(UNZIP_TARGET_DIR)/tensorflow-$(TFLITE_VER)
 TFLITE_ROOT_DIR = $(TENSORFLOW_ROOT_DIR)/tensorflow/lite
-GFLAGS_ROOT_DIR = $(shell pwd)/3rd_party/gflags
-GLOG_ROOT_DIR = $(shell pwd)/3rd_party/glog
+GFLAGS_ROOT_DIR = $(THIRD_PARTY_DIR)/gflags
+GLOG_ROOT_DIR = $(THIRD_PARTY_DIR)/glog
 TFLITE_CMAKELISTS_TXT = $(TFLITE_ROOT_DIR)/CMakeLists.txt
 CMAKE_TFLITE_BUILD_DIR = $(MIX_APP_PATH)/cmake_tflite_$(TFLITE_VER)
+
+LIBUSB_VERSION = 1.0.26
+LIBUSB_SOURCE_URL = https://github.com/libusb/libusb/releases/download/v$(LIBUSB_VERSION)/libusb-$(LIBUSB_VERSION).tar.bz2
+LIBUSB_SOURCE_ARCHIVE = $(TFLITE_ELIXIR_CACHE_DIR)/libusb-$(LIBUSB_VERSION).tar.bz2
+LIBUSB_SOURCE_DIR = $(THIRD_PARTY_DIR)/libusb-$(LIBUSB_VERSION)
+LIBUSB_INSTALL_DIR = $(MIX_APP_PATH)/libusb
 
 TFLITE_ELIXIR_CORAL_USB_THROTTLE ?= "YES"
 TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES ?= "native"
@@ -43,11 +50,13 @@ MAKE_BUILD_FLAGS ?= "-j1"
 
 .DEFAULT_GLOBAL := build
 
-build: $(NATIVE_BINDINGS_SO)
+build: $(NATIVE_BINDINGS_SO) fix_libusb
 
-$(TFLITE_SOURCE_ZIP):
+create_cache_dir:
+	@ mkdir -p "$(TFLITE_ELIXIR_CACHE_DIR)"
+
+$(TFLITE_SOURCE_ZIP): create_cache_dir
 	@ if [ "$(TFLITE_ELIXIR_ONLY_COPY_PRIV)" = "NO" ]; then \
-		mkdir -p "$(TFLITE_ELIXIR_CACHE_DIR)"; \
 		if [ "$(TFLITE_USE_GIT_HEAD)" = "false" ] && [ ! -e "$(TFLITE_SOURCE_ZIP)" ]; then \
 			if [ -e "$(shell which curl)" ]; then \
 				curl -fSL "$(TFLITE_SOURCE_URL)" -o $(TFLITE_SOURCE_ZIP) ; \
@@ -59,7 +68,6 @@ $(TFLITE_SOURCE_ZIP):
 			fi \
 		fi \
 	fi
-
 
 unarchive_source_code: $(TFLITE_SOURCE_ZIP)
 	@ if [ "$(TFLITE_ELIXIR_ONLY_COPY_PRIV)" = "NO" ]; then \
@@ -74,36 +82,34 @@ unarchive_source_code: $(TFLITE_SOURCE_ZIP)
 		fi \
 	fi
 
-install_libedgetpu_runtime: libedgetpu_dependency_libusb
+install_libedgetpu_runtime:
 	@ if [ "$(TFLITE_ELIXIR_ONLY_COPY_PRIV)" = "NO" ]; then \
    		if [ "$(TFLITE_ELIXIR_CORAL_SUPPORT)" = "YES" ]; then \
 			bash scripts/copy_libedgetpu_runtime.sh "$(LIBEDGETPU_RUNTIME_PRIV)" "$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR)" "$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_TRIPLET)" "$(TFLITE_ELIXIR_CORAL_USB_THROTTLE)"; \
-			bash scripts/macos_fix_libusb.sh "$(PRIV_DIR)/libedgetpu/libedgetpu.1.0.dylib" ; \
-			bash scripts/linux_fix_edgetpu_version.sh "$(PRIV_DIR)/libedgetpu" ; \
 			git submodule update --init c_src/libcoral ; \
 			cd c_src/libcoral && git submodule update --init libedgetpu && cd ../.. ; \
 		fi \
 	fi
 
-libedgetpu_dependency_libusb:
+libusb: create_cache_dir
 	@ if [ "$(TFLITE_ELIXIR_ONLY_COPY_PRIV)" = "NO" ]; then \
 		if [ "$(TFLITE_ELIXIR_CORAL_SUPPORT)" = "YES" ]; then \
 			case "$(shell uname -s)" in \
 				Darwin*) \
-					if [ ! -e "$(LIBEDGETPU_RUNTIME_PRIV)/lib/libusb-1.0.0.dylib" ]; then \
-						bash scripts/build_libusb.sh "$(shell pwd)" "$(LIBEDGETPU_RUNTIME_PRIV)"; \
+					if [ ! -e "$(PRIV_DIR)/libedgetpu/libusb-1.0.0.dylib" ]; then \
+						bash scripts/build_libusb.sh "$(LIBUSB_SOURCE_URL)" "$(LIBUSB_SOURCE_ARCHIVE)" "$(THIRD_PARTY_DIR)" "$(LIBUSB_SOURCE_DIR)" "$(LIBUSB_INSTALL_DIR)" "$(PRIV_DIR)" ; \
 					fi \
 				;; \
 				Linux*) \
-					if [ ! -e "$(LIBEDGETPU_RUNTIME_PRIV)/lib/libusb-1.0.so.0.3.0" ]; then \
-						bash scripts/build_libusb.sh "$(shell pwd)" "$(LIBEDGETPU_RUNTIME_PRIV)"; \
+					if [ ! -e "$(PRIV_DIR)/libedgetpu/libusb-1.0.so" ]; then \
+						bash scripts/build_libusb.sh "$(LIBUSB_SOURCE_URL)" "$(LIBUSB_SOURCE_ARCHIVE)" "$(THIRD_PARTY_DIR)" "$(LIBUSB_SOURCE_DIR)" "$(LIBUSB_INSTALL_DIR)" "$(PRIV_DIR)" ; \
 					fi \
 				;; \
 			esac ; \
 		fi \
 	fi
 
-$(NATIVE_BINDINGS_SO): unarchive_source_code install_libedgetpu_runtime
+$(NATIVE_BINDINGS_SO): unarchive_source_code install_libedgetpu_runtime libusb
 	@ if [ "$(TFLITE_ELIXIR_ONLY_COPY_PRIV)" = "NO" ]; then \
 		if [ ! -e "$(NATIVE_BINDINGS_SO)" ]; then \
 			echo "CORAL SUPPORT: $(TFLITE_ELIXIR_CORAL_SUPPORT)" ; \
@@ -121,6 +127,7 @@ $(NATIVE_BINDINGS_SO): unarchive_source_code install_libedgetpu_runtime
 			  -D GLOG_ROOT_DIR="$(GLOG_ROOT_DIR)" \
 			  -D TFLITE_ELIXIR_CACHE_DIR="$(TFLITE_ELIXIR_CACHE_DIR)" \
 			  -D TFLITE_ELIXIR_CORAL_SUPPORT="$(TFLITE_ELIXIR_CORAL_SUPPORT)" \
+			  -D LIBUSB_INSTALL_DIR="$(LIBUSB_INSTALL_DIR)" \
 			  $(CMAKE_OPTIONS) \
 			  "$(shell pwd)" ; \
 			{ mkdir -p $(PRIV_DIR) && \
@@ -134,7 +141,7 @@ $(NATIVE_BINDINGS_SO): unarchive_source_code install_libedgetpu_runtime
 			cp -rf "$(TFLITE_ELIXIR_ONLY_COPY_PRIV)" "$(PRIV_DIR)" ; \
 		fi \
 	fi
-	@ if [ "$(TFLITE_ELIXIR_CORAL_SUPPORT)" = "YES" ]; then \
-		bash scripts/macos_fix_libusb.sh "$(PRIV_DIR)/libedgetpu/libedgetpu.1.0.dylib" ; \
-		bash $(SCRIPTS_DIR)/postbuild_fix_libedgetpu.sh "$(NATIVE_BINDINGS_SO)" ; \
-	fi
+
+
+fix_libusb:
+	@ bash scripts/macos_libusb_rpath.sh "$(NATIVE_BINDINGS_SO)"
