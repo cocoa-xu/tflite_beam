@@ -41,10 +41,10 @@ if [ -n "${TARGET_ARCH}" ] && [ -n "${TARGET_OS}" ] && [ -n "${TARGET_ABI}" ]; t
     apple*)
       case "${TARGET_ARCH}" in
         x86_64*)
-          CFLAGS="-fPIC -arch=${TARGET_ARCH}" LDFLAGS="-arch=${TARGET_ARCH}" ./configure --host="${TARGET_ARCH}-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/
+          CC="${CC} -arch x86_64" CFLAGS="-fPIC -arch x86_64" LDFLAGS="-arch x86_64" ./configure --host="x86_64-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/
         ;;
         aarch64*)
-          CFLAGS="-fPIC -arch=arm64" LDFLAGS="-arch=arm64" ./configure --host="arm64-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/
+          CC="${CC} -arch arm64" CFLAGS="-fPIC -arch arm64" LDFLAGS="-arch arm64" ./configure --host="arm64-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/
         ;;
         *)
           CFLAGS="-fPIC -arch=${TARGET_ARCH}" LDFLAGS="-arch=${TARGET_ARCH}" ./configure --host="${TARGET_ARCH}-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/
