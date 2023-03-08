@@ -109,9 +109,11 @@ set(TFLITE_ELIXIR_LINK_LIBRARIES "tensorflow-lite")
 if(${TFLITE_ELIXIR_CORAL_SUPPORT})
     if(UNIX AND NOT APPLE)
         list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES "edgetpu")
+        list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES "usb-1.0.0")
         target_link_directories(tflite_elixir PUBLIC "${PRIV_DIR}/libedgetpu")
     elseif(UNIX AND APPLE)
         list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES "edgetpu.1.0")
+        list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES "usb-1.0.0")
     endif()
     list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES "gflags")
     list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES "glog")
@@ -119,7 +121,6 @@ endif()
 
 target_link_libraries(tflite_elixir
     ${TFLITE_ELIXIR_LINK_LIBRARIES}
-    "usb-1.0.0"
 )
 set_target_properties(tflite_elixir PROPERTIES PREFIX "")
 set_target_properties(tflite_elixir PROPERTIES SUFFIX ".so")

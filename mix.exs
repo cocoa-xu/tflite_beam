@@ -58,7 +58,7 @@ defmodule TfliteElixir.MixProject do
     [
       app: @app,
       version: @version,
-      elixir: "~> 1.13",
+      elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       compilers: compilers,
       deps: deps(),
@@ -94,24 +94,24 @@ defmodule TfliteElixir.MixProject do
     System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", edgetpu_libraries)
 
     {precompiled_available, url, filename} =
-      has_precompiled_binaries(tflite_version, enable_coral_support, edgetpu_libraries)
+    case has_precompiled_binaries(tflite_version, enable_coral_support, edgetpu_libraries) do
+      {true, url, filename} ->
+        unarchive_to = Path.join([cache_dir(), "precompiled", filename])
 
-    if precompiled_available do
-      unarchive_to = Path.join([cache_dir(), "precompiled", filename])
+        with :ok <- download_precompiled(filename, url, unarchive_to) do
+          System.put_env(
+            "TFLITE_ELIXIR_ONLY_COPY_PRIV",
+            Path.join([unarchive_to, filename, "priv"])
+          )
 
-      with :ok <- download_precompiled(filename, url, unarchive_to) do
-        System.put_env(
-          "TFLITE_ELIXIR_ONLY_COPY_PRIV",
-          Path.join([unarchive_to, filename, "priv"])
-        )
+          {:ok, Mix.compilers()}
+        else
+          _ ->
+            use_precompiled(false)
+        end
 
-        {:ok, Mix.compilers()}
-      else
-        _ ->
-          use_precompiled(false)
-      end
-    else
-      use_precompiled(false)
+      _ ->
+        use_precompiled(false)
     end
   end
 
