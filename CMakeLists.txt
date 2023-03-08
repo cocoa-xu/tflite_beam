@@ -67,6 +67,8 @@ set(SOURCE_FILES
 if(${TFLITE_ELIXIR_CORAL_SUPPORT})
     include_directories("${C_SRC}/libcoral")
     include_directories("${C_SRC}/libcoral/libedgetpu")
+    include_directories("${LIBUSB_INSTALL_DIR}/include")
+    link_directories("${LIBUSB_INSTALL_DIR}/lib")
 
     set(CORAL_CLASSIFICATION_SOURCES "${C_SRC}/libcoral/coral/classification/adapter.cc")
     set(CORAL_DETECTION_SOURCES "${C_SRC}/libcoral/coral/detection/adapter.cc")
@@ -117,6 +119,7 @@ endif()
 
 target_link_libraries(tflite_elixir
     ${TFLITE_ELIXIR_LINK_LIBRARIES}
+    "usb-1.0.0"
 )
 set_target_properties(tflite_elixir PROPERTIES PREFIX "")
 set_target_properties(tflite_elixir PROPERTIES SUFFIX ".so")
