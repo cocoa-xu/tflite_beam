@@ -15,7 +15,7 @@ download_libusb() {
     elif [ -e "$(which wget)" ]; then
       wget "${LIBUSB_SOURCE_URL}" -O "${LIBUSB_SOURCE_ARCHIVE}"
     else
-      echo "cannot find curl or wget, cannot download tensorflow source code"
+      echo "cannot find curl or wget, cannot download libusb source code"
       exit 1
     fi
   fi
@@ -35,11 +35,10 @@ cd "${LIBUSB_SRC}"
 mkdir -p "${DESTDIR}"
 
 make clean
-CROSSCOMPILE=""
 if [ -n "${TARGET_ARCH}" ] && [ -n "${TARGET_OS}" ] && [ -n "${TARGET_ABI}" ]; then
   case "${TARGET_OS}" in
     apple*)
-      ./configure CFLAGS="-arch ${TARGET_ARCH}" LDFLAGS="-arch ${TARGET_ARCH}" "${CROSSCOMPILE}" --enable-shared --disable-static --disable-udev --prefix=/
+      ./configure CFLAGS="-arch ${TARGET_ARCH}" LDFLAGS="-arch ${TARGET_ARCH}" --enable-shared --disable-static --disable-udev --prefix=/
     ;;
     linux*)
       ./configure CFLAGS="-fPIC" --host="${TARGET_ARCH}-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/
