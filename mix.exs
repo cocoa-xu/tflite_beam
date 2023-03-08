@@ -32,13 +32,7 @@ defmodule TfliteElixir.MixProject do
     "aarch64" => [
       "aarch64-linux-gnu"
     ],
-    "armv7a" => [
-      "armv7l-linux-gnueabihf"
-    ],
     "armv7l" => [
-      "armv7l-linux-gnueabihf"
-    ],
-    "arm" => [
       "armv7l-linux-gnueabihf"
     ],
     "riscv64" => [
@@ -175,7 +169,7 @@ defmodule TfliteElixir.MixProject do
       end
 
     case {edgetpu_libraries, target_os} do
-      {lib, "linux"} when lib in ["k8", "x86_64", "aarch64", "arm", "armv7a", "riscv64"] ->
+      {lib, "linux"} when lib in ["k8", "x86_64", "aarch64", "armv7l", "riscv64"] ->
         lib =
           if lib == "k8" do
             "x86_64"
@@ -218,24 +212,11 @@ defmodule TfliteElixir.MixProject do
   end
 
   defp get_triplet_if_possible(requested_arch)
-       when requested_arch in ["k8", "x86_64", "aarch64", "riscv64"] do
+       when requested_arch in ["k8", "x86_64", "aarch64", "riscv64", "armv7l"] do
     requested_os = System.get_env("TARGET_OS", "linux")
     requested_abi = System.get_env("TARGET_ABI", "gnu")
     requested_triplet = "#{requested_arch}-#{requested_os}-#{requested_abi}"
     available_precompiled_binaries = Map.get(@precompiled_triplets, requested_arch, [])
-
-    if requested_triplet in available_precompiled_binaries do
-      {:ok, requested_triplet}
-    else
-      {:error, requested_triplet, available_precompiled_binaries}
-    end
-  end
-
-  defp get_triplet_if_possible(requested_arch) when requested_arch in ["arm", "armv7a"] do
-    requested_os = System.get_env("TARGET_OS", "linux")
-    requested_abi = System.get_env("TARGET_ABI", "gnueabihf")
-    requested_triplet = "armv7l-#{requested_os}-#{requested_abi}"
-    available_precompiled_binaries = Map.get(@precompiled_triplets, "armv7l", [])
 
     if requested_triplet in available_precompiled_binaries do
       {:ok, requested_triplet}

@@ -42,7 +42,7 @@ jobs:
               c_compiler: gcc-arm-linux-gnueabihf
               cpp_compiler: g++-arm-linux-gnueabihf
               libedgetpu_library: "armv7a"
-              target_arch: "arm"
+              target_arch: "armv7l"
               target_os: "linux"
               target_abi: "gnueabihf"
               cc: "/usr/bin/arm-linux-gnueabihf-gcc-9"
