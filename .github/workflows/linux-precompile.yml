@@ -60,12 +60,12 @@ jobs:
               cxx: "/usr/bin/riscv64-linux-gnu-g++"
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - uses: erlef/setup-beam@v1
         with:
-          otp-version: "25.0.3"
-          elixir-version: "1.13.4"
+          otp-version: "25.3"
+          elixir-version: "1.14.3"
 
       - name: Install system dependecies
         run: |
@@ -99,13 +99,13 @@ jobs:
           export PKG_NAME=tflite_elixir-${{ matrix.pair.arch_name }}-${{ matrix.pair.target_os }}-${{ matrix.pair.target_abi }}-${GITHUB_REF##*/}
           mkdir -p "${PKG_NAME}"
           cp -a _build/dev/lib/tflite_elixir/priv "${PKG_NAME}"
-          zip -r -9 -y "${PKG_NAME}.zip" "${PKG_NAME}"
+          tar -czf "${PKG_NAME}.tar.gz" "${PKG_NAME}"
           rm -rf "${PKG_NAME}"
-          ls -lah "${PKG_NAME}.zip"
+          ls -lah "${PKG_NAME}.tar.gz"
           mkdir -p artifacts
-          mv "${PKG_NAME}.zip" artifacts
+          mv "${PKG_NAME}.tar.gz" artifacts
 
       - uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: artifacts/tflite_elixir-*.zip
+          files: artifacts/tflite_elixir-*.tar.gz
