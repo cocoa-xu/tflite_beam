@@ -8,7 +8,7 @@ defmodule TfliteElixir.MixProject do
   @prefer_precompiled "YES"
   @github_url "https://github.com/cocoa-xu/tflite_elixir"
   @libedgetpu_runtime_github_url "https://github.com/cocoa-xu/libedgetpu"
-  @libedgetpu_runtime_version "0.1.0"
+  @libedgetpu_runtime_version "0.1.1"
   # only means compatible. need to write more tests
   @compatible_tflite_versions [
     "2.7.0",
@@ -200,9 +200,9 @@ defmodule TfliteElixir.MixProject do
     "darwin_" <> target_arch = requested_arch
     requested_triplet = "#{target_arch}-#{requested_os}-#{requested_abi}"
     case requested_arch do
-      "darwin_arm64" -> {:ok, "arm64-apple-darwin"}
+      "darwin_arm64" -> {:ok, "aarch64-apple-darwin"}
       "darwin_x86_64" -> {:ok, "x86_64-apple-darwin"}
-      _ -> {:error, requested_triplet, ["arm64-apple-darwin", "x86_64-apple-darwin"]}
+      _ -> {:error, requested_triplet, ["aarch64-apple-darwin", "x86_64-apple-darwin"]}
     end
   end
 
@@ -250,7 +250,7 @@ defmodule TfliteElixir.MixProject do
   end
 
   defp download_precompiled(filename, url, unarchive_to) do
-    download_archived_file(filename, url, unarchive_to, :zip)
+    download_archived_file(filename, url, unarchive_to)
   end
 
   def application do
@@ -311,9 +311,9 @@ defmodule TfliteElixir.MixProject do
   defp download_edgetpu_runtime(edgetpu_libraries) do
     with {:ok, triplet} <- get_triplet(edgetpu_libraries) do
       filename = "edgetpu_runtime_#{triplet}_v#{@libedgetpu_runtime_version}"
-      runtime_url = "#{@libedgetpu_runtime_github_url}/releases/download/v#{@libedgetpu_runtime_version}/#{filename}.zip"
-      unzip_to = Path.join([cache_dir(), filename])
-      {download_archived_file("#{filename}.zip", runtime_url, unzip_to, :zip), filename, triplet}
+      runtime_url = "#{@libedgetpu_runtime_github_url}/releases/download/v#{@libedgetpu_runtime_version}/#{filename}.tar.gz"
+      unarchive_to = Path.join([cache_dir(), filename])
+      {download_archived_file("#{filename}.tar.gz", runtime_url, unarchive_to), filename, triplet}
     else
       {:error, requested_triplet, _available_precompiled_triplets} ->
         msg = "No precompiled libedgetpu runtime binaries for #{requested_triplet}."
@@ -322,7 +322,7 @@ defmodule TfliteElixir.MixProject do
     end
   end
 
-  defp download_archived_file(filename, url, unarchive_to, type) do
+  defp download_archived_file(filename, url, unarchive_to) do
     if !File.exists?(unarchive_to) do
       File.mkdir_p!(unarchive_to)
     end
@@ -339,21 +339,25 @@ defmodule TfliteElixir.MixProject do
       end
 
     if status == :ok do
-      case type do
-        :zip -> unzip_file(cache_location, unarchive_to)
-        _ -> :ok
-      end
+      unarchive_file(cache_location, unarchive_to)
     end
   end
 
-  defp unzip_file(filepath, unzip_to) do
-    with {:ok, _} <-
-           :zip.unzip(String.to_charlist(filepath), [
-             {:cwd, String.to_charlist(unzip_to)}
-           ]) do
-      :ok
-    else
-      _ -> {:error, "failed to unzip file #{filepath}"}
+  defp unarchive_file(filepath, unarchive_to) do
+    case File.read(filepath) do
+      {:ok, contents} ->
+        File.rm_rf!(unarchive_to)
+        case :erl_tar.extract({:binary, contents}, [:compressed, {:cwd, unarchive_to}]) do
+          :ok ->
+            :ok
+
+          {:error, term} ->
+            {:error,
+             "cannot decompress precompiled #{inspect(filepath)}: #{inspect(term)}"}
+        end
+      {:error, reason} ->
+        {:error,
+          "precompiled #{inspect(filepath)} does not exist or cannot download: #{inspect(reason)}"}
     end
   end
 
@@ -374,7 +378,6 @@ defmodule TfliteElixir.MixProject do
 
     case :httpc.request(:get, arg, http_opts, opts) do
       {:ok, {{_, 200, _}, _, body}} ->
-        body
         File.write!(save_as, body)
 
       _ ->
