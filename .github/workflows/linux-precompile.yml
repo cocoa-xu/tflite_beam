@@ -41,7 +41,7 @@ jobs:
               cmake_toolchain_file: cc_toolchain/armv7l-linux-gnueabihf.cmake
               c_compiler: gcc-arm-linux-gnueabihf
               cpp_compiler: g++-arm-linux-gnueabihf
-              libedgetpu_library: "armv7a"
+              libedgetpu_library: "armv7l"
               target_arch: "armv7l"
               target_os: "linux"
               target_abi: "gnueabihf"
@@ -81,6 +81,7 @@ jobs:
             export TARGET_ARCH="${{ matrix.pair.target_arch }}"
             export TARGET_OS="${{ matrix.pair.target_os }}"
             export TARGET_ABI="${{ matrix.pair.target_abi }}"
+            export TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES="${{ matrix.pair.libedgetpu_library }}"
           fi
 
           export TFLITE_ELIXIR_PREFER_PRECOMPILED="NO"

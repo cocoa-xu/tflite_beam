@@ -45,6 +45,7 @@ jobs:
             export TARGET_ABI="darwin"
             export CPPFLAGS="-arch arm64"
             export CMAKE_TFLITE_OPTIONS="-DCMAKE_OSX_ARCHITECTURES=arm64"
+            export TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES="aarch64"
           fi
           export TFLITE_ELIXIR_PREFER_PRECOMPILED="NO"
 
