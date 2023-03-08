@@ -24,8 +24,8 @@ download_libusb() {
 unarchive_libusb() {
   if [ ! -d "${LIBUSB_SOURCE_DIR}" ]; then
     echo "Unarchiving libusb..."
-    rm -rf "$(LIBUSB_SOURCE_DIR)" &&
-    tar -C "$(THIRD_PARTY_DIR)" -xf "$(LIBUSB_SOURCE_ARCHIVE)"
+    rm -rf "${LIBUSB_SOURCE_DIR}" &&
+    tar -C "${THIRD_PARTY_DIR}" -xf "${LIBUSB_SOURCE_ARCHIVE}"
   fi
 }
 
@@ -57,14 +57,20 @@ fi
 make DESTDIR="${DESTDIR}" install
 
 LIBUSB_SO="libusb-1.0.0.dylib"
+LIBUSB_SO_SYMLINK="libusb-1.0.dylib"
 if [ -n "${CROSSCOMPILE}" ] && [ "${TARGET_OS}" != "apple" ]; then
   export LIBUSB_SO="libusb-1.0.so.0.3.0"
+  export LIBUSB_SO_SYMLINK="libusb-1.0.0.so"
 fi
 case "$(uname -s)" in
   Linux*)
     export LIBUSB_SO="libusb-1.0.so.0.3.0"
+    export LIBUSB_SO_SYMLINK="libusb-1.0.0.so"
   ;;
 esac
 
 mkdir -p "${PRIV_DIR}/libedgetpu"
 cp "${DESTDIR}/lib/${LIBUSB_SO}" "${PRIV_DIR}/libedgetpu"
+cd "${PRIV_DIR}/libedgetpu"
+rm -f "${LIBUSB_SO_SYMLINK}"
+ln -s "${LIBUSB_SO}" "${LIBUSB_SO_SYMLINK}"
