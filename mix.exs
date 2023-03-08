@@ -133,7 +133,7 @@ defmodule TfliteElixir.MixProject do
         {:ok, [:elixir_make, :elixir_precompiled_deployer] ++ Mix.compilers()}
       else
         {:error, error} ->
-          Logger.warn(error)
+          Logger.warning(error)
           {:ok, Mix.compilers()}
       end
     end
@@ -240,7 +240,7 @@ defmodule TfliteElixir.MixProject do
       {true, "#{@github_url}/releases/download/v#{@version}/#{filename}.zip", filename}
     else
       {:error, requested_triplet, _available_precompiled_triplets} ->
-        Logger.warn("No precompiled binaries for #{requested_triplet}, will try to build from source.")
+        Logger.warning("No precompiled binaries for #{requested_triplet}, will try to build from source.")
         {false, nil, nil}
     end
   end
@@ -291,11 +291,11 @@ defmodule TfliteElixir.MixProject do
     if Enum.member?(@compatible_tflite_versions, version) do
       version
     else
-      Logger.warn(
+      Logger.warning(
         "Tensorflow Lite version #{version} is not in the compatible list, you may encounter compile errors"
       )
 
-      Logger.warn(
+      Logger.warning(
         "Compatible Tensorflow Lite versions: " <>
           (@compatible_tflite_versions |> Enum.join(", "))
       )
@@ -317,7 +317,7 @@ defmodule TfliteElixir.MixProject do
     else
       {:error, requested_triplet, _available_precompiled_triplets} ->
         msg = "No precompiled libedgetpu runtime binaries for #{requested_triplet}."
-        Logger.warn(msg)
+        Logger.warning(msg)
         {:error, msg}
     end
   end
