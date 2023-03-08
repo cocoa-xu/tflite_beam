@@ -22,7 +22,8 @@ Mix.install([
 
 # test data can be found in the test directory
 interpreter = TFLiteElixir.Interpreter.new!("test/test_data/mobilenet_v2_1.0_224_inat_bird_quant.tflite")
-input = elem(StbImage.read_file("test/test_data/parrot.jpeg"), 1)
+input = 
+  StbImage.read_file!("test/test_data/parrot.jpeg")
   |> StbImage.resize(224, 224)
   |> StbImage.to_nx()
 output = TFLiteElixir.Interpreter.predict(interpreter, input)
@@ -32,19 +33,8 @@ output = TFLiteElixir.Interpreter.predict(interpreter, input)
 Some livebook examples can be found in the [examples](examples) directory.
 
 ## Nerves Support
-1. Make sure `nerves_system_br` >= v1.20.2, otherwise, xnnpack (or one of its dependency) will fail to compile because 
-`CMAKE_SYSTEM_PROCESSOR` is not set before v1.20.2. 
-```elixir
-defp deps do
-  [
-    # ...
-    {:nerves_system_br, "~> 1.20.2", runtime: false, override: true},
-    # ...
-  ]
-end
-```
 
-2. If prefer precompiled binaries
+1. If prefer precompiled binaries
 ```shell
 # for example
 export MIX_TARGET=rpi4
@@ -53,22 +43,25 @@ export MIX_TARGET=rpi4
 #   for the precompiled libedgetpu binaries. The arch
 #   is automatically detected by the `TARGET_ARCH`,
 #   `TARGET_OS` and `TARGET_ABI` environment vars.
+#
 # However, if you are using your own nerves target
 #   you can manually set the correct arch, e.g., 
 #   set `aarch64` for rpi4.
-# Other values including
-# - armv7a
+#
+# Possible values including
+# - aarch64
+# - armv7l
 # - riscv64
 # - x86_64
 export TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES=aarch64
 ```
 
-3. If not prefer precompiled binaries
+2. If prefer not to use precompiled binaries
 ```shell
 # for example
 export MIX_TARGET=rpi4
 # then set env var TFLITE_ELIXIR_PREFER_PRECOMPILED to NO
-export TFLITE_ELIXIR_PREFER_PRECOMPILED="NO"
+export TFLITE_ELIXIR_PREFER_PRECOMPILED=NO
 ```
 
 ## Demo
