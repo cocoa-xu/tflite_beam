@@ -287,7 +287,12 @@ defmodule TfliteElixir.MixProject do
       name: to_string(@app),
       # These are the default files included in the package
       files: ~w(
-        c_src 3rd_party cc_toolchain
+        c_src/*.h
+        c_src/*.cpp
+        c_src/*.hpp
+        c_src/coral
+        c_src/tflite
+        cc_toolchain
         scripts CMakeLists.txt Makefile
         .gitmodules
         lib
