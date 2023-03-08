@@ -4,7 +4,7 @@ defmodule TfliteElixir.MixProject do
 
   @app :tflite_elixir
   @version "0.1.2"
-  @tflite_version "2.10.0"
+  @tflite_version "2.11.0"
   @prefer_precompiled "YES"
   @github_url "https://github.com/cocoa-xu/tflite_elixir"
   @libedgetpu_runtime_github_url "https://github.com/cocoa-xu/libedgetpu"
@@ -22,7 +22,9 @@ defmodule TfliteElixir.MixProject do
     "2.9.1",
     "2.9.2",
     "2.9.3",
-    "2.10.0"
+    "2.10.0",
+    "2.10.1",
+    "2.11.0"
   ]
 
   @precompiled_triplets %{
