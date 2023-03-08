@@ -35,18 +35,19 @@ cd "${LIBUSB_SRC}"
 mkdir -p "${DESTDIR}"
 
 make clean
+echo "libusb: ${TARGET_ARCH}-${TARGET_OS}-${TARGET_ABI}"
 if [ -n "${TARGET_ARCH}" ] && [ -n "${TARGET_OS}" ] && [ -n "${TARGET_ABI}" ]; then
   case "${TARGET_OS}" in
     apple*)
       case "${TARGET_ARCH}" in
         x86_64*)
-          ./configure CFLAGS="-fPIC -arch=${TARGET_ARCH}" LDFLAGS="-arch=${TARGET_ARCH}" --host="${TARGET_ARCH}-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/
+          CFLAGS="-fPIC -arch=${TARGET_ARCH}" LDFLAGS="-arch=${TARGET_ARCH}" ./configure --host="${TARGET_ARCH}-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/
         ;;
         aarch64*)
-          ./configure CFLAGS="-fPIC -arch=arm64" LDFLAGS="-arch=arm64" --host="aarch64-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/
+          CFLAGS="-fPIC -arch=arm64" LDFLAGS="-arch=arm64" ./configure --host="arm64-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/
         ;;
         *)
-          ./configure CFLAGS="-fPIC -arch=${TARGET_ARCH}" LDFLAGS="-arch=${TARGET_ARCH}" --host="${TARGET_ARCH}-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/
+          CFLAGS="-fPIC -arch=${TARGET_ARCH}" LDFLAGS="-arch=${TARGET_ARCH}" ./configure --host="${TARGET_ARCH}-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/
         ;;
       esac
     ;;
