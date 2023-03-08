@@ -109,12 +109,17 @@ defmodule TfliteElixir.MixProject do
             use_precompiled(false)
         end
 
+        {:ok, [:elixir_make] ++ Mix.compilers()}
+
       _ ->
         use_precompiled(false)
     end
   end
 
   defp use_precompiled(false) do
+    System.put_env("TFLITE_ELIXIR_PREFER_PRECOMPILED", "NO")
+    System.put_env("TFLITE_ELIXIR_ONLY_COPY_PRIV", "NO")
+
     enable_coral_support =
       System.get_env("TFLITE_ELIXIR_CORAL_SUPPORT", @enable_coral_support_by_default)
 
@@ -124,7 +129,8 @@ defmodule TfliteElixir.MixProject do
       edgetpu_libraries =
         System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", @default_edgetpu_libraries)
 
-      with {:ok, filename, triplet} <- download_edgetpu_runtime(edgetpu_libraries) do
+      with {:ok, url, filename, triplet} <- edgetpu_runtime_url(edgetpu_libraries) do
+        System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_URL", url)
         System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_TRIPLET", triplet)
         System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME", filename)
         {:ok, [:elixir_make] ++ Mix.compilers()}
@@ -238,7 +244,7 @@ defmodule TfliteElixir.MixProject do
          edgetpu_libraries
        ) do
     with {:ok, triplet} <- get_triplet(edgetpu_libraries) do
-      filename = "tflite_elixir-#{triplet}-v#{@version}"
+      filename = "tflite_elixir-nif-#{:erlang.system_info(:nif_version)}-#{triplet}-v#{@version}"
       {true, "#{@github_url}/releases/download/v#{@version}/#{filename}.tar.gz", filename}
     else
       {:error, requested_triplet, _available_precompiled_triplets} ->
@@ -254,10 +260,6 @@ defmodule TfliteElixir.MixProject do
     false
   end
 
-  defp download_precompiled(filename, url, unarchive_to) do
-    download_archived_file(filename, url, unarchive_to)
-  end
-
   def application do
     [
       extra_applications: [:logger]
@@ -266,9 +268,11 @@ defmodule TfliteElixir.MixProject do
 
   defp deps do
     [
+      {:elixir_make, "~> 0.7", runtime: false},
+
       {:nx, "~> 0.5"},
       {:stb_image, "~> 0.6"},
-      {:elixir_make, "~> 0.7", runtime: false},
+
       {:excoveralls, "~> 0.10", only: :test},
       {:ex_doc, "~> 0.27", only: :docs, runtime: false}
     ]
@@ -321,15 +325,14 @@ defmodule TfliteElixir.MixProject do
     )
   end
 
-  defp download_edgetpu_runtime(edgetpu_libraries) do
+  defp edgetpu_runtime_url(edgetpu_libraries) do
     with {:ok, triplet} <- get_triplet(edgetpu_libraries) do
       filename = "edgetpu_runtime_#{triplet}_v#{@libedgetpu_runtime_version}"
 
       runtime_url =
         "#{@libedgetpu_runtime_github_url}/releases/download/v#{@libedgetpu_runtime_version}/#{filename}.tar.gz"
 
-      unarchive_to = Path.join([cache_dir(), filename])
-      {download_archived_file("#{filename}.tar.gz", runtime_url, unarchive_to), filename, triplet}
+      {:ok, runtime_url, filename, triplet}
     else
       {:error, requested_triplet, _available_precompiled_triplets} ->
         msg = "No precompiled libedgetpu runtime binaries for #{requested_triplet}."
@@ -338,7 +341,7 @@ defmodule TfliteElixir.MixProject do
     end
   end
 
-  defp download_archived_file(filename, url, unarchive_to) do
+  defp download_precompiled(filename, url, unarchive_to) do
     if !File.exists?(unarchive_to) do
       File.mkdir_p!(unarchive_to)
     end
@@ -389,16 +392,147 @@ defmodule TfliteElixir.MixProject do
   end
 
   defp download!(url, save_as, true) do
-    http_opts = []
-    opts = [body_format: :binary]
-    arg = {url, []}
-
-    case :httpc.request(:get, arg, http_opts, opts) do
-      {:ok, {{_, 200, _}, _, body}} ->
+    case download(url) do
+      {:ok, body} ->
         File.write!(save_as, body)
 
-      _ ->
-        {:error, "error"}
+      {:error, reason} ->
+        Mix.raise(reason)
     end
+  end
+
+  def download(url) do
+    url_charlist = String.to_charlist(url)
+
+    {:ok, _} = Application.ensure_all_started(:inets)
+    {:ok, _} = Application.ensure_all_started(:ssl)
+    {:ok, _} = Application.ensure_all_started(:public_key)
+
+    if proxy = System.get_env("HTTP_PROXY") || System.get_env("http_proxy") do
+      Mix.shell().info("Using HTTP_PROXY: #{proxy}")
+      %{host: host, port: port} = URI.parse(proxy)
+
+      :httpc.set_options([{:proxy, {{String.to_charlist(host), port}, []}}])
+    end
+
+    if proxy = System.get_env("HTTPS_PROXY") || System.get_env("https_proxy") do
+      Mix.shell().info("Using HTTPS_PROXY: #{proxy}")
+      %{host: host, port: port} = URI.parse(proxy)
+      :httpc.set_options([{:https_proxy, {{String.to_charlist(host), port}, []}}])
+    end
+
+    # https://erlef.github.io/security-wg/secure_coding_and_deployment_hardening/inets
+    # TODO: This may no longer be necessary from Erlang/OTP 25.0 or later.
+    https_options = [
+      ssl:
+        [
+          verify: :verify_peer,
+          customize_hostname_check: [
+            match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
+          ]
+        ] ++ cacerts_options()
+    ]
+
+    options = [body_format: :binary]
+
+    case :httpc.request(:get, {url_charlist, []}, https_options, options) do
+      {:ok, {{_, 200, _}, _headers, body}} ->
+        {:ok, body}
+
+      other ->
+        {:error, "couldn't fetch file from #{url}: #{inspect(other)}"}
+    end
+  end
+
+  defp cacerts_options do
+    cond do
+      path = System.get_env("ELIXIR_MAKE_CACERT") ->
+        [cacertfile: path]
+
+      Application.spec(:castore, :vsn) ->
+        [cacertfile: Application.app_dir(:castore, "priv/cacerts.pem")]
+
+      Application.spec(:certifi, :vsn) ->
+        [cacertfile: Application.app_dir(:certifi, "priv/cacerts.pem")]
+
+      certs = otp_cacerts() ->
+        [cacerts: certs]
+
+      path = cacerts_from_os() ->
+        [cacertfile: path]
+
+      true ->
+        warn_no_cacerts()
+        []
+    end
+  end
+
+  defp otp_cacerts do
+    if System.otp_release() >= "25" do
+      # cacerts_get/0 raises if no certs found
+      try do
+        :public_key.cacerts_get()
+      rescue
+        _ ->
+          nil
+      end
+    end
+  end
+
+  # https_opts and related code are taken from
+  # https://github.com/elixir-cldr/cldr_utils/blob/v2.19.1/lib/cldr/http/http.ex
+  @certificate_locations [
+    # Debian/Ubuntu/Gentoo etc.
+    "/etc/ssl/certs/ca-certificates.crt",
+
+    # Fedora/RHEL 6
+    "/etc/pki/tls/certs/ca-bundle.crt",
+
+    # OpenSUSE
+    "/etc/ssl/ca-bundle.pem",
+
+    # OpenELEC
+    "/etc/pki/tls/cacert.pem",
+
+    # CentOS/RHEL 7
+    "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
+
+    # Open SSL on MacOS
+    "/usr/local/etc/openssl/cert.pem",
+
+    # MacOS & Alpine Linux
+    "/etc/ssl/cert.pem"
+  ]
+
+  defp cacerts_from_os do
+    Enum.find(@certificate_locations, &File.exists?/1)
+  end
+
+  defp warn_no_cacerts do
+    Mix.shell().error("""
+    No certificate trust store was found.
+
+    Tried looking for: #{inspect(@certificate_locations)}
+
+    A certificate trust store is required in
+    order to download locales for your configuration.
+    Since elixir_make could not detect a system
+    installed certificate trust store one of the
+    following actions may be taken:
+
+    1. Install the hex package `castore`. It will
+       be automatically detected after recompilation.
+
+    2. Install the hex package `certifi`. It will
+       be automatically detected after recompilation.
+
+    3. Specify the location of a certificate trust store
+       by configuring it in environment variable:
+
+         export ELIXIR_MAKE_CACERT="/path/to/cacerts.pem"
+
+    4. Use OTP 25+ on an OS that has built-in certificate
+       trust store.
+    """)
   end
 end

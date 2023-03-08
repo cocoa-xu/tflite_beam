@@ -35,9 +35,8 @@ LIBUSB_SOURCE_ARCHIVE = $(TFLITE_ELIXIR_CACHE_DIR)/libusb-$(LIBUSB_VERSION).tar.
 LIBUSB_SOURCE_DIR = $(THIRD_PARTY_DIR)/libusb-$(LIBUSB_VERSION)
 LIBUSB_INSTALL_DIR = $(MIX_APP_PATH)/libusb
 
-TFLITE_ELIXIR_CORAL_USB_THROTTLE ?= "YES"
-TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES ?= "native"
-TFLITE_ELIXIR_CORAL_LIBEDGETPU_TRIPLET ?= ""
+TFLITE_ELIXIR_CORAL_USB_THROTTLE ?= YES
+TFLITE_ELIXIR_CORAL_LIBEDGETPU_TRIPLET ?= native
 TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR = $(TFLITE_ELIXIR_CACHE_DIR)/$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME)
 
 CMAKE_TFLITE_OPTIONS ?= ""
@@ -85,8 +84,8 @@ unarchive_source_code: $(TFLITE_SOURCE_ZIP)
 install_libedgetpu_runtime:
 	@ if [ "$(TFLITE_ELIXIR_ONLY_COPY_PRIV)" = "NO" ]; then \
    		if [ "$(TFLITE_ELIXIR_CORAL_SUPPORT)" = "YES" ]; then \
-			bash scripts/copy_libedgetpu_runtime.sh "$(LIBEDGETPU_RUNTIME_PRIV)" "$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR)" "$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_TRIPLET)" "$(TFLITE_ELIXIR_CORAL_USB_THROTTLE)"; \
-			git submodule update --init c_src/libcoral ; \
+			bash scripts/copy_libedgetpu_runtime.sh "$(LIBEDGETPU_RUNTIME_PRIV)" "$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR)" "$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_TRIPLET)" "$(TFLITE_ELIXIR_CORAL_USB_THROTTLE)" "$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_URL)" "$(TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME)" "$(TFLITE_ELIXIR_CACHE_DIR)" && \
+			git submodule update --init c_src/libcoral && \
 			cd c_src/libcoral && git submodule update --init libedgetpu && cd ../.. ; \
 		fi \
 	fi
@@ -97,12 +96,12 @@ libusb: create_cache_dir
 			case "$(shell uname -s)" in \
 				Darwin*) \
 					if [ ! -e "$(PRIV_DIR)/libedgetpu/libusb-1.0.0.dylib" ]; then \
-						bash scripts/build_libusb.sh "$(LIBUSB_SOURCE_URL)" "$(LIBUSB_SOURCE_ARCHIVE)" "$(THIRD_PARTY_DIR)" "$(LIBUSB_SOURCE_DIR)" "$(LIBUSB_INSTALL_DIR)" "$(PRIV_DIR)" ; \
+						bash scripts/build_libusb.sh "$(LIBUSB_SOURCE_URL)" "$(LIBUSB_SOURCE_ARCHIVE)" "$(THIRD_PARTY_DIR)" "$(LIBUSB_SOURCE_DIR)" "$(LIBUSB_INSTALL_DIR)" "$(PRIV_DIR)"; \
 					fi \
 				;; \
 				Linux*) \
 					if [ ! -e "$(PRIV_DIR)/libedgetpu/libusb-1.0.so" ]; then \
-						bash scripts/build_libusb.sh "$(LIBUSB_SOURCE_URL)" "$(LIBUSB_SOURCE_ARCHIVE)" "$(THIRD_PARTY_DIR)" "$(LIBUSB_SOURCE_DIR)" "$(LIBUSB_INSTALL_DIR)" "$(PRIV_DIR)" ; \
+						bash scripts/build_libusb.sh "$(LIBUSB_SOURCE_URL)" "$(LIBUSB_SOURCE_ARCHIVE)" "$(THIRD_PARTY_DIR)" "$(LIBUSB_SOURCE_DIR)" "$(LIBUSB_INSTALL_DIR)" "$(PRIV_DIR)"; \
 					fi \
 				;; \
 			esac ; \
@@ -141,7 +140,6 @@ $(NATIVE_BINDINGS_SO): unarchive_source_code install_libedgetpu_runtime libusb
 			cp -rf "$(TFLITE_ELIXIR_ONLY_COPY_PRIV)" "$(PRIV_DIR)" ; \
 		fi \
 	fi
-
 
 fix_libusb:
 	@ bash scripts/macos_libusb_rpath.sh "$(NATIVE_BINDINGS_SO)"
