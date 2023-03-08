@@ -49,8 +49,8 @@ jobs:
               target_arch: "armv7l"
               target_os: "linux"
               target_abi: "gnueabihf"
-              cc: "/usr/bin/arm-linux-gnueabihf-gcc-9"
-              cxx: "/usr/bin/arm-linux-gnueabihf-g++-9"
+              cc: "/usr/bin/arm-linux-gnueabihf-gcc"
+              cxx: "/usr/bin/arm-linux-gnueabihf-g++"
           - pair:
               arch_name: riscv64
               cmake_toolchain_file: cc_toolchain/riscv64-linux-gnu.cmake
