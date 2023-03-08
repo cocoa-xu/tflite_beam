@@ -153,7 +153,7 @@ defmodule TfliteElixir.MixProject do
 
               case machine do
                 "armv7" <> _ ->
-                  {"armv7a", "linux"}
+                  {"armv7l", "linux"}
 
                 _ ->
                   {machine, "linux"}
