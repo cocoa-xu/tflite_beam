@@ -14,8 +14,14 @@ endif()
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
-if(DEFINED $ENV{TARGET_GCC_FLAGS})
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{TARGET_GCC_FLAGS}")
+if(DEFINED ENV{TARGET_GCC_FLAGS})
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TARGET_GCC_FLAGS}")
+    if(DEFINED ENV{TARGET_CPU})
+        if("$ENV{TARGET_CPU}" STREQUAL "cortex_a53" OR "$ENV{TARGET_CPU}" STREQUAL "cortex_a57")
+            string(REPLACE "neon-vfpv4" "neon-fp-armv8" TARGET_GCC_FLAGS "${CMAKE_CXX_FLAGS}")
+            set(CMAKE_CXX_FLAGS "${TARGET_GCC_FLAGS}")
+        endif()
+    endif()
 endif()
 message(STATUS "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}")
 message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
@@ -41,7 +47,10 @@ endif()
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "armv7.*")
     # Disable XNNPACK in TensorFlow Lite
-    set(TFLITE_ENABLE_XNNPACK OFF)
+    set(TFLITE_ENABLE_XNNPACK OFF CACHE BOOL "Disable XNNPACK in TensorFlow Lite for armv7l")
+
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__ARM_ARCH=7")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__ARM_ARCH=7")
 endif()
 
 add_subdirectory(

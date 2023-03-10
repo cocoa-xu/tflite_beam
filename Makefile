@@ -51,6 +51,9 @@ TFLITE_ELIXIR_CORAL_LIBEDGETPU_UNZIPPED_DIR = $(TFLITE_ELIXIR_CACHE_DIR)/$(TFLIT
 CMAKE_TFLITE_OPTIONS ?= ""
 CMAKE_OPTIONS ?= $(CMAKE_TFLITE_OPTIONS)
 CMAKE_OPTIONS += $(CMAKE_CONFIGURE_FLAGS)
+ifeq ($(TARGET_ARCH),arm)
+CMAKE_OPTIONS += -D TFLITE_ENABLE_XNNPACK=OFF
+endif
 
 # bindings
 CMAKE_BINDINGS_BUILD_DIR = $(MIX_APP_PATH)/cmake_tflite_elixir
@@ -129,11 +132,9 @@ $(NATIVE_BINDINGS_SO): unarchive_source_code install_libedgetpu_runtime libusb
 			  -D TFLITE_ELIXIR_CORAL_SUPPORT="$(TFLITE_ELIXIR_CORAL_SUPPORT)" \
 			  -D LIBUSB_INSTALL_DIR="$(LIBUSB_INSTALL_DIR)" \
 			  $(CMAKE_OPTIONS) \
-			  "$(shell pwd)" ; \
-			{ mkdir -p $(PRIV_DIR) && \
-				cd "$(CMAKE_BINDINGS_BUILD_DIR)" && make "$(MAKE_BUILD_FLAGS)" \
-				  || { echo "\033[0;31mincomplete build of Tensorflow Lite found in '$(CMAKE_TFLITE_BUILD_DIR)', please delete that directory and retry\033[0m" && exit 1 ; } ; } \
-				&& cp "$(CMAKE_BINDINGS_BUILD_DIR)/tflite_elixir.so" "$(NATIVE_BINDINGS_SO)" ; \
+			  "$(shell pwd)" && \
+			make "$(MAKE_BUILD_FLAGS)" && \
+			make install ; \
 		fi ; \
 	else \
 		if [ ! -e "$(NATIVE_BINDINGS_SO)" ]; then \
