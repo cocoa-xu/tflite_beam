@@ -179,12 +179,20 @@ defmodule TfliteElixir.MixProject do
       end
 
     case {edgetpu_libraries, target_os} do
-      {lib, "linux"} when lib in ["k8", "x86_64", "aarch64", "armv7l", "riscv64"] ->
+      {lib, "linux"} when lib in ["k8", "x86_64", "aarch64", "armv7l", "arm", "riscv64"] ->
         lib =
-          if lib == "k8" do
-            "x86_64"
-          else
-            lib
+          case lib do
+            "k8" ->
+              "x86_64"
+            "arm" ->
+              case {System.get_env("TARGET_ABI"), System.get_env("TARGET_OS")} do
+                {"gnueabihf", "linux"} ->
+                  "armv7l"
+                _ ->
+                  "arm"
+              end
+            lib ->
+              lib
           end
 
         get_triplet_if_possible(lib)
@@ -333,15 +341,6 @@ defmodule TfliteElixir.MixProject do
       "TFLITE_ELIXIR_CACHE_DIR",
       Path.join(Path.dirname(Path.expand(__ENV__.file)), "3rd_party/cache")
     )
-  end
-
-  defp edgetpu_runtime_url("arm") do
-    case {System.get_env("TARGET_ABI"), System.get_env("TARGET_OS")} do
-      {"gnueabihf", "linux"} ->
-        edgetpu_runtime_url("armv7l")
-      _ ->
-        edgetpu_runtime_url("arm")
-    end
   end
 
   defp edgetpu_runtime_url(edgetpu_libraries) do
