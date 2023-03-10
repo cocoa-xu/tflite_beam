@@ -73,6 +73,8 @@ set(SOURCE_FILES
     "${C_SRC}/nif_utils.cpp"
     "${C_SRC}/tflite/tflite_tflitetensor.cpp"
     "${C_SRC}/tflite/tflite_interpreter.cpp"
+    "${C_SRC}/tflite/tflite_interpreter_builder.cpp"
+    "${C_SRC}/tflite/tflite_status.cpp"
     "${C_SRC}/bindings.cpp"
 )
 if(${TFLITE_ELIXIR_CORAL_SUPPORT})
