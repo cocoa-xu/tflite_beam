@@ -25,7 +25,7 @@ if(DEFINED ENV{TARGET_GCC_FLAGS})
 endif()
 if(DEFINED ENV{TARGET_ARCH})
     if(NOT "$ENV{TARGET_ARCH}" STREQUAL "arm")
-        set(CMAKE_CXX_FLAGS "${TARGET_CXX_FLAGS} -DTF_HAS_vcvtaq_s32_f32")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTF_HAS_vcvtaq_s32_f32")
     endif()
 endif()
 
@@ -53,7 +53,7 @@ if(DEFINED ENV{TARGET_ARCH})
             set(CMAKE_SYSTEM_PROCESSOR "armv7l" CACHE STRING "Updates CMAKE_SYSTEM_PROCESSOR")
         else()
             set(CMAKE_SYSTEM_PROCESSOR "armv6" CACHE STRING "Updates CMAKE_SYSTEM_PROCESSOR")
-        endif
+        endif()
     endif()
 endif()
 
