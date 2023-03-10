@@ -12,7 +12,7 @@ endif
 # Tensorflow
 TFLITE_USE_GIT_HEAD ?= false
 TFLITE_GIT_REPO ?= "https://github.com/tensorflow/tensorflow.git"
-TFLITE_VER ?= 2.9.1
+TFLITE_VER ?= 2.11.0
 TFLITE_VER_V = v$(TFLITE_VER)
 ifneq ($(TFLITE_USE_GIT_HEAD), false)
 	TFLITE_VER_V=$(TFLITE_USE_GIT_BRANCH)
@@ -121,6 +121,7 @@ $(NATIVE_BINDINGS_SO): unarchive_source_code install_libedgetpu_runtime libusb
 			git submodule update --init 3rd_party/gflags && \
 			git submodule update --init 3rd_party/glog && \
 			mkdir -p $(CMAKE_BINDINGS_BUILD_DIR) && \
+			python3 "$(shell pwd)/patches/apply_patch.py" "$(TFLITE_ROOT_DIR)" "$(TFLITE_VER)" && \
 			cd "$(CMAKE_BINDINGS_BUILD_DIR)" && \
 			cmake -D C_SRC="$(C_SRC)" \
 			  -D PRIV_DIR="$(PRIV_DIR)" \
@@ -134,7 +135,7 @@ $(NATIVE_BINDINGS_SO): unarchive_source_code install_libedgetpu_runtime libusb
 			  $(CMAKE_OPTIONS) \
 			  "$(shell pwd)" && \
 			make "$(MAKE_BUILD_FLAGS)" && \
-			make install ; \
+			cp "$(CMAKE_BINDINGS_BUILD_DIR)/tflite_elixir.so" "$(NATIVE_BINDINGS_SO)" ; \
 		fi ; \
 	else \
 		if [ ! -e "$(NATIVE_BINDINGS_SO)" ]; then \
