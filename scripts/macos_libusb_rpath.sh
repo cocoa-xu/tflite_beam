@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if [ "${TARGET_OS}" = "linux" ]; then
+  exit 0
+fi
+
 case "$(uname -s)" in
   Darwin*)
     TFLITE_ELIXIR_SO_FILE="$1"
