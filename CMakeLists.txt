@@ -161,6 +161,12 @@ elseif(UNIX AND APPLE)
     set_target_properties(tflite_elixir PROPERTIES INSTALL_RPATH "@loader_path/libedgetpu")
 endif()
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 10.0)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wgnu-inline-cpp-without-extern")
+    endif()
+endif()
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -I${ERTS_INCLUDE_DIR}")
 if(${TFLITE_ELIXIR_CORAL_SUPPORT})
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -L${PRIV_DIR}/libedgetpu")
