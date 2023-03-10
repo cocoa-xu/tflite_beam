@@ -34,6 +34,24 @@ Some livebook examples can be found in the [examples](examples) directory.
 
 ## Nerves Support
 
+### Prebuilt firmware (Experimental)
+
+[![Nerves](https://github-actions.40ants.com/cocoa-xu/tflite_elixir/matrix.svg?only=nerves-build)](https://github.com/cocoa-xu/tflite_elixir)
+
+Prebuilt firmwares are available [here](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/nerves-build.yml?query=is%3Asuccess). 
+
+Select the most recent run and scroll down to the `Artifacts` section, download the firmware file for your board and run
+
+```bash
+fwup /path/to/the/downloaded/firmware.fw
+```
+
+In the nerves build, `tflite_elixir` is integrated as one of the dependencies of the [nerves_livebook](https://github.com/livebook-dev/nerves_livebook) project. This means that you can use livebook (as well as other pre-pulled libraries) to explore and evaluate the `tflite_elixir` project. 
+
+The default password of the livebook is `nerves` (as the time of writing, if it does not work, please check the nerves_livebook project).
+
+### Build from Source
+
 1. If prefer precompiled binaries
 ```shell
 # for example
