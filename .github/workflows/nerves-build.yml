@@ -120,10 +120,10 @@ jobs:
           
           mix firmware
           mkdir -p "/tmp/firmware"
-          cp "./_build/${MIX_TARGET}_${MIX_ENV}/nerves/images/nerves_livebook.fw" "/tmp/firmware/${NERVES_PROJ_NAME}-${{ matrix.target }}-${MIX_ENV}.fw"
+          cp "./_build/${MIX_TARGET}_${MIX_ENV}/nerves/images/nerves_livebook.fw" "/tmp/firmware/${NERVES_PROJ_NAME}-${{ matrix.pair.target }}-${MIX_ENV}.fw"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ env.NERVES_PROJ_NAME }}-${{ matrix.target }}-${{ env.MIX_ENV }}.fw
-          path: /tmp/firmware/${{ env.NERVES_PROJ_NAME }}-${{ matrix.target }}-${{ env.MIX_ENV }}.fw
+          name: ${{ env.NERVES_PROJ_NAME }}-${{ matrix.pair.target }}-${{ env.MIX_ENV }}.fw
+          path: /tmp/firmware/${{ env.NERVES_PROJ_NAME }}-${{ matrix.pair.target }}-${{ env.MIX_ENV }}.fw
