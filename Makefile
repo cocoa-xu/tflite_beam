@@ -38,10 +38,10 @@ LIBUSB_SHARED_LIBRARY = $(PRIV_DIR)/libedgetpu/libusb-1.0.0.dylib
 
 UNAME_S := $(shell uname -s)
 ifneq ($(UNAME_S),Darwin)
-LIBUSB_SHARED_LIBRARY = $(PRIV_DIR)/libedgetpu/libusb-1.0.so
+LIBUSB_SHARED_LIBRARY = $(PRIV_DIR)/libedgetpu/libusb-1.0.so.0.3.0
 endif
 ifeq ($(TARGET_OS),linux)
-LIBUSB_SHARED_LIBRARY = $(PRIV_DIR)/libedgetpu/libusb-1.0.so
+LIBUSB_SHARED_LIBRARY = $(PRIV_DIR)/libedgetpu/libusb-1.0.so.0.3.0
 endif
 
 TFLITE_ELIXIR_CORAL_USB_THROTTLE ?= YES
@@ -104,7 +104,8 @@ libusb: create_cache_dir
 		if [ "$(TFLITE_ELIXIR_CORAL_SUPPORT)" = "YES" ]; then \
 			if [ ! -e "$(LIBUSB_SHARED_LIBRARY)" ]; then \
 				bash scripts/build_libusb.sh "$(LIBUSB_SOURCE_URL)" "$(LIBUSB_SOURCE_ARCHIVE)" "$(THIRD_PARTY_DIR)" "$(LIBUSB_SOURCE_DIR)" "$(LIBUSB_INSTALL_DIR)" "$(PRIV_DIR)"; \
-			fi \
+			fi && \
+			rm -rf "$(LIBUSB_INSTALL_DIR)" ; \
 		fi \
 	fi
 
