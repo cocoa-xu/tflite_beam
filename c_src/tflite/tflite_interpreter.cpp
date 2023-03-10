@@ -1,11 +1,13 @@
-#include "tflite_interpreter.h"
 #include <erl_nif.h>
 #include "../nif_utils.hpp"
+#include "../erlang_nif_resource.hpp"
 #include "../helper.h"
 #include "tensorflow/lite/interpreter.h"
 #include "tensorflow/lite/kernels/register.h"
 #include "tensorflow/lite/model.h"
+#include "tflite_interpreter.h"
 #include "tflite_tflitetensor.h"
+#include "tflite_status.h"
 
 ERL_NIF_TERM interpreter_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     erlang_nif_res<tflite::Interpreter *> * res;
@@ -135,7 +137,7 @@ ERL_NIF_TERM interpreter_invoke(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
     erlang_nif_res<tflite::Interpreter *> *self_res;
     if (enif_get_resource(env, self_nif, erlang_nif_res<tflite::Interpreter *>::type, (void **) &self_res)) {
         if (self_res->val) {
-            return tflite_status_to_erl_term(self_res->val->Invoke(), env);
+            return tflite_status_to_erl_term(env, self_res->val->Invoke());
         } else {
             return erlang::nif::error(env, "oh nyo erlang");
         }
@@ -295,7 +297,7 @@ ERL_NIF_TERM interpreter_setNumThreads(ErlNifEnv *env, int argc, const ERL_NIF_T
         erlang::nif::get(env, num_threads_nif, &num_threads)) {
         if (self_res->val) {
             auto status = self_res->val->SetNumThreads(num_threads);
-            return tflite_status_to_erl_term(status, env);
+            return tflite_status_to_erl_term(env, status);
         } else {
             return erlang::nif::error(env, "oh nyo erlang");
         }
