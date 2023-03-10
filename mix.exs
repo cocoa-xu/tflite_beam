@@ -335,6 +335,15 @@ defmodule TfliteElixir.MixProject do
     )
   end
 
+  defp edgetpu_runtime_url("arm") do
+    case {System.get_env("TARGET_ABI"), System.get_env("TARGET_OS")} do
+      {"gnueabihf", "linux"} ->
+        edgetpu_runtime_url("armv7l")
+      _ ->
+        edgetpu_runtime_url("arm")
+    end
+  end
+
   defp edgetpu_runtime_url(edgetpu_libraries) do
     with {:ok, triplet} <- get_triplet(edgetpu_libraries) do
       filename = "edgetpu_runtime_#{triplet}_v#{@libedgetpu_runtime_version}"
