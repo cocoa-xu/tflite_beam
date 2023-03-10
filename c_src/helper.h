@@ -10,7 +10,6 @@
 
 bool tensor_type_to_erl_term(const TfLiteType in_type, ErlNifEnv *env, ERL_NIF_TERM &out_term);
 bool tensor_type_from_erl_term(ErlNifEnv *env, const ERL_NIF_TERM in_term, TfLiteType &out_type);
-ERL_NIF_TERM tflite_status_to_erl_term(const TfLiteStatus status, ErlNifEnv *env);
 
 template<typename R>
 int alloc_resource(erlang_nif_res<R> **res) {

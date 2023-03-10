@@ -127,6 +127,7 @@ static ErlNifFunc nif_functions[] = {
     F(tflitetensor_set_data, 2),
 
     F_IO(tflite_printInterpreterState, 1),
+    F_CPU(tflite_resetVariableTensor, 1),
 
     /* ======= Coral ======= */
 #ifdef CORAL_SUPPORT_ENABLED

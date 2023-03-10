@@ -1,4 +1,6 @@
 defmodule TFLiteElixir do
+  alias TFLiteElixir.TFLiteTensor
+
   @doc """
   Prints a dump of what tensors and what nodes are in the interpreter.
 
@@ -8,5 +10,9 @@ defmodule TFLiteElixir do
   def printInterpreterState(interpreter) do
     TFLiteElixir.Nif.tflite_printInterpreterState(interpreter)
     nil
+  end
+
+  def resetVariableTensor(%TFLiteTensor{}=tflite_tensor) do
+    TFLiteElixir.Nif.tflite_resetVariableTensor(tflite_tensor)
   end
 end

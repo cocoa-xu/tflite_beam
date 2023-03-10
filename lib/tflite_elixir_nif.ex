@@ -44,6 +44,7 @@ defmodule TFLiteElixir.Nif do
   def tflitetensor_set_data(_self, _data), do: :erlang.nif_error(:not_loaded)
 
   def tflite_printInterpreterState(_interpreter), do: :erlang.nif_error(:not_loaded)
+  def tflite_resetVariableTensor(_tflite_tensor), do: :erlang.nif_error(:not_loaded)
 
   # ================ Coral ===================
   def coral_contains_edgetpu_custom_op(_model), do: :erlang.nif_error(:not_loaded)
