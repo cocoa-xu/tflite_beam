@@ -46,14 +46,19 @@ set(ABSL_PROPAGATE_CXX_STD ON)
 find_package(absl REQUIRED)
 
 if(DEFINED ENV{TARGET_ARCH})
-    if ("$ENV{TARGET_ARCH}" MATCHES "arm" OR "$ENV{TARGET_ARCH}" MATCHES "armv7.*")
+    if("$ENV{TARGET_ARCH}" MATCHES "armv7.*")
         set(CMAKE_SYSTEM_PROCESSOR "armv7l" CACHE STRING "Updates CMAKE_SYSTEM_PROCESSOR")
+    elseif("$ENV{TARGET_ARCH}" MATCHES "arm")
+        if(DEFINED ENV{TARGET_CPU} AND "$ENV{TARGET_CPU}" STREQUAL "cortex_a53" OR "$ENV{TARGET_CPU}" STREQUAL "cortex_a57")
+            set(CMAKE_SYSTEM_PROCESSOR "armv7l" CACHE STRING "Updates CMAKE_SYSTEM_PROCESSOR")
+        else()
+            set(CMAKE_SYSTEM_PROCESSOR "armv6" CACHE STRING "Updates CMAKE_SYSTEM_PROCESSOR")
+        endif
     endif()
 endif()
 
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "armv7.*")
-    # Disable XNNPACK in TensorFlow Lite
-    set(TFLITE_ENABLE_XNNPACK OFF CACHE BOOL "Disable XNNPACK in TensorFlow Lite for armv7l")
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "armv[5-7].*")
+    set(TFLITE_ENABLE_XNNPACK OFF CACHE BOOL "Disable XNNPACK in TensorFlow Lite for armv5-7")
 endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" CACHE STRING "Override CXX FLAGS")
