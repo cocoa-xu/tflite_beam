@@ -17,6 +17,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
 if(DEFINED $ENV{TARGET_GCC_FLAGS})
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{TARGET_GCC_FLAGS}")
 endif()
+message(STATUS "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}")
+message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 10.0)
@@ -124,6 +126,10 @@ endif()
 add_library(tflite_elixir SHARED
     ${SOURCE_FILES}
 )
+install(
+    TARGETS tflite_elixir
+    RUNTIME DESTINATION "${PRIV_DIR}"
+)
 set(TFLITE_ELIXIR_LINK_LIBRARIES "tensorflow-lite")
 list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES
     absl::any
@@ -159,7 +165,6 @@ set_target_properties(tflite_elixir PROPERTIES
 )
 
 if(UNIX AND NOT APPLE)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -shared")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-but-set-variable")
     set_target_properties(tflite_elixir PROPERTIES INSTALL_RPATH "\$ORIGIN/libedgetpu")
 elseif(UNIX AND APPLE)

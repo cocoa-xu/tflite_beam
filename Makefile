@@ -34,6 +34,15 @@ LIBUSB_SOURCE_URL = https://github.com/libusb/libusb/releases/download/v$(LIBUSB
 LIBUSB_SOURCE_ARCHIVE = $(TFLITE_ELIXIR_CACHE_DIR)/libusb-$(LIBUSB_VERSION).tar.bz2
 LIBUSB_SOURCE_DIR = $(THIRD_PARTY_DIR)/libusb-$(LIBUSB_VERSION)
 LIBUSB_INSTALL_DIR = $(MIX_APP_PATH)/libusb
+LIBUSB_SHARED_LIBRARY = $(PRIV_DIR)/libedgetpu/libusb-1.0.0.dylib
+
+UNAME_S := $(shell uname -s)
+ifneq ($(UNAME_S),Darwin)
+LIBUSB_SHARED_LIBRARY = $(PRIV_DIR)/libedgetpu/libusb-1.0.so
+endif
+ifeq ($(TARGET_OS),linux)
+LIBUSB_SHARED_LIBRARY = $(PRIV_DIR)/libedgetpu/libusb-1.0.so
+endif
 
 TFLITE_ELIXIR_CORAL_USB_THROTTLE ?= YES
 TFLITE_ELIXIR_CORAL_LIBEDGETPU_TRIPLET ?= native
@@ -93,18 +102,9 @@ install_libedgetpu_runtime:
 libusb: create_cache_dir
 	@ if [ "$(TFLITE_ELIXIR_ONLY_COPY_PRIV)" = "NO" ]; then \
 		if [ "$(TFLITE_ELIXIR_CORAL_SUPPORT)" = "YES" ]; then \
-			case "$(shell uname -s)" in \
-				Darwin*) \
-					if [ ! -e "$(PRIV_DIR)/libedgetpu/libusb-1.0.0.dylib" ]; then \
-						bash scripts/build_libusb.sh "$(LIBUSB_SOURCE_URL)" "$(LIBUSB_SOURCE_ARCHIVE)" "$(THIRD_PARTY_DIR)" "$(LIBUSB_SOURCE_DIR)" "$(LIBUSB_INSTALL_DIR)" "$(PRIV_DIR)"; \
-					fi \
-				;; \
-				Linux*) \
-					if [ ! -e "$(PRIV_DIR)/libedgetpu/libusb-1.0.so" ]; then \
-						bash scripts/build_libusb.sh "$(LIBUSB_SOURCE_URL)" "$(LIBUSB_SOURCE_ARCHIVE)" "$(THIRD_PARTY_DIR)" "$(LIBUSB_SOURCE_DIR)" "$(LIBUSB_INSTALL_DIR)" "$(PRIV_DIR)"; \
-					fi \
-				;; \
-			esac ; \
+			if [ ! -e "$(LIBUSB_SHARED_LIBRARY)" ]; then \
+				bash scripts/build_libusb.sh "$(LIBUSB_SOURCE_URL)" "$(LIBUSB_SOURCE_ARCHIVE)" "$(THIRD_PARTY_DIR)" "$(LIBUSB_SOURCE_DIR)" "$(LIBUSB_INSTALL_DIR)" "$(PRIV_DIR)"; \
+			fi \
 		fi \
 	fi
 
