@@ -17,20 +17,60 @@ TensorFlow Lite-Elixir binding with TPU support.
 ```elixir
 # will download and install precompiled version
 Mix.install([
-  {:tflite_elixir, "~> 0.1.0", github: "cocoa-xu/tflite_elixir"}
+  {:tflite_elixir, "~> 0.1.3"}
 ])
 
-# test data can be found in the test directory
-interpreter = TFLiteElixir.Interpreter.new!("test/test_data/mobilenet_v2_1.0_224_inat_bird_quant.tflite")
+# parrot.jpeg and the tflite file can be found in the test/test_data directory
+interpreter = TFLiteElixir.Interpreter.new!("/path/to/mobilenet_v2_1.0_224_inat_bird_quant.tflite")
 input = 
-  StbImage.read_file!("test/test_data/parrot.jpeg")
+  StbImage.read_file!("/path/to/parrot.jpeg")
   |> StbImage.resize(224, 224)
   |> StbImage.to_nx()
-output = TFLiteElixir.Interpreter.predict(interpreter, input)
-  |> TFLiteElixir.TFLiteTensor.to_nx(Nx.BinaryBackend)
+
+[output_tensor_0] = TFLiteElixir.Interpreter.predict(interpreter, input)
+nx_tensor = 
+  TFLiteElixir.TFLiteTensor.to_binary(output_tensor_0)
+  |> Nx.from_binary(:u8)
+
+# get top k predictions (numerical id of the class)
+# classes can be found in this file,
+# https://raw.githubusercontent.com/cocoa-xu/tflite_elixir/main/test/test_data/inat_bird_labels.txt
+# each line corresponds to a class
+# and the first line = id 0
+top_k = 5
+sorted_indices = Nx.argsort(nx_tensor, direction: :desc)
+top_k_indices = Nx.take(sorted_indices, Nx.iota({top_k}))
+top_k_preds = Nx.to_flat_list(top_k_indices)
 ```
 
-Some livebook examples can be found in the [examples](examples) directory.
+A better version of the above demo code can be found the [examples](examples) directory, [tpu.livemd](https://github.com/cocoa-xu/tflite_elixir/blob/main/examples/tpu.livemd). It supports both CPU and TPU, and it will show more information, including scores (confidence) and the class name of the predicted results. It's also more flexible where you can adjust different parameters like `top_k` and `threshold` (for confidence) and etc.
+
+```elixir
+interpreter =
+  ClassifyImage.run(
+    model: "mobilenet_v2_1.0_224_inat_bird_quant_edgetpu.tflite",
+    input: "parrot.jpeg",
+    labels: "inat_bird_labels.txt",
+    top: 3,
+    threshold: 0.3,
+    count: 5,
+    mean: 128.0,
+    std: 128.0,
+    use_tpu: true,
+    tpu: "usb"
+  )
+
+----INFERENCE TIME----
+17.3ms
+4.4ms
+4.3ms
+4.3ms
+4.3ms
+-------RESULTS--------
+Ara macao (Scarlet Macaw): 0.71875
+Platycercus elegans (Crimson Rosella): 0.07031
+Coracias caudatus (Lilac-breasted Roller): 0.01953
+```
 
 ## Nerves Support
 
