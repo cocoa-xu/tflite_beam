@@ -52,7 +52,7 @@ if [ -n "${TARGET_ARCH}" ] && [ -n "${TARGET_OS}" ] && [ -n "${TARGET_ABI}" ]; t
       esac
     ;;
     linux*)
-      ./configure CFLAGS="-fPIC -static" --host="${TARGET_ARCH}-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/
+      ./configure CFLAGS="-fPIC" --host="${TARGET_ARCH}-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/
     ;;
     *)
       echo "unsupported system: ${TARGET_OS}" ;
@@ -63,21 +63,13 @@ else
   ./configure --enable-shared --disable-static --disable-udev --prefix=/
 fi
 
-UNAME_S="$(uname -s)"
-if [ "${UNAME_S}" = "Darwin" ] && [ "${TARGET_OS}" = "linux" ]; then
-  sed 's/-latomic/-static -latomic/' Makefile > Makefile.new ;
-  mv Makefile.new Makefile ;
-elif [ "${UNAME_S}" = "Linux" ]; then
-  sed 's/-latomic/-static -latomic/' Makefile > Makefile.new ;
-  mv Makefile.new Makefile ;
-fi
 make DESTDIR="${DESTDIR}" install
 
 LIBUSB_SO="libusb-1.0.0.dylib"
 LIBUSB_SO_SYMLINK="libusb-1.0.dylib"
-LIBUSB_SO_SYMLINK2=""
+LIBUSB_SO_SYMLINK2="libusb-1.dylib"
 
-if [ "${TARGET_OS}" != "apple" ]; then
+if [ -n "${CROSSCOMPILE}" ] && [ "${TARGET_OS}" != "apple" ]; then
   export LIBUSB_SO="libusb-1.0.so.0.3.0"
   export LIBUSB_SO_SYMLINK="libusb-1.0.0.so"
   export LIBUSB_SO_SYMLINK2="libusb-1.0.so.0"
@@ -94,7 +86,6 @@ mkdir -p "${PRIV_DIR}/libedgetpu"
 cp "${DESTDIR}/lib/${LIBUSB_SO}" "${PRIV_DIR}/libedgetpu"
 cd "${PRIV_DIR}/libedgetpu"
 rm -f "${LIBUSB_SO_SYMLINK}"
+rm -f "${LIBUSB_SO_SYMLINK2}"
 ln -s "${LIBUSB_SO}" "${LIBUSB_SO_SYMLINK}"
-if [ -n "${LIBUSB_SO_SYMLINK2}" ]; then
-    ln -s "${LIBUSB_SO}" "${LIBUSB_SO_SYMLINK2}"
-fi
+ln -s "${LIBUSB_SO}" "${LIBUSB_SO_SYMLINK2}"
