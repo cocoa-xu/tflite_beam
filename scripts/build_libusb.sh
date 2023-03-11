@@ -22,9 +22,9 @@ download_libusb() {
 }
 
 unarchive_libusb() {
-  if [ ! -d "${LIBUSB_SOURCE_DIR}" ]; then
+  if [ ! -d "${LIBUSB_SRC}" ]; then
     echo "Unarchiving libusb..."
-    rm -rf "${LIBUSB_SOURCE_DIR}" &&
+    rm -rf "${LIBUSB_SRC}" &&
     tar -C "${THIRD_PARTY_DIR}" -xf "${LIBUSB_SOURCE_ARCHIVE}"
   fi
 }
