@@ -12,7 +12,6 @@ defmodule TFLiteElixir do
     nil
   end
 
-  @spec resetVariableTensor(%TFLiteElixir.TFLiteTensor{optional(any) => any}) :: any
   def resetVariableTensor(%TFLiteTensor{}=tflite_tensor) do
     TFLiteElixir.Nif.tflite_resetVariableTensor(tflite_tensor)
   end
