@@ -1,7 +1,11 @@
 defmodule TFLiteElixir.Interpreter do
   import TFLiteElixir.Errorize
-  alias TFLiteElixir.TFLiteTensor, as: Tensor
-  alias TFLiteElixir.TFLiteQuantizationParams, as: TFLiteQuantizationParams
+  alias TFLiteElixir.TFLiteTensor
+  alias TFLiteElixir.TFLiteQuantizationParams
+  alias TFLiteElixir.FlatBufferModel
+  alias TFLiteElixir.Interpreter
+  alias TFLiteElixir.InterpreterBuilder
+
 
   @type nif_resource_ok :: {:ok, reference()}
   @type nif_error :: {:error, String.t()}
@@ -39,18 +43,18 @@ defmodule TFLiteElixir.Interpreter do
   """
   @spec new(String.t()) :: nif_resource_ok() | nif_error()
   def new(model_path) do
-    with {:build_from_file, %TFLiteElixir.FlatBufferModel{} = model} <-
-           {:build_from_file, TFLiteElixir.FlatBufferModel.buildFromFile(model_path)},
+    with {:build_from_file, %FlatBufferModel{} = model} <-
+           {:build_from_file, FlatBufferModel.buildFromFile(model_path)},
          {:builtin_resolver, {:ok, resolver}} <-
            {:builtin_resolver, TFLiteElixir.Ops.Builtin.BuiltinResolver.new()},
          {:interpreter_build, {:ok, builder}} <-
-           {:interpreter_build, TFLiteElixir.InterpreterBuilder.new(model, resolver)},
+           {:interpreter_build, InterpreterBuilder.new(model, resolver)},
          {:new_interpreter, {:ok, interpreter}} <-
-           {:new_interpreter, TFLiteElixir.Interpreter.new()},
+           {:new_interpreter, Interpreter.new()},
          {:build_interpreter, :ok} <-
-           {:build_interpreter, TFLiteElixir.InterpreterBuilder.build(builder, interpreter)},
+           {:build_interpreter, InterpreterBuilder.build(builder, interpreter)},
          {:allocate_tensors, :ok} <-
-           {:allocate_tensors, TFLiteElixir.Interpreter.allocateTensors(interpreter)} do
+           {:allocate_tensors, Interpreter.allocateTensors(interpreter)} do
       {:ok, interpreter}
     else
       error -> error
@@ -60,10 +64,10 @@ defmodule TFLiteElixir.Interpreter do
   deferror(new(model_path))
 
   def predict(interpreter, input) do
-    with {:ok, input_tensors} <- TFLiteElixir.Interpreter.inputs(interpreter),
-         {:ok, output_tensors} <- TFLiteElixir.Interpreter.outputs(interpreter),
+    with {:ok, input_tensors} <- Interpreter.inputs(interpreter),
+         {:ok, output_tensors} <- Interpreter.outputs(interpreter),
          :ok <- fill_input(interpreter, input_tensors, input) do
-      TFLiteElixir.Interpreter.invoke(interpreter)
+      Interpreter.invoke(interpreter)
       fetch_output(interpreter, output_tensors)
     else
       error -> error
@@ -87,7 +91,7 @@ defmodule TFLiteElixir.Interpreter do
 
   defp fill_input(interpreter, input_tensor_index, %Nx.Tensor{} = input)
        when is_integer(input_tensor_index) do
-    tensor = TFLiteElixir.Interpreter.tensor!(interpreter, input_tensor_index)
+    tensor = Interpreter.tensor!(interpreter, input_tensor_index)
 
     with {:match_type, _, _, true} <-
            {:match_type, tensor.type, Nx.type(input), tensor.type == Nx.type(input)},
@@ -95,7 +99,7 @@ defmodule TFLiteElixir.Interpreter do
            {:match_shape, List.to_tuple(tensor.shape), Nx.shape(input),
             tensor.shape == Tuple.to_list(Nx.shape(input)) or
               tensor.shape == [1 | Tuple.to_list(Nx.shape(input))]} do
-      Tensor.set_data(tensor, Nx.to_binary(input))
+      TFLiteTensor.set_data(tensor, Nx.to_binary(input))
     else
       {:match_type, tensor_type, input_type, _} ->
         {:error,
@@ -112,8 +116,8 @@ defmodule TFLiteElixir.Interpreter do
 
   defp fill_input(interpreter, input_tensor_index, input)
        when is_integer(input_tensor_index) and is_binary(input) do
-    with {:ok, tensor} <- TFLiteElixir.Interpreter.tensor(interpreter, input_tensor_index) do
-      Tensor.set_data(tensor, input)
+    with {:ok, tensor} <- Interpreter.tensor(interpreter, input_tensor_index) do
+      TFLiteTensor.set_data(tensor, input)
     else
       error -> error
     end
@@ -123,7 +127,7 @@ defmodule TFLiteElixir.Interpreter do
        when is_list(input_tensors) and is_map(input) do
     ret =
       Enum.map(input_tensors, fn input_tensor_index ->
-        {:ok, out_tensor} = TFLiteElixir.Interpreter.tensor(interpreter, input_tensor_index)
+        {:ok, out_tensor} = Interpreter.tensor(interpreter, input_tensor_index)
         name = out_tensor.name
         data = Map.get(input, name, nil)
 
@@ -143,13 +147,13 @@ defmodule TFLiteElixir.Interpreter do
     end
   end
 
-  defp fill_input(%Tensor{} = tensor, input)
+  defp fill_input(%TFLiteTensor{} = tensor, input)
        when is_binary(input) do
-    Tensor.set_data(tensor, input)
+    TFLiteTensor.set_data(tensor, input)
   end
 
-  defp fill_input(%Tensor{} = tensor, %Nx.Tensor{} = input) do
-    Tensor.set_data(tensor, Nx.to_binary(input))
+  defp fill_input(%TFLiteTensor{} = tensor, %Nx.Tensor{} = input) do
+    TFLiteTensor.set_data(tensor, Nx.to_binary(input))
   end
 
   defp fetch_output(interpreter, output_tensors)
@@ -160,8 +164,8 @@ defmodule TFLiteElixir.Interpreter do
   end
 
   defp fetch_output(interpreter, output_index) when is_integer(output_index) do
-    with {:ok, tensor} <- TFLiteElixir.Interpreter.tensor(interpreter, output_index) do
-      Tensor.to_nx(tensor)
+    with {:ok, tensor} <- Interpreter.tensor(interpreter, output_index) do
+      TFLiteTensor.to_nx(tensor)
     else
       error -> error
     end
@@ -211,9 +215,9 @@ defmodule TFLiteElixir.Interpreter do
 
   ## Example: Get the expected data type and shape for the input tensor
   ```elixir
-  {:ok, tensor} = TFLite.Interpreter.tensor(interpreter, 0)
-  {:ok, [1, 224, 224, 3]} = TFLite.TFLiteTensor.dims(tensor)
-  {:u, 8} = TFLite.TFLiteTensor.type(tensor)
+  {:ok, tensor} = Interpreter.tensor(interpreter, 0)
+  {:ok, [1, 224, 224, 3]} = TFLiteTensor.dims(tensor)
+  {:u, 8} = TFLiteTensor.type(tensor)
   ```
   """
   @spec input_tensor(reference(), non_neg_integer(), binary()) :: :ok | nif_error()
@@ -279,13 +283,13 @@ defmodule TFLiteElixir.Interpreter do
   Note that the `tensor_index` here means the id of a tensor. For example,
   if `inputs/1` returns `[42, 314]`, then `42` should be passed here to get tensor `42`.
   """
-  @spec tensor(reference(), non_neg_integer()) :: {:ok, %Tensor{}} | nif_error()
+  @spec tensor(reference(), non_neg_integer()) :: {:ok, %TFLiteTensor{}} | nif_error()
   def tensor(self, tensor_index) when is_reference(self) and tensor_index >= 0 do
     with {:ok,
           {name, index, shape, shape_signature, type, {scale, zero_point, quantized_dimension},
            sparsity_params, ref}} <- TFLiteElixir.Nif.interpreter_tensor(self, tensor_index) do
       {:ok,
-       %Tensor{
+       %TFLiteTensor{
          name: name,
          index: index,
          shape: shape,
@@ -319,10 +323,10 @@ defmodule TFLiteElixir.Interpreter do
   delegate *should be* set via InterpreterBuilder APIs as follows:
 
   ```elixir
-  interpreter = TFLiteElixir.Interpreter.new!()
-  builder = TFLiteElixir.InterpreterBuilder.new!(tflite model, op resolver)
-  TFLiteElixir.InterpreterBuilder.setNumThreads(builder, ...)
-  assert :ok == TFLiteElixir.InterpreterBuilder.build!(builder, interpreter)
+  interpreter = Interpreter.new!()
+  builder = InterpreterBuilder.new!(tflite model, op resolver)
+  InterpreterBuilder.setNumThreads(builder, ...)
+  assert :ok == InterpreterBuilder.build!(builder, interpreter)
   ```
   """
   @spec setNumThreads(reference(), integer()) :: :ok | nif_error()
