@@ -41,7 +41,7 @@ jobs:
     env:
       MIX_ENV: prod
       NERVES_PROJ_NAME: nerves_tflite
-      NERVES_LIVEBOOK_VER: "v0.8.3"
+      NERVES_LIVEBOOK_VER: "v0.8.2"
 
     strategy:
       fail-fast: false
