@@ -59,12 +59,12 @@ jobs:
           - pair:
               target: rpi2
               libedgetpu_library: armv7l
-          # - pair:
-              # target: rpi0
-              # libedgetpu_library: armv7a
-          # - pair:
-              # target: rpi
-              # libedgetpu_library: armv7a
+          - pair:
+              target: rpi0
+              libedgetpu_library: armv6
+          - pair:
+              target: rpi
+              libedgetpu_library: armv6
           - pair:
               target: bbb
               libedgetpu_library: armv7l

@@ -8,7 +8,7 @@ defmodule TfliteElixir.MixProject do
   @prefer_precompiled "YES"
   @github_url "https://github.com/cocoa-xu/tflite_elixir"
   @libedgetpu_runtime_github_url "https://github.com/cocoa-xu/libedgetpu"
-  @libedgetpu_runtime_version "0.1.1"
+  @libedgetpu_runtime_version "1.0.4"
   # only means compatible. need to write more tests
   @compatible_tflite_versions [
     "2.7.0",
@@ -35,13 +35,18 @@ defmodule TfliteElixir.MixProject do
       "x86_64-linux-gnu"
     ],
     "aarch64" => [
-      "aarch64-linux-gnu"
+      "aarch64-linux-gnu",
+      "aarch64-linux-musl"
     ],
     "armv7l" => [
       "armv7l-linux-gnueabihf"
     ],
+    "armv6" => [
+      "armv6-linux-gnueabihf"
+    ],
     "riscv64" => [
-      "riscv64-linux-gnu"
+      "riscv64-linux-gnu",
+      "riscv64-linux-musl"
     ]
   }
 
@@ -165,6 +170,9 @@ defmodule TfliteElixir.MixProject do
                 "armv7" <> _ ->
                   {"armv7l", "linux"}
 
+                "armv6" <> _ ->
+                  {"armv6", "linux"}
+
                 _ ->
                   {machine, "linux"}
               end
@@ -179,15 +187,19 @@ defmodule TfliteElixir.MixProject do
       end
 
     case {edgetpu_libraries, target_os} do
-      {lib, "linux"} when lib in ["k8", "x86_64", "aarch64", "armv7l", "arm", "riscv64"] ->
+      {lib, "linux"} when lib in ["k8", "x86_64", "aarch64", "armv7l", "arm", "armv6", "riscv64"] ->
         lib =
           case lib do
             "k8" ->
               "x86_64"
             "arm" ->
-              case {System.get_env("TARGET_ABI"), System.get_env("TARGET_OS")} do
-                {"gnueabihf", "linux"} ->
+              case {System.get_env("TARGET_ABI"), System.get_env("TARGET_OS"), System.get_env("TARGET_CPU")} do
+                {"gnueabihf", "linux", "arm1176jzf_s"} ->
+                  "armv6"
+
+                {"gnueabihf", "linux", "cortex" <> _} ->
                   "armv7l"
+
                 _ ->
                   "arm"
               end
@@ -238,7 +250,7 @@ defmodule TfliteElixir.MixProject do
   end
 
   defp get_triplet_if_possible(requested_arch)
-       when requested_arch in ["k8", "x86_64", "aarch64", "riscv64", "armv7l"] do
+       when requested_arch in ["k8", "x86_64", "aarch64", "riscv64", "armv7l", "arm", "armv6"] do
     requested_os = System.get_env("TARGET_OS", "linux")
     requested_abi = System.get_env("TARGET_ABI", "gnu")
     requested_triplet = "#{requested_arch}-#{requested_os}-#{requested_abi}"

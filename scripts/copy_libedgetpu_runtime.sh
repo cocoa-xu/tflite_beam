@@ -51,7 +51,7 @@ if [ "${TFLITE_ELIXIR_CORAL_USB_THROTTLE}" = "NO" ]; then
 fi
 
 case "${TFLITE_ELIXIR_CORAL_LIBEDGETPU_TRIPLET}" in
-  x86_64-linux-gnu|aarch64-linux-gnu|armv7l-linux-gnueabihf|riscv64-linux-gnu)
+  x86_64-linux-gnu|aarch64-linux-gnu|armv7l-linux-gnueabihf|riscv64-linux-*|armv6-linux-*)
     copy_if_not_exists "${LIBEDGETPU_UNARCHIVED_DIR}/edgetpu_runtime/libedgetpu/${LIBEDGETPU_TFLITE_ELIXIR_CORAL_USB_THROTTLE}/${TFLITE_ELIXIR_CORAL_LIBEDGETPU_TRIPLET}/libedgetpu.so.1.0" "${LIBEDGETPU_RUNTIME_PRIV}/libedgetpu.so.1"
     copy_if_not_exists "${LIBEDGETPU_UNARCHIVED_DIR}/edgetpu_runtime/libedgetpu/edgetpu.h" "${LIBEDGETPU_RUNTIME_PRIV}/edgetpu.h"
     copy_if_not_exists "${LIBEDGETPU_UNARCHIVED_DIR}/edgetpu_runtime/libedgetpu/edgetpu_c.h" "${LIBEDGETPU_RUNTIME_PRIV}/edgetpu_c.h"

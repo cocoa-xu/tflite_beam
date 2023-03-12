@@ -35,6 +35,7 @@ LIBUSB_SOURCE_ARCHIVE = $(TFLITE_ELIXIR_CACHE_DIR)/libusb-$(LIBUSB_VERSION).tar.
 LIBUSB_SOURCE_DIR = $(THIRD_PARTY_DIR)/libusb-$(LIBUSB_VERSION)
 LIBUSB_INSTALL_DIR = $(MIX_APP_PATH)/libusb
 LIBUSB_SHARED_LIBRARY = $(PRIV_DIR)/libedgetpu/libusb-1.0.0.dylib
+LIBUSB_CONFIGURE_AC = $(shell pwd)/patches/libusb-configure.ac
 
 UNAME_S := $(shell uname -s)
 ifneq ($(UNAME_S),Darwin)
@@ -106,7 +107,7 @@ libusb: create_cache_dir
 	@ if [ "$(TFLITE_ELIXIR_ONLY_COPY_PRIV)" = "NO" ]; then \
 		if [ "$(TFLITE_ELIXIR_CORAL_SUPPORT)" = "YES" ]; then \
 			if [ ! -e "$(LIBUSB_SHARED_LIBRARY)" ]; then \
-				bash scripts/build_libusb.sh "$(LIBUSB_SOURCE_URL)" "$(LIBUSB_SOURCE_ARCHIVE)" "$(THIRD_PARTY_DIR)" "$(LIBUSB_SOURCE_DIR)" "$(LIBUSB_INSTALL_DIR)" "$(PRIV_DIR)"; \
+				bash scripts/build_libusb.sh "$(LIBUSB_SOURCE_URL)" "$(LIBUSB_SOURCE_ARCHIVE)" "$(THIRD_PARTY_DIR)" "$(LIBUSB_SOURCE_DIR)" "$(LIBUSB_INSTALL_DIR)" "$(PRIV_DIR)" "$(LIBUSB_CONFIGURE_AC)" ; \
 			fi && \
 			rm -rf "$(LIBUSB_INSTALL_DIR)" ; \
 		fi \
