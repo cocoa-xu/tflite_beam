@@ -1,87 +1,49 @@
 # Inference on TPU
 
-## Section
+```elixir
+Mix.install([
+  {:tflite_elixir, "~> 0.1.3"},
+  {:nx, "~> 0.5.0"},
+  {:req, "~> 0.3.0"},
+  {:stb_image, "~> 0.6.0"}
+])
+```
+
+## Download data files
 
 ```elixir
+downloads_dir = System.tmp_dir!()
 # for nerves demo user
 # change to a directory with write-permission
-File.cd!("/data/livebook")
-```
+# downloads_dir = "/data/livebook"
 
-<!-- livebook:{"output":true} -->
+download = fn url ->
+  save_as = Path.join(downloads_dir, Path.basename(url))
 
-```
-:ok
-```
-
-```elixir
-defmodule Helper do
-  def download!(url, save_as, overwrite \\ false)
-
-  def download!(url, save_as, false) do
-    unless File.exists?(save_as) do
-      download!(url, save_as, true)
-    end
-
-    :ok
+  unless File.exists?(save_as) do
+    %{status: 200} = Req.get!(url, output: Path.join(downloads_dir, Path.basename(url)))
   end
 
-  def download!(url, save_as, true) do
-    http_opts = []
-    opts = [body_format: :binary]
-    arg = {url, []}
-
-    body =
-      case :httpc.request(:get, arg, http_opts, opts) do
-        {:ok, {{_, 200, _}, _, body}} ->
-          body
-
-        {:error, reason} ->
-          raise inspect(reason)
-      end
-
-    File.write!(save_as, body)
-  end
+  save_as
 end
+
+data_files = %{
+  class_labals:
+    "https://raw.githubusercontent.com/cocoa-xu/tflite_elixir/main/test/test_data/inat_bird_labels.txt"
+    |> download.(),
+  cpu_model:
+    "https://raw.githubusercontent.com/cocoa-xu/tflite_elixir/main/test/test_data/mobilenet_v2_1.0_224_inat_bird_quant.tflite"
+    |> download.(),
+  tpu_model:
+    "https://raw.githubusercontent.com/cocoa-xu/tflite_elixir/main/test/test_data/mobilenet_v2_1.0_224_inat_bird_quant_edgetpu.tflite"
+    |> download.(),
+  test_image:
+    "https://raw.githubusercontent.com/cocoa-xu/tflite_elixir/main/test/test_data/parrot.jpeg"
+    |> download.()
+}
 ```
 
-<!-- livebook:{"output":true} -->
-
-```
-{:module, Helper, <<70, 79, 82, 49, 0, 0, 10, ...>>, {:download!, 3}}
-```
-
-```elixir
-# class labels
-Helper.download!(
-  "https://raw.githubusercontent.com/cocoa-xu/tflite_elixir/main/test/test_data/inat_bird_labels.txt",
-  "inat_bird_labels.txt"
-)
-
-# CPU model
-Helper.download!(
-  "https://raw.githubusercontent.com/cocoa-xu/tflite_elixir/main/test/test_data/mobilenet_v2_1.0_224_inat_bird_quant.tflite",
-  "mobilenet_v2_1.0_224_inat_bird_quant.tflite"
-)
-
-# TPU model
-Helper.download!(
-  "https://raw.githubusercontent.com/cocoa-xu/tflite_elixir/main/test/test_data/mobilenet_v2_1.0_224_inat_bird_quant_edgetpu.tflite",
-  "mobilenet_v2_1.0_224_inat_bird_quant_edgetpu.tflite"
-)
-
-# test image
-Helper.download!(
-  "https://raw.githubusercontent.com/cocoa-xu/tflite_elixir/main/test/test_data/parrot.jpeg",
-  "parrot.jpeg"
-)
-```
-
-<!-- livebook:{"output":true} -->
-
-```
-:ok
-```
+## Classify image
 
 ```elixir
 defmodule ClassifyImage do
@@ -298,26 +260,12 @@ defmodule ClassifyImage do
 end
 ```
 
-<!-- livebook:{"output":true} -->
-
-```
-warning: module attribute @shortdoc was set but never used
-  #cell:32
-
-```
-
-<!-- livebook:{"output":true} -->
-
-```
-{:module, ClassifyImage, <<70, 79, 82, 49, 0, 0, 43, ...>>, {:get_scores, 2}}
-```
-
 ```elixir
 interpreter =
   ClassifyImage.run(
-    model: "mobilenet_v2_1.0_224_inat_bird_quant.tflite",
-    input: "parrot.jpeg",
-    labels: "inat_bird_labels.txt",
+    model: data_files.cpu_model,
+    input: data_files.test_image,
+    labels: data_files.class_labals,
     top: 3,
     threshold: 0.3,
     count: 5,
@@ -326,37 +274,14 @@ interpreter =
     use_tpu: false,
     tpu: ""
   )
-
-interpreter = nil
-```
-
-<!-- livebook:{"output":true} -->
-
-```
-----INFERENCE TIME----
-37.6ms
-29.4ms
-27.7ms
-28.4ms
-27.8ms
--------RESULTS--------
-Ara macao (Scarlet Macaw): 0.70703
-Platycercus elegans (Crimson Rosella): 0.07813
-Coracias caudatus (Lilac-breasted Roller): 0.01953
-```
-
-<!-- livebook:{"output":true} -->
-
-```
-nil
 ```
 
 ```elixir
 interpreter =
   ClassifyImage.run(
-    model: "mobilenet_v2_1.0_224_inat_bird_quant_edgetpu.tflite",
-    input: "parrot.jpeg",
-    labels: "inat_bird_labels.txt",
+    model: data_files.tpu_model,
+    input: data_files.test_image,
+    labels: data_files.class_labals,
     top: 3,
     threshold: 0.3,
     count: 5,
@@ -367,17 +292,3 @@ interpreter =
   )
 ```
 
-<!-- livebook:{"output":true} -->
-
-```
-----INFERENCE TIME----
-17.3ms
-4.4ms
-4.3ms
-4.3ms
-4.3ms
--------RESULTS--------
-Ara macao (Scarlet Macaw): 0.71875
-Platycercus elegans (Crimson Rosella): 0.07031
-Coracias caudatus (Lilac-breasted Roller): 0.01953
-```
