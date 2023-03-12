@@ -16,59 +16,41 @@ Mix.install([
   {:evision, "~> 0.1.8"},
   {:nx, "~> 0.5.0"},
   {:kino, "~> 0.8.0"},
+  {:req, "~> 0.3.0"},
   {:stb_image, "~> 0.6.0"}
 ])
 ```
 
-## ESRGAN-TF2
+## Download data files
 
 * model using ESRGAN-TF2
 * test image from tensorflow examples
 
 ```elixir
-defmodule Helper do
-  def download!(url, save_as, overwrite \\ false)
+downloads_dir = System.tmp_dir!()
+# for nerves demo user
+# change to a directory with write-permission
+# downloads_dir = "/data/livebook"
 
-  def download!(url, save_as, false) do
-    unless File.exists?(save_as) do
-      download!(url, save_as, true)
-    end
+download = fn url ->
+  save_as = Path.join(downloads_dir, Path.basename(url))
 
-    :ok
+  unless File.exists?(save_as) do
+    %{status: 200} = Req.get!(url, output: Path.join(downloads_dir, Path.basename(url)))
   end
 
-  def download!(url, save_as, true) do
-    http_opts = []
-    opts = [body_format: :binary]
-    arg = {url, []}
-
-    body =
-      case :httpc.request(:get, arg, http_opts, opts) do
-        {:ok, {{_, 200, _}, _, body}} ->
-          body
-
-        {:error, reason} ->
-          raise inspect(reason)
-      end
-
-    File.write!(save_as, body)
-  end
+  save_as
 end
-```
 
-```elixir
-model_path = "lite-model_esrgan-tf2_1.tflite"
-test_img_path = "lr.jpg"
+model_url = "https://tfhub.dev/captain-pool/lite-model/esrgan-tf2/1?lite-format=tflite"
 
-Helper.download!(
-  "https://tfhub.dev/captain-pool/lite-model/esrgan-tf2/1?lite-format=tflite",
-  model_path
-)
+test_img_url =
+  "https://raw.githubusercontent.com/tensorflow/examples/master/lite/examples/super_resolution/android/app/src/main/assets/lr-1.jpg"
 
-Helper.download!(
-  "https://raw.githubusercontent.com/tensorflow/examples/master/lite/examples/super_resolution/android/app/src/main/assets/lr-1.jpg",
-  test_img_path
-)
+data_files = %{
+  model: model_url |> download.(),
+  test_img: test_img_url |> download.()
+}
 ```
 
 ## Alias modules
@@ -81,14 +63,14 @@ alias TFLiteElixir, as: TFLite
 ## Generate a super resolution image using TensorFlow Lite
 
 ```elixir
-lr = OpenCV.imread(test_img_path)
+lr = OpenCV.imread(data_files.test_img)
 lr = OpenCV.cvtColor(lr, OpenCV.Constant.cv_COLOR_BGR2RGB())
 lr = OpenCV.Mat.to_nx(lr)
 lr = Nx.new_axis(lr, 0)
 lr = Nx.as_type(lr, {:f, 32})
 
 # Load TFLite model and allocate tensors.
-{:ok, interpreter} = TFLite.Interpreter.new(model_path)
+{:ok, interpreter} = TFLite.Interpreter.new(data_files.model)
 
 # Get input and output tensors.
 {:ok, input_tensors} = TFLite.Interpreter.inputs(interpreter)
@@ -115,7 +97,7 @@ sr =
 ## Visualize the result
 
 ```elixir
-test_img_path
+data_files.test_img
 |> OpenCV.imread()
 |> then(&OpenCV.imencode(".jpeg", &1))
 |> IO.iodata_to_binary()
@@ -130,3 +112,4 @@ sr
 |> IO.iodata_to_binary()
 |> Kino.Image.new(:jpeg)
 ```
+
