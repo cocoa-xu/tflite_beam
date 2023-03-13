@@ -1,9 +1,9 @@
 {
   "skip_files": [
     "lib/tflite_elixir_nif.ex",
-    "lib/errorize.ex",
-    "lib/tflite_quantization_params.ex",
+    "lib/tflite_elixir/errorize.ex",
+    "lib/tflite_elixir/quantization_params.ex",
     "lib/tasks/list_edgetpu.ex",
-    "lib/coral_elixir.ex"
+    "lib/tflite_elixir/coral.ex"
   ]
 }
