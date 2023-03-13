@@ -1,6 +1,9 @@
 defmodule TFLiteElixir.InterpreterBuilder do
+  @moduledoc """
+  Build an interpreter capable of interpreting model.
+  """
   import TFLiteElixir.Errorize
-  alias TFLiteElixir.FlatBufferModel, as: FlatBufferModel
+  alias TFLiteElixir.FlatBufferModel
 
   @type nif_resource_ok :: {:ok, reference()}
   @type nif_error :: {:error, String.t()}

@@ -1,4 +1,8 @@
 defmodule TFLiteElixir.FlatBufferModel do
+  @moduledoc """
+  An RAII object that represents a read-only tflite model, copied from disk, or
+  mmapped.
+  """
   import TFLiteElixir.Errorize
 
   @type nif_error :: {:error, String.t()}

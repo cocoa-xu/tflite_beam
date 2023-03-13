@@ -1,4 +1,7 @@
 defmodule TFLiteElixir.TFLiteTensor do
+  @moduledoc """
+  A typed multi-dimensional array used in Tensorflow Lite.
+  """
   import TFLiteElixir.Errorize
 
   @behaviour Nx.Backend
