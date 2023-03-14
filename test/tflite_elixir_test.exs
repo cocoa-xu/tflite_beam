@@ -54,7 +54,7 @@ defmodule TFLiteElixir.Test do
     output_data = TFLiteElixir.Interpreter.output_tensor!(interpreter, 0)
     true = expected_out == output_data
 
-    if print_state, do: TFLiteElixir.printInterpreterState(interpreter)
+    if print_state, do: TFLiteElixir.print_interpreter_state(interpreter)
     :ok
   end
 
