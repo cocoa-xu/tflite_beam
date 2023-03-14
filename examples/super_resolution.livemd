@@ -1,16 +1,6 @@
 # Super resolution
 
 ```elixir
-# # a quick fix for the free tier livebook session
-# ## allocate 4GB? swap
-# System.cmd("fallocate", ["-l", "4G", "/swap"])
-# System.cmd("chmod", ["400", "/swap"])
-# System.cmd("mkswap", ["/swap"])
-# System.cmd("swapon", ["/swap"])
-# ## need unzip to unzip the source code
-# System.cmd("apt", ["update", "-q", "-y"])
-# System.cmd("apt", ["install", "-y", "unzip", "python3", "cmake"])
-
 Mix.install([
   {:tflite_elixir, "~> 0.1.4"},
   {:evision, "~> 0.1.8"},
@@ -56,16 +46,16 @@ data_files = %{
 ## Alias modules
 
 ```elixir
-alias Evision, as: OpenCV
+alias Evision, as: Cv
 alias TFLiteElixir, as: TFLite
 ```
 
 ## Generate a super resolution image using TensorFlow Lite
 
 ```elixir
-lr = OpenCV.imread(data_files.test_img)
-lr = OpenCV.cvtColor(lr, OpenCV.Constant.cv_COLOR_BGR2RGB())
-lr = OpenCV.Mat.to_nx(lr)
+lr = Cv.imread(data_files.test_img)
+lr = Cv.cvtColor(lr, Cv.Constant.cv_COLOR_BGR2RGB())
+lr = Cv.Mat.to_nx(lr)
 lr = Nx.new_axis(lr, 0)
 lr = Nx.as_type(lr, {:f, 32})
 
@@ -98,17 +88,17 @@ sr =
 
 ```elixir
 data_files.test_img
-|> OpenCV.imread()
-|> then(&OpenCV.imencode(".jpeg", &1))
+|> Cv.imread()
+|> then(&Cv.imencode(".jpeg", &1))
 |> IO.iodata_to_binary()
 |> Kino.Image.new(:jpeg)
 ```
 
 ```elixir
 sr
-|> OpenCV.Mat.from_nx()
-|> OpenCV.cvtColor(OpenCV.Constant.cv_COLOR_RGB2BGR())
-|> then(&OpenCV.imencode(".jpeg", &1))
+|> Cv.Mat.from_nx()
+|> Cv.cvtColor(Cv.Constant.cv_COLOR_RGB2BGR())
+|> then(&Cv.imencode(".jpeg", &1))
 |> IO.iodata_to_binary()
 |> Kino.Image.new(:jpeg)
 ```
