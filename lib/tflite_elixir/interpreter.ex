@@ -47,7 +47,7 @@ defmodule TFLiteElixir.Interpreter do
   @spec new(String.t()) :: nif_resource_ok() | nif_error()
   def new(model_path) do
     with {:build_from_file, %FlatBufferModel{} = model} <-
-           {:build_from_file, FlatBufferModel.buildFromFile(model_path)},
+           {:build_from_file, FlatBufferModel.build_from_file(model_path)},
          {:builtin_resolver, {:ok, resolver}} <-
            {:builtin_resolver, TFLiteElixir.Ops.Builtin.BuiltinResolver.new()},
          {:interpreter_build, {:ok, builder}} <-

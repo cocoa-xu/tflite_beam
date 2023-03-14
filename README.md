@@ -193,7 +193,7 @@ labels = File.read!("inat_bird_labels.txt") |> String.split("\n")
 
 # load tflite model
 filename = "mobilenet_v2_1.0_224_inat_bird_quant.tflite"
-model = TFLite.FlatBufferModel.buildFromFile!(filename)
+model = TFLite.FlatBufferModel.build_from_file!(filename)
 resolver = TFLite.Ops.Builtin.BuiltinResolver.new!()
 builder = TFLite.InterpreterBuilder.new!(model, resolver)
 interpreter = TFLite.Interpreter.new!()
