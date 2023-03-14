@@ -136,6 +136,7 @@ $(NATIVE_BINDINGS_SO): unarchive_source_code install_libedgetpu_runtime libusb
 			  $(CMAKE_OPTIONS) \
 			  "$(shell pwd)" && \
 			make "$(MAKE_BUILD_FLAGS)" && \
+			mkdir -p "$(PRIV_DIR)" && \
 			cp "$(CMAKE_BINDINGS_BUILD_DIR)/tflite_elixir.so" "$(NATIVE_BINDINGS_SO)" ; \
 		fi ; \
 	else \
