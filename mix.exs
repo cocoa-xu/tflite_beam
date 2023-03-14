@@ -149,6 +149,8 @@ defmodule TfliteElixir.MixProject do
           Logger.warning(error)
           {:ok, Mix.compilers()}
       end
+    else
+      {:ok, [:elixir_make] ++ Mix.compilers()}
     end
   end
 
