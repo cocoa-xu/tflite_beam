@@ -7,7 +7,7 @@ defmodule TFLiteElixir.Coral do
     TFLiteElixir.Nif.coral_contains_edgetpu_custom_op(model)
   end
 
-  @spec edge_tpu_devices() :: [String.t()]
+  @spec edge_tpu_devices() :: [String.t()] | {:error, String.t()}
   def edge_tpu_devices() do
     TFLiteElixir.Nif.coral_edgetpu_devices()
   end
