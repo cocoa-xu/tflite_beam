@@ -12,7 +12,7 @@
 # System.cmd("apt", ["install", "-y", "unzip", "python3", "cmake"])
 
 Mix.install([
-  {:tflite_elixir, "~> 0.1.3"},
+  {:tflite_elixir, "~> 0.1.4"},
   {:evision, "~> 0.1.8"},
   {:nx, "~> 0.5.0"},
   {:kino, "~> 0.8.0"},
