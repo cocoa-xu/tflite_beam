@@ -22,13 +22,13 @@ Mix.install([
 
 # parrot.jpeg and the tflite file can be found in the test/test_data directory
 interpreter = TFLiteElixir.Interpreter.new!("/path/to/mobilenet_v2_1.0_224_inat_bird_quant.tflite")
-input = 
+input =
   StbImage.read_file!("/path/to/parrot.jpeg")
   |> StbImage.resize(224, 224)
   |> StbImage.to_nx()
 
 [output_tensor_0] = TFLiteElixir.Interpreter.predict(interpreter, input)
-nx_tensor = 
+nx_tensor =
   TFLiteElixir.TFLiteTensor.to_binary(output_tensor_0)
   |> Nx.from_binary(:u8)
 
@@ -78,7 +78,7 @@ Coracias caudatus (Lilac-breasted Roller): 0.01953
 
 [![Nerves](https://github-actions.40ants.com/cocoa-xu/tflite_elixir/matrix.svg?only=nerves-build)](https://github.com/cocoa-xu/tflite_elixir)
 
-Prebuilt firmwares are available [here](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/nerves-build.yml?query=is%3Asuccess). 
+Prebuilt firmwares are available [here](https://github.com/cocoa-xu/tflite_elixir/actions/workflows/nerves-build.yml?query=is%3Asuccess).
 
 Select the most recent run and scroll down to the `Artifacts` section, download the firmware file for your board and run
 
@@ -86,7 +86,7 @@ Select the most recent run and scroll down to the `Artifacts` section, download 
 fwup /path/to/the/downloaded/firmware.fw
 ```
 
-In the nerves build, `tflite_elixir` is integrated as one of the dependencies of the [nerves_livebook](https://github.com/livebook-dev/nerves_livebook) project. This means that you can use livebook (as well as other pre-pulled libraries) to explore and evaluate the `tflite_elixir` project. 
+In the nerves build, `tflite_elixir` is integrated as one of the dependencies of the [nerves_livebook](https://github.com/livebook-dev/nerves_livebook) project. This means that you can use livebook (as well as other pre-pulled libraries) to explore and evaluate the `tflite_elixir` project.
 
 The default password of the livebook is `nerves` (as the time of writing, if it does not work, please check the nerves_livebook project).
 
@@ -97,13 +97,13 @@ The default password of the livebook is `nerves` (as the time of writing, if it 
 # for example
 export MIX_TARGET=rpi4
 
-# There is no need to explicitly set CPU architecture 
+# There is no need to explicitly set CPU architecture
 #   for the precompiled libedgetpu binaries. The arch
 #   is automatically detected by the `TARGET_ARCH`,
 #   `TARGET_OS` and `TARGET_ABI` environment vars.
 #
 # However, if you are using your own nerves target
-#   you can manually set the correct arch, e.g., 
+#   you can manually set the correct arch, e.g.,
 #   set `aarch64` for rpi4.
 #
 # Possible values including
@@ -178,7 +178,7 @@ test files used here are downloaded from [google-coral/test_data](https://github
 ### Demo code
 Model: [mobilenet_v2_1.0_224_inat_bird_quant.tflite](https://github.com/google-coral/edgetpu/blob/master/test_data/mobilenet_v2_1.0_224_inat_bird_quant.tflite)
 
-Input image: 
+Input image:
 - [parrot.jpg](https://github.com/google-coral/edgetpu/blob/master/test_data/parrot.jpg)
 - Or use pre-converted input [parrot.bin](https://github.com/cocoa-xu/tflite_elixir/blob/main/test/test_data/parrot.bin)
 
@@ -198,13 +198,13 @@ resolver = TFLite.Ops.Builtin.BuiltinResolver.new!()
 builder = TFLite.InterpreterBuilder.new!(model, resolver)
 interpreter = TFLite.Interpreter.new!()
 :ok = TFLite.InterpreterBuilder.build!(builder, interpreter)
-:ok = TFLite.Interpreter.allocateTensors!(interpreter)
+:ok = TFLite.Interpreter.allocate_tensors!(interpreter)
 
 # verify loaded model, feel free to skip
 # [0] = TFLite.Interpreter.inputs!(interpreter)
 # [171] = TFLite.Interpreter.outputs!(interpreter)
-# "map/TensorArrayStack/TensorArrayGatherV3" = TFLite.Interpreter.getInputName!(interpreter, 0)
-# "prediction" = TFLite.Interpreter.getOutputName!(interpreter, 0)
+# "map/TensorArrayStack/TensorArrayGatherV3" = TFLite.Interpreter.get_input_name!(interpreter, 0)
+# "prediction" = TFLite.Interpreter.get_output_name!(interpreter, 0)
 # input_tensor = TFLite.Interpreter.tensor!(interpreter, 0)
 # [1, 224, 224, 3] = TFLite.TFLiteTensor.dims!(input_tensor)
 # {:u, 8} = TFLite.TFLiteTensor.type(input_tensor)
@@ -215,8 +215,8 @@ interpreter = TFLite.Interpreter.new!()
 # parrot.bin - if you don't have :evision
 binary = File.read!("parrot.bin")
 # parrot.jpg - if you have :evision
-# load image, resize it, covert to RGB and to binary 
-binary = 
+# load image, resize it, covert to RGB and to binary
+binary =
   Cv.imread("parrot.jpg")
   |> Cv.resize({224, 224})
   |> Cv.cvtColor(Cv.cv_COLOR_BGR2RGB)
@@ -262,18 +262,18 @@ bash "3rd_party/cache/${TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME}/edgetpu_runtime/
 - `TFLITE_ELIXIR_CORAL_USB_THROTTLE`
 
   Throttling USB Coral Devices. Please see the official warning here, [google-coral/libedgetpu](https://github.com/google-coral/libedgetpu#warning).
-  
+
   Default value is `YES`.
-  
+
   Note that only when `TFLITE_ELIXIR_CORAL_USB_THROTTLE` is set to `NO`, `:tflite_elixir` will use the non-throttled libedgetpu libraries.
 
 - `TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES`
-  
+
   Choose which ones of the libedgetpu libraries to copy to the `priv` directory of the `:tflite_elixir` app.
 
   Default value is `native` - only native libraries will be downloaded and copied. `native` corresponds to the host OS and CPU architecture when compiling this library.
 
-  When set to a specific value, e.g, `darwin_arm64` or `darwin_x86_64`, then the corresponding one will be downloaded and copied. This option is expected to be used for cross-compiling, like with nerves. 
+  When set to a specific value, e.g, `darwin_arm64` or `darwin_x86_64`, then the corresponding one will be downloaded and copied. This option is expected to be used for cross-compiling, like with nerves.
 
   Available values for this option are:
 
@@ -290,7 +290,7 @@ bash "3rd_party/cache/${TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME}/edgetpu_runtime/
 
 
 - `TFLITE_ELIXIR_CACHE_DIR`
-  
+
   Cache directory for the runtime zip file.
 
   Default value is `./3rd_party/cache`.

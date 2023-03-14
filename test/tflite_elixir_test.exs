@@ -13,18 +13,18 @@ defmodule TFLiteElixir.Test do
     resolver = TFLiteElixir.Ops.Builtin.BuiltinResolver.new!()
     builder = TFLiteElixir.InterpreterBuilder.new!(model, resolver)
     interpreter = TFLiteElixir.Interpreter.new!()
-    TFLiteElixir.InterpreterBuilder.setNumThreads!(builder, 2)
+    TFLiteElixir.InterpreterBuilder.set_num_threads!(builder, 2)
     :ok = TFLiteElixir.InterpreterBuilder.build!(builder, interpreter)
-    TFLiteElixir.Interpreter.setNumThreads!(interpreter, 2)
+    TFLiteElixir.Interpreter.set_num_threads!(interpreter, 2)
 
     # verify
     [0] = TFLiteElixir.Interpreter.inputs!(interpreter)
     [171] = TFLiteElixir.Interpreter.outputs!(interpreter)
 
     "map/TensorArrayStack/TensorArrayGatherV3" =
-      TFLiteElixir.Interpreter.getInputName!(interpreter, 0)
+      TFLiteElixir.Interpreter.get_input_name!(interpreter, 0)
 
-    "prediction" = TFLiteElixir.Interpreter.getOutputName!(interpreter, 0)
+    "prediction" = TFLiteElixir.Interpreter.get_output_name!(interpreter, 0)
 
     input_tensor =
       %TFLiteElixir.TFLiteTensor{
@@ -48,7 +48,7 @@ defmodule TFLiteElixir.Test do
     {:u, 8} = TFLiteElixir.TFLiteTensor.type!(output_tensor)
 
     # run forwarding
-    :ok = TFLiteElixir.Interpreter.allocateTensors!(interpreter)
+    :ok = TFLiteElixir.Interpreter.allocate_tensors!(interpreter)
     TFLiteElixir.Interpreter.input_tensor!(interpreter, 0, input_data)
     TFLiteElixir.Interpreter.invoke!(interpreter)
     output_data = TFLiteElixir.Interpreter.output_tensor!(interpreter, 0)
