@@ -84,10 +84,10 @@ defmodule ClassifyImage do
   Code based on [classify_image.py](https://github.com/google-coral/pycoral/blob/master/examples/classify_image.py)
   """
 
-  alias TFLiteElixir.Interpreter, as: Interpreter
-  alias TFLiteElixir.InterpreterBuilder, as: InterpreterBuilder
-  alias TFLiteElixir.TFLiteTensor, as: TFTensor
-  alias TFLiteElixir.FlatBufferModel, as: FlatBufferModel
+  alias TFLiteElixir.Interpreter
+  alias TFLiteElixir.InterpreterBuilder
+  alias TFLiteElixir.TFLiteTensor
+  alias TFLiteElixir.FlatBufferModel
 
   def run(args) do
     default_values = [
@@ -172,7 +172,7 @@ defmodule ClassifyImage do
       |> Nx.as_type(:f32)
       |> Nx.to_binary()
     end
-    |> then(&TFTensor.set_data!(input_tensor, &1))
+    |> then(&TFLiteTensor.set_data!(input_tensor, &1))
 
     IO.puts("----INFERENCE TIME----")
 
@@ -251,10 +251,10 @@ defmodule ClassifyImage do
   end
 
   defp make_interpreter(model, _num_jobs, true, tpu_context) do
-    TFLiteElixir.Coral.makeEdgeTpuInterpreter!(model, tpu_context)
+    TFLiteElixir.Coral.make_edge_tpu_interpreter!(model, tpu_context)
   end
 
-  defp get_scores(output_data, %TFTensor{type: dtype = {:u, _}} = output_tensor) do
+  defp get_scores(output_data, %TFLiteTensor{type: dtype = {:u, _}} = output_tensor) do
     scale = Nx.tensor(output_tensor.quantization_params.scale)
     zero_point = Nx.tensor(output_tensor.quantization_params.zero_point)
 
@@ -264,7 +264,7 @@ defmodule ClassifyImage do
     |> Nx.multiply(scale)
   end
 
-  defp get_scores(output_data, %TFTensor{type: dtype = {:s, _}} = output_tensor) do
+  defp get_scores(output_data, %TFLiteTensor{type: dtype = {:s, _}} = output_tensor) do
     [scale] = output_tensor.quantization_params.scale
     [zero_point] = output_tensor.quantization_params.zero_point
 
@@ -274,7 +274,7 @@ defmodule ClassifyImage do
     |> Nx.multiply(scale)
   end
 
-  defp get_scores(output_data, %TFTensor{type: dtype}) do
+  defp get_scores(output_data, %TFLiteTensor{type: dtype}) do
     Nx.from_binary(output_data, dtype)
   end
 end

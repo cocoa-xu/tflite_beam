@@ -2,7 +2,7 @@
 
 ```elixir
 Mix.install([
-  {:tflite_elixir, "~> 0.1.3"},
+  {:tflite_elixir, "~> 0.1.4"},
   {:nx, "~> 0.5.0"},
   {:req, "~> 0.3.0"},
   {:stb_image, "~> 0.6.0"}
@@ -106,7 +106,7 @@ defmodule ClassifyImage do
 
     tpu_context =
       if args[:use_tpu] do
-        TFLiteElixir.Coral.getEdgeTpuContext!(args[:tpu])
+        TFLiteElixir.Coral.get_edge_tpu_context!(args[:tpu])
       else
         nil
       end
@@ -224,14 +224,14 @@ defmodule ClassifyImage do
     resolver = TFLiteElixir.Ops.Builtin.BuiltinResolver.new!()
     builder = InterpreterBuilder.new!(model, resolver)
     interpreter = Interpreter.new!()
-    InterpreterBuilder.setNumThreads!(builder, num_jobs)
+    InterpreterBuilder.set_num_threads!(builder, num_jobs)
     :ok = InterpreterBuilder.build!(builder, interpreter)
-    Interpreter.setNumThreads!(interpreter, num_jobs)
+    Interpreter.set_num_threads!(interpreter, num_jobs)
     interpreter
   end
 
   defp make_interpreter(model, _num_jobs, true, tpu_context) do
-    TFLiteElixir.Coral.makeEdgeTpuInterpreter!(model, tpu_context)
+    TFLiteElixir.Coral.make_edge_tpu_interpreter!(model, tpu_context)
   end
 
   defp get_scores(output_data, %TFLiteTensor{type: dtype = {:u, _}} = output_tensor) do
