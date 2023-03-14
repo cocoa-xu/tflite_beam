@@ -88,7 +88,7 @@ defmodule Mix.Tasks.ClassifyImage do
 
     tpu_context =
       if args[:use_tpu] do
-        TFLiteElixir.Coral.getEdgeTpuContext!(args[:tpu])
+        TFLiteElixir.Coral.get_edge_tpu_context!(args[:tpu])
       else
         nil
       end
@@ -211,7 +211,7 @@ defmodule Mix.Tasks.ClassifyImage do
   end
 
   defp make_interpreter(model, _num_jobs, true, tpu_context) do
-    TFLiteElixir.Coral.makeEdgeTpuInterpreter!(model, tpu_context)
+    TFLiteElixir.Coral.make_edge_tpu_interpreter!(model, tpu_context)
   end
 
   defp get_scores(output_data, %TFTensor{type: dtype = {:u, _}} = output_tensor) do

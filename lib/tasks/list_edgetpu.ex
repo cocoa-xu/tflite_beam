@@ -7,7 +7,7 @@ defmodule Mix.Tasks.ListEdgetpu do
 
   @shortdoc "List all available Edge Tpu"
   def run(_) do
-    case TFLiteElixir.Coral.edgeTpuDevices() do
+    case TFLiteElixir.Coral.edge_tpu_devices() do
       {:error, error} ->
         IO.puts("Error: #{error}")
 
