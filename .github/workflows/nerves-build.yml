@@ -42,6 +42,8 @@ jobs:
       MIX_ENV: prod
       NERVES_PROJ_NAME: nerves_tflite
       NERVES_LIVEBOOK_VER: "v0.8.3"
+      TFLITE_ELIXIR_PREFER_PRECOMPILED: "NO"
+      TFLITE_ELIXIR_CORAL_SUPPORT: "YES"
 
     strategy:
       fail-fast: false
