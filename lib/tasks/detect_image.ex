@@ -58,7 +58,7 @@ defmodule Mix.Tasks.DetectImage do
     input_image = %StbImage{shape: {h, w, _c}} = load_input(args[:input])
     labels = load_labels(args[:labels])
     interpreter = make_interpreter(model, args[:jobs])
-    Interpreter.allocateTensors!(interpreter)
+    Interpreter.allocate_tensors!(interpreter)
 
     [input_tensor_number | _] = Interpreter.inputs!(interpreter)
     output_tensor_numbers = Interpreter.outputs!(interpreter)
@@ -207,7 +207,7 @@ defmodule Mix.Tasks.DetectImage do
   end
 
   defp load_model(model_path) do
-    FlatBufferModel.buildFromBuffer!(File.read!(model_path))
+    FlatBufferModel.build_from_buffer!(File.read!(model_path))
   end
 
   defp load_input(nil) do
@@ -234,9 +234,9 @@ defmodule Mix.Tasks.DetectImage do
     resolver = TFLiteElixir.Ops.Builtin.BuiltinResolver.new!()
     builder = InterpreterBuilder.new!(model, resolver)
     interpreter = Interpreter.new!()
-    InterpreterBuilder.setNumThreads!(builder, num_jobs)
+    InterpreterBuilder.set_num_threads!(builder, num_jobs)
     :ok = InterpreterBuilder.build!(builder, interpreter)
-    Interpreter.setNumThreads!(interpreter, num_jobs)
+    Interpreter.set_num_threads!(interpreter, num_jobs)
     interpreter
   end
 

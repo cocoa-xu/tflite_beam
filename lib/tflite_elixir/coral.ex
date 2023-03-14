@@ -1,14 +1,14 @@
 defmodule TFLiteElixir.Coral do
   import TFLiteElixir.Errorize
 
-  alias TFLiteElixir.FlatBufferModel, as: FlatBufferModel
+  alias TFLiteElixir.FlatBufferModel
 
-  def containsEdgeTpuCustomOp?(%FlatBufferModel{model: model}) do
+  def contains_edge_tpu_custom_op?(%FlatBufferModel{model: model}) do
     TFLiteElixir.Nif.coral_contains_edgetpu_custom_op(model)
   end
 
-  @spec edgeTpuDevices() :: [String.t()]
-  def edgeTpuDevices() do
+  @spec edge_tpu_devices() :: [String.t()]
+  def edge_tpu_devices() do
     TFLiteElixir.Nif.coral_edgetpu_devices()
   end
 
@@ -49,40 +49,40 @@ defmodule TFLiteElixir.Coral do
     The generic way to reference all devices (no assumption about device type):
         ":0", ":1", ":2", ":3", ":4", ":5".
   """
-  @spec getEdgeTpuContext() :: {:ok, reference()} | {:error, String.t()}
-  def getEdgeTpuContext() do
+  @spec get_edge_tpu_context() :: {:ok, reference()} | {:error, String.t()}
+  def get_edge_tpu_context() do
     TFLiteElixir.Nif.coral_get_edgetpu_context("", %{})
   end
 
-  deferror(getEdgeTpuContext())
+  deferror(get_edge_tpu_context())
 
-  @spec getEdgeTpuContext(String.t()) :: {:ok, reference()} | {:error, String.t()}
-  def getEdgeTpuContext(device) do
+  @spec get_edge_tpu_context(String.t()) :: {:ok, reference()} | {:error, String.t()}
+  def get_edge_tpu_context(device) do
     TFLiteElixir.Nif.coral_get_edgetpu_context(device, %{})
   end
 
-  deferror(getEdgeTpuContext(device))
+  deferror(get_edge_tpu_context(device))
 
-  @spec getEdgeTpuContext(String.t(), Map.t()) :: {:ok, reference()} | {:error, String.t()}
-  def getEdgeTpuContext(device, options) do
+  @spec get_edge_tpu_context(String.t(), Map.t()) :: {:ok, reference()} | {:error, String.t()}
+  def get_edge_tpu_context(device, options) do
     TFLiteElixir.Nif.coral_get_edgetpu_context(device, options)
   end
 
-  deferror(getEdgeTpuContext(device, options))
+  deferror(get_edge_tpu_context(device, options))
 
-  @spec makeEdgeTpuInterpreter(%FlatBufferModel{}, reference()) ::
+  @spec make_edge_tpu_interpreter(%FlatBufferModel{}, reference()) ::
           {:ok, reference()} | {:error, String.t()}
-  def makeEdgeTpuInterpreter(%FlatBufferModel{model: model}, edgetpu_context) do
+  def make_edge_tpu_interpreter(%FlatBufferModel{model: model}, edgetpu_context) do
     TFLiteElixir.Nif.coral_make_edgetpu_interpreter(model, edgetpu_context)
   end
 
-  deferror(makeEdgeTpuInterpreter(model, edgetpu_context))
+  deferror(make_edge_tpu_interpreter(model, edgetpu_context))
 
-  def dequantizeTensor(interpreter, tensor_index) do
+  def dequantize_tensor(interpreter, tensor_index) do
     TFLiteElixir.Nif.coral_dequantize_tensor(interpreter, tensor_index, nil)
   end
 
-  def dequantizeTensor(interpreter, tensor_index, as_type) do
+  def dequantize_tensor(interpreter, tensor_index, as_type) do
     as_type = map_type(as_type)
     TFLiteElixir.Nif.coral_dequantize_tensor(interpreter, tensor_index, as_type)
   end

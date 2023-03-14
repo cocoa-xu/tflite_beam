@@ -17,8 +17,8 @@ defmodule TFLiteElixir.FlatBufferModel do
   Note that if the tensorflow-lite library was compiled with `TFLITE_MCU`,
   then this function will always have return type `nif_error()`
   """
-  @spec buildFromFile(String.t()) :: %T{} | nif_error()
-  def buildFromFile(filename) when is_binary(filename) do
+  @spec build_from_file(String.t()) :: %T{} | nif_error()
+  def build_from_file(filename) when is_binary(filename) do
     with {:ok, model} <- TFLiteElixir.Nif.flatBufferModel_buildFromFile(filename) do
       %T{model: model}
     else
@@ -26,7 +26,7 @@ defmodule TFLiteElixir.FlatBufferModel do
     end
   end
 
-  deferror(buildFromFile(filename))
+  deferror(build_from_file(filename))
 
   @doc """
   Build model from caller owned memory buffer
@@ -42,8 +42,8 @@ defmodule TFLiteElixir.FlatBufferModel do
     However, we would have no way to release the copied memory because we couldn't
     identify if the `allocation_` borrows or owns that memory.
   """
-  @spec buildFromBuffer(binary()) :: %T{} | nif_error()
-  def buildFromBuffer(buffer) when is_binary(buffer) do
+  @spec build_from_buffer(binary()) :: %T{} | nif_error()
+  def build_from_buffer(buffer) when is_binary(buffer) do
     with {:ok, model} <- TFLiteElixir.Nif.flatBufferModel_buildFromBuffer(buffer) do
       %T{model: model}
     else
@@ -51,7 +51,7 @@ defmodule TFLiteElixir.FlatBufferModel do
     end
   end
 
-  deferror(buildFromBuffer(buffer))
+  deferror(build_from_buffer(buffer))
 
   @spec initialized(%T{}) :: bool() | nif_error()
   def initialized(%T{model: self}) when is_reference(self) do
@@ -71,24 +71,24 @@ defmodule TFLiteElixir.FlatBufferModel do
   in which case the actual required runtime might be greater than the
   reported minimum.
   """
-  @spec getMinimumRuntime(%T{}) :: String.t() | nif_error()
-  def getMinimumRuntime(%T{model: self}) when is_reference(self) do
+  @spec get_minimum_runtime(%T{}) :: String.t() | nif_error()
+  def get_minimum_runtime(%T{model: self}) when is_reference(self) do
     TFLiteElixir.Nif.flatBufferModel_getMinimumRuntime(self)
   end
 
-  deferror(getMinimumRuntime(self))
+  deferror(get_minimum_runtime(self))
 
   @doc """
   Return model metadata as a mapping of name & buffer strings.
 
   See Metadata table in TFLite schema.
   """
-  @spec readAllMetadata(%T{}) :: %{String.t() => String.t()} | nif_error()
-  def readAllMetadata(%T{model: self}) when is_reference(self) do
+  @spec read_all_metadata(%T{}) :: %{String.t() => String.t()} | nif_error()
+  def read_all_metadata(%T{model: self}) when is_reference(self) do
     TFLiteElixir.Nif.flatBufferModel_readAllMetadata(self)
   end
 
-  deferror(readAllMetadata(self))
+  deferror(read_all_metadata(self))
 
   @doc false
   @impl true
@@ -98,12 +98,12 @@ defmodule TFLiteElixir.FlatBufferModel do
 
   @impl true
   def fetch(self, :minimum_runtime) do
-    {:ok, getMinimumRuntime(self)}
+    {:ok, get_minimum_runtime(self)}
   end
 
   @impl true
   def fetch(self, :metadata) do
-    {:ok, readAllMetadata(self)}
+    {:ok, read_all_metadata(self)}
   end
 
   @impl true
@@ -125,8 +125,8 @@ defmodule TFLiteElixir.FlatBufferModel do
         to_doc(
           %{
             "initialized" => T.initialized(self),
-            "metadata" => T.readAllMetadata(self),
-            "minimum_runtime" => T.getMinimumRuntime(self)
+            "metadata" => T.read_all_metadata(self),
+            "minimum_runtime" => T.get_minimum_runtime(self)
           },
           opts
         ),

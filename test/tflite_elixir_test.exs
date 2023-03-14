@@ -6,25 +6,25 @@ defmodule TFLiteElixir.Test do
              is_boolean(print_state) do
     # build interpreter
     %{"TFLITE_METADATA" => <<28>>, "min_runtime_version" => "1.5.0"} =
-      TFLiteElixir.FlatBufferModel.readAllMetadata!(model)
+      TFLiteElixir.FlatBufferModel.read_all_metadata!(model)
 
     true = TFLiteElixir.FlatBufferModel.initialized!(model)
-    "1.5.0" = TFLiteElixir.FlatBufferModel.getMinimumRuntime!(model)
+    "1.5.0" = TFLiteElixir.FlatBufferModel.get_minimum_runtime!(model)
     resolver = TFLiteElixir.Ops.Builtin.BuiltinResolver.new!()
     builder = TFLiteElixir.InterpreterBuilder.new!(model, resolver)
     interpreter = TFLiteElixir.Interpreter.new!()
-    TFLiteElixir.InterpreterBuilder.setNumThreads!(builder, 2)
+    TFLiteElixir.InterpreterBuilder.set_num_threads!(builder, 2)
     :ok = TFLiteElixir.InterpreterBuilder.build!(builder, interpreter)
-    TFLiteElixir.Interpreter.setNumThreads!(interpreter, 2)
+    TFLiteElixir.Interpreter.set_num_threads!(interpreter, 2)
 
     # verify
     [0] = TFLiteElixir.Interpreter.inputs!(interpreter)
     [171] = TFLiteElixir.Interpreter.outputs!(interpreter)
 
     "map/TensorArrayStack/TensorArrayGatherV3" =
-      TFLiteElixir.Interpreter.getInputName!(interpreter, 0)
+      TFLiteElixir.Interpreter.get_input_name!(interpreter, 0)
 
-    "prediction" = TFLiteElixir.Interpreter.getOutputName!(interpreter, 0)
+    "prediction" = TFLiteElixir.Interpreter.get_output_name!(interpreter, 0)
 
     input_tensor =
       %TFLiteElixir.TFLiteTensor{
@@ -48,13 +48,13 @@ defmodule TFLiteElixir.Test do
     {:u, 8} = TFLiteElixir.TFLiteTensor.type!(output_tensor)
 
     # run forwarding
-    :ok = TFLiteElixir.Interpreter.allocateTensors!(interpreter)
+    :ok = TFLiteElixir.Interpreter.allocate_tensors!(interpreter)
     TFLiteElixir.Interpreter.input_tensor!(interpreter, 0, input_data)
     TFLiteElixir.Interpreter.invoke!(interpreter)
     output_data = TFLiteElixir.Interpreter.output_tensor!(interpreter, 0)
     true = expected_out == output_data
 
-    if print_state, do: TFLiteElixir.printInterpreterState(interpreter)
+    if print_state, do: TFLiteElixir.print_interpreter_state(interpreter)
     :ok
   end
 
@@ -62,7 +62,7 @@ defmodule TFLiteElixir.Test do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
     expected_out = Path.join([__DIR__, "test_data", "parrot-expected-out.bin"]) |> File.read!()
-    model = TFLiteElixir.FlatBufferModel.buildFromFile!(filename)
+    model = TFLiteElixir.FlatBufferModel.build_from_file!(filename)
     :ok = verify_loaded_model(model, input_data, expected_out, true)
   end
 
@@ -79,15 +79,15 @@ defmodule TFLiteElixir.Test do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
     expected_out = Path.join([__DIR__, "test_data", "parrot-expected-out.bin"]) |> File.read!()
-    model = TFLiteElixir.FlatBufferModel.buildFromBuffer!(File.read!(filename))
+    model = TFLiteElixir.FlatBufferModel.build_from_buffer!(File.read!(filename))
     :ok = verify_loaded_model(model, input_data, expected_out, false)
   end
 
   with {:module, TFLiteElixir.Coral} <- Code.ensure_compiled(TFLiteElixir.Coral) do
     test "Contains EdgeTpu Custom Op" do
       filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
-      model = TFLiteElixir.FlatBufferModel.buildFromBuffer!(File.read!(filename))
-      ret = TFLiteElixir.Coral.containsEdgeTpuCustomOp?(model)
+      model = TFLiteElixir.FlatBufferModel.build_from_buffer!(File.read!(filename))
+      ret = TFLiteElixir.Coral.contains_edge_tpu_custom_op?(model)
 
       :ok =
         case ret do
@@ -105,8 +105,8 @@ defmodule TFLiteElixir.Test do
       filename =
         Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant_edgetpu.tflite"])
 
-      model = TFLiteElixir.FlatBufferModel.buildFromBuffer!(File.read!(filename))
-      ret = TFLiteElixir.Coral.containsEdgeTpuCustomOp?(model)
+      model = TFLiteElixir.FlatBufferModel.build_from_buffer!(File.read!(filename))
+      ret = TFLiteElixir.Coral.contains_edge_tpu_custom_op?(model)
 
       :ok =
         case ret do

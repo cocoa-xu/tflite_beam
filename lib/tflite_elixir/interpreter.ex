@@ -47,7 +47,7 @@ defmodule TFLiteElixir.Interpreter do
   @spec new(String.t()) :: nif_resource_ok() | nif_error()
   def new(model_path) do
     with {:build_from_file, %FlatBufferModel{} = model} <-
-           {:build_from_file, FlatBufferModel.buildFromFile(model_path)},
+           {:build_from_file, FlatBufferModel.build_from_file(model_path)},
          {:builtin_resolver, {:ok, resolver}} <-
            {:builtin_resolver, TFLiteElixir.Ops.Builtin.BuiltinResolver.new()},
          {:interpreter_build, {:ok, builder}} <-
@@ -57,7 +57,7 @@ defmodule TFLiteElixir.Interpreter do
          {:build_interpreter, :ok} <-
            {:build_interpreter, InterpreterBuilder.build(builder, interpreter)},
          {:allocate_tensors, :ok} <-
-           {:allocate_tensors, Interpreter.allocateTensors(interpreter)} do
+           {:allocate_tensors, Interpreter.allocate_tensors(interpreter)} do
       {:ok, interpreter}
     else
       error -> error
@@ -177,12 +177,12 @@ defmodule TFLiteElixir.Interpreter do
   @doc """
   Allocate memory for tensors in the graph
   """
-  @spec allocateTensors(reference()) :: :ok | nif_error()
-  def allocateTensors(self) when is_reference(self) do
+  @spec allocate_tensors(reference()) :: :ok | nif_error()
+  def allocate_tensors(self) when is_reference(self) do
     TFLiteElixir.Nif.interpreter_allocateTensors(self)
   end
 
-  deferror(allocateTensors(self))
+  deferror(allocate_tensors(self))
 
   @doc """
   Get the list of input tensors.
@@ -203,12 +203,12 @@ defmodule TFLiteElixir.Interpreter do
   if `inputs/1` returns `[42, 314]`, then `0` should be passed here to get the name of
   tensor `42`
   """
-  @spec getInputName(reference(), non_neg_integer()) :: {:ok, String.t()} | nif_error()
-  def getInputName(self, index) when is_reference(self) and index >= 0 do
+  @spec get_input_name(reference(), non_neg_integer()) :: {:ok, String.t()} | nif_error()
+  def get_input_name(self, index) when is_reference(self) and index >= 0 do
     TFLiteElixir.Nif.interpreter_getInputName(self, index)
   end
 
-  deferror(getInputName(self, index))
+  deferror(get_input_name(self, index))
 
   @doc """
   Fill data to the specified input tensor
@@ -258,12 +258,12 @@ defmodule TFLiteElixir.Interpreter do
 
   return a list of output tensor id
   """
-  @spec getOutputName(reference(), non_neg_integer()) :: {:ok, String.t()} | nif_error()
-  def getOutputName(self, index) when is_reference(self) and index >= 0 do
+  @spec get_output_name(reference(), non_neg_integer()) :: {:ok, String.t()} | nif_error()
+  def get_output_name(self, index) when is_reference(self) and index >= 0 do
     TFLiteElixir.Nif.interpreter_getOutputName(self, index)
   end
 
-  deferror(getOutputName(self, index))
+  deferror(get_output_name(self, index))
 
   @doc """
   Get the name of the input tensor
@@ -328,27 +328,27 @@ defmodule TFLiteElixir.Interpreter do
   ```elixir
   interpreter = Interpreter.new!()
   builder = InterpreterBuilder.new!(tflite model, op resolver)
-  InterpreterBuilder.setNumThreads(builder, ...)
+  InterpreterBuilder.set_num_threads(builder, ...)
   assert :ok == InterpreterBuilder.build!(builder, interpreter)
   ```
   """
-  @spec setNumThreads(reference(), integer()) :: :ok | nif_error()
-  def setNumThreads(self, num_threads) when is_integer(num_threads) and num_threads >= -1 do
+  @spec set_num_threads(reference(), integer()) :: :ok | nif_error()
+  def set_num_threads(self, num_threads) when is_integer(num_threads) and num_threads >= -1 do
     TFLiteElixir.Nif.interpreter_setNumThreads(self, num_threads)
   end
 
-  deferror(setNumThreads(self, num_threads))
+  deferror(set_num_threads(self, num_threads))
 
-  @spec getSignatureDefs(reference()) :: Map.t()
-  def getSignatureDefs(self) do
+  @spec get_signature_defs(reference()) :: Map.t()
+  def get_signature_defs(self) do
     TFLiteElixir.Nif.interpreter_get_signature_defs(self)
   end
 
-  deferror(getSignatureDefs(self))
+  deferror(get_signature_defs(self))
 
   @spec get_full_signature_list(reference()) :: Map.t()
   def get_full_signature_list(self) do
-    getSignatureDefs(self)
+    get_signature_defs(self)
   end
 
   deferror(get_full_signature_list(self))

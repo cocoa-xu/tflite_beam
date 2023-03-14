@@ -94,7 +94,7 @@ defmodule Mix.Tasks.ClassifyImage do
       end
 
     interpreter = make_interpreter(model, args[:jobs], args[:use_tpu], tpu_context)
-    Interpreter.allocateTensors!(interpreter)
+    Interpreter.allocate_tensors!(interpreter)
 
     [input_tensor_number | _] = Interpreter.inputs!(interpreter)
     [output_tensor_number | _] = Interpreter.outputs!(interpreter)
@@ -177,7 +177,7 @@ defmodule Mix.Tasks.ClassifyImage do
   end
 
   defp load_model(model_path) do
-    FlatBufferModel.buildFromBuffer!(File.read!(model_path))
+    FlatBufferModel.build_from_buffer!(File.read!(model_path))
   end
 
   defp load_input(nil) do
@@ -204,9 +204,9 @@ defmodule Mix.Tasks.ClassifyImage do
     resolver = TFLiteElixir.Ops.Builtin.BuiltinResolver.new!()
     builder = InterpreterBuilder.new!(model, resolver)
     interpreter = Interpreter.new!()
-    InterpreterBuilder.setNumThreads!(builder, num_jobs)
+    InterpreterBuilder.set_num_threads!(builder, num_jobs)
     :ok = InterpreterBuilder.build!(builder, interpreter)
-    Interpreter.setNumThreads!(interpreter, num_jobs)
+    Interpreter.set_num_threads!(interpreter, num_jobs)
     interpreter
   end
 

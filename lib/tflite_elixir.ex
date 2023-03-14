@@ -6,13 +6,13 @@ defmodule TFLiteElixir do
 
   Note that this function directly prints to stdout
   """
-  @spec printInterpreterState(reference()) :: nil
-  def printInterpreterState(interpreter) do
+  @spec print_interpreter_state(reference()) :: nil
+  def print_interpreter_state(interpreter) do
     TFLiteElixir.Nif.tflite_printInterpreterState(interpreter)
     nil
   end
 
-  def resetVariableTensor(%TFLiteTensor{}=tflite_tensor) do
+  def reset_variable_tensor(%TFLiteTensor{}=tflite_tensor) do
     TFLiteElixir.Nif.tflite_resetVariableTensor(tflite_tensor)
   end
 end

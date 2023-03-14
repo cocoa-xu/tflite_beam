@@ -112,7 +112,7 @@ defmodule ClassifyImage do
       end
 
     interpreter = make_interpreter(model, args[:jobs], args[:use_tpu], tpu_context)
-    Interpreter.allocateTensors!(interpreter)
+    Interpreter.allocate_tensors!(interpreter)
 
     [input_tensor_number | _] = Interpreter.inputs!(interpreter)
     [output_tensor_number | _] = Interpreter.outputs!(interpreter)
@@ -197,7 +197,7 @@ defmodule ClassifyImage do
   end
 
   defp load_model(model_path) do
-    FlatBufferModel.buildFromBuffer!(File.read!(model_path))
+    FlatBufferModel.build_from_buffer!(File.read!(model_path))
   end
 
   defp load_input(nil) do
