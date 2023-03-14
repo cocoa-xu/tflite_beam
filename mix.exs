@@ -3,7 +3,7 @@ defmodule TfliteElixir.MixProject do
   require Logger
 
   @app :tflite_elixir
-  @version "0.1.3"
+  @version "0.1.4"
   @tflite_version "2.11.0"
   @prefer_precompiled "YES"
   @github_url "https://github.com/cocoa-xu/tflite_elixir"
