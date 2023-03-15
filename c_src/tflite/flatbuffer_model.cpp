@@ -32,22 +32,8 @@ ERL_NIF_TERM flatBufferModel_buildFromFile(ErlNifEnv *env, int argc, const ERL_N
 
         NifResFlatBufferModel * res;
         auto m = tflite::FlatBufferModel::BuildFromFile(filename.c_str(), error_reporter);
-        if (m.get() != nullptr) {
-            if (alloc_resource(&res)) {
-                // take ownership
-                tflite::FlatBufferModel * model = m.release();
-                res->val = model;
-                ERL_NIF_TERM ret = enif_make_resource(env, res);
-                enif_release_resource(res);
-                return erlang::nif::ok(env, ret);
-            } else {
-                // free
-                m.reset(nullptr);
-                return erlang::nif::error(env, "cannot allocate memory for resource");
-            }
-        } else {
-            return erlang::nif::error(env, "cannot load flat buffer model from file");
-        }
+        _make_flatbuffer_model_resource(env, m, res, ret);
+        return ret;
     } else {
         return erlang::nif::error(env, "empty filename");
     }
@@ -83,22 +69,8 @@ ERL_NIF_TERM flatBufferModel_verifyAndBuildFromFile(ErlNifEnv *env, int argc, co
 
         NifResFlatBufferModel * res;
         auto m = tflite::FlatBufferModel::VerifyAndBuildFromFile(filename.c_str(), verifier, error_reporter);
-        if (m.get() != nullptr) {
-            if (alloc_resource(&res)) {
-                // take ownership
-                tflite::FlatBufferModel * model = m.release();
-                res->val = model;
-                ERL_NIF_TERM ret = enif_make_resource(env, res);
-                enif_release_resource(res);
-                return erlang::nif::ok(env, ret);
-            } else {
-                // free
-                m.reset(nullptr);
-                return erlang::nif::error(env, "cannot allocate memory for resource");
-            }
-        } else {
-            return erlang::nif::error(env, "cannot load flat buffer model from file");
-        }
+        _make_flatbuffer_model_resource(env, m, res, ret);
+        return ret;
     } else {
         return erlang::nif::error(env, "empty filename");
     }
@@ -134,22 +106,8 @@ ERL_NIF_TERM flatBufferModel_buildFromBuffer(ErlNifEnv *env, int argc, const ERL
 
         NifResFlatBufferModel * res;
         auto m = tflite::FlatBufferModel::BuildFromBuffer((const char *)data.data, data.size, error_reporter);
-        if (m.get() != nullptr) {
-            if (alloc_resource(&res)) {
-                // take ownership
-                tflite::FlatBufferModel * model = m.release();
-                res->val = model;
-                ERL_NIF_TERM ret = enif_make_resource(env, res);
-                enif_release_resource(res);
-                return erlang::nif::ok(env, ret);
-            } else {
-                // free
-                m.reset(nullptr);
-                return erlang::nif::error(env, "cannot allocate memory for resource");
-            }
-        } else {
-            return erlang::nif::error(env, "cannot load flat buffer model from file");
-        }
+        _make_flatbuffer_model_resource(env, m, res, ret);
+        return ret;
     } else {
         return erlang::nif::error(env, "cannot get input data");
     }
@@ -227,5 +185,29 @@ ERL_NIF_TERM flatBufferModel_readAllMetadata(ErlNifEnv *env, int argc, const ERL
         }
     } else {
         return erlang::nif::error(env, "cannot access resource");
+    }
+}
+
+// ------------------ internal api ------------------
+
+bool _make_flatbuffer_model_resource(ErlNifEnv *env, std::unique_ptr<tflite::FlatBufferModel>& m, NifResFlatBufferModel *& res, ERL_NIF_TERM &out) {
+    if (m.get() != nullptr) {
+        if (alloc_resource(&res)) {
+            // take ownership
+            tflite::FlatBufferModel * model = m.release();
+            res->val = model;
+            ERL_NIF_TERM ret = enif_make_resource(env, res);
+            enif_release_resource(res);
+            out = erlang::nif::ok(env, ret);
+            return true;
+        } else {
+            // free
+            m.reset(nullptr);
+            out = erlang::nif::error(env, "cannot allocate memory for resource");
+            return false;
+        }
+    } else {
+        out = erlang::nif::error(env, "cannot load flat buffer model from file");
+        return false;
     }
 }
