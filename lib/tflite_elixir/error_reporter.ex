@@ -1,8 +1,16 @@
 defmodule TFLiteElixir.ErrorReporter do
+  @moduledoc """
+  ErrorReporter to provide reporting destinations.
+  """
   defstruct [:ref]
 
   alias __MODULE__, as: T
 
+  @doc """
+  Get the default error reporter.
+
+  The default error reporter simply writes the message to stderr.
+  """
   @spec default_error_reporter :: %T{} | {:error, String.t()}
   def default_error_reporter do
     with {:ok, error_reporter} <- TFLiteElixir.Nif.errorReporter_DefaultErrorReporter() do
