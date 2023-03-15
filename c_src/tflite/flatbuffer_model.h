@@ -3,8 +3,6 @@
 
 #pragma once
 
-
-
 using NifResFlatBufferModel = erlang_nif_res<tflite::FlatBufferModel *>;
 
 ERL_NIF_TERM flatBufferModel_buildFromFile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);

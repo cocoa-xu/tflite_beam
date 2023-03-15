@@ -12,22 +12,22 @@ bool tensor_type_to_erl_term(const TfLiteType in_type, ErlNifEnv *env, ERL_NIF_T
             break;
         case kTfLiteFloat32:
             out_term = enif_make_tuple2(env,
-                                        enif_make_atom(env, "f"),
+                                        erlang::nif::atom(env, "f"),
                                         enif_make_int(env, 32));
             break;
         case kTfLiteInt32:
             out_term = enif_make_tuple2(env,
-                                        enif_make_atom(env, "s"),
+                                        erlang::nif::atom(env, "s"),
                                         enif_make_int(env, 32));
             break;
         case kTfLiteUInt8:
             out_term = enif_make_tuple2(env,
-                                        enif_make_atom(env, "u"),
+                                        erlang::nif::atom(env, "u"),
                                         enif_make_int(env, 8));
             break;
         case kTfLiteInt64:
             out_term = enif_make_tuple2(env,
-                                        enif_make_atom(env, "s"),
+                                        erlang::nif::atom(env, "s"),
                                         enif_make_int(env, 64));
             break;
         case kTfLiteString:
@@ -38,37 +38,37 @@ bool tensor_type_to_erl_term(const TfLiteType in_type, ErlNifEnv *env, ERL_NIF_T
             break;
         case kTfLiteInt16:
             out_term = enif_make_tuple2(env,
-                                        enif_make_atom(env, "s"),
+                                        erlang::nif::atom(env, "s"),
                                         enif_make_int(env, 16));
             break;
         case kTfLiteComplex64:
             out_term = enif_make_tuple2(env,
-                                        enif_make_atom(env, "c"),
+                                        erlang::nif::atom(env, "c"),
                                         enif_make_int(env, 64));
             break;
         case kTfLiteInt8:
             out_term = enif_make_tuple2(env,
-                                        enif_make_atom(env, "s"),
+                                        erlang::nif::atom(env, "s"),
                                         enif_make_int(env, 8));
             break;
         case kTfLiteFloat16:
             out_term = enif_make_tuple2(env,
-                                        enif_make_atom(env, "f"),
+                                        erlang::nif::atom(env, "f"),
                                         enif_make_int(env, 16));
             break;
         case kTfLiteFloat64:
             out_term = enif_make_tuple2(env,
-                                        enif_make_atom(env, "f"),
+                                        erlang::nif::atom(env, "f"),
                                         enif_make_int(env, 64));
             break;
         case kTfLiteComplex128:
             out_term = enif_make_tuple2(env,
-                                        enif_make_atom(env, "c"),
+                                        erlang::nif::atom(env, "c"),
                                         enif_make_int(env, 128));
             break;
         case kTfLiteUInt64:
             out_term = enif_make_tuple2(env,
-                                        enif_make_atom(env, "u"),
+                                        erlang::nif::atom(env, "u"),
                                         enif_make_int(env, 64));
             break;
         case kTfLiteResource:
@@ -79,7 +79,7 @@ bool tensor_type_to_erl_term(const TfLiteType in_type, ErlNifEnv *env, ERL_NIF_T
             break;
         case kTfLiteUInt32:
             out_term = enif_make_tuple2(env,
-                                        enif_make_atom(env, "u"),
+                                        erlang::nif::atom(env, "u"),
                                         enif_make_int(env, 32));
             break;
         default:

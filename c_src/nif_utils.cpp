@@ -9,7 +9,7 @@ namespace erlang {
     namespace nif {
         // Helper for returning `{:error, msg}` from NIF.
         ERL_NIF_TERM error(ErlNifEnv *env, const char *msg) {
-            ERL_NIF_TERM atom = enif_make_atom(env, "error");
+            ERL_NIF_TERM atom = atom(env, "error");
             ERL_NIF_TERM reason;
             unsigned char *ptr;
             size_t len = strlen(msg);
@@ -24,7 +24,7 @@ namespace erlang {
 
         // Helper for returning `{:ok, term}` from NIF.
         ERL_NIF_TERM ok(ErlNifEnv *env) {
-            return enif_make_atom(env, "ok");
+            return atom(env, "ok");
         }
 
         // Helper for returning `:ok` from NIF.
@@ -78,10 +78,11 @@ namespace erlang {
         }
 
         ERL_NIF_TERM make(ErlNifEnv *env, bool var) {
-            if (var)
-                return enif_make_atom(env, "true");
-
-            return enif_make_atom(env, "false");
+            if (var) {
+                return atom(env, "true");
+            } else {
+                return atom(env, "false");
+            }
         }
 
         ERL_NIF_TERM make(ErlNifEnv *env, long var) {
@@ -177,7 +178,7 @@ namespace erlang {
                 return binary_str;
             } else {
                 fprintf(stderr, "internal error: cannot allocate memory for binary string\r\n");
-                return enif_make_atom(env, "error");
+                return atom(env, "error");
             }
         }
 
@@ -200,7 +201,12 @@ namespace erlang {
         }
 
         ERL_NIF_TERM atom(ErlNifEnv *env, const char *msg) {
-            return enif_make_atom(env, msg);
+            ERL_NIF_TERM a;
+            if (enif_make_existing_atom(env, msg, &a, ERL_NIF_LATIN1)) {
+                return a;
+            } else {
+                return enif_make_atom(env, msg);
+            }
         }
 
         // Check if :nil

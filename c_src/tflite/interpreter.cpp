@@ -235,7 +235,7 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
 
                 ERL_NIF_TERM tensor_type;
                 if (_tflitetensor_type(env, tensor_res->val, tensor_type)) {
-                    tensor_type = enif_make_atom(env, "unknown");
+                    tensor_type = erlang::nif::atom(env, "unknown");
                 }
 
                 ERL_NIF_TERM tensor_shape;
