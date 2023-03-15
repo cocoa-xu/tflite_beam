@@ -22,14 +22,12 @@ ERL_NIF_TERM flatBufferModel_buildFromFile(ErlNifEnv *env, int argc, const ERL_N
     ERL_NIF_TERM filename_term = argv[0];
     ERL_NIF_TERM error_reporter_term = argv[1];
 
+    ERL_NIF_TERM ret;
+
     if (erlang::nif::get(env, filename_term, filename)) {
         tflite::ErrorReporter * error_reporter = nullptr;
-        if (enif_get_resource(env, error_reporter_term, NifResErrorReporter::type, (void **)&error_reporter_res) && error_reporter_res->val) {
-            error_reporter = error_reporter_res->val;
-        } else if (erlang::nif::check_nil(env, error_reporter_term)) {
-            error_reporter = tflite::DefaultErrorReporter();
-        } else {
-            return erlang::nif::error(env, "Invalid value for error_reporter");
+        if (!_get_error_reporter(env, error_reporter_term, error_reporter_res, error_reporter, ret)) {
+            return ret;
         }
 
         NifResFlatBufferModel * res;
@@ -61,23 +59,26 @@ ERL_NIF_TERM flatBufferModel_verifyAndBuildFromFile(ErlNifEnv *env, int argc, co
     std::string filename;
     NifResVerifier *verifier_res = nullptr;
     NifResErrorReporter * error_reporter_res = nullptr;
-    if (erlang::nif::get(env, argv[0], filename)) {
+
+    ERL_NIF_TERM filename_term = argv[0];
+    ERL_NIF_TERM verifier_term = argv[1];
+    ERL_NIF_TERM error_reporter_term = argv[2];
+
+    ERL_NIF_TERM ret;
+
+    if (erlang::nif::get(env, filename_term, filename)) {
         tflite::TfLiteVerifier * verifier = nullptr;
-        if (enif_get_resource(env, argv[1], NifResVerifier::type, (void **)&verifier_res) && verifier_res->val) {
+        if (enif_get_resource(env, verifier_term, NifResVerifier::type, (void **)&verifier_res) && verifier_res->val) {
             verifier = verifier_res->val;
-        } else if (erlang::nif::check_nil(env, argv[1])) {
+        } else if (erlang::nif::check_nil(env, verifier_term)) {
             verifier = nullptr;
         } else {
             return erlang::nif::error(env, "Invalid value for extra_verifier");
         }
 
         tflite::ErrorReporter * error_reporter = nullptr;
-        if (enif_get_resource(env, argv[2], NifResErrorReporter::type, (void **)&error_reporter_res) && error_reporter_res->val) {
-            error_reporter = error_reporter_res->val;
-        } else if (erlang::nif::check_nil(env, argv[2])) {
-            error_reporter = tflite::DefaultErrorReporter();
-        } else {
-            return erlang::nif::error(env, "Invalid value for error_reporter");
+        if (!_get_error_reporter(env, error_reporter_term, error_reporter_res, error_reporter, ret)) {
+            return ret;
         }
 
         NifResFlatBufferModel * res;
@@ -115,13 +116,24 @@ ERL_NIF_TERM flatBufferModel_VerifyAndBuildFromFile(ErlNifEnv *env, int argc, co
 #endif
 
 ERL_NIF_TERM flatBufferModel_buildFromBuffer(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    if (argc != 1) return enif_make_badarg(env);
+    if (argc != 2) return enif_make_badarg(env);
 
-    ERL_NIF_TERM buffer_nif = argv[0];
     ErlNifBinary data;
-    if (enif_inspect_binary(env, buffer_nif, &data)) {
+    NifResErrorReporter * error_reporter_res = nullptr;
+
+    ERL_NIF_TERM data_term = argv[0];
+    ERL_NIF_TERM error_reporter_term = argv[1];
+
+    ERL_NIF_TERM ret;
+
+    if (enif_inspect_binary(env, data_term, &data)) {
+        tflite::ErrorReporter * error_reporter = nullptr;
+        if (!_get_error_reporter(env, error_reporter_term, error_reporter_res, error_reporter, ret)) {
+            return ret;
+        }
+
         NifResFlatBufferModel * res;
-        auto m = tflite::FlatBufferModel::BuildFromBuffer((const char *)data.data, data.size);
+        auto m = tflite::FlatBufferModel::BuildFromBuffer((const char *)data.data, data.size, error_reporter);
         if (m.get() != nullptr) {
             if (alloc_resource(&res)) {
                 // take ownership

@@ -59,7 +59,7 @@ defmodule TFLiteElixir.FlatBufferModel do
   Returns `:invalid` in case of failure.
   """
   @spec verify_and_build_from_file(String.t(), Keyword.t()) :: %T{} | :invalid | {:error, String.t()}
-  def verify_and_build_from_file(filename, opts) do
+  def verify_and_build_from_file(filename, opts \\ []) do
     error_reporter = ErrorReporter.from_struct(opts[:error_reporter])
     # todo
     # extra_verifier = opts[:extra_verifier]
@@ -84,16 +84,15 @@ defmodule TFLiteElixir.FlatBufferModel do
     However, we would have no way to release the copied memory because we couldn't
     identify if the `allocation_` borrows or owns that memory.
   """
-  @spec build_from_buffer(binary()) :: %T{} | nif_error()
-  def build_from_buffer(buffer) when is_binary(buffer) do
-    with {:ok, model} <- TFLiteElixir.Nif.flatBufferModel_buildFromBuffer(buffer) do
+  @spec build_from_buffer(binary(), Keyword.t()) :: %T{} | nif_error()
+  def build_from_buffer(buffer, opts \\ []) when is_binary(buffer) and is_list(opts) do
+    error_reporter = ErrorReporter.from_struct(opts[:error_reporter])
+    with {:ok, model} <- TFLiteElixir.Nif.flatBufferModel_buildFromBuffer(buffer, error_reporter) do
       %T{model: model}
     else
       error -> error
     end
   end
-
-  deferror(build_from_buffer(buffer))
 
   @doc """
   Check whether current model has been initialized

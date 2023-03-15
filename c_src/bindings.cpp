@@ -109,7 +109,7 @@ static ErlNifFunc nif_functions[] = {
 
     F_IO(flatBufferModel_buildFromFile, 2),
     F_IO(flatBufferModel_verifyAndBuildFromFile, 3),
-    F_CPU(flatBufferModel_buildFromBuffer, 1),
+    F_CPU(flatBufferModel_buildFromBuffer, 2),
     F(flatBufferModel_initialized, 1),
     F(flatBufferModel_getMinimumRuntime, 1),
     F(flatBufferModel_readAllMetadata, 1),

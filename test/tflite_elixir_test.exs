@@ -13,7 +13,7 @@ defmodule TFLiteElixir.Test do
   with {:module, TFLiteElixir.Coral} <- Code.ensure_compiled(TFLiteElixir.Coral) do
     test "Contains EdgeTpu Custom Op" do
       filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
-      model = TFLiteElixir.FlatBufferModel.build_from_buffer!(File.read!(filename))
+      model = TFLiteElixir.FlatBufferModel.build_from_buffer(File.read!(filename))
       ret = TFLiteElixir.Coral.contains_edge_tpu_custom_op?(model)
 
       :ok =
@@ -32,7 +32,7 @@ defmodule TFLiteElixir.Test do
       filename =
         Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant_edgetpu.tflite"])
 
-      model = TFLiteElixir.FlatBufferModel.build_from_buffer!(File.read!(filename))
+      model = TFLiteElixir.FlatBufferModel.build_from_buffer(File.read!(filename))
       ret = TFLiteElixir.Coral.contains_edge_tpu_custom_op?(model)
 
       :ok =
