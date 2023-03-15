@@ -1,4 +1,9 @@
 defmodule TFLiteElixir do
+  @moduledoc """
+  This module contains some helper functions from the `tflite`
+  namespace in TensorFlow Lite's codebase.
+  """
+
   alias TFLiteElixir.TFLiteTensor
 
   @doc """
