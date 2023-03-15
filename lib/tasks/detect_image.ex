@@ -109,7 +109,7 @@ defmodule Mix.Tasks.DetectImage do
       IO.puts("#{Float.round(inference_time, 1)}ms")
     end
 
-    signature_list = Interpreter.get_full_signature_list!(interpreter)
+    signature_list = Interpreter.get_signature_defs!(interpreter)
 
     {count_tensor_id, scores_tensor_id, class_ids_tensor_id, boxes_tensor_id} =
       if signature_list != nil do
