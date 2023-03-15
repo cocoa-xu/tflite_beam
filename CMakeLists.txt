@@ -67,31 +67,34 @@ if(DEFINED ENV{TARGET_ARCH})
 endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" CACHE STRING "Override CXX FLAGS")
+
+# reset CLOG_SOURCE_DIR so that cpuinfo won't complain
+unset(CLOG_SOURCE_DIR CACHE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "NO shared library")
 add_subdirectory(
     "${TFLITE_ROOT_DIR}"
     EXCLUDE_FROM_ALL
 )
 
 if(${TFLITE_ELIXIR_CORAL_SUPPORT})
-    set(GFLAGS_ROOT_DIR "" CACHE PATH
-        "Directory that contains the gflags project"
-    )
     if(NOT GFLAGS_ROOT_DIR)
         message(FATAL_ERROR "GFLAGS_ROOT_DIR is not set.")
     endif()
+    set(GFLAGS_ROOT_DIR "${GFLAGS_ROOT_DIR}" CACHE PATH
+        "Directory that contains the gflags project"
+    )
 
     add_subdirectory(
         "${GFLAGS_ROOT_DIR}"
         EXCLUDE_FROM_ALL
     )
 
-    set(BUILD_SHARED_LIBS OFF)
-    set(GLOG_ROOT_DIR "" CACHE PATH
-        "Directory that contains the glog project"
-    )
     if(NOT GLOG_ROOT_DIR)
         message(FATAL_ERROR "GLOG_ROOT_DIR is not set.")
     endif()
+    set(GLOG_ROOT_DIR "${GLOG_ROOT_DIR}" CACHE PATH
+        "Directory that contains the glog project"
+    )
 
     add_subdirectory(
         "${GLOG_ROOT_DIR}"
@@ -103,6 +106,7 @@ set(SOURCE_FILES
     "${C_SRC}/helper.cpp"
     "${C_SRC}/nif_utils.cpp"
     "${C_SRC}/tflite/tflite_tflitetensor.cpp"
+    "${C_SRC}/tflite/tflite_ops_builtin_builtinresolver.cpp"
     "${C_SRC}/tflite/tflite_interpreter.cpp"
     "${C_SRC}/tflite/tflite_interpreter_builder.cpp"
     "${C_SRC}/tflite/tflite_status.cpp"
