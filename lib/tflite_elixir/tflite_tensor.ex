@@ -137,6 +137,4 @@ defmodule TFLiteElixir.TFLiteTensor do
       error -> error
     end
   end
-
-  deferror(to_nx(self, opts))
 end
