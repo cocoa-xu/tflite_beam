@@ -35,8 +35,12 @@ on:
       - '.github/workflows/windows-*'
       - '.github/workflows/test-*.yml'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  mix_test:
+  mix-firmware:
     runs-on: ubuntu-20.04
     env:
       MIX_ENV: prod
