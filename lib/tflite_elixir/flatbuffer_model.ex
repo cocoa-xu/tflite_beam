@@ -43,7 +43,7 @@ defmodule TFLiteElixir.FlatBufferModel do
   based on the file.
 
   ##### Keyword parameters
-  - `extra_verifier`: `TFLiteElixir.TFLiteVerifier`.
+  - `extra_verifier`: `TFLiteElixir.TFLiteVerifier`. (todo)
 
     The keyword `extra_verifier` argument is an additional optional verifier
     for the file contents. By default, we always check with tflite::VerifyModelBuffer.
@@ -61,7 +61,9 @@ defmodule TFLiteElixir.FlatBufferModel do
   @spec verify_and_build_from_file(String.t(), Keyword.t()) :: %T{} | :invalid | {:error, String.t()}
   def verify_and_build_from_file(filename, opts) do
     error_reporter = ErrorReporter.from_struct(opts[:error_reporter])
-    with {:ok, model} <- TFLiteElixir.Nif.flatBufferModel_verifyAndBuildFromFile(filename, opts[:extra_verifier], error_reporter) do
+    # todo
+    # extra_verifier = opts[:extra_verifier]
+    with {:ok, model} <- TFLiteElixir.Nif.flatBufferModel_verifyAndBuildFromFile(filename, nil, error_reporter) do
       %T{model: model}
     else
       error -> error
