@@ -122,11 +122,7 @@ defmodule TFLiteElixir.Coral do
   @doc """
   Returns a dequantized version of the given tensor.
   """
-  def dequantize_tensor(interpreter, tensor_index) do
-    TFLiteElixir.Nif.coral_dequantize_tensor(interpreter, tensor_index, nil)
-  end
-
-  def dequantize_tensor(interpreter, tensor_index, as_type) do
+  def dequantize_tensor(interpreter, tensor_index, as_type \\ nil) do
     as_type = map_type(as_type)
     TFLiteElixir.Nif.coral_dequantize_tensor(interpreter, tensor_index, as_type)
   end
