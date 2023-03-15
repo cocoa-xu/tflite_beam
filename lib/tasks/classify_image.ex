@@ -27,10 +27,10 @@ defmodule Mix.Tasks.ClassifyImage do
 
   use Mix.Task
 
-  alias TFLiteElixir.Interpreter, as: Interpreter
-  alias TFLiteElixir.InterpreterBuilder, as: InterpreterBuilder
-  alias TFLiteElixir.TFLiteTensor, as: TFTensor
-  alias TFLiteElixir.FlatBufferModel, as: FlatBufferModel
+  alias TFLiteElixir.Interpreter
+  alias TFLiteElixir.InterpreterBuilder
+  alias TFLiteElixir.TFLiteTensor
+  alias TFLiteElixir.FlatBufferModel
 
   @shortdoc "Image Classification"
   def run(argv) do
@@ -137,7 +137,7 @@ defmodule Mix.Tasks.ClassifyImage do
       |> Nx.as_type(:u8)
       |> Nx.to_binary()
     end
-    |> then(&TFTensor.set_data!(input_tensor, &1))
+    |> then(&TFLiteTensor.set_data!(input_tensor, &1))
 
     IO.puts("----INFERENCE TIME----")
 
@@ -214,7 +214,7 @@ defmodule Mix.Tasks.ClassifyImage do
     TFLiteElixir.Coral.make_edge_tpu_interpreter!(model, tpu_context)
   end
 
-  defp get_scores(output_data, %TFTensor{type: dtype = {:u, _}} = output_tensor) do
+  defp get_scores(output_data, %TFLiteTensor{type: dtype = {:u, _}} = output_tensor) do
     scale = Nx.tensor(output_tensor.quantization_params.scale)
     zero_point = Nx.tensor(output_tensor.quantization_params.zero_point)
 
@@ -224,7 +224,7 @@ defmodule Mix.Tasks.ClassifyImage do
     |> Nx.multiply(scale)
   end
 
-  defp get_scores(output_data, %TFTensor{type: dtype = {:s, _}} = output_tensor) do
+  defp get_scores(output_data, %TFLiteTensor{type: dtype = {:s, _}} = output_tensor) do
     [scale] = output_tensor.quantization_params.scale
     [zero_point] = output_tensor.quantization_params.zero_point
 
@@ -234,7 +234,7 @@ defmodule Mix.Tasks.ClassifyImage do
     |> Nx.multiply(scale)
   end
 
-  defp get_scores(output_data, %TFTensor{type: dtype}) do
+  defp get_scores(output_data, %TFLiteTensor{type: dtype}) do
     Nx.from_binary(output_data, dtype)
   end
 end

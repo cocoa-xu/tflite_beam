@@ -121,20 +121,18 @@ defmodule TFLiteElixir.Interpreter do
     end
   end
 
-  defp fill_input(interpreter, input_tensor_index, input)
-       when is_integer(input_tensor_index) and is_binary(input) do
-    with {:ok, tensor} <- Interpreter.tensor(interpreter, input_tensor_index) do
-      TFLiteTensor.set_data(tensor, input)
-    else
+  defp fill_input(interpreter, input_tensor_index, input) when is_integer(input_tensor_index) and is_binary(input) do
+    case Interpreter.tensor(interpreter, input_tensor_index) do
+      %TFLiteTensor{} = tensor ->
+        TFLiteTensor.set_data(tensor, input)
       error -> error
     end
   end
 
-  defp fill_input(interpreter, input_tensors, input)
-       when is_list(input_tensors) and is_map(input) do
+  defp fill_input(interpreter, input_tensors, input) when is_list(input_tensors) and is_map(input) do
     ret =
       Enum.map(input_tensors, fn input_tensor_index ->
-        {:ok, out_tensor} = Interpreter.tensor(interpreter, input_tensor_index)
+        %TFLiteTensor{} = out_tensor = Interpreter.tensor(interpreter, input_tensor_index)
         name = out_tensor.name
         data = Map.get(input, name, nil)
 
@@ -171,9 +169,9 @@ defmodule TFLiteElixir.Interpreter do
   end
 
   defp fetch_output(interpreter, output_index) when is_integer(output_index) do
-    with {:ok, tensor} <- Interpreter.tensor(interpreter, output_index) do
-      TFLiteTensor.to_nx(tensor)
-    else
+    case Interpreter.tensor(interpreter, output_index) do
+      %TFLiteTensor{} = tensor ->
+        TFLiteTensor.to_nx(tensor)
       error -> error
     end
   end
@@ -222,14 +220,13 @@ defmodule TFLiteElixir.Interpreter do
 
   ## Example: Get the expected data type and shape for the input tensor
   ```elixir
-  {:ok, tensor} = Interpreter.tensor(interpreter, 0)
+  %TFLiteTensor{} = tensor = Interpreter.tensor(interpreter, 0)
   {:ok, [1, 224, 224, 3]} = TFLiteTensor.dims(tensor)
   {:u, 8} = TFLiteTensor.type(tensor)
   ```
   """
   @spec input_tensor(reference(), non_neg_integer(), binary()) :: :ok | nif_error()
-  def input_tensor(self, index, data)
-      when is_reference(self) and index >= 0 and is_binary(data) do
+  def input_tensor(self, index, data) when is_reference(self) and index >= 0 and is_binary(data) do
     TFLiteElixir.Nif.interpreter_input_tensor(self, index, data)
   end
 
@@ -290,32 +287,29 @@ defmodule TFLiteElixir.Interpreter do
   Note that the `tensor_index` here means the id of a tensor. For example,
   if `inputs/1` returns `[42, 314]`, then `42` should be passed here to get tensor `42`.
   """
-  @spec tensor(reference(), non_neg_integer()) :: {:ok, %TFLiteTensor{}} | nif_error()
+  @spec tensor(reference(), non_neg_integer()) :: %TFLiteTensor{} | nif_error()
   def tensor(self, tensor_index) when is_reference(self) and tensor_index >= 0 do
     with {:ok,
           {name, index, shape, shape_signature, type, {scale, zero_point, quantized_dimension},
            sparsity_params, ref}} <- TFLiteElixir.Nif.interpreter_tensor(self, tensor_index) do
-      {:ok,
-       %TFLiteTensor{
-         name: name,
-         index: index,
-         shape: shape,
-         shape_signature: shape_signature,
-         type: type,
-         quantization_params: %TFLiteQuantizationParams{
-           scale: scale,
-           zero_point: zero_point,
-           quantized_dimension: quantized_dimension
-         },
-         sparsity_params: sparsity_params,
-         reference: ref
-       }}
+      %TFLiteTensor{
+        name: name,
+        index: index,
+        shape: shape,
+        shape_signature: shape_signature,
+        type: type,
+        quantization_params: %TFLiteQuantizationParams{
+          scale: scale,
+          zero_point: zero_point,
+          quantized_dimension: quantized_dimension
+        },
+        sparsity_params: sparsity_params,
+        reference: ref
+      }
     else
       e -> e
     end
   end
-
-  deferror(tensor(self, tensor_index))
 
   @doc """
   Set the number of threads available to the interpreter.
@@ -354,7 +348,7 @@ defmodule TFLiteElixir.Interpreter do
 
   Map containing serving names to SignatureDefs if exists, otherwise, `nil`.
   """
-  @spec get_signature_defs(reference()) :: Map.t() | nil | {:error, String.t()}
+  @spec get_signature_defs(reference()) :: {:ok, Map.t()} | nil | {:error, String.t()}
   def get_signature_defs(self) do
     TFLiteElixir.Nif.interpreter_get_signature_defs(self)
   end

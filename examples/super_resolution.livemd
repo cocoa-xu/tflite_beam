@@ -58,6 +58,7 @@ data_files = %{
 ```elixir
 alias Evision, as: Cv
 alias TFLiteElixir, as: TFLite
+alias TFLiteElixir.TFLiteTensor
 ```
 
 ## Generate a super resolution image using TensorFlow Lite
@@ -84,7 +85,7 @@ TFLite.Interpreter.invoke(interpreter)
 
 # Extract the output and postprocess it
 {:ok, output_data} = TFLite.Interpreter.output_tensor(interpreter, 0)
-{:ok, out_tensor} = TFLite.Interpreter.tensor(interpreter, Enum.at(output_tensors, 0))
+%TFLiteTensor{} = out_tensor = TFLite.Interpreter.tensor(interpreter, Enum.at(output_tensors, 0))
 [1 | shape] = TFLite.TFLiteTensor.dims(out_tensor)
 type = TFLite.TFLiteTensor.type(out_tensor)
 
