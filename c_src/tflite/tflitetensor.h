@@ -4,8 +4,6 @@
 #pragma once
 
 #include <erl_nif.h>
-#include "tensorflow/lite/c/c_api.h"
-#include "tensorflow/lite/c/common.h"
 
 int _tflitetensor_name(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF_TERM &out);
 int _tflitetensor_shape(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF_TERM &out);

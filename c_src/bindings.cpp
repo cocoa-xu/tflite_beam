@@ -19,7 +19,6 @@ limitations under the License.
 #include "tensorflow/lite/interpreter.h"
 #include "tensorflow/lite/kernels/register.h"
 #include "tensorflow/lite/model.h"
-#include "tensorflow/lite/optional_debug_tools.h"
 #include "nif_utils.hpp"
 #include "helper.h"
 
@@ -30,12 +29,13 @@ limitations under the License.
 #  pragma GCC diagnostic ignored "-Wunused-function"
 #endif
 
-#include "tflite/tflite_flatbuffermodel.h"
-#include "tflite/tflite_ops_builtin_builtinresolver.h"
-#include "tflite/tflite_interpreter_builder.h"
-#include "tflite/tflite_interpreter.h"
-#include "tflite/tflite_tflitetensor.h"
+#include "tflite/flatbuffer_model.h"
+#include "tflite/ops/builtin/builtin_resolver.h"
+#include "tflite/interpreter_builder.h"
+#include "tflite/interpreter.h"
+#include "tflite/status.h"
 #include "tflite/tflite.h"
+#include "tflite/tflitetensor.h"
 
 #ifdef CORAL_SUPPORT_ENABLED
 #include "tflite/public/edgetpu.h"

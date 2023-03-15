@@ -1,8 +1,12 @@
-#include "tflite_tflitetensor.h"
-#include "tensorflow/lite/c/c_api.h"
-#include "tensorflow/lite/c/common.h"
+#include <erl_nif.h>
+
 #include "../nif_utils.hpp"
 #include "../helper.h"
+
+#include "tensorflow/lite/c/c_api.h"
+#include "tensorflow/lite/c/common.h"
+
+#include "tflitetensor.h"
 
 int _tflitetensor_name(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF_TERM &out) {
     auto tensor_name_str = TfLiteTensorName(tensor);

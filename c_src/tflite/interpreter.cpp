@@ -2,12 +2,14 @@
 #include "../nif_utils.hpp"
 #include "../erlang_nif_resource.hpp"
 #include "../helper.h"
+
 #include "tensorflow/lite/interpreter.h"
 #include "tensorflow/lite/kernels/register.h"
 #include "tensorflow/lite/model.h"
-#include "tflite_interpreter.h"
-#include "tflite_tflitetensor.h"
-#include "tflite_status.h"
+
+#include "interpreter.h"
+#include "tflitetensor.h"
+#include "status.h"
 
 ERL_NIF_TERM interpreter_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     erlang_nif_res<tflite::Interpreter *> * res;

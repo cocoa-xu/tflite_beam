@@ -2,12 +2,14 @@
 #include "../nif_utils.hpp"
 #include "../erlang_nif_resource.hpp"
 #include "../helper.h"
+
 #include "tensorflow/lite/model_builder.h"
 #include "tensorflow/lite/kernels/register.h"
 #include "tensorflow/lite/interpreter_builder.h"
 #include "tensorflow/lite/core/interpreter.h"
-#include "tflite_interpreter_builder.h"
-#include "tflite_status.h"
+
+#include "interpreter_builder.h"
+#include "status.h"
 
 ERL_NIF_TERM interpreterBuilder_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 2) return enif_make_badarg(env);

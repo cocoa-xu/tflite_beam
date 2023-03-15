@@ -1,15 +1,17 @@
-#ifndef TFLITE_FLATBUFFERMODEL_BINDINGS_H
-#define TFLITE_FLATBUFFERMODEL_BINDINGS_H
-
-#pragma once
-
 #include <string>
 #include <map>
 
-using NifResFlatBufferModel = erlang_nif_res<tflite::FlatBufferModel *>;
+#include <erl_nif.h>
+#include "../nif_utils.hpp"
+#include "../erlang_nif_resource.hpp"
+#include "../helper.h"
+
+#include "tensorflow/lite/model.h"
+
+#include "flatbuffer_model.h"
 
 #ifndef TFLITE_MCU
-static ERL_NIF_TERM flatBufferModel_buildFromFile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM flatBufferModel_buildFromFile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
 
     std::string filename;
@@ -37,13 +39,13 @@ static ERL_NIF_TERM flatBufferModel_buildFromFile(ErlNifEnv *env, int argc, cons
     }
 }
 #else
-static ERL_NIF_TERM flatBufferModel_buildFromFile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM flatBufferModel_buildFromFile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     return erlang::nif::error(env, "FlatBufferModel::BuildFromFile is not available: "
                                    "Library compiled with TFLITE_MCU");
 }
 #endif
 
-static ERL_NIF_TERM flatBufferModel_buildFromBuffer(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM flatBufferModel_buildFromBuffer(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM buffer_nif = argv[0];
@@ -72,7 +74,7 @@ static ERL_NIF_TERM flatBufferModel_buildFromBuffer(ErlNifEnv *env, int argc, co
     }
 }
 
-static ERL_NIF_TERM flatBufferModel_initialized(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM flatBufferModel_initialized(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
@@ -92,7 +94,7 @@ static ERL_NIF_TERM flatBufferModel_initialized(ErlNifEnv *env, int argc, const 
     }
 }
 
-static ERL_NIF_TERM flatBufferModel_getMinimumRuntime(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM flatBufferModel_getMinimumRuntime(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
@@ -109,7 +111,7 @@ static ERL_NIF_TERM flatBufferModel_getMinimumRuntime(ErlNifEnv *env, int argc, 
     }
 }
 
-static ERL_NIF_TERM flatBufferModel_readAllMetadata(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM flatBufferModel_readAllMetadata(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
@@ -146,5 +148,3 @@ static ERL_NIF_TERM flatBufferModel_readAllMetadata(ErlNifEnv *env, int argc, co
         return erlang::nif::error(env, "cannot access resource");
     }
 }
-
-#endif // TFLITE_FLATBUFFERMODEL_BINDINGS_H

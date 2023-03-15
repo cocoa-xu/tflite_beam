@@ -4,8 +4,6 @@
 #pragma once
 
 #include <erl_nif.h>
-#include "tensorflow/lite/c/c_api.h"
-#include "tensorflow/lite/c/common.h"
 
 ERL_NIF_TERM interpreter_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 ERL_NIF_TERM interpreter_allocateTensors(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);

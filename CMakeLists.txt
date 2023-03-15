@@ -105,13 +105,16 @@ endif()
 set(SOURCE_FILES
     "${C_SRC}/helper.cpp"
     "${C_SRC}/nif_utils.cpp"
-    "${C_SRC}/tflite/tflite_tflitetensor.cpp"
-    "${C_SRC}/tflite/tflite_ops_builtin_builtinresolver.cpp"
-    "${C_SRC}/tflite/tflite_interpreter.cpp"
-    "${C_SRC}/tflite/tflite_interpreter_builder.cpp"
-    "${C_SRC}/tflite/tflite_status.cpp"
+    "${C_SRC}/tflite/ops/builtin/builtin_resolver.cpp"
+    "${C_SRC}/tflite/flatbuffer_model.cpp"
+    "${C_SRC}/tflite/interpreter.cpp"
+    "${C_SRC}/tflite/interpreter_builder.cpp"
+    "${C_SRC}/tflite/status.cpp"
+    "${C_SRC}/tflite/tflitetensor.cpp"
+    "${C_SRC}/tflite/tflite.cpp"
     "${C_SRC}/bindings.cpp"
 )
+
 if(${TFLITE_ELIXIR_CORAL_SUPPORT})
     include_directories("${C_SRC}/libcoral")
     include_directories("${C_SRC}/libcoral/libedgetpu")
@@ -148,6 +151,8 @@ if(${TFLITE_ELIXIR_CORAL_SUPPORT})
     list(APPEND SOURCE_FILES "${CORAL_PIPELINE_SOURCES}")
     list(APPEND SOURCE_FILES "${CORAL_POSE_ESTIMATION_SOURCES}")
     list(APPEND SOURCE_FILES "${CORAL_COMMON_SOURCES}")
+
+    list(APPEND SOURCE_FILES "${C_SRC}/coral/coral.cpp")
 endif()
 
 add_library(tflite_elixir SHARED
