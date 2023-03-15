@@ -95,17 +95,15 @@ defmodule TFLiteElixir.TFLiteTensor do
   """
   def to_binary(self, limit \\ 0)
 
-  @spec to_binary(%T{}, non_neg_integer()) :: binary()
+  @spec to_binary(%T{}, non_neg_integer()) :: {:ok, binary()} | {:error, String.t()}
   def to_binary(%T{reference: reference}, limit) when limit >= 0 do
     TFLiteElixir.Nif.tflitetensor_to_binary(reference, limit)
   end
 
-  @spec to_binary(reference(), non_neg_integer()) :: binary()
+  @spec to_binary(reference(), non_neg_integer()) :: {:ok, binary()} | {:error, String.t()}
   def to_binary(self, limit) when is_reference(self) and limit >= 0 do
     TFLiteElixir.Nif.tflitetensor_to_binary(self, limit)
   end
-
-  deferror(to_binary(self, limit))
 
   @doc false
   def from_nx(%Nx.Tensor{} = _tensor) do
@@ -120,17 +118,24 @@ defmodule TFLiteElixir.TFLiteTensor do
   def to_nx(self_struct, opts) when is_struct(self_struct, T) and is_list(opts) do
     type = type(self_struct)
     shape = List.to_tuple(dims(self_struct))
-
-    Nx.from_binary(to_binary(self_struct), type, backend: opts[:backend])
-    |> Nx.reshape(shape)
+    with {:ok, binary} <- to_binary(self_struct) do
+      Nx.from_binary(binary, type, backend: opts[:backend])
+      |> Nx.reshape(shape)
+    else
+      error -> error
+    end
   end
 
   def to_nx(self, opts) when is_reference(self) and is_list(opts) do
     type = type!(self)
     shape = List.to_tuple(dims!(self))
 
-    Nx.from_binary(to_binary(self), type, backend: opts[:backend])
-    |> Nx.reshape(shape)
+    with {:ok, binary} <- to_binary(self) do
+      Nx.from_binary(binary, type, backend: opts[:backend])
+      |> Nx.reshape(shape)
+    else
+      error -> error
+    end
   end
 
   deferror(to_nx(self, opts))

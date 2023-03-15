@@ -16,10 +16,10 @@ defmodule Mix.Tasks.DetectImage do
 
   use Mix.Task
 
-  alias TFLiteElixir.Interpreter, as: Interpreter
-  alias TFLiteElixir.InterpreterBuilder, as: InterpreterBuilder
-  alias TFLiteElixir.TFLiteTensor, as: TFTensor
-  alias TFLiteElixir.FlatBufferModel, as: FlatBufferModel
+  alias TFLiteElixir.Interpreter
+  alias TFLiteElixir.InterpreterBuilder
+  alias TFLiteElixir.TFLiteTensor
+  alias TFLiteElixir.FlatBufferModel
 
   @shortdoc "Object Detection"
   def run(argv) do
@@ -97,7 +97,7 @@ defmodule Mix.Tasks.DetectImage do
     |> Nx.as_type(:u8)
     |> Nx.put_slice([0, 0, 0, 0], input_image)
     |> Nx.to_binary()
-    |> then(&TFTensor.set_data(input_tensor, &1))
+    |> then(&TFLiteTensor.set_data(input_tensor, &1))
 
     IO.puts("----INFERENCE TIME----")
 
@@ -144,22 +144,22 @@ defmodule Mix.Tasks.DetectImage do
 
     boxes =
       Interpreter.tensor!(interpreter, boxes_tensor_id)
-      |> TFTensor.to_nx(Nx.BinaryBackend)
+      |> TFLiteTensor.to_nx(backend: Nx.BinaryBackend)
       |> take_first_and_reshape()
 
     class_ids =
       Interpreter.tensor!(interpreter, class_ids_tensor_id)
-      |> TFTensor.to_nx(Nx.BinaryBackend)
+      |> TFLiteTensor.to_nx(backend: Nx.BinaryBackend)
       |> take_first_and_reshape()
 
     scores =
       Interpreter.tensor!(interpreter, scores_tensor_id)
-      |> TFTensor.to_nx(Nx.BinaryBackend)
+      |> TFLiteTensor.to_nx(backend: Nx.BinaryBackend)
       |> take_first_and_reshape()
 
     count =
       Interpreter.tensor!(interpreter, count_tensor_id)
-      |> TFTensor.to_nx(Nx.BinaryBackend)
+      |> TFLiteTensor.to_nx(backend: Nx.BinaryBackend)
       |> Nx.to_flat_list()
       |> hd()
       |> trunc()
