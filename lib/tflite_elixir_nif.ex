@@ -35,7 +35,7 @@ defmodule TFLiteElixir.Nif do
   def interpreter_output_tensor(_self, _index), do: :erlang.nif_error(:not_loaded)
   def interpreter_tensor(_self, _tensor_index), do: :erlang.nif_error(:not_loaded)
   def interpreter_setNumThreads(_self, _num_threads), do: :erlang.nif_error(:not_loaded)
-  def interpreter_get_full_signature_list(_self), do: :erlang.nif_error(:not_loaded)
+  def interpreter_get_signature_defs(_self), do: :erlang.nif_error(:not_loaded)
 
   def tflitetensor_type(_self), do: :erlang.nif_error(:not_loaded)
   def tflitetensor_dims(_self), do: :erlang.nif_error(:not_loaded)

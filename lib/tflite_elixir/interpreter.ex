@@ -3,12 +3,12 @@ defmodule TFLiteElixir.Interpreter do
   An interpreter for a graph of nodes that input and output from tensors.
   """
   import TFLiteElixir.Errorize
+
   alias TFLiteElixir.TFLiteTensor
   alias TFLiteElixir.TFLiteQuantizationParams
   alias TFLiteElixir.FlatBufferModel
   alias TFLiteElixir.Interpreter
   alias TFLiteElixir.InterpreterBuilder
-
 
   @type nif_resource_ok :: {:ok, reference()}
   @type nif_error :: {:error, String.t()}
@@ -344,15 +344,20 @@ defmodule TFLiteElixir.Interpreter do
   deferror(set_num_threads(self, num_threads))
 
   @doc """
-  Returns list of all keys of different method signatures defined in the
-  model.
+  Get SignatureDef dict from the Metadata of a TfLite flatbuffer buffer.
 
-  Note, reference returned have lifetime same as the Interpreter object.
+  `self`: `TFLiteElixir.Interpreter`
+
+    TFLite model buffer to get the signature_def.
+
+  ##### Returns:
+
+  Map containing serving names to SignatureDefs if exists, otherwise, `nil`.
   """
-  @spec get_full_signature_list(reference()) :: Map.t()
-  def get_full_signature_list(self) do
-    TFLiteElixir.Nif.interpreter_get_full_signature_list(self)
+  @spec get_signature_defs(reference()) :: Map.t() | nil | {:error, String.t()}
+  def get_signature_defs(self) do
+    TFLiteElixir.Nif.interpreter_get_signature_defs(self)
   end
 
-  deferror(get_full_signature_list(self))
+  deferror(get_signature_defs(self))
 end

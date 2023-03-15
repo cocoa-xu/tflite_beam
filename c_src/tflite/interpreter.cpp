@@ -308,7 +308,7 @@ ERL_NIF_TERM interpreter_setNumThreads(ErlNifEnv *env, int argc, const ERL_NIF_T
     }
 }
 
-ERL_NIF_TERM interpreter_get_full_signature_list(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM interpreter_get_signature_defs(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];

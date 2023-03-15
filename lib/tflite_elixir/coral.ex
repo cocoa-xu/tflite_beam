@@ -102,7 +102,8 @@ defmodule TFLiteElixir.Coral do
 
   Also consider using `make_edge_tpu_interpreter!()`.
 
-  ### Positional Parameters
+  ##### Positional Parameters
+
   - `model`: `FlatBufferModel`. The tflite model.
   - `edgetpu_context`: `reference()`.
 
@@ -111,7 +112,8 @@ defmodule TFLiteElixir.Coral do
     If left `nil`, the given interpreter will not resolve an Edge TPU delegate.
     PoseNet custom op is always supported.
 
-  ### Keyword Parameters (todo)
+  ##### Keyword Parameters (todo)
+
   - `resolver`: May be `nil` to use a default resolver.
   - `error_reporter`: May be `nil` to use default error reporter,
     but beware that if null, tflite runtime error messages will not return.

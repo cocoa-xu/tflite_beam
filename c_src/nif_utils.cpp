@@ -7,18 +7,45 @@
 
 namespace erlang {
     namespace nif {
+        // Atoms
+
+        int get_atom(ErlNifEnv *env, ERL_NIF_TERM term, std::string &var) {
+            unsigned atom_length;
+            if (!enif_get_atom_length(env, term, &atom_length, ERL_NIF_LATIN1)) {
+                return 0;
+            }
+
+            var.resize(atom_length + 1);
+
+            if (!enif_get_atom(env, term, &(*(var.begin())), var.size(), ERL_NIF_LATIN1))
+                return 0;
+
+            var.resize(atom_length);
+
+            return 1;
+        }
+
+        ERL_NIF_TERM atom(ErlNifEnv *env, const char *msg) {
+            ERL_NIF_TERM a;
+            if (enif_make_existing_atom(env, msg, &a, ERL_NIF_LATIN1)) {
+                return a;
+            } else {
+                return enif_make_atom(env, msg);
+            }
+        }
+
         // Helper for returning `{:error, msg}` from NIF.
         ERL_NIF_TERM error(ErlNifEnv *env, const char *msg) {
-            ERL_NIF_TERM atom = atom(env, "error");
+            ERL_NIF_TERM error_atom = atom(env, "error");
             ERL_NIF_TERM reason;
             unsigned char *ptr;
             size_t len = strlen(msg);
             if ((ptr = enif_make_new_binary(env, len, &reason)) != nullptr) {
                 strcpy((char *) ptr, msg);
-                return enif_make_tuple2(env, atom, reason);
+                return enif_make_tuple2(env, error_atom, reason);
             } else {
                 ERL_NIF_TERM msg_term = enif_make_string(env, msg, ERL_NIF_LATIN1);
-                return enif_make_tuple2(env, atom, msg_term);
+                return enif_make_tuple2(env, error_atom, msg_term);
             }
         }
 
@@ -179,33 +206,6 @@ namespace erlang {
             } else {
                 fprintf(stderr, "internal error: cannot allocate memory for binary string\r\n");
                 return atom(env, "error");
-            }
-        }
-
-        // Atoms
-
-        int get_atom(ErlNifEnv *env, ERL_NIF_TERM term, std::string &var) {
-            unsigned atom_length;
-            if (!enif_get_atom_length(env, term, &atom_length, ERL_NIF_LATIN1)) {
-                return 0;
-            }
-
-            var.resize(atom_length + 1);
-
-            if (!enif_get_atom(env, term, &(*(var.begin())), var.size(), ERL_NIF_LATIN1))
-                return 0;
-
-            var.resize(atom_length);
-
-            return 1;
-        }
-
-        ERL_NIF_TERM atom(ErlNifEnv *env, const char *msg) {
-            ERL_NIF_TERM a;
-            if (enif_make_existing_atom(env, msg, &a, ERL_NIF_LATIN1)) {
-                return a;
-            } else {
-                return enif_make_atom(env, msg);
             }
         }
 
