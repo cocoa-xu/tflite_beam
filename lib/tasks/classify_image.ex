@@ -88,7 +88,7 @@ defmodule Mix.Tasks.ClassifyImage do
 
     tpu_context =
       if args[:use_tpu] do
-        TFLiteElixir.Coral.get_edge_tpu_context!(args[:tpu])
+        TFLiteElixir.Coral.get_edge_tpu_context!(device: args[:tpu])
       else
         nil
       end
