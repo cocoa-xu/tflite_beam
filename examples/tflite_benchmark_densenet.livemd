@@ -2,59 +2,40 @@
 
 ```elixir
 Mix.install([
-  {:tflite_elixir, "~> 0.1.0", github: "cocoa-xu/tflite_elixir"}
+  {:tflite_elixir, "~> 0.1.4"},
+  {:req, "~> 0.3.0"}
 ])
 ```
 
-## Section
+## Download data files
 
 ```elixir
-defmodule Helper do
-  def download!(url, save_as, overwrite \\ false)
+downloads_dir = System.tmp_dir!()
+# for nerves demo user
+# change to a directory with write-permission
+# downloads_dir = "/data/livebook"
 
-  def download!(url, save_as, false) do
-    unless File.exists?(save_as) do
-      download!(url, save_as, true)
-    end
+download = fn url ->
+  save_as = Path.join(downloads_dir, Path.basename(url))
 
-    :ok
+  unless File.exists?(save_as) do
+    %{status: 200} = Req.get!(url, output: Path.join(downloads_dir, Path.basename(url)))
   end
 
-  def download!(url, save_as, true) do
-    http_opts = []
-    opts = [body_format: :binary]
-    arg = {url, []}
-
-    body =
-      case :httpc.request(:get, arg, http_opts, opts) do
-        {:ok, {{_, 200, _}, _, body}} ->
-          body
-
-        {:error, reason} ->
-          raise inspect(reason)
-      end
-
-    File.write!(save_as, body)
-  end
+  save_as
 end
+
+data_files = %{
+  cpu_model:
+    "https://storage.googleapis.com/tfhub-lite-models/tensorflow/lite-model/densenet/1/default/1.tflite"
+    |> download.(),
+  test_image:
+    "https://upload.wikimedia.org/wikipedia/commons/b/b9/CyprusShorthair.jpg"
+    |> download.()
+}
 ```
 
-```elixir
-:inets.start()
-:ssl.start()
-
-# CPU model
-Helper.download!(
-  "https://storage.googleapis.com/tfhub-lite-models/tensorflow/lite-model/densenet/1/default/1.tflite",
-  "densenet_1.tflite"
-)
-
-# test image
-Helper.download!(
-  "https://upload.wikimedia.org/wikipedia/commons/b/b9/CyprusShorthair.jpg",
-  "CyprusShorthair.jpg"
-)
-```
+## Classify image
 
 ```elixir
 defmodule ClassifyImage do
@@ -116,7 +97,7 @@ defmodule ClassifyImage do
 
     tpu_context =
       if args[:use_tpu] do
-        TFLiteElixir.Coral.getEdgeTpuContext!(args[:tpu])
+        TFLiteElixir.Coral.get_edge_tpu_context!(args[:tpu])
       else
         nil
       end
@@ -244,9 +225,9 @@ defmodule ClassifyImage do
     resolver = TFLiteElixir.Ops.Builtin.BuiltinResolver.new!()
     builder = InterpreterBuilder.new!(model, resolver)
     interpreter = Interpreter.new!()
-    InterpreterBuilder.setNumThreads!(builder, num_jobs)
+    InterpreterBuilder.set_num_threads!(builder, num_jobs)
     :ok = InterpreterBuilder.build!(builder, interpreter)
-    Interpreter.setNumThreads!(interpreter, num_jobs)
+    Interpreter.set_num_threads!(interpreter, num_jobs)
     interpreter
   end
 
