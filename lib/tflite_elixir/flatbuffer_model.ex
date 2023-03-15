@@ -58,12 +58,14 @@ defmodule TFLiteElixir.FlatBufferModel do
 
   Returns `:invalid` in case of failure.
   """
-  @spec verify_and_build_from_file(String.t(), Keyword.t()) :: %T{} | :invalid | {:error, String.t()}
+  @spec verify_and_build_from_file(String.t(), Keyword.t()) ::
+          %T{} | :invalid | {:error, String.t()}
   def verify_and_build_from_file(filename, opts \\ []) do
     error_reporter = ErrorReporter.from_struct(opts[:error_reporter])
     # todo
     # extra_verifier = opts[:extra_verifier]
-    with {:ok, model} <- TFLiteElixir.Nif.flatBufferModel_verifyAndBuildFromFile(filename, nil, error_reporter) do
+    with {:ok, model} <-
+           TFLiteElixir.Nif.flatBufferModel_verifyAndBuildFromFile(filename, nil, error_reporter) do
       %T{model: model}
     else
       error -> error
@@ -87,6 +89,7 @@ defmodule TFLiteElixir.FlatBufferModel do
   @spec build_from_buffer(binary(), Keyword.t()) :: %T{} | nif_error()
   def build_from_buffer(buffer, opts \\ []) when is_binary(buffer) and is_list(opts) do
     error_reporter = ErrorReporter.from_struct(opts[:error_reporter])
+
     with {:ok, model} <- TFLiteElixir.Nif.flatBufferModel_buildFromBuffer(buffer, error_reporter) do
       %T{model: model}
     else

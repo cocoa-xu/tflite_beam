@@ -121,15 +121,19 @@ defmodule TFLiteElixir.Interpreter do
     end
   end
 
-  defp fill_input(interpreter, input_tensor_index, input) when is_integer(input_tensor_index) and is_binary(input) do
+  defp fill_input(interpreter, input_tensor_index, input)
+       when is_integer(input_tensor_index) and is_binary(input) do
     case Interpreter.tensor(interpreter, input_tensor_index) do
       %TFLiteTensor{} = tensor ->
         TFLiteTensor.set_data(tensor, input)
-      error -> error
+
+      error ->
+        error
     end
   end
 
-  defp fill_input(interpreter, input_tensors, input) when is_list(input_tensors) and is_map(input) do
+  defp fill_input(interpreter, input_tensors, input)
+       when is_list(input_tensors) and is_map(input) do
     ret =
       Enum.map(input_tensors, fn input_tensor_index ->
         %TFLiteTensor{} = out_tensor = Interpreter.tensor(interpreter, input_tensor_index)
@@ -172,7 +176,9 @@ defmodule TFLiteElixir.Interpreter do
     case Interpreter.tensor(interpreter, output_index) do
       %TFLiteTensor{} = tensor ->
         TFLiteTensor.to_nx(tensor)
-      error -> error
+
+      error ->
+        error
     end
   end
 
@@ -226,7 +232,8 @@ defmodule TFLiteElixir.Interpreter do
   ```
   """
   @spec input_tensor(reference(), non_neg_integer(), binary()) :: :ok | nif_error()
-  def input_tensor(self, index, data) when is_reference(self) and index >= 0 and is_binary(data) do
+  def input_tensor(self, index, data)
+      when is_reference(self) and index >= 0 and is_binary(data) do
     TFLiteElixir.Nif.interpreter_input_tensor(self, index, data)
   end
 

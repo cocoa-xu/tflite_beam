@@ -115,9 +115,11 @@ defmodule TFLiteElixir.TFLiteTensor do
   """
   @spec to_nx(reference() | %T{}, Keyword.t()) :: %Nx.Tensor{}
   def to_nx(self_struct, opts \\ [])
+
   def to_nx(self_struct, opts) when is_struct(self_struct, T) and is_list(opts) do
     type = type(self_struct)
     shape = List.to_tuple(dims(self_struct))
+
     with {:ok, binary} <- to_binary(self_struct) do
       Nx.from_binary(binary, type, backend: opts[:backend])
       |> Nx.reshape(shape)

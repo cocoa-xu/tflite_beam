@@ -189,13 +189,16 @@ defmodule TfliteElixir.MixProject do
       end
 
     case {edgetpu_libraries, target_os} do
-      {lib, "linux"} when lib in ["k8", "x86_64", "aarch64", "armv7l", "arm", "armv6", "riscv64"] ->
+      {lib, "linux"}
+      when lib in ["k8", "x86_64", "aarch64", "armv7l", "arm", "armv6", "riscv64"] ->
         lib =
           case lib do
             "k8" ->
               "x86_64"
+
             "arm" ->
-              case {System.get_env("TARGET_ABI"), System.get_env("TARGET_OS"), System.get_env("TARGET_CPU")} do
+              case {System.get_env("TARGET_ABI"), System.get_env("TARGET_OS"),
+                    System.get_env("TARGET_CPU")} do
                 {"gnueabihf", "linux", "arm1176jzf_s"} ->
                   "armv6"
 
@@ -205,6 +208,7 @@ defmodule TfliteElixir.MixProject do
                 _ ->
                   "arm"
               end
+
             lib ->
               lib
           end
@@ -296,10 +300,8 @@ defmodule TfliteElixir.MixProject do
   defp deps do
     [
       {:elixir_make, "~> 0.7", runtime: false},
-
       {:nx, "~> 0.5"},
       {:stb_image, "~> 0.6"},
-
       {:excoveralls, "~> 0.10", only: :test},
       {:ex_doc, "~> 0.27", only: :docs, runtime: false}
     ]

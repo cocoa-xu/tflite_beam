@@ -21,7 +21,7 @@ defmodule TFLiteElixir do
   Resets a variable tensor to the default value.
   """
   @spec reset_variable_tensor(%TFLiteTensor{}) :: any
-  def reset_variable_tensor(%TFLiteTensor{}=tflite_tensor) do
+  def reset_variable_tensor(%TFLiteTensor{} = tflite_tensor) do
     TFLiteElixir.Nif.tflite_resetVariableTensor(tflite_tensor)
   end
 end

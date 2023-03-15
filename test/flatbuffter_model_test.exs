@@ -13,7 +13,12 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
     expected_out = Path.join([__DIR__, "test_data", "parrot-expected-out.bin"]) |> File.read!()
-    model = TFLiteElixir.FlatBufferModel.build_from_file(filename, error_reporter: TFLiteElixir.ErrorReporter.default_error_reporter())
+
+    model =
+      TFLiteElixir.FlatBufferModel.build_from_file(filename,
+        error_reporter: TFLiteElixir.ErrorReporter.default_error_reporter()
+      )
+
     :ok = verify_loaded_model(model, input_data, expected_out, true)
   end
 
