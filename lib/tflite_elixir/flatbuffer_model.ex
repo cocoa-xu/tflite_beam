@@ -53,6 +53,9 @@ defmodule TFLiteElixir.FlatBufferModel do
 
   deferror(build_from_buffer(buffer))
 
+  @doc """
+  Check whether current model has been initialized
+  """
   @spec initialized(%T{}) :: bool() | nif_error()
   def initialized(%T{model: self}) when is_reference(self) do
     TFLiteElixir.Nif.flatBufferModel_initialized(self)
