@@ -66,6 +66,10 @@ defmodule TFLiteElixir.Interpreter do
 
   deferror(new(model_path))
 
+  @doc """
+  Fill input data to corresponding input tensor of the interpreter,
+  call `Interpreter.invoke` and return output tensor(s)
+  """
   def predict(interpreter, input) do
     with {:ok, input_tensors} <- Interpreter.inputs(interpreter),
          {:ok, output_tensors} <- Interpreter.outputs(interpreter),
@@ -339,16 +343,15 @@ defmodule TFLiteElixir.Interpreter do
 
   deferror(set_num_threads(self, num_threads))
 
-  @spec get_signature_defs(reference()) :: Map.t()
-  def get_signature_defs(self) do
-    TFLiteElixir.Nif.interpreter_get_signature_defs(self)
-  end
+  @doc """
+  Returns list of all keys of different method signatures defined in the
+  model.
 
-  deferror(get_signature_defs(self))
-
+  Note, reference returned have lifetime same as the Interpreter object.
+  """
   @spec get_full_signature_list(reference()) :: Map.t()
   def get_full_signature_list(self) do
-    get_signature_defs(self)
+    TFLiteElixir.Nif.interpreter_get_full_signature_list(self)
   end
 
   deferror(get_full_signature_list(self))

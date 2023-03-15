@@ -118,7 +118,7 @@ static ErlNifFunc nif_functions[] = {
     F_CPU(interpreter_output_tensor, 2),
     F(interpreter_tensor, 2),
     F(interpreter_setNumThreads, 2),
-    F(interpreter_get_signature_defs, 1),
+    F(interpreter_get_full_signature_list, 1),
 
     F(tflitetensor_type, 1),
     F(tflitetensor_dims, 1),
