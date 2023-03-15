@@ -8,6 +8,19 @@
 
 #include "error_reporter.h"
 
+bool _get_error_reporter(ErlNifEnv *env, ERL_NIF_TERM error_reporter_term, NifResErrorReporter *&error_reporter_res, tflite::ErrorReporter * &error_reporter, ERL_NIF_TERM &error_term) {
+    if (enif_get_resource(env, error_reporter_term, NifResErrorReporter::type, (void **)&error_reporter_res) && error_reporter_res->val) {
+        error_reporter = error_reporter_res->val;
+        return true;
+    } else if (erlang::nif::check_nil(env, error_reporter_term)) {
+        error_reporter = tflite::DefaultErrorReporter();
+        return true;
+    } else {
+        error_term = erlang::nif::error(env, "Invalid value for error_reporter");
+        return false;
+    }
+}
+
 ERL_NIF_TERM errorReporter_DefaultErrorReporter(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     NifResErrorReporter * res;
     auto e = tflite::DefaultErrorReporter();
