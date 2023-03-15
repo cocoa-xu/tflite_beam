@@ -5,6 +5,8 @@ defmodule TFLiteElixir.FlatBufferModel do
   """
   import TFLiteElixir.Errorize
 
+  alias TFLiteElixir.ErrorReporter
+
   @type nif_error :: {:error, String.t()}
 
   @behaviour Access
@@ -16,17 +18,55 @@ defmodule TFLiteElixir.FlatBufferModel do
 
   Note that if the tensorflow-lite library was compiled with `TFLITE_MCU`,
   then this function will always have return type `nif_error()`
+
+  ##### Keyword parameters
+  - `error_reporter`: `TFLiteElixir.ErrorReporter`.
+
+    Caller retains ownership of `error_reporter` and must ensure its lifetime
+    is longer than the FlatBufferModel instance.
   """
   @spec build_from_file(String.t()) :: %T{} | nif_error()
-  def build_from_file(filename) when is_binary(filename) do
-    with {:ok, model} <- TFLiteElixir.Nif.flatBufferModel_buildFromFile(filename) do
+  def build_from_file(filename, opts \\ []) when is_binary(filename) and is_list(opts) do
+    error_reporter = ErrorReporter.from_struct(opts[:error_reporter])
+
+    with {:ok, model} <- TFLiteElixir.Nif.flatBufferModel_buildFromFile(filename, error_reporter) do
       %T{model: model}
     else
       error -> error
     end
   end
 
-  deferror(build_from_file(filename))
+  deferror(build_from_file(filename, opts))
+
+  @doc """
+  Verifies whether the content of the file is legit, then builds a model
+  based on the file.
+
+  ##### Keyword parameters
+  - `extra_verifier`: `TFLiteElixir.TFLiteVerifier`.
+
+    The keyword `extra_verifier` argument is an additional optional verifier
+    for the file contents. By default, we always check with tflite::VerifyModelBuffer.
+
+    If extra_verifier is supplied, the file contents is also checked against
+    the extra_verifier after the check against tflite::VerifyModelBuilder.
+
+  - `error_reporter`: `TFLiteElixir.ErrorReporter`.
+
+    Caller retains ownership of `error_reporter` and must ensure its lifetime
+    is longer than the FlatBufferModel instance.
+
+  Returns `:invalid` in case of failure.
+  """
+  @spec verify_and_build_from_file(String.t(), Keyword.t()) :: %T{} | :invalid | {:error, String.t()}
+  def verify_and_build_from_file(filename, opts) do
+    error_reporter = ErrorReporter.from_struct(opts[:error_reporter])
+    with {:ok, model} <- TFLiteElixir.Nif.flatBufferModel_verifyAndBuildFromFile(filename, opts[:extra_verifier], error_reporter) do
+      %T{model: model}
+    else
+      error -> error
+    end
+  end
 
   @doc """
   Build model from caller owned memory buffer

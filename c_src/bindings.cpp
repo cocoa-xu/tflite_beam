@@ -29,6 +29,7 @@ limitations under the License.
 #  pragma GCC diagnostic ignored "-Wunused-function"
 #endif
 
+#include "tflite/error_reporter.h"
 #include "tflite/flatbuffer_model.h"
 #include "tflite/ops/builtin/builtin_resolver.h"
 #include "tflite/interpreter_builder.h"
@@ -36,6 +37,7 @@ limitations under the License.
 #include "tflite/status.h"
 #include "tflite/tflite.h"
 #include "tflite/tflitetensor.h"
+#include "tflite/verifier.h"
 
 #ifdef CORAL_SUPPORT_ENABLED
 #include "tflite/public/edgetpu.h"
@@ -70,6 +72,14 @@ on_load(ErlNifEnv* env, void**, ERL_NIF_TERM)
     if (!rt) return -1;
     erlang_nif_res<TfLiteTensor *>::type = rt;
 
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "TfLiteVerifier", destruct_raw_ptr<tflite::TfLiteVerifier>, ERL_NIF_RT_CREATE, NULL);                                                             \
+    if (!rt) return -1;
+    erlang_nif_res<tflite::TfLiteVerifier *>::type = rt;
+
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "ErrorReporter", destruct_raw_ptr<tflite::ErrorReporter>, ERL_NIF_RT_CREATE, NULL);                                                             \
+    if (!rt) return -1;
+    erlang_nif_res<tflite::ErrorReporter *>::type = rt;
+
 #ifdef CORAL_SUPPORT_ENABLED
     rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "EdgeTpuContext", destruct_egdetpu_context, ERL_NIF_RT_CREATE, NULL);                                                             \
     if (!rt) return -1;
@@ -95,7 +105,10 @@ static int on_upgrade(ErlNifEnv*, void**, void**, ERL_NIF_TERM)
 #define F_IO(NAME, ARITY) {#NAME, ARITY, NAME, ERL_NIF_DIRTY_JOB_IO_BOUND}
 
 static ErlNifFunc nif_functions[] = {
-    F_IO(flatBufferModel_buildFromFile, 1),
+    F(errorReporter_DefaultErrorReporter, 0),
+
+    F_IO(flatBufferModel_buildFromFile, 2),
+    F_IO(flatBufferModel_verifyAndBuildFromFile, 3),
     F_CPU(flatBufferModel_buildFromBuffer, 1),
     F(flatBufferModel_initialized, 1),
     F(flatBufferModel_getMinimumRuntime, 1),

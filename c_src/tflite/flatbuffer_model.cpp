@@ -9,15 +9,79 @@
 #include "tensorflow/lite/model.h"
 
 #include "flatbuffer_model.h"
+#include "verifier.h"
+#include "error_reporter.h"
 
 #ifndef TFLITE_MCU
 ERL_NIF_TERM flatBufferModel_buildFromFile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    if (argc != 1) return enif_make_badarg(env);
+    if (argc != 2) return enif_make_badarg(env);
 
     std::string filename;
-    if (erlang::nif::get(env, argv[0], filename)) {
+    NifResErrorReporter * error_reporter_res = nullptr;
+
+    ERL_NIF_TERM filename_term = argv[0];
+    ERL_NIF_TERM error_reporter_term = argv[1];
+
+    if (erlang::nif::get(env, filename_term, filename)) {
+        tflite::ErrorReporter * error_reporter = nullptr;
+        if (enif_get_resource(env, error_reporter_term, NifResErrorReporter::type, (void **)&error_reporter_res) && error_reporter_res->val) {
+            error_reporter = error_reporter_res->val;
+        } else if (erlang::nif::check_nil(env, error_reporter_term)) {
+            error_reporter = tflite::DefaultErrorReporter();
+        } else {
+            return erlang::nif::error(env, "Invalid value for error_reporter");
+        }
+
         NifResFlatBufferModel * res;
-        auto m = tflite::FlatBufferModel::BuildFromFile(filename.c_str());
+        auto m = tflite::FlatBufferModel::BuildFromFile(filename.c_str(), error_reporter);
+        if (m.get() != nullptr) {
+            if (alloc_resource(&res)) {
+                // take ownership
+                tflite::FlatBufferModel * model = m.release();
+                res->val = model;
+                ERL_NIF_TERM ret = enif_make_resource(env, res);
+                enif_release_resource(res);
+                return erlang::nif::ok(env, ret);
+            } else {
+                // free
+                m.reset(nullptr);
+                return erlang::nif::error(env, "cannot allocate memory for resource");
+            }
+        } else {
+            return erlang::nif::error(env, "cannot load flat buffer model from file");
+        }
+    } else {
+        return erlang::nif::error(env, "empty filename");
+    }
+}
+
+ERL_NIF_TERM flatBufferModel_verifyAndBuildFromFile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 3) return enif_make_badarg(env);
+
+    std::string filename;
+    NifResVerifier *verifier_res = nullptr;
+    NifResErrorReporter * error_reporter_res = nullptr;
+    if (erlang::nif::get(env, argv[0], filename)) {
+        tflite::TfLiteVerifier * verifier = nullptr;
+        if (enif_get_resource(env, argv[1], NifResVerifier::type, (void **)&verifier_res) && verifier_res->val) {
+            verifier = verifier_res->val;
+        } else if (erlang::nif::check_nil(env, argv[1])) {
+            verifier = nullptr;
+        } else {
+            return erlang::nif::error(env, "Invalid value for extra_verifier");
+        }
+
+        tflite::ErrorReporter * error_reporter = nullptr;
+        if (enif_get_resource(env, argv[2], NifResErrorReporter::type, (void **)&error_reporter_res) && error_reporter_res->val) {
+            error_reporter = error_reporter_res->val;
+        } else if (erlang::nif::check_nil(env, argv[2])) {
+            error_reporter = tflite::DefaultErrorReporter();
+        } else {
+            return erlang::nif::error(env, "Invalid value for error_reporter");
+        }
+
+        NifResFlatBufferModel * res;
+        auto m = tflite::FlatBufferModel::VerifyAndBuildFromFile(filename.c_str(), verifier, error_reporter);
         if (m.get() != nullptr) {
             if (alloc_resource(&res)) {
                 // take ownership
@@ -41,6 +105,11 @@ ERL_NIF_TERM flatBufferModel_buildFromFile(ErlNifEnv *env, int argc, const ERL_N
 #else
 ERL_NIF_TERM flatBufferModel_buildFromFile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     return erlang::nif::error(env, "FlatBufferModel::BuildFromFile is not available: "
+                                   "Library compiled with TFLITE_MCU");
+}
+
+ERL_NIF_TERM flatBufferModel_VerifyAndBuildFromFile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    return erlang::nif::error(env, "FlatBufferModel::VerifyAndBuildFromFile is not available: "
                                    "Library compiled with TFLITE_MCU");
 }
 #endif
