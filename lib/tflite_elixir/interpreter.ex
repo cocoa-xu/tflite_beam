@@ -98,7 +98,7 @@ defmodule TFLiteElixir.Interpreter do
 
   defp fill_input(interpreter, input_tensor_index, %Nx.Tensor{} = input)
        when is_integer(input_tensor_index) do
-    tensor = Interpreter.tensor!(interpreter, input_tensor_index)
+    %TFLiteTensor{} = tensor = Interpreter.tensor(interpreter, input_tensor_index)
 
     with {:match_type, _, _, true} <-
            {:match_type, tensor.type, Nx.type(input), tensor.type == Nx.type(input)},
