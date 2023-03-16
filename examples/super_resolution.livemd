@@ -63,11 +63,13 @@ alias TFLiteElixir, as: TFLite
 ## Generate a super resolution image using TensorFlow Lite
 
 ```elixir
-lr = Cv.imread(data_files.test_img)
-lr = Cv.cvtColor(lr, Cv.Constant.cv_COLOR_BGR2RGB())
-lr = Cv.Mat.to_nx(lr)
-lr = Nx.new_axis(lr, 0)
-lr = Nx.as_type(lr, {:f, 32})
+lr =
+  data_files.test_img
+  |> Cv.imread()
+  |> Cv.cvtColor(Cv.Constant.cv_COLOR_BGR2RGB())
+  |> Cv.Mat.to_nx()
+  |> Nx.new_axis(0)
+  |> Nx.as_type({:f, 32})
 
 # Load TFLite model and allocate tensors.
 {:ok, interpreter} = TFLite.Interpreter.new(data_files.model)
