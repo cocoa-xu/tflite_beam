@@ -98,41 +98,52 @@ alias TFLiteElixir, as: TFLite
 ```elixir
 # Function to load an image from a file, and add a batch dimension.
 load_img = fn path_to_img ->
-  %Nx.Tensor{} =
+  %Cv.Mat{} =
     path_to_img
     |> Cv.imread()
     |> Cv.cvtColor(Cv.Constant.cv_COLOR_BGR2RGB(), dstCn: 3)
+end
+
+# Function to pre-process by resizing an central cropping it.
+preprocess_image = fn image, target_dim ->
+  # Resize the image so that the shorter dimension becomes 256px.
+  {h, w, _} = image.shape
+
+  {resize_h, resize_w} =
+    if h > w do
+      scale = target_dim / w
+      {trunc(h * scale), target_dim}
+    else
+      scale = target_dim / h
+      {target_dim, trunc(w * scale)}
+    end
+
+  image = Cv.resize(image, {resize_h, resize_w})
+
+  # Central crop the image.
+  {centre_h, centre_w} = {resize_h / 2, resize_w / 2}
+  x = trunc(centre_w - target_dim / 2)
+  y = trunc(centre_h - target_dim / 2)
+  new_shape = {y, x, target_dim, target_dim}
+
+  %Nx.Tensor{} =
+    image
+    |> Cv.Mat.roi(new_shape)
     |> Cv.Mat.to_nx()
     |> Nx.new_axis(0)
     |> Nx.as_type({:f, 32})
 end
 
-# Function to pre-process by resizing an central cropping it.
-preprocess_image = fn image, target_dim ->
-  nil
-  # TODO: convert python to elixir
-  #
-  # # Resize the image so that the shorter dimension becomes 256px.
-  # shape = tf.cast(tf.shape(image)[1:-1], tf.float32)
-  # short_dim = min(shape)
-  # scale = target_dim / short_dim
-  # new_shape = tf.cast(shape * scale, tf.int32)
-  # image = tf.image.resize(image, new_shape)
-
-  # # Central crop the image.
-  # image = tf.image.resize_with_crop_or_pad(image, target_dim, target_dim)
-end
-
 # Load the input images.
-content_image = %Nx.Tensor{} = load_img.(data_files.content)
-style_image = %Nx.Tensor{} = load_img.(data_files.style)
+%Cv.Mat{} = content_image = load_img.(data_files.content)
+%Cv.Mat{} = style_image = load_img.(data_files.style)
 
-# # Preprocess the input images.
-# preprocessed_content_image = preprocess_image.(content_image, 384)
-# preprocessed_style_image = preprocess_image.(style_image, 256)
+# Preprocess the input images.
+preprocessed_content_image = preprocess_image.(content_image, 384)
+preprocessed_style_image = preprocess_image.(style_image, 256)
 
-# IO.puts("Style Image Shape:", preprocessed_style_image.shape)
-# IO.puts("Content Image Shape:", preprocessed_content_image.shape)
+IO.puts("Style Image Shape: #{inspect(preprocessed_style_image.shape)}")
+IO.puts("Content Image Shape: #{inspect(preprocessed_content_image.shape)}")
 ```
 
 ## Visualize the inputs
