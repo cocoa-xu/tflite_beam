@@ -4,12 +4,23 @@
 Mix.install([
   {:tflite_elixir, "~> 0.1.4"},
   {:evision, "~> 0.1.8"},
-  {:nx, "~> 0.5.0"},
   {:kino, "~> 0.8.0"},
-  {:req, "~> 0.3.0"},
-  {:stb_image, "~> 0.6.0"}
+  {:req, "~> 0.3.0"}
 ])
 ```
+
+## Introduction
+
+The task of recovering a high resolution (HR) image from its low resolution
+counterpart is commonly referred to as Single Image Super Resolution (SISR).
+
+The model used here is [Enhanced Super-Resolution Generative Adversarial
+Networks (ESRGAN)][ESRGAN]. And we are going to use TensorFlow Lite to run
+inference on the pretrained model.
+
+https://www.tensorflow.org/lite/examples/super_resolution/overview
+
+[ESRGAN]: https://arxiv.org/abs/1809.00219
 
 ## Download data files
 
@@ -23,23 +34,22 @@ downloads_dir = System.tmp_dir!()
 # downloads_dir = "/data/livebook"
 
 download = fn url ->
-  save_as = Path.join(downloads_dir, Path.basename(url))
+  save_as = Path.join(downloads_dir, URI.encode_www_form(url))
 
   unless File.exists?(save_as) do
-    %{status: 200} = Req.get!(url, output: Path.join(downloads_dir, Path.basename(url)))
+    %{status: 200} = Req.get!(url, output: save_as)
   end
 
   save_as
 end
 
-model_url = "https://tfhub.dev/captain-pool/lite-model/esrgan-tf2/1?lite-format=tflite"
-
-test_img_url =
-  "https://raw.githubusercontent.com/tensorflow/examples/master/lite/examples/super_resolution/android/app/src/main/assets/lr-1.jpg"
-
 data_files = %{
-  model: model_url |> download.(),
-  test_img: test_img_url |> download.()
+  model:
+    "https://tfhub.dev/captain-pool/lite-model/esrgan-tf2/1?lite-format=tflite"
+    |> download.(),
+  test_img:
+    "https://raw.githubusercontent.com/tensorflow/examples/master/lite/examples/super_resolution/android/app/src/main/assets/lr-1.jpg"
+    |> download.()
 }
 ```
 
@@ -53,11 +63,13 @@ alias TFLiteElixir, as: TFLite
 ## Generate a super resolution image using TensorFlow Lite
 
 ```elixir
-lr = Cv.imread(data_files.test_img)
-lr = Cv.cvtColor(lr, Cv.Constant.cv_COLOR_BGR2RGB())
-lr = Cv.Mat.to_nx(lr)
-lr = Nx.new_axis(lr, 0)
-lr = Nx.as_type(lr, {:f, 32})
+lr =
+  data_files.test_img
+  |> Cv.imread()
+  |> Cv.cvtColor(Cv.Constant.cv_COLOR_BGR2RGB())
+  |> Cv.Mat.to_nx()
+  |> Nx.new_axis(0)
+  |> Nx.as_type({:f, 32})
 
 # Load TFLite model and allocate tensors.
 {:ok, interpreter} = TFLite.Interpreter.new(data_files.model)
