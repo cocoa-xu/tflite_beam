@@ -130,7 +130,11 @@ ERL_NIF_TERM interpreter_input_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TE
                 if (input_tensor->data.data == nullptr) {
                     return erlang::nif::error(env, "tensor is not allocated yet? Please call TFLite.Interpreter.allocateTensors first");
                 } else {
-                    memcpy(input_tensor->data.data, data.data, data.size);
+                    size_t maximum_bytes = input_tensor->bytes;
+                    if (data.size < maximum_bytes) {
+                        maximum_bytes = data.size;
+                    }
+                    memcpy(input_tensor->data.data, data.data, maximum_bytes);
                     return erlang::nif::ok(env);
                 }
             } else {
