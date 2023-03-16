@@ -98,7 +98,7 @@ defmodule Mix.Tasks.ClassifyImage do
 
     [input_tensor_number | _] = Interpreter.inputs!(interpreter)
     [output_tensor_number | _] = Interpreter.outputs!(interpreter)
-    input_tensor = Interpreter.tensor!(interpreter, input_tensor_number)
+    %TFLiteTensor{} = input_tensor = Interpreter.tensor(interpreter, input_tensor_number)
 
     if input_tensor.type != {:u, 8} do
       raise ArgumentError, "Only support uint8 input type."
@@ -150,7 +150,7 @@ defmodule Mix.Tasks.ClassifyImage do
     end
 
     output_data = Interpreter.output_tensor!(interpreter, 0)
-    output_tensor = Interpreter.tensor!(interpreter, output_tensor_number)
+    %TFLiteTensor{} = output_tensor = Interpreter.tensor(interpreter, output_tensor_number)
     scores = get_scores(output_data, output_tensor)
     sorted_indices = Nx.argsort(scores, direction: :desc)
     top_k = Nx.take(sorted_indices, Nx.iota({args[:top]}))

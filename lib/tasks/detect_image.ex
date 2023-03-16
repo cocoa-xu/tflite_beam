@@ -67,7 +67,7 @@ defmodule Mix.Tasks.DetectImage do
       raise ArgumentError, "Object detection models should have 4 output tensors"
     end
 
-    input_tensor = Interpreter.tensor!(interpreter, input_tensor_number)
+    %TFLiteTensor{} = input_tensor = Interpreter.tensor(interpreter, input_tensor_number)
 
     if input_tensor.type != {:u, 8} do
       raise ArgumentError, "Only support uint8 input type."
@@ -125,7 +125,7 @@ defmodule Mix.Tasks.DetectImage do
           {count_tensor_id, scores_tensor_id, class_ids_tensor_id, boxes_tensor_id}
         end
       else
-        output_tensor_3 = Interpreter.tensor!(interpreter, Enum.at(output_tensor_numbers, 3))
+        %TFLiteTensor{} = output_tensor_3 = Interpreter.tensor(interpreter, Enum.at(output_tensor_numbers, 3))
 
         if output_tensor_3.shape == [1] do
           boxes_tensor_id = Enum.at(output_tensor_numbers, 0)
@@ -143,22 +143,22 @@ defmodule Mix.Tasks.DetectImage do
       end
 
     boxes =
-      Interpreter.tensor!(interpreter, boxes_tensor_id)
+      Interpreter.tensor(interpreter, boxes_tensor_id)
       |> TFLiteTensor.to_nx(backend: Nx.BinaryBackend)
       |> take_first_and_reshape()
 
     class_ids =
-      Interpreter.tensor!(interpreter, class_ids_tensor_id)
+      Interpreter.tensor(interpreter, class_ids_tensor_id)
       |> TFLiteTensor.to_nx(backend: Nx.BinaryBackend)
       |> take_first_and_reshape()
 
     scores =
-      Interpreter.tensor!(interpreter, scores_tensor_id)
+      Interpreter.tensor(interpreter, scores_tensor_id)
       |> TFLiteTensor.to_nx(backend: Nx.BinaryBackend)
       |> take_first_and_reshape()
 
     count =
-      Interpreter.tensor!(interpreter, count_tensor_id)
+      Interpreter.tensor(interpreter, count_tensor_id)
       |> TFLiteTensor.to_nx(backend: Nx.BinaryBackend)
       |> Nx.to_flat_list()
       |> hd()
