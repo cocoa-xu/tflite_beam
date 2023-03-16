@@ -63,14 +63,26 @@ ERL_NIF_TERM interpreter_inputs(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
     erlang_nif_res<tflite::Interpreter *> *self_res;
     if (enif_get_resource(env, self_nif, erlang_nif_res<tflite::Interpreter *>::type, (void **) &self_res)) {
         if (self_res->val) {
-            auto inputs = self_res->val->inputs();
+            const std::vector<int>& inputs = self_res->val->inputs();
             size_t cnt = inputs.size();
-            ERL_NIF_TERM * arr = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * cnt);
-            for (size_t i = 0; i < cnt; i++) {
-                arr[i] = enif_make_int(env, inputs[i]);
+
+            ERL_NIF_TERM ret;
+
+            if (cnt > 0) {
+                ERL_NIF_TERM * arr = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * cnt);
+                if (!arr) {
+                    return erlang::nif::error(env, "enif_alloc failed");
+                }
+
+                for (size_t i = 0; i < cnt; i++) {
+                    arr[i] = enif_make_int(env, inputs[i]);
+                }
+                ret = enif_make_list_from_array(env, arr, (unsigned)cnt);
+                enif_free((void *)arr);
+            } else {
+                // Returns an empty list if cnt is 0.
+                ret = enif_make_list(env, 0, nullptr);
             }
-            ERL_NIF_TERM ret = enif_make_list_from_array(env, arr, (unsigned)cnt);
-            enif_free((void *)arr);
             return erlang::nif::ok(env, ret);
         }
         else {
@@ -155,14 +167,26 @@ ERL_NIF_TERM interpreter_outputs(ErlNifEnv *env, int argc, const ERL_NIF_TERM ar
     erlang_nif_res<tflite::Interpreter *> *self_res;
     if (enif_get_resource(env, self_nif, erlang_nif_res<tflite::Interpreter *>::type, (void **) &self_res)) {
         if (self_res->val) {
-            auto outputs = self_res->val->outputs();
+            const std::vector<int>&  outputs = self_res->val->outputs();
             size_t cnt = outputs.size();
-            ERL_NIF_TERM * arr = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * cnt);
-            for (size_t i = 0; i < cnt; i++) {
-                arr[i] = enif_make_int(env, outputs[i]);
+            ERL_NIF_TERM ret;
+
+            if (cnt > 0) {
+                ERL_NIF_TERM * arr = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * cnt);
+                if (!arr) {
+                    return erlang::nif::error(env, "enif_alloc failed");
+                }
+
+                for (size_t i = 0; i < cnt; i++) {
+                    arr[i] = enif_make_int(env, outputs[i]);
+                }
+                ret = enif_make_list_from_array(env, arr, (unsigned)cnt);
+                enif_free((void *)arr);
+            } else {
+                // Returns an empty list if cnt is 0.
+                ret = enif_make_list(env, 0, nullptr);
             }
-            ERL_NIF_TERM ret = enif_make_list_from_array(env, arr, (unsigned)cnt);
-            enif_free((void *)arr);
+            
             return erlang::nif::ok(env, ret);
         } else {
             return erlang::nif::error(env, "oh nyo erlang");
@@ -234,32 +258,32 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
                 tensor_res->peak = 1;
 
                 ERL_NIF_TERM tensor_type;
-                if (_tflitetensor_type(env, tensor_res->val, tensor_type)) {
+                if (!_tflitetensor_type(env, tensor_res->val, tensor_type)) {
                     tensor_type = erlang::nif::atom(env, "unknown");
                 }
 
                 ERL_NIF_TERM tensor_shape;
-                if (_tflitetensor_shape(env, tensor_res->val, tensor_shape)) {
+                if (!_tflitetensor_shape(env, tensor_res->val, tensor_shape)) {
                     return erlang::nif::error(env, "cannot allocate memory for storing tensor shape");
                 }
 
                 ERL_NIF_TERM tensor_shape_signature;
-                if (_tflitetensor_shape_signature(env, tensor_res->val, tensor_shape_signature)) {
+                if (!_tflitetensor_shape_signature(env, tensor_res->val, tensor_shape_signature)) {
                     return erlang::nif::error(env, "cannot allocate memory for storing tensor shape signature");
                 }
 
                 ERL_NIF_TERM tensor_name;
-                if (_tflitetensor_name(env, tensor_res->val, tensor_name)) {
+                if (!_tflitetensor_name(env, tensor_res->val, tensor_name)) {
                     return erlang::nif::error(env, "cannot allocate memory for storing tensor name");
                 }
 
                 ERL_NIF_TERM tensor_quantization_params;
-                if (_tflitetensor_quantization_params(env, tensor_res->val, tensor_quantization_params)) {
+                if (!_tflitetensor_quantization_params(env, tensor_res->val, tensor_quantization_params)) {
                     return erlang::nif::error(env, "cannot allocate memory for storing tensor quantization params");
                 }
 
                 ERL_NIF_TERM tensor_sparsity_params;
-                if (_tflitetensor_sparsity_params(env, tensor_res->val, tensor_sparsity_params)) {
+                if (!_tflitetensor_sparsity_params(env, tensor_res->val, tensor_sparsity_params)) {
                     return erlang::nif::error(env, "cannot allocate memory for storing tensor sparsity params");
                 }
 

@@ -7,7 +7,7 @@ defmodule TFLiteElixir.Test do
 
     {error_at_stage, {:error, reason}} = TFLiteElixir.Interpreter.new("/dev/null")
     assert :build_from_file == error_at_stage
-    assert reason == "cannot load flat buffer model from file"
+    assert reason == "cannot get flatbuffer model"
   end
 
   with {:module, TFLiteElixir.Coral} <- Code.ensure_compiled(TFLiteElixir.Coral) do

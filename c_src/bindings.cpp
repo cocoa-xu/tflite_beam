@@ -52,36 +52,36 @@ static int
 on_load(ErlNifEnv* env, void**, ERL_NIF_TERM)
 {
     ErlNifResourceType *rt;
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "FlatBufferModel", destruct_raw_ptr<tflite::FlatBufferModel>, ERL_NIF_RT_CREATE, NULL);                                                             \
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "FlatBufferModel", destruct_raw_ptr<tflite::FlatBufferModel>, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
     erlang_nif_res<tflite::FlatBufferModel *>::type = rt;
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "BuiltinOpResolver", destruct_raw_ptr<tflite::ops::builtin::BuiltinOpResolver>, ERL_NIF_RT_CREATE, NULL);                                                             \
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "BuiltinOpResolver", destruct_raw_ptr<tflite::ops::builtin::BuiltinOpResolver>, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
     erlang_nif_res<tflite::ops::builtin::BuiltinOpResolver *>::type = rt;
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "InterpreterBuilder", destruct_raw_ptr<tflite::InterpreterBuilder>, ERL_NIF_RT_CREATE, NULL);                                                             \
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "InterpreterBuilder", destruct_raw_ptr<tflite::InterpreterBuilder>, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
     erlang_nif_res<tflite::InterpreterBuilder *>::type = rt;
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "Interpreter", destruct_raw_ptr<tflite::Interpreter>, ERL_NIF_RT_CREATE, NULL);                                                             \
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "Interpreter", destruct_raw_ptr<tflite::Interpreter>, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
     erlang_nif_res<tflite::Interpreter *>::type = rt;
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "TfLiteTensor", destruct_raw_ptr<TfLiteTensor>, ERL_NIF_RT_CREATE, NULL);                                                             \
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "TfLiteTensor", destruct_tensor_ptr, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
     erlang_nif_res<TfLiteTensor *>::type = rt;
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "TfLiteVerifier", destruct_raw_ptr<tflite::TfLiteVerifier>, ERL_NIF_RT_CREATE, NULL);                                                             \
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "TfLiteVerifier", NULL, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
     erlang_nif_res<tflite::TfLiteVerifier *>::type = rt;
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "ErrorReporter", destruct_raw_ptr<tflite::ErrorReporter>, ERL_NIF_RT_CREATE, NULL);                                                             \
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "ErrorReporter", destruct_raw_ptr<tflite::ErrorReporter>, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
     erlang_nif_res<tflite::ErrorReporter *>::type = rt;
 
 #ifdef CORAL_SUPPORT_ENABLED
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "EdgeTpuContext", destruct_egdetpu_context, ERL_NIF_RT_CREATE, NULL);                                                             \
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "EdgeTpuContext", destruct_egdetpu_context, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
     erlang_nif_res<edgetpu::EdgeTpuContext *>::type = rt;
 #endif
@@ -111,6 +111,7 @@ static ErlNifFunc nif_functions[] = {
     F_IO(flatBufferModel_verifyAndBuildFromFile, 3),
     F_CPU(flatBufferModel_buildFromBuffer, 2),
     F(flatBufferModel_initialized, 1),
+    F(flatBufferModel_error_reporter, 1),
     F(flatBufferModel_getMinimumRuntime, 1),
     F(flatBufferModel_readAllMetadata, 1),
 

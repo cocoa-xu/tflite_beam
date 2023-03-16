@@ -26,4 +26,14 @@ static void destruct_raw_ptr(ErlNifEnv *env, void *args) {
     }
 }
 
+static void destruct_tensor_ptr(ErlNifEnv *env, void *args) {
+    auto res = (erlang_nif_res<TfLiteTensor *> *)args;
+    if (res) {
+        if (res->val && !res->peak) {
+            delete res->val;
+            res->val = nullptr;
+        }
+    }
+}
+
 #endif  // TFLITE_HELPER_H

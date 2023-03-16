@@ -69,7 +69,11 @@ ERL_NIF_TERM flatBufferModel_verifyAndBuildFromFile(ErlNifEnv *env, int argc, co
 
         NifResFlatBufferModel * res;
         auto m = tflite::FlatBufferModel::VerifyAndBuildFromFile(filename.c_str(), verifier, error_reporter);
-        _make_flatbuffer_model_resource(env, m, res, ret);
+        if (m.get() == nullptr) {
+            ret = erlang::nif::atom(env, "invalid");
+        } else {
+            _make_flatbuffer_model_resource(env, m, res, ret);
+        }
         return ret;
     } else {
         return erlang::nif::error(env, "empty filename");
@@ -133,6 +137,32 @@ ERL_NIF_TERM flatBufferModel_initialized(ErlNifEnv *env, int argc, const ERL_NIF
     }
 }
 
+ERL_NIF_TERM flatBufferModel_error_reporter(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+
+    ERL_NIF_TERM self_nif = argv[0];
+    NifResFlatBufferModel * self_res;
+
+    ERL_NIF_TERM ret;
+
+    if (enif_get_resource(env, self_nif, NifResFlatBufferModel::type, (void **)&self_res)) {
+        if (self_res->val) {
+            auto e = self_res->val->error_reporter();
+            if (e) {
+                NifResErrorReporter * error_res;
+                _make_error_reporter(env, e, error_res, ret);
+                return ret;
+            } else {
+                return erlang::nif::error(env, "error_reporter is null");
+            }
+        } else {
+            return erlang::nif::error(env, "oh nyo erlang");
+        }
+    } else {
+        return erlang::nif::error(env, "cannot access resource");
+    }
+}
+
 ERL_NIF_TERM flatBufferModel_getMinimumRuntime(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
 
@@ -162,7 +192,16 @@ ERL_NIF_TERM flatBufferModel_readAllMetadata(ErlNifEnv *env, int argc, const ERL
             ERL_NIF_TERM ret;
             ERL_NIF_TERM map_out;
             ERL_NIF_TERM * keys = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * cnt);
+            if (!keys) {
+                return erlang::nif::error(env, "enif_alloc failed");
+            }
+
             ERL_NIF_TERM * values = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * cnt);
+            if (!values) {
+                enif_free((void *)keys);
+                return erlang::nif::error(env, "enif_alloc failed");
+            }
+
             size_t index = 0;
             for (auto &iter : metadata) {
                 keys[index] = erlang::nif::make_binary(env, iter.first.c_str());
@@ -207,7 +246,7 @@ bool _make_flatbuffer_model_resource(ErlNifEnv *env, std::unique_ptr<tflite::Fla
             return false;
         }
     } else {
-        out = erlang::nif::error(env, "cannot load flat buffer model from file");
+        out = erlang::nif::error(env, "cannot get flatbuffer model");
         return false;
     }
 }

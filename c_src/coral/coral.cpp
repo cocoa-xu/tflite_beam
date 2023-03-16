@@ -57,7 +57,16 @@ ERL_NIF_TERM coral_edgetpu_devices(ErlNifEnv *env, int argc, const ERL_NIF_TERM 
 
     if (num_devices > 0) {
         ERL_NIF_TERM * arr = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * num_devices);
+        if (!arr) {
+            return erlang::nif::error(env, "enif_alloc failed");
+        }
+
         char * device_name = (char *)enif_alloc(sizeof(char) * EDGETPU_DEVICE_NAME_BUFFER_SIZE);
+        if (!device_name) {
+            enif_free(arr);
+            return erlang::nif::error(env, "enif_alloc failed");
+        }
+
         for (size_t i = 0; i < num_devices; ++i) {
             memset(device_name, 0, EDGETPU_DEVICE_NAME_BUFFER_SIZE);
             const auto& device = devices.get()[i];
