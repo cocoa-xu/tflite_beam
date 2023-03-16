@@ -15,6 +15,8 @@ ERL_NIF_TERM flatBufferModel_buildFromBuffer(ErlNifEnv *env, int argc, const ERL
 
 ERL_NIF_TERM flatBufferModel_initialized(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 
+ERL_NIF_TERM flatBufferModel_error_reporter(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
+
 ERL_NIF_TERM flatBufferModel_getMinimumRuntime(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 
 ERL_NIF_TERM flatBufferModel_readAllMetadata(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);

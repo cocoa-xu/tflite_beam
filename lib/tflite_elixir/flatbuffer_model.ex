@@ -107,6 +107,14 @@ defmodule TFLiteElixir.FlatBufferModel do
 
   deferror(initialized(self))
 
+  @spec error_reporter(%T{:model => reference()}) :: %ErrorReporter{} | {:error, String.t()}
+  def error_reporter(%T{model: self}) when is_reference(self) do
+    case TFLiteElixir.Nif.flatBufferModel_error_reporter(self) do
+      ref when is_reference(ref) -> %ErrorReporter{ref: ref}
+      error -> error
+    end
+  end
+
   @doc """
   Returns the minimum runtime version from the flatbuffer. This runtime
   version encodes the minimum required interpreter version to run the
