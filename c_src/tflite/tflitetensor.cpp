@@ -40,7 +40,7 @@ int _tflitetensor_shape(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF_TERM &out
 int _tflitetensor_shape_signature(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF_TERM &out) {
     if (tensor->dims_signature != nullptr && tensor->dims_signature->size != 0) {
         ERL_NIF_TERM shape_signature;
-        if (erlang::nif::make_i64_list_from_c_array(env, tensor->dims_signature->size, (int64_t *)tensor->dims_signature, shape_signature)) {
+        if (erlang::nif::make_i64_list_from_c_array(env, tensor->dims_signature->size, tensor->dims_signature->data, shape_signature)) {
             return false;
         }
         out = shape_signature;
