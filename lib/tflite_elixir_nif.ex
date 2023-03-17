@@ -17,7 +17,7 @@ defmodule TFLiteElixir.Nif do
   def flatBufferModel_buildFromFile(_filename, _error_reporter),
     do: :erlang.nif_error(:not_loaded)
 
-  def flatBufferModel_verifyAndBuildFromFile(_filename, _extra_verifier, _error_reporter),
+  def flatBufferModel_verifyAndBuildFromFile(_filename, _error_reporter),
     do: :erlang.nif_error(:not_loaded)
 
   def flatBufferModel_buildFromBuffer(_buffer, _error_reporter),
