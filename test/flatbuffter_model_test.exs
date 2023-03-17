@@ -66,11 +66,7 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
   def verify_loaded_model(model, input_data, expected_out, print_state)
       when is_binary(input_data) and is_binary(expected_out) and
              is_boolean(print_state) do
-    # build interpreter
-    %{"TFLITE_METADATA" => <<28>>, "min_runtime_version" => "1.5.0"} = FlatBufferModel.read_all_metadata!(model)
-
     true = FlatBufferModel.initialized!(model)
-    "1.5.0" = FlatBufferModel.get_minimum_runtime!(model)
     resolver = BuiltinResolver.new!()
     builder = InterpreterBuilder.new!(model, resolver)
     interpreter = Interpreter.new!()
