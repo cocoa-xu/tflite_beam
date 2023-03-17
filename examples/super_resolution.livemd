@@ -99,17 +99,11 @@ sr =
 ```elixir
 data_files.test_img
 |> Cv.imread()
-|> then(&Cv.imencode(".jpeg", &1))
-|> IO.iodata_to_binary()
-|> Kino.Image.new(:jpeg)
 ```
 
 ```elixir
 sr
-|> Cv.Mat.from_nx()
+|> Cv.Mat.from_nx_2d()
 |> Cv.cvtColor(Cv.Constant.cv_COLOR_RGB2BGR())
-|> then(&Cv.imencode(".jpeg", &1))
-|> IO.iodata_to_binary()
-|> Kino.Image.new(:jpeg)
 ```
 
