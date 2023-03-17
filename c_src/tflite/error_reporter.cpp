@@ -38,6 +38,7 @@ NifResErrorReporter * _make_error_reporter(ErlNifEnv *env, tflite::ErrorReporter
     NifResErrorReporter * res = nullptr;
     if ((res = alloc_resource_NifResErrorReporter())) {
         res->val = e;
+        res->is_default = e == tflite::DefaultErrorReporter();
         ERL_NIF_TERM ret = enif_make_resource(env, res);
         enif_release_resource(res);
         out = erlang::nif::ok(env, ret);
