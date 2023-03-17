@@ -64,7 +64,7 @@ ERL_NIF_TERM flatBufferModel_verifyAndBuildFromFile(ErlNifEnv *env, int argc, co
         }
         return ret;
     } else {
-        return erlang::nif::error(env, "empty filename");
+        return erlang::nif::error(env, "expected the filename to be a string");
     }
 }
 #else

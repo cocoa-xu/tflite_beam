@@ -268,27 +268,27 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
 
                 ERL_NIF_TERM tensor_shape;
                 if (!_tflitetensor_shape(env, tensor_res->val, tensor_shape)) {
-                    return erlang::nif::error(env, "cannot allocate memory for storing tensor shape");
+                    return erlang::nif::error(env, "cannot allocate memory for tensor shape");
                 }
 
                 ERL_NIF_TERM tensor_shape_signature;
                 if (!_tflitetensor_shape_signature(env, tensor_res->val, tensor_shape_signature)) {
-                    return erlang::nif::error(env, "cannot allocate memory for storing tensor shape signature");
+                    return erlang::nif::error(env, "cannot allocate memory for tensor shape signature");
                 }
 
                 ERL_NIF_TERM tensor_name;
                 if (!_tflitetensor_name(env, tensor_res->val, tensor_name)) {
-                    return erlang::nif::error(env, "cannot allocate memory for storing tensor name");
+                    return erlang::nif::error(env, "cannot allocate memory for tensor name");
                 }
 
                 ERL_NIF_TERM tensor_quantization_params;
                 if (!_tflitetensor_quantization_params(env, tensor_res->val, tensor_quantization_params)) {
-                    return erlang::nif::error(env, "cannot allocate memory for storing tensor quantization params");
+                    return erlang::nif::error(env, "cannot allocate memory for tensor quantization params");
                 }
 
                 ERL_NIF_TERM tensor_sparsity_params;
                 if (!_tflitetensor_sparsity_params(env, tensor_res->val, tensor_sparsity_params)) {
-                    return erlang::nif::error(env, "cannot allocate memory for storing tensor sparsity params");
+                    return erlang::nif::error(env, "cannot allocate memory for tensor sparsity params");
                 }
 
                 ERL_NIF_TERM tensor_reference = enif_make_resource(env, tensor_res);
@@ -365,10 +365,8 @@ ERL_NIF_TERM interpreter_get_signature_defs(ErlNifEnv *env, int argc, const ERL_
             signature_def_keys[1] = erlang::nif::atom(env, "outputs");
             for (const auto& sig_key : interpreter_->signature_keys()) {
                 ERL_NIF_TERM signature_def_vals[2];
-                const auto& signature_def_inputs =
-                        interpreter_->signature_inputs(sig_key->c_str());
-                const auto& signature_def_outputs =
-                        interpreter_->signature_outputs(sig_key->c_str());
+                const auto& signature_def_inputs = interpreter_->signature_inputs(sig_key->c_str());
+                const auto& signature_def_outputs = interpreter_->signature_outputs(sig_key->c_str());
 
                 size_t inputs_items = signature_def_inputs.size();
                 ERL_NIF_TERM * inputs_keys = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * inputs_items);
