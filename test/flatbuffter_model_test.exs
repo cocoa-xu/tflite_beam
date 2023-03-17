@@ -22,7 +22,10 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
     input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
     expected_out = Path.join([__DIR__, "test_data", "parrot-expected-out.bin"]) |> File.read!()
 
-    model = FlatBufferModel.build_from_file(filename, error_reporter: ErrorReporter.default_error_reporter())
+    model =
+      FlatBufferModel.build_from_file(filename,
+        error_reporter: ErrorReporter.default_error_reporter()
+      )
 
     :ok = verify_loaded_model(model, input_data, expected_out, true)
   end
@@ -39,7 +42,12 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
     expected_out = Path.join([__DIR__, "test_data", "parrot-expected-out.bin"]) |> File.read!()
-    model = FlatBufferModel.build_from_buffer(File.read!(filename), error_reporter: ErrorReporter.default_error_reporter())
+
+    model =
+      FlatBufferModel.build_from_buffer(File.read!(filename),
+        error_reporter: ErrorReporter.default_error_reporter()
+      )
+
     :ok = verify_loaded_model(model, input_data, expected_out, false)
   end
 
@@ -60,7 +68,9 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     model = FlatBufferModel.build_from_buffer(File.read!(filename))
     assert true == FlatBufferModel.initialized(model)
-    assert %{"TFLITE_METADATA" => <<28>>, "min_runtime_version" => "1.5.0"} == FlatBufferModel.read_all_metadata!(model)
+
+    assert %{"TFLITE_METADATA" => <<28>>, "min_runtime_version" => "1.5.0"} ==
+             FlatBufferModel.read_all_metadata!(model)
   end
 
   def verify_loaded_model(model, input_data, expected_out, print_state)
@@ -110,7 +120,7 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
     output_data = Interpreter.output_tensor!(interpreter, 0)
     true = expected_out == output_data
 
-    if print_state, do: TFLiteElixir.print_interpreter_state(interpreter)
+    # if print_state, do: TFLiteElixir.print_interpreter_state(interpreter)
     :ok
   end
 end
