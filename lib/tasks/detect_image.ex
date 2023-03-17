@@ -125,7 +125,8 @@ defmodule Mix.Tasks.DetectImage do
           {count_tensor_id, scores_tensor_id, class_ids_tensor_id, boxes_tensor_id}
         end
       else
-        %TFLiteTensor{} = output_tensor_3 = Interpreter.tensor(interpreter, Enum.at(output_tensor_numbers, 3))
+        %TFLiteTensor{} =
+          output_tensor_3 = Interpreter.tensor(interpreter, Enum.at(output_tensor_numbers, 3))
 
         if output_tensor_3.shape == [1] do
           boxes_tensor_id = Enum.at(output_tensor_numbers, 0)
