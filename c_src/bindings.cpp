@@ -73,7 +73,7 @@ on_load(ErlNifEnv* env, void**, ERL_NIF_TERM)
     if (!rt) return -1;
     NifResInterpreter::type = rt;
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "TfLiteTensor", NULL, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "TfLiteTensor", destruct_tensor_ptr, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
     erlang_nif_res<TfLiteTensor *>::type = rt;
 

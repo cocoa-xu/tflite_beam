@@ -29,7 +29,7 @@ ERL_NIF_TERM interpreterBuilder_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM
             resolver_res->reference_count++;
 
             res->flatbuffer_model = model_res;
-            model_res->reference_count++;
+            res->flatbuffer_model->reference_count++;
             ERL_NIF_TERM ret = enif_make_resource(env, res);
             enif_release_resource(res);
             return erlang::nif::ok(env, ret);

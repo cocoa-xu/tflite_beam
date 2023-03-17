@@ -74,16 +74,19 @@ static void destruct_interpreter_builder(ErlNifEnv *env, void *args) {
             }
 
             if (res->flatbuffer_model) {
+                printf("drop interpreter_builder: model=%ld, dropped_in_erlang=%d\r\n", res->flatbuffer_model->reference_count.load(), res->flatbuffer_model->dropped_in_erlang.load());
                 res->flatbuffer_model->reference_count--;
+                printf("drop interpreter_builder: model=%ld, dropped_in_erlang=%d\r\n", res->flatbuffer_model->reference_count.load(), res->flatbuffer_model->dropped_in_erlang.load());
 
                 if (res->flatbuffer_model->reference_count == 0 && res->flatbuffer_model->dropped_in_erlang) {
                     if (res->flatbuffer_model->val) {
-                        delete res->flatbuffer_model->val;
+                        // delete res->flatbuffer_model->val;
                     }
                     res->flatbuffer_model->val = nullptr;
                     res->flatbuffer_model = nullptr;
                 }
             }
+
             delete res->val;
             res->val = nullptr;
         }
@@ -95,11 +98,13 @@ static void destruct_interpreter(ErlNifEnv *env, void *args) {
     if (res) {
         if (res->val) {
             if (res->flatbuffer_model) {
+                printf("drop interpreter: model=%ld, dropped_in_erlang=%d\r\n", res->flatbuffer_model->reference_count.load(), res->flatbuffer_model->dropped_in_erlang.load());
                 res->flatbuffer_model->reference_count--;
+                printf("drop interpreter: model=%ld, dropped_in_erlang=%d\r\n", res->flatbuffer_model->reference_count.load(), res->flatbuffer_model->dropped_in_erlang.load());
 
                 if (res->flatbuffer_model->reference_count == 0 && res->flatbuffer_model->dropped_in_erlang) {
                     if (res->flatbuffer_model->val) {
-                        delete res->flatbuffer_model->val;
+                        // delete res->flatbuffer_model->val;
                     }
                     res->flatbuffer_model->val = nullptr;
                     res->flatbuffer_model = nullptr;
