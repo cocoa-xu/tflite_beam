@@ -120,7 +120,7 @@ static void destruct_error_reporter(ErlNifEnv *env, void *args) {
     auto res = (NifResErrorReporter *)args;
     if (res) {
         if (res->val) {
-            if (!res->is_default) {
+            if (!res->is_default || res->val != tflite::DefaultErrorReporter()) {
                 delete res->val;
             }
             res->val = nullptr;
