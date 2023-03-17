@@ -2,8 +2,8 @@
 
 ```elixir
 Mix.install([
-  {:tflite_elixir, "~> 0.1.4"},
-  {:evision, "~> 0.1.8"},
+  {:tflite_elixir, "0.1.4"},
+  {:evision, "0.1.29"},
   {:kino, "~> 0.8.0"},
   {:req, "~> 0.3.0"}
 ])
