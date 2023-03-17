@@ -12,8 +12,8 @@
 #include "status.h"
 
 ERL_NIF_TERM interpreter_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    erlang_nif_res<tflite::Interpreter *> * res;
-    if (alloc_resource(&res)) {
+    NifResInterpreter * res;
+    if (alloc_resource_NifResInterpreter(&res)) {
         res->val = new tflite::Interpreter();
         ERL_NIF_TERM ret = enif_make_resource(env, res);
         enif_release_resource(res);
@@ -27,8 +27,8 @@ ERL_NIF_TERM interpreter_allocateTensors(ErlNifEnv *env, int argc, const ERL_NIF
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
-    erlang_nif_res<tflite::Interpreter *> * self_res;
-    if (enif_get_resource(env, self_nif, erlang_nif_res<tflite::Interpreter *>::type, (void **)&self_res)) {
+    NifResInterpreter * self_res;
+    if (enif_get_resource(env, self_nif, NifResInterpreter::type, (void **)&self_res)) {
         if (self_res->val) {
             switch (self_res->val->AllocateTensors()) {
                 case kTfLiteOk:
@@ -60,8 +60,8 @@ ERL_NIF_TERM interpreter_inputs(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
-    erlang_nif_res<tflite::Interpreter *> *self_res;
-    if (enif_get_resource(env, self_nif, erlang_nif_res<tflite::Interpreter *>::type, (void **) &self_res)) {
+    NifResInterpreter *self_res;
+    if (enif_get_resource(env, self_nif, NifResInterpreter::type, (void **) &self_res)) {
         if (self_res->val) {
             const std::vector<int>& inputs = self_res->val->inputs();
             size_t cnt = inputs.size();
@@ -99,8 +99,8 @@ ERL_NIF_TERM interpreter_getInputName(ErlNifEnv *env, int argc, const ERL_NIF_TE
     ERL_NIF_TERM self_nif = argv[0];
     ERL_NIF_TERM index_nif = argv[1];
     int index;
-    erlang_nif_res<tflite::Interpreter *> *self_res;
-    if (enif_get_resource(env, self_nif, erlang_nif_res<tflite::Interpreter *>::type, (void **) &self_res) &&
+    NifResInterpreter *self_res;
+    if (enif_get_resource(env, self_nif, NifResInterpreter::type, (void **) &self_res) &&
         enif_get_int(env, index_nif, &index)) {
         if (self_res->val) {
             auto name = self_res->val->GetInputName(index);
@@ -121,8 +121,8 @@ ERL_NIF_TERM interpreter_input_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TE
     ERL_NIF_TERM data_nif = argv[2];
     int index;
     ErlNifBinary data;
-    erlang_nif_res<tflite::Interpreter *> *self_res;
-    if (enif_get_resource(env, self_nif, erlang_nif_res<tflite::Interpreter *>::type, (void **)&self_res) &&
+    NifResInterpreter *self_res;
+    if (enif_get_resource(env, self_nif, NifResInterpreter::type, (void **)&self_res) &&
         enif_get_int(env, index_nif, &index)) {
         if (self_res->val) {
             if (enif_inspect_binary(env, data_nif, &data)) {
@@ -152,8 +152,8 @@ ERL_NIF_TERM interpreter_invoke(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
-    erlang_nif_res<tflite::Interpreter *> *self_res;
-    if (enif_get_resource(env, self_nif, erlang_nif_res<tflite::Interpreter *>::type, (void **) &self_res)) {
+    NifResInterpreter *self_res;
+    if (enif_get_resource(env, self_nif, NifResInterpreter::type, (void **) &self_res)) {
         if (self_res->val) {
             return tflite_status_to_erl_term(env, self_res->val->Invoke());
         } else {
@@ -168,8 +168,8 @@ ERL_NIF_TERM interpreter_outputs(ErlNifEnv *env, int argc, const ERL_NIF_TERM ar
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
-    erlang_nif_res<tflite::Interpreter *> *self_res;
-    if (enif_get_resource(env, self_nif, erlang_nif_res<tflite::Interpreter *>::type, (void **) &self_res)) {
+    NifResInterpreter *self_res;
+    if (enif_get_resource(env, self_nif, NifResInterpreter::type, (void **) &self_res)) {
         if (self_res->val) {
             const std::vector<int>&  outputs = self_res->val->outputs();
             size_t cnt = outputs.size();
@@ -206,8 +206,8 @@ ERL_NIF_TERM interpreter_getOutputName(ErlNifEnv *env, int argc, const ERL_NIF_T
     ERL_NIF_TERM self_nif = argv[0];
     ERL_NIF_TERM index_nif = argv[1];
     int index;
-    erlang_nif_res<tflite::Interpreter *> *self_res;
-    if (enif_get_resource(env, self_nif, erlang_nif_res<tflite::Interpreter *>::type, (void **) &self_res) &&
+    NifResInterpreter *self_res;
+    if (enif_get_resource(env, self_nif, NifResInterpreter::type, (void **) &self_res) &&
         enif_get_int(env, index_nif, &index)) {
         if (self_res->val) {
             auto name = self_res->val->GetOutputName(index);
@@ -226,8 +226,8 @@ ERL_NIF_TERM interpreter_output_tensor(ErlNifEnv *env, int argc, const ERL_NIF_T
     ERL_NIF_TERM self_nif = argv[0];
     ERL_NIF_TERM index_nif = argv[1];
     int index;
-    erlang_nif_res<tflite::Interpreter *> *self_res;
-    if (enif_get_resource(env, self_nif, erlang_nif_res<tflite::Interpreter *>::type, (void **) &self_res) &&
+    NifResInterpreter *self_res;
+    if (enif_get_resource(env, self_nif, NifResInterpreter::type, (void **) &self_res) &&
         enif_get_int(env, index_nif, &index)) {
         if (self_res->val) {
             auto t = self_res->val->output_tensor(index);
@@ -252,8 +252,8 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
     ERL_NIF_TERM self_nif = argv[0];
     ERL_NIF_TERM index_nif = argv[1];
     int index;
-    erlang_nif_res<tflite::Interpreter *> *self_res;
-    if (enif_get_resource(env, self_nif, erlang_nif_res<tflite::Interpreter *>::type, (void **) &self_res) &&
+    NifResInterpreter *self_res;
+    if (enif_get_resource(env, self_nif, NifResInterpreter::type, (void **) &self_res) &&
         enif_get_int(env, index_nif, &index)) {
         if (self_res->val) {
             erlang_nif_res<TfLiteTensor *> * tensor_res;
@@ -295,15 +295,15 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
                 enif_release_resource(tensor_res);
 
                 return erlang::nif::ok(env, enif_make_tuple8(
-                        env,
-                        tensor_name,
-                        index_nif,
-                        tensor_shape,
-                        tensor_shape_signature,
-                        tensor_type,
-                        tensor_quantization_params,
-                        tensor_sparsity_params,
-                        tensor_reference
+                    env,
+                    tensor_name,
+                    index_nif,
+                    tensor_shape,
+                    tensor_shape_signature,
+                    tensor_type,
+                    tensor_quantization_params,
+                    tensor_sparsity_params,
+                    tensor_reference
                 ));
             } else {
                 return erlang::nif::error(env, "cannot allocate memory for resource");
@@ -322,8 +322,8 @@ ERL_NIF_TERM interpreter_setNumThreads(ErlNifEnv *env, int argc, const ERL_NIF_T
     ERL_NIF_TERM self_nif = argv[0];
     ERL_NIF_TERM num_threads_nif = argv[1];
     int num_threads = -1;
-    erlang_nif_res<tflite::Interpreter *> * self_res;
-    if (enif_get_resource(env, self_nif, erlang_nif_res<tflite::Interpreter *>::type, (void **)&self_res) &&
+    NifResInterpreter * self_res;
+    if (enif_get_resource(env, self_nif, NifResInterpreter::type, (void **)&self_res) &&
         erlang::nif::get(env, num_threads_nif, &num_threads)) {
         if (self_res->val) {
             auto status = self_res->val->SetNumThreads(num_threads);
@@ -340,8 +340,8 @@ ERL_NIF_TERM interpreter_get_signature_defs(ErlNifEnv *env, int argc, const ERL_
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
-    erlang_nif_res<tflite::Interpreter *> * self_res;
-    if (enif_get_resource(env, self_nif, erlang_nif_res<tflite::Interpreter *>::type, (void **)&self_res)) {
+    NifResInterpreter * self_res;
+    if (enif_get_resource(env, self_nif, NifResInterpreter::type, (void **)&self_res)) {
         if (self_res->val) {
             auto interpreter_ = self_res->val;
             ERL_NIF_TERM result;

@@ -13,8 +13,6 @@
 #pragma once
 
 using NifResEdgeTpuContext = erlang_nif_res<edgetpu::EdgeTpuContext *>;
-using NifResFlatBufferModel = erlang_nif_res<tflite::FlatBufferModel *>;
-using NifResInterpreter = erlang_nif_res<tflite::Interpreter *>;
 
 void destruct_egdetpu_context(ErlNifEnv *env, void *args);
 

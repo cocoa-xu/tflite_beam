@@ -231,7 +231,7 @@ ERL_NIF_TERM flatBufferModel_readAllMetadata(ErlNifEnv *env, int argc, const ERL
 
 bool _make_flatbuffer_model_resource(ErlNifEnv *env, std::unique_ptr<tflite::FlatBufferModel>& m, NifResFlatBufferModel *& res, ERL_NIF_TERM &out) {
     if (m.get() != nullptr) {
-        if (alloc_resource(&res)) {
+        if (alloc_resource_NifResFlatBufferModel(&res)) {
             // take ownership
             tflite::FlatBufferModel * model = m.release();
             res->val = model;

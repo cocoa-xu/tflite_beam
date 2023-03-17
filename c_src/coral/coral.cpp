@@ -16,8 +16,6 @@
 std::map<void *, std::shared_ptr<edgetpu::EdgeTpuContext>> managedContext;
 
 using NifResEdgeTpuContext = erlang_nif_res<edgetpu::EdgeTpuContext *>;
-using NifResFlatBufferModel = erlang_nif_res<tflite::FlatBufferModel *>;
-using NifResInterpreter = erlang_nif_res<tflite::Interpreter *>;
 
 void destruct_egdetpu_context(ErlNifEnv *env, void *args) {
     auto res = (NifResEdgeTpuContext *)args;
@@ -136,7 +134,7 @@ ERL_NIF_TERM coral_make_edgetpu_interpreter(ErlNifEnv *env, int argc, const ERL_
     if (model_res->val == nullptr || context_res->val == nullptr) {
         return erlang::nif::error(env, "oh nyo erlang");
     }
-    if (!alloc_resource(&interpreter_res)) {
+    if (!alloc_resource_NifResInterpreter(&interpreter_res)) {
         return erlang::nif::error(env, "cannot allocate memory for interpreter resource");
     }
 
