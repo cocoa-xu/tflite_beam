@@ -183,45 +183,43 @@ bool tensor_type_from_erl_term(ErlNifEnv *env, const ERL_NIF_TERM in_term, TfLit
     return ok;
 }
 
-int alloc_resource_NifResBuiltinOpResolver(NifResBuiltinOpResolver **res) {
-    *res = (NifResBuiltinOpResolver *)enif_alloc_resource(NifResBuiltinOpResolver::type, sizeof(NifResBuiltinOpResolver));
-    if (*res != nullptr) {
-        NifResBuiltinOpResolver*& r = *res;
-        r->reference_count = 0;
-        r->dropped_in_erlang = false;
+NifResBuiltinOpResolver * alloc_resource_NifResBuiltinOpResolver() {
+    NifResBuiltinOpResolver * res = (NifResBuiltinOpResolver *)enif_alloc_resource(NifResBuiltinOpResolver::type, sizeof(NifResBuiltinOpResolver));
+    if (res != nullptr) {
+        res->reference_count = 0;
+        res->dropped_in_erlang = false;
+        res->deleted = false;
     }
     
-    return (*res != nullptr);
+    return res;
 }
 
-int alloc_resource_NifResInterpreterBuilder(NifResInterpreterBuilder **res) {
-    *res = (NifResInterpreterBuilder *)enif_alloc_resource(NifResInterpreterBuilder::type, sizeof(NifResInterpreterBuilder));
-    if (*res != nullptr) {
-        NifResInterpreterBuilder*& r = *res;
-        r->op_resolver = nullptr;
-        r->flatbuffer_model = nullptr;
+NifResInterpreterBuilder * alloc_resource_NifResInterpreterBuilder() {
+    NifResInterpreterBuilder * res = (NifResInterpreterBuilder *)enif_alloc_resource(NifResInterpreterBuilder::type, sizeof(NifResInterpreterBuilder));
+    if (res != nullptr) {
+        res->op_resolver = nullptr;
+        res->flatbuffer_model = nullptr;
     }
 
-    return (*res != nullptr);
+    return res;
 }
 
-int alloc_resource_NifResFlatBufferModel(NifResFlatBufferModel **res) {
-    *res = (NifResFlatBufferModel *)enif_alloc_resource(NifResFlatBufferModel::type, sizeof(NifResFlatBufferModel));
-    if (*res != nullptr) {
-        NifResFlatBufferModel*& r = *res;
-        r->reference_count = 0;
-        r->dropped_in_erlang = false;
+NifResFlatBufferModel * alloc_resource_NifResFlatBufferModel() {
+    NifResFlatBufferModel * res = (NifResFlatBufferModel *)enif_alloc_resource(NifResFlatBufferModel::type, sizeof(NifResFlatBufferModel));
+    if (res != nullptr) {
+        res->reference_count = 0;
+        res->dropped_in_erlang = false;
+        res->deleted = false;
     }
 
-    return (*res != nullptr);
+    return res;
 }
 
-int alloc_resource_NifResInterpreter(NifResInterpreter **res) {
-    *res = (NifResInterpreter *)enif_alloc_resource(NifResInterpreter::type, sizeof(NifResInterpreter));
-    if (*res != nullptr) {
-        NifResInterpreter*& r = *res;
-        r->flatbuffer_model = nullptr;
+NifResInterpreter * alloc_resource_NifResInterpreter() {
+    NifResInterpreter * res = (NifResInterpreter *)enif_alloc_resource(NifResInterpreter::type, sizeof(NifResInterpreter));
+    if (res != nullptr) {
+        res->flatbuffer_model = nullptr;
     }
 
-    return (*res != nullptr);
+    return res;
 }

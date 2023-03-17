@@ -24,6 +24,7 @@ struct NifResBuiltinOpResolver {
     // OpResolver must live as long as its InterpreterBuilder
     std::atomic_int64_t reference_count{0};
     std::atomic_bool dropped_in_erlang{false};
+    std::atomic_bool deleted{false};
     static ErlNifResourceType * type;
 };
 
@@ -32,6 +33,7 @@ struct NifResFlatBufferModel {
     // FlatBufferModel must live as long as its Interpreter
     std::atomic_int64_t reference_count{0};
     std::atomic_bool dropped_in_erlang{false};
+    std::atomic_bool deleted{false};
     static ErlNifResourceType * type;
 };
 

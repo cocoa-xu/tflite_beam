@@ -17,10 +17,10 @@ int alloc_resource(erlang_nif_res<R> **res) {
     return (*res != nullptr);
 }
 
-int alloc_resource_NifResBuiltinOpResolver(NifResBuiltinOpResolver **res);
-int alloc_resource_NifResInterpreterBuilder(NifResInterpreterBuilder **res);
-int alloc_resource_NifResFlatBufferModel(NifResFlatBufferModel **res);
-int alloc_resource_NifResInterpreter(NifResInterpreter **res);
+NifResBuiltinOpResolver * alloc_resource_NifResBuiltinOpResolver();
+NifResInterpreterBuilder * alloc_resource_NifResInterpreterBuilder();
+NifResFlatBufferModel * alloc_resource_NifResFlatBufferModel();
+NifResInterpreter * alloc_resource_NifResInterpreter();
 
 template <typename T>
 static void destruct_raw_ptr(ErlNifEnv *env, void *args) {
@@ -36,7 +36,7 @@ static void destruct_builtin_op_resolver(ErlNifEnv *env, void *args) {
     if (res) {
         if (res->val) {
             res->dropped_in_erlang = true;
-            if (res->reference_count == 0) {
+            if (!res->deleted && res->reference_count == 0) {
                 delete res->val;
                 res->val = nullptr;
             }
@@ -49,9 +49,9 @@ static void destruct_flatbuffer_model(ErlNifEnv *env, void *args) {
     if (res) {
         if (res->val) {
             res->dropped_in_erlang = true;
-            if (res->reference_count == 0) {
-                // delete res->val;
-                // res->val = nullptr;
+            if (!res->deleted && res->reference_count == 0) {
+                delete res->val;
+                res->val = nullptr;
             }
         }
     }
@@ -69,20 +69,21 @@ static void destruct_interpreter_builder(ErlNifEnv *env, void *args) {
                         delete res->op_resolver->val;
                     }
                     res->op_resolver->val = nullptr;
+                    res->op_resolver->deleted = true;
                     res->op_resolver = nullptr;
                 }
             }
 
             if (res->flatbuffer_model) {
-                printf("drop interpreter_builder: model=%ld, dropped_in_erlang=%d\r\n", res->flatbuffer_model->reference_count.load(), res->flatbuffer_model->dropped_in_erlang.load());
                 res->flatbuffer_model->reference_count--;
-                printf("drop interpreter_builder: model=%ld, dropped_in_erlang=%d\r\n", res->flatbuffer_model->reference_count.load(), res->flatbuffer_model->dropped_in_erlang.load());
 
                 if (res->flatbuffer_model->reference_count == 0 && res->flatbuffer_model->dropped_in_erlang) {
                     if (res->flatbuffer_model->val) {
-                        // delete res->flatbuffer_model->val;
+                        delete res->flatbuffer_model->val;
                     }
                     res->flatbuffer_model->val = nullptr;
+                    res->flatbuffer_model->deleted = true;
+                    enif_release_resource(res->flatbuffer_model);
                     res->flatbuffer_model = nullptr;
                 }
             }
@@ -98,15 +99,15 @@ static void destruct_interpreter(ErlNifEnv *env, void *args) {
     if (res) {
         if (res->val) {
             if (res->flatbuffer_model) {
-                printf("drop interpreter: model=%ld, dropped_in_erlang=%d\r\n", res->flatbuffer_model->reference_count.load(), res->flatbuffer_model->dropped_in_erlang.load());
                 res->flatbuffer_model->reference_count--;
-                printf("drop interpreter: model=%ld, dropped_in_erlang=%d\r\n", res->flatbuffer_model->reference_count.load(), res->flatbuffer_model->dropped_in_erlang.load());
 
                 if (res->flatbuffer_model->reference_count == 0 && res->flatbuffer_model->dropped_in_erlang) {
                     if (res->flatbuffer_model->val) {
-                        // delete res->flatbuffer_model->val;
+                        delete res->flatbuffer_model->val;
                     }
                     res->flatbuffer_model->val = nullptr;
+                    res->flatbuffer_model->deleted = true;
+                    enif_release_resource(res->flatbuffer_model);
                     res->flatbuffer_model = nullptr;
                 }
             }
