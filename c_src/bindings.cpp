@@ -37,17 +37,21 @@ limitations under the License.
 #include "tflite/status.h"
 #include "tflite/tflite.h"
 #include "tflite/tflitetensor.h"
-#include "tflite/verifier.h"
-
-#ifdef CORAL_SUPPORT_ENABLED
-#include "tflite/public/edgetpu.h"
-#include "coral/coral.h"
-#endif
 
 ErlNifResourceType * NifResBuiltinOpResolver::type = nullptr;
 ErlNifResourceType * NifResInterpreterBuilder::type = nullptr;
 ErlNifResourceType * NifResFlatBufferModel::type = nullptr;
 ErlNifResourceType * NifResInterpreter::type = nullptr;
+ErlNifResourceType * NifResErrorReporter::type = nullptr;
+ErlNifResourceType * NifResTfLiteTensor::type = nullptr;
+
+#ifdef CORAL_SUPPORT_ENABLED
+
+#include "tflite/public/edgetpu.h"
+#include "coral/coral.h"
+ErlNifResourceType * NifResEdgeTpuContext::type = nullptr;
+
+#endif
 
 static ERL_NIF_TERM not_compiled(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     return erlang::nif::error(env, "Coral support is disabled when compiling this library. Please enable Coral support and recompile this library.");
@@ -75,20 +79,16 @@ on_load(ErlNifEnv* env, void**, ERL_NIF_TERM)
 
     rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "TfLiteTensor", destruct_tensor_ptr, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
-    erlang_nif_res<TfLiteTensor *>::type = rt;
+    NifResTfLiteTensor::type = rt;
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "TfLiteVerifier", NULL, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "ErrorReporter", destruct_error_reporter, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
-    erlang_nif_res<tflite::TfLiteVerifier *>::type = rt;
-
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "ErrorReporter", NULL, ERL_NIF_RT_CREATE, NULL);
-    if (!rt) return -1;
-    erlang_nif_res<tflite::ErrorReporter *>::type = rt;
+    NifResErrorReporter::type = rt;
 
 #ifdef CORAL_SUPPORT_ENABLED
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "EdgeTpuContext", NULL, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "EdgeTpuContext", destruct_egdetpu_context, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
-    erlang_nif_res<edgetpu::EdgeTpuContext *>::type = rt;
+    NifResEdgeTpuContext::type = rt;
 #endif
 
     return 0;
@@ -113,7 +113,7 @@ static ErlNifFunc nif_functions[] = {
     F(errorReporter_DefaultErrorReporter, 0),
 
     F_IO(flatBufferModel_buildFromFile, 2),
-    F_IO(flatBufferModel_verifyAndBuildFromFile, 3),
+    F_IO(flatBufferModel_verifyAndBuildFromFile, 2),
     F_CPU(flatBufferModel_buildFromBuffer, 2),
     F(flatBufferModel_initialized, 1),
     F(flatBufferModel_error_reporter, 1),

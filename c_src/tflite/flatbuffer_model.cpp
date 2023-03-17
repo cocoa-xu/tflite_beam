@@ -6,10 +6,10 @@
 #include "../erlang_nif_resource.hpp"
 #include "../helper.h"
 
+#include "tensorflow/lite/core/api/verifier.h"
 #include "tensorflow/lite/model.h"
 
 #include "flatbuffer_model.h"
-#include "verifier.h"
 #include "error_reporter.h"
 
 #ifndef TFLITE_MCU
@@ -39,34 +39,23 @@ ERL_NIF_TERM flatBufferModel_buildFromFile(ErlNifEnv *env, int argc, const ERL_N
 }
 
 ERL_NIF_TERM flatBufferModel_verifyAndBuildFromFile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    if (argc != 3) return enif_make_badarg(env);
+    if (argc != 2) return enif_make_badarg(env);
 
     std::string filename;
-    NifResVerifier *verifier_res = nullptr;
     NifResErrorReporter * error_reporter_res = nullptr;
 
     ERL_NIF_TERM filename_term = argv[0];
-    ERL_NIF_TERM verifier_term = argv[1];
-    ERL_NIF_TERM error_reporter_term = argv[2];
+    ERL_NIF_TERM error_reporter_term = argv[1];
 
     ERL_NIF_TERM ret;
 
     if (erlang::nif::get(env, filename_term, filename)) {
         tflite::TfLiteVerifier * verifier = nullptr;
-        if (enif_get_resource(env, verifier_term, NifResVerifier::type, (void **)&verifier_res) && verifier_res->val) {
-            verifier = verifier_res->val;
-        } else if (erlang::nif::check_nil(env, verifier_term)) {
-            verifier = nullptr;
-        } else {
-            return erlang::nif::error(env, "Invalid value for extra_verifier");
-        }
-
         tflite::ErrorReporter * error_reporter = nullptr;
         if (!_get_error_reporter(env, error_reporter_term, error_reporter_res, error_reporter, ret)) {
             return ret;
         }
 
-        
         auto m = tflite::FlatBufferModel::VerifyAndBuildFromFile(filename.c_str(), verifier, error_reporter);
         if (m.get() == nullptr) {
             ret = erlang::nif::atom(env, "invalid");
@@ -148,8 +137,7 @@ ERL_NIF_TERM flatBufferModel_error_reporter(ErlNifEnv *env, int argc, const ERL_
         if (self_res->val) {
             auto e = self_res->val->error_reporter();
             if (e) {
-                NifResErrorReporter * error_res;
-                _make_error_reporter(env, e, error_res, ret);
+                _make_error_reporter(env, e, ret);
                 return ret;
             } else {
                 return erlang::nif::error(env, "error_reporter is null");

@@ -223,3 +223,22 @@ NifResInterpreter * alloc_resource_NifResInterpreter() {
 
     return res;
 }
+
+NifResErrorReporter * alloc_resource_NifResErrorReporter() {
+    NifResErrorReporter * res = (NifResErrorReporter *)enif_alloc_resource(NifResErrorReporter::type, sizeof(NifResErrorReporter));
+    return res;
+}
+
+NifResTfLiteTensor * alloc_resource_NifResTfLiteTensor() {
+    NifResTfLiteTensor * res = (NifResTfLiteTensor *)enif_alloc_resource(NifResTfLiteTensor::type, sizeof(NifResTfLiteTensor));
+    return res;
+}
+
+#ifdef CORAL_SUPPORT_ENABLED
+
+NifResEdgeTpuContext * alloc_resource_NifResEdgeTpuContext() {
+    NifResEdgeTpuContext * res = (NifResEdgeTpuContext *)enif_alloc_resource(NifResEdgeTpuContext::type, sizeof(NifResEdgeTpuContext));
+    return res;
+}
+
+#endif

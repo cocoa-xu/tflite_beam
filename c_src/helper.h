@@ -11,21 +11,20 @@
 bool tensor_type_to_erl_term(const TfLiteType in_type, ErlNifEnv *env, ERL_NIF_TERM &out_term);
 bool tensor_type_from_erl_term(ErlNifEnv *env, const ERL_NIF_TERM in_term, TfLiteType &out_type);
 
-template<typename R>
-int alloc_resource(erlang_nif_res<R> **res) {
-    *res = (erlang_nif_res<R> *)enif_alloc_resource(erlang_nif_res<R>::type, sizeof(erlang_nif_res<R>));
-    return (*res != nullptr);
-}
-
 NifResBuiltinOpResolver * alloc_resource_NifResBuiltinOpResolver();
 NifResInterpreterBuilder * alloc_resource_NifResInterpreterBuilder();
 NifResFlatBufferModel * alloc_resource_NifResFlatBufferModel();
 NifResInterpreter * alloc_resource_NifResInterpreter();
+NifResErrorReporter * alloc_resource_NifResErrorReporter();
+NifResTfLiteTensor * alloc_resource_NifResTfLiteTensor();
 
-template <typename T>
-static void destruct_raw_ptr(ErlNifEnv *env, void *args) {
-    auto res = (erlang_nif_res<T *> *)args;
-    if (res->val && !res->peak) {
+#ifdef CORAL_SUPPORT_ENABLED
+NifResEdgeTpuContext * alloc_resource_NifResEdgeTpuContext();
+#endif
+
+static void destruct_edge_tpu_context(ErlNifEnv *env, void *args) {
+    auto res = (NifResEdgeTpuContext *)args;
+    if (res->val) {
         delete res->val;
         res->val = nullptr;
     }
@@ -117,11 +116,25 @@ static void destruct_interpreter(ErlNifEnv *env, void *args) {
     }
 }
 
-static void destruct_tensor_ptr(ErlNifEnv *env, void *args) {
-    auto res = (erlang_nif_res<TfLiteTensor *> *)args;
+static void destruct_error_reporter(ErlNifEnv *env, void *args) {
+    auto res = (NifResErrorReporter *)args;
     if (res) {
-        if (res->val && !res->peak) {
-            delete res->val;
+        if (res->val) {
+            if (!res->is_default) {
+                delete res->val;
+            }
+            res->val = nullptr;
+        }
+    }
+}
+
+static void destruct_tensor_ptr(ErlNifEnv *env, void *args) {
+    auto res = (NifResTfLiteTensor *)args;
+    if (res) {
+        if (res->val) {
+            if (!res->borrowed) {
+                delete res->val;
+            }
             res->val = nullptr;
         }
     }

@@ -32,8 +32,8 @@ ERL_NIF_TERM tflite_resetVariableTensor(ErlNifEnv *env, int argc, const ERL_NIF_
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM tensor_nif = argv[0];
-    erlang_nif_res<TfLiteTensor *> *self_res;
-    if (enif_get_resource(env, tensor_nif, erlang_nif_res<TfLiteTensor *>::type, (void **) &self_res)) {
+    NifResTfLiteTensor *self_res = nullptr;
+    if (enif_get_resource(env, tensor_nif, NifResTfLiteTensor::type, (void **) &self_res)) {
         if (self_res->val) {
             TfLiteStatus status = tflite::ResetVariableTensor(self_res->val);
             return tflite_status_to_erl_term(env, status);

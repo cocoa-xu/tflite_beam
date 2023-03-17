@@ -256,10 +256,10 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
     if (enif_get_resource(env, self_nif, NifResInterpreter::type, (void **) &self_res) &&
         enif_get_int(env, index_nif, &index)) {
         if (self_res->val) {
-            erlang_nif_res<TfLiteTensor *> * tensor_res;
-            if (alloc_resource(&tensor_res)) {
+            NifResTfLiteTensor * tensor_res = nullptr;
+            if ((tensor_res = alloc_resource_NifResTfLiteTensor())) {
                 tensor_res->val = self_res->val->tensor(index);
-                tensor_res->peak = 1;
+                tensor_res->borrowed = true;
 
                 ERL_NIF_TERM tensor_type;
                 if (!_tflitetensor_type(env, tensor_res->val, tensor_type)) {

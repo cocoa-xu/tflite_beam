@@ -168,8 +168,8 @@ ERL_NIF_TERM tflitetensor_type(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
-    erlang_nif_res<TfLiteTensor *> *self_res;
-    if (enif_get_resource(env, self_nif, erlang_nif_res<TfLiteTensor *>::type, (void **) &self_res)) {
+    NifResTfLiteTensor *self_res;
+    if (enif_get_resource(env, self_nif, NifResTfLiteTensor::type, (void **) &self_res)) {
         if (self_res->val) {
             ERL_NIF_TERM ret = erlang::nif::error(env, "invalid tensor");
             _tflitetensor_type(env, self_res->val, ret);
@@ -186,8 +186,8 @@ ERL_NIF_TERM tflitetensor_dims(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
-    erlang_nif_res<TfLiteTensor *> *self_res;
-    if (enif_get_resource(env, self_nif, erlang_nif_res<TfLiteTensor *>::type, (void **) &self_res)) {
+    NifResTfLiteTensor *self_res;
+    if (enif_get_resource(env, self_nif, NifResTfLiteTensor::type, (void **) &self_res)) {
         if (self_res->val) {
             ERL_NIF_TERM tensor_shape;
             if (!_tflitetensor_shape(env, self_res->val, tensor_shape)) {
@@ -206,8 +206,8 @@ ERL_NIF_TERM tflitetensor_quantization_params(ErlNifEnv *env, int argc, const ER
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
-    erlang_nif_res<TfLiteTensor *> *self_res;
-    if (enif_get_resource(env, self_nif, erlang_nif_res<TfLiteTensor *>::type, (void **) &self_res)) {
+    NifResTfLiteTensor *self_res;
+    if (enif_get_resource(env, self_nif, NifResTfLiteTensor::type, (void **) &self_res)) {
         if (self_res->val) {
             ERL_NIF_TERM tensor_quantization_params;
             if (!_tflitetensor_quantization_params(env, self_res->val, tensor_quantization_params)) {
@@ -227,9 +227,9 @@ ERL_NIF_TERM tflitetensor_to_binary(ErlNifEnv *env, int argc, const ERL_NIF_TERM
 
     ERL_NIF_TERM self_nif = argv[0];
     ERL_NIF_TERM limit = argv[1];
-    erlang_nif_res<TfLiteTensor *> *self_res;
+    NifResTfLiteTensor *self_res;
     ErlNifUInt64 limit_len;
-    if (enif_get_resource(env, self_nif, erlang_nif_res<TfLiteTensor *>::type, (void **) &self_res) &&
+    if (enif_get_resource(env, self_nif, NifResTfLiteTensor::type, (void **) &self_res) &&
         enif_get_uint64(env, limit, (ErlNifUInt64 *)&limit_len)) {
         if (self_res->val) {
             ErlNifBinary tensor_data;
@@ -257,8 +257,8 @@ ERL_NIF_TERM tflitetensor_set_data(ErlNifEnv *env, int argc, const ERL_NIF_TERM 
     ERL_NIF_TERM self_nif = argv[0];
     ERL_NIF_TERM data_nif = argv[1];
     ErlNifBinary data;
-    erlang_nif_res<TfLiteTensor *> *self_res;
-    if (enif_get_resource(env, self_nif, erlang_nif_res<TfLiteTensor *>::type, (void **) &self_res)) {
+    NifResTfLiteTensor *self_res;
+    if (enif_get_resource(env, self_nif, NifResTfLiteTensor::type, (void **) &self_res)) {
         if (self_res->val) {
             if (enif_inspect_binary(env, data_nif, &data)) {
                 if (self_res->val->data.data == nullptr) {

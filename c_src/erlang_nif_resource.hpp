@@ -5,19 +5,16 @@
 
 #include <atomic>
 #include <erl_nif.h>
+
+#include "tensorflow/lite/c/c_api.h"
+#include "tensorflow/lite/c/common.h"
+#include "tensorflow/lite/core/api/error_reporter.h"
 #include "tensorflow/lite/interpreter_builder.h"
 #include "tensorflow/lite/interpreter.h"
 #include "tensorflow/lite/kernels/register.h"
 #include "tensorflow/lite/kernels/builtin_op_kernels.h"
 #include "tensorflow/lite/model.h"
-
-template<typename R>
-struct erlang_nif_res {
-    R val;
-    int peak;
-    static ErlNifResourceType * type;
-};
-template<typename R> ErlNifResourceType * erlang_nif_res<R>::type = nullptr;
+#include "tensorflow/lite/stderr_reporter.h"
 
 struct NifResBuiltinOpResolver {
     tflite::ops::builtin::BuiltinOpResolver * val;
@@ -49,5 +46,28 @@ struct NifResInterpreter {
     NifResFlatBufferModel * flatbuffer_model;
     static ErlNifResourceType * type;
 };
+
+struct NifResErrorReporter {
+    tflite::ErrorReporter * val;
+    std::atomic_bool is_default{false};
+    static ErlNifResourceType * type;
+};
+
+struct NifResTfLiteTensor {
+    TfLiteTensor * val;
+    std::atomic_bool borrowed{false};
+    static ErlNifResourceType * type;
+};
+
+#ifdef CORAL_SUPPORT_ENABLED
+
+#include "tflite/public/edgetpu.h"
+
+struct NifResEdgeTpuContext {
+    edgetpu::EdgeTpuContext * val;
+    static ErlNifResourceType * type;
+};
+
+#endif
 
 #endif //TFLITE_ELIXIR_ERLANG_NIF_RESOURCE_HPP

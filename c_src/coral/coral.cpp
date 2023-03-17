@@ -15,8 +15,6 @@
 
 std::map<void *, std::shared_ptr<edgetpu::EdgeTpuContext>> managedContext;
 
-using NifResEdgeTpuContext = erlang_nif_res<edgetpu::EdgeTpuContext *>;
-
 void destruct_egdetpu_context(ErlNifEnv *env, void *args) {
     auto res = (NifResEdgeTpuContext *)args;
     if (res->val) {
@@ -92,10 +90,10 @@ ERL_NIF_TERM coral_get_edgetpu_context(ErlNifEnv *env, int argc, const ERL_NIF_T
 
     std::string device;
     if (erlang::nif::get(env, argv[0], device)) {
-        NifResEdgeTpuContext * res;
+        NifResEdgeTpuContext * res = nullptr;
         auto c = coral::GetEdgeTpuContext(device);
         if (c.get() != nullptr) {
-            if (alloc_resource(&res)) {
+            if ((res = alloc_resource_NifResEdgeTpuContext())) {
                 // take ownership
                 edgetpu::EdgeTpuContext * context = c.get();
                 res->val = context;
