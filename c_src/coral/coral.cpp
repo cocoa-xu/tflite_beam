@@ -122,7 +122,7 @@ ERL_NIF_TERM coral_make_edgetpu_interpreter(ErlNifEnv *env, int argc, const ERL_
     ERL_NIF_TERM context_term = argv[1];
     NifResFlatBufferModel * model_res;
     NifResEdgeTpuContext * context_res;
-    NifResInterpreter * interpreter_res;
+    NifResInterpreter * interpreter_res = nullptr;
 
     if (!enif_get_resource(env, model_term, NifResFlatBufferModel::type, (void **)&model_res)) {
         return erlang::nif::error(env, "cannot access model resource");
@@ -134,7 +134,8 @@ ERL_NIF_TERM coral_make_edgetpu_interpreter(ErlNifEnv *env, int argc, const ERL_
     if (model_res->val == nullptr || context_res->val == nullptr) {
         return erlang::nif::error(env, "oh nyo erlang");
     }
-    if (!alloc_resource_NifResInterpreter(&interpreter_res)) {
+    interpreter_res = alloc_resource_NifResInterpreter();
+    if (interpreter_res == nullptr) {
         return erlang::nif::error(env, "cannot allocate memory for interpreter resource");
     }
 

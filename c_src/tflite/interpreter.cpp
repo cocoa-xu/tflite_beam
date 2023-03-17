@@ -12,8 +12,8 @@
 #include "status.h"
 
 ERL_NIF_TERM interpreter_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    NifResInterpreter * res;
-    if (alloc_resource_NifResInterpreter(&res)) {
+    NifResInterpreter * res = nullptr;
+    if ((res = alloc_resource_NifResInterpreter())) {
         res->val = new tflite::Interpreter();
         ERL_NIF_TERM ret = enif_make_resource(env, res);
         enif_release_resource(res);
