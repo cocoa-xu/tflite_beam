@@ -126,12 +126,17 @@ preprocess_image = fn image, target_dim ->
   y = trunc(centre_h - target_dim / 2)
   new_shape = {y, x, target_dim, target_dim}
 
-  %Nx.Tensor{} =
-    image
-    |> Cv.Mat.roi(new_shape)
+  cropped_image = Cv.Mat.roi(image, new_shape)
+  tensor =
+    cropped_image
     |> Cv.Mat.to_nx()
     |> Nx.new_axis(0)
     |> Nx.as_type({:f, 32})
+
+  %{
+    :cropped => Cv.cvtColor(cropped_image, Cv.Constant.cv_COLOR_RGB2BGR()),
+    :tensor => tensor
+  }
 end
 
 # Load the input images.
@@ -142,26 +147,20 @@ end
 preprocessed_content_image = preprocess_image.(content_image, 384)
 preprocessed_style_image = preprocess_image.(style_image, 256)
 
-IO.puts("Style Image Shape: #{inspect(preprocessed_style_image.shape)}")
-IO.puts("Content Image Shape: #{inspect(preprocessed_content_image.shape)}")
+IO.puts("Style Image Shape: #{inspect(preprocessed_style_image.tensor.shape)}")
+IO.puts("Content Image Shape: #{inspect(preprocessed_content_image.tensor.shape)}")
 ```
 
 ## Visualize the inputs
 
 ```elixir
-# def imshow(image, title=None):
-#   if len(image.shape) > 3:
-#     image = tf.squeeze(image, axis=0)
+IO.puts("Content Image")
+preprocessed_content_image.cropped
+```
 
-#   plt.imshow(image)
-#   if title:
-#     plt.title(title)
-
-# plt.subplot(1, 2, 1)
-# imshow(preprocessed_content_image, 'Content Image')
-
-# plt.subplot(1, 2, 2)
-# imshow(preprocessed_style_image, 'Style Image')
+```elixir
+IO.puts("Style Image")
+preprocessed_style_image.cropped
 ```
 
 ## Run style transfer with TensorFlow Lite
