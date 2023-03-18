@@ -2,8 +2,8 @@
 
 ```elixir
 Mix.install([
-  {:tflite_elixir, "~> 0.1.4"},
-  {:evision, "~> 0.1.8"},
+  {:tflite_elixir, "0.1.4"},
+  {:evision, "0.1.29"},
   {:kino, "~> 0.8.0"},
   {:req, "~> 0.3.0"}
 ])
@@ -15,12 +15,10 @@ The task of recovering a high resolution (HR) image from its low resolution
 counterpart is commonly referred to as Single Image Super Resolution (SISR).
 
 The model used here is [Enhanced Super-Resolution Generative Adversarial
-Networks (ESRGAN)][ESRGAN]. And we are going to use TensorFlow Lite to run
+Networks (ESRGAN)](https://arxiv.org/abs/1809.00219). And we are going to use TensorFlow Lite to run
 inference on the pretrained model.
 
 https://www.tensorflow.org/lite/examples/super_resolution/overview
-
-[ESRGAN]: https://arxiv.org/abs/1809.00219
 
 ## Download data files
 
@@ -102,17 +100,11 @@ sr =
 ```elixir
 data_files.test_img
 |> Cv.imread()
-|> then(&Cv.imencode(".jpeg", &1))
-|> IO.iodata_to_binary()
-|> Kino.Image.new(:jpeg)
 ```
 
 ```elixir
 sr
-|> Cv.Mat.from_nx()
+|> Cv.Mat.from_nx_2d()
 |> Cv.cvtColor(Cv.Constant.cv_COLOR_RGB2BGR())
-|> then(&Cv.imencode(".jpeg", &1))
-|> IO.iodata_to_binary()
-|> Kino.Image.new(:jpeg)
 ```
 
