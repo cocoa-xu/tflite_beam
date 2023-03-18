@@ -24,16 +24,21 @@ int _tflitetensor_name(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF_TERM &out)
 
 int _tflitetensor_shape(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF_TERM &out) {
     size_t num_dims = TfLiteTensorNumDims(tensor);
-    ERL_NIF_TERM * dims = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * num_dims);
-    if (dims == nullptr) {
-        return false;
+    ERL_NIF_TERM * dims = nullptr;
+    if (num_dims > 0) {
+        dims = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * num_dims);
+        if (dims == nullptr) {
+            return false;
+        }
+        for (size_t i = 0; i < num_dims; ++i) {
+            size_t dim = TfLiteTensorDim(tensor, i);
+            dims[i] = enif_make_uint64(env, dim);
+        }
+        out = enif_make_list_from_array(env, dims, (unsigned)num_dims);
+        enif_free(dims);
+    } else {
+        out = enif_make_list_from_array(env, dims, (unsigned)num_dims);
     }
-    for (size_t i = 0; i < num_dims; ++i) {
-        size_t dim = TfLiteTensorDim(tensor, i);
-        dims[i] = enif_make_uint64(env, dim);
-    }
-    out = enif_make_list_from_array(env, dims, (unsigned)num_dims);
-    enif_free(dims);
     return true;
 }
 
@@ -71,15 +76,17 @@ int _tflitetensor_quantization_params(ErlNifEnv *env, TfLiteTensor * tensor, ERL
     if (quantization.type == kTfLiteAffineQuantization) {
         const TfLiteAffineQuantization* q_params =
                 reinterpret_cast<const TfLiteAffineQuantization*>(quantization.params);
-        if (q_params->scale) {
-            scales_data = q_params->scale->data;
-            scales_size = q_params->scale->size;
+        if (q_params) {
+            if (q_params->scale) {
+                scales_data = q_params->scale->data;
+                scales_size = q_params->scale->size;
+            }
+            if (q_params->zero_point) {
+                zero_points_data = q_params->zero_point->data;
+                zero_points_size = q_params->zero_point->size;
+            }
+            quantized_dimension = q_params->quantized_dimension;
         }
-        if (q_params->zero_point) {
-            zero_points_data = q_params->zero_point->data;
-            zero_points_size = q_params->zero_point->size;
-        }
-        quantized_dimension = q_params->quantized_dimension;
     }
 
     ERL_NIF_TERM scale;
