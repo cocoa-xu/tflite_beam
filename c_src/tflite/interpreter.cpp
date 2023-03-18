@@ -138,6 +138,11 @@ ERL_NIF_TERM interpreter_input_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TE
         return erlang::nif::error(env, "cannot get input data");
     }
 
+    const auto& inputs = self_res->val->inputs();
+    if (inputs.size() <= index || index < 0) {
+        return erlang::nif::error(env, "index out of bound");
+    }
+
     auto input_tensor = self_res->val->input_tensor(index);
     if (input_tensor->data.data == nullptr) {
         return erlang::nif::error(env, "tensor is not allocated yet? Please call TFLiteElixir.Interpreter.allocate_tensors first");
@@ -240,6 +245,11 @@ ERL_NIF_TERM interpreter_output_tensor(ErlNifEnv *env, int argc, const ERL_NIF_T
 
     if (!enif_get_int(env, index_nif, &index)) {
         return erlang::nif::error(env, "expecting index to be an integer");
+    }
+
+    const auto& outputs = self_res->val->outputs();
+    if (outputs.size() <= index || index < 0) {
+        return erlang::nif::error(env, "index out of bound");
     }
 
     auto t = self_res->val->output_tensor(index);
