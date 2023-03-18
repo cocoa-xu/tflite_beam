@@ -14,7 +14,7 @@ int _tflitetensor_name(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF_TERM &out)
     unsigned char * ptr;
     size_t len = strlen(tensor_name_str);
     if ((ptr = enif_make_new_binary(env, len, &tensor_name)) != nullptr) {
-        strncpy((char *)ptr, tensor_name_str, len);
+        memcpy((char *)ptr, tensor_name_str, len);
         out = tensor_name;
         return true;
     } else {
