@@ -32,9 +32,6 @@
 - `TFLiteElixir.FlatBufferModel.error_reporter/1`.
 - `TFLiteElixir.FlatBufferModel.verify_and_build_from_file/2`
 
-### Misc
-- Simple workaround for cortex-a53 and cortex-a57, `vcvtaq_s32_f32`.
-
 ## v0.1.4 (2022-03-14)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_elixir/tree/v0.1.4) | [Released Assets](https://github.com/cocoa-xu/tflite_elixir/releases/tag/v0.1.4)
 
