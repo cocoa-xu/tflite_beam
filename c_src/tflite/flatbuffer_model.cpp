@@ -185,16 +185,15 @@ ERL_NIF_TERM flatBufferModel_readAllMetadata(ErlNifEnv *env, int argc, const ERL
 
     size_t index = 0;
     for (auto &iter : metadata) {
-        keys[index] = erlang::nif::make_binary(env, iter.first.c_str());
-        values[index] = erlang::nif::make_binary(env, iter.second.c_str());
-        index++;
+        if (iter.first.length() > 0 && iter.second.length() > 0) {
+            keys[index] = erlang::nif::make_binary(env, iter.first.c_str());
+            values[index] = erlang::nif::make_binary(env, iter.second.c_str());
+            index++;
+        }
     }
 
-    // enif_make_map_from_arrays returns false
-    // if there are any duplicate keys. But it is practically impossible
-    // here.
     if (!enif_make_map_from_arrays(env, keys, values, index, &ret)) {
-        ret = erlang::nif::error(env, "enif_make_map_from_arrays failed");
+        ret = erlang::nif::error(env, "duplicated keys found in metadata");
     }
 
     enif_free((void *)keys);
