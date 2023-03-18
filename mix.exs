@@ -75,7 +75,7 @@ defmodule TfliteElixir.MixProject do
       source_url: @github_url,
       description: description(),
       package: package(),
-      test_coverage: [ignore_modules: [TFLite.Nif, TFLiteElixir.Coral], tool: ExCoveralls],
+      test_coverage: [ignore_modules: [TFLiteElixir.Nif, TFLiteElixir.Coral], tool: ExCoveralls],
       preferred_cli_env: [
         coveralls: :test,
         "coveralls.detail": :test,
