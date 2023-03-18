@@ -321,10 +321,7 @@ defmodule TFLiteElixir.Interpreter do
   @doc """
   Set the number of threads available to the interpreter.
 
-  NOTE: num_threads should be >= -1. Setting num_threads to 0 has the effect
-  to disable multithreading, which is equivalent to setting num_threads
-  to 1. If set to the value -1, the number of threads used will be
-  implementation-defined and platform-dependent.
+  NOTE: num_threads should be >= 1.
 
   As TfLite interpreter could internally apply a TfLite delegate by default
   (i.e. XNNPACK), the number of threads that are available to the default
@@ -338,7 +335,7 @@ defmodule TFLiteElixir.Interpreter do
   ```
   """
   @spec set_num_threads(reference(), integer()) :: :ok | nif_error()
-  def set_num_threads(self, num_threads) when is_integer(num_threads) and num_threads >= -1 do
+  def set_num_threads(self, num_threads) when is_integer(num_threads) and num_threads >= 1 do
     TFLiteElixir.Nif.interpreter_setNumThreads(self, num_threads)
   end
 
