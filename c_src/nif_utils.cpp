@@ -201,7 +201,7 @@ namespace erlang {
             unsigned char *ptr;
             size_t len = strlen(c_string);
             if ((ptr = enif_make_new_binary(env, len, &binary_str)) != nullptr) {
-                strcpy((char *) ptr, c_string);
+                memcpy((char *)ptr, c_string, len);
                 return binary_str;
             } else {
                 fprintf(stderr, "internal error: cannot allocate memory for binary string\r\n");
