@@ -1,4 +1,4 @@
-defmodule TFLiteElixir.InterpreterBuilder.Test do
+defmodule TFLiteElixir.Interpreter.Test do
   use ExUnit.Case
 
   alias TFLiteElixir.InterpreterBuilder
