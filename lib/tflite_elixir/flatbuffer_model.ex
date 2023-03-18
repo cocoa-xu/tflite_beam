@@ -98,7 +98,7 @@ defmodule TFLiteElixir.FlatBufferModel do
   @spec error_reporter(%T{:model => reference()}) :: %ErrorReporter{} | {:error, String.t()}
   def error_reporter(%T{model: self}) when is_reference(self) do
     case TFLiteElixir.Nif.flatBufferModel_error_reporter(self) do
-      ref when is_reference(ref) -> %ErrorReporter{ref: ref}
+      {:ok, ref} when is_reference(ref) -> %ErrorReporter{ref: ref}
       error -> error
     end
   end
