@@ -213,8 +213,8 @@ ERL_NIF_TERM interpreter_getOutputName(ErlNifEnv *env, int argc, const ERL_NIF_T
         return erlang::nif::error(env, "expecting index to be an integer");
     }
 
-    const auto& inputs = self_res->val->inputs();
-    if (inputs.size() <= index || index < 0) {
+    const auto& outputs = self_res->val->outputs();
+    if (outputs.size() <= index || index < 0) {
         return erlang::nif::error(env, "index out of bound");
     }
 
