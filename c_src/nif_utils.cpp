@@ -62,13 +62,11 @@ namespace erlang {
         // Numeric types
 
         int get(ErlNifEnv *env, ERL_NIF_TERM term, int *var) {
-            return enif_get_int(env, term,
-                                reinterpret_cast<int *>(var));
+            return enif_get_int(env, term, var);
         }
 
         int get(ErlNifEnv *env, ERL_NIF_TERM term, int64_t *var) {
-            return enif_get_int64(env, term,
-                                  reinterpret_cast<ErlNifSInt64 *>(var));
+            return enif_get_int64(env, term, reinterpret_cast<ErlNifSInt64 *>(var));
         }
 
         int get(ErlNifEnv *env, ERL_NIF_TERM term, double *var) {
