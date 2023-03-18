@@ -54,6 +54,7 @@ defmodule TFLiteElixir.FlatBufferModel do
           %T{} | :invalid | {:error, String.t()}
   def verify_and_build_from_file(filename, opts \\ []) do
     error_reporter = ErrorReporter.from_struct(opts[:error_reporter])
+
     with {:ok, model} <-
            TFLiteElixir.Nif.flatBufferModel_verifyAndBuildFromFile(filename, error_reporter) do
       %T{model: model}
