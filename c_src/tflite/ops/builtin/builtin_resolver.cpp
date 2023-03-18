@@ -10,12 +10,12 @@
 
 ERL_NIF_TERM ops_builtin_builtinResolver_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     NifResBuiltinOpResolver * res = nullptr;
-    if ((res = alloc_resource_NifResBuiltinOpResolver())) {
-        res->val = new tflite::ops::builtin::BuiltinOpResolver();
-        ERL_NIF_TERM ret = enif_make_resource(env, res);
-        enif_release_resource(res);
-        return erlang::nif::ok(env, ret);
-    } else {
+    if (!(res = alloc_resource_NifResBuiltinOpResolver())) {
         return erlang::nif::error(env, "cannot allocate memory for resource");
     }
+
+    res->val = new tflite::ops::builtin::BuiltinOpResolver();
+    ERL_NIF_TERM ret = enif_make_resource(env, res);
+    enif_release_resource(res);
+    return erlang::nif::ok(env, ret);
 }

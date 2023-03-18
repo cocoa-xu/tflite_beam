@@ -13,46 +13,49 @@ int _tflitetensor_name(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF_TERM &out)
     ERL_NIF_TERM tensor_name;
     unsigned char * ptr;
     size_t len = strlen(tensor_name_str);
-    if ((ptr = enif_make_new_binary(env, len, &tensor_name)) != nullptr) {
-        memcpy((char *)ptr, tensor_name_str, len);
-        out = tensor_name;
-        return true;
-    } else {
+
+    if (!(ptr = enif_make_new_binary(env, len, &tensor_name))) {
         return false;
     }
+
+    memcpy((char *)ptr, tensor_name_str, len);
+    out = tensor_name;
+    return true;
 }
 
 int _tflitetensor_shape(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF_TERM &out) {
     size_t num_dims = TfLiteTensorNumDims(tensor);
     ERL_NIF_TERM * dims = nullptr;
-    if (num_dims > 0) {
-        dims = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * num_dims);
-        if (dims == nullptr) {
-            return false;
-        }
-        for (size_t i = 0; i < num_dims; ++i) {
-            size_t dim = TfLiteTensorDim(tensor, i);
-            dims[i] = enif_make_uint64(env, dim);
-        }
+
+    if (num_dims == 0) {
         out = enif_make_list_from_array(env, dims, (unsigned)num_dims);
-        enif_free(dims);
-    } else {
-        out = enif_make_list_from_array(env, dims, (unsigned)num_dims);
+        return true;
     }
+
+    dims = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * num_dims);
+    if (dims == nullptr) {
+        return false;
+    }
+    for (size_t i = 0; i < num_dims; ++i) {
+        size_t dim = TfLiteTensorDim(tensor, i);
+        dims[i] = enif_make_uint64(env, dim);
+    }
+    out = enif_make_list_from_array(env, dims, (unsigned)num_dims);
+    enif_free(dims);
     return true;
 }
 
 int _tflitetensor_shape_signature(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF_TERM &out) {
-    if (tensor->dims_signature != nullptr && tensor->dims_signature->size != 0) {
-        ERL_NIF_TERM shape_signature;
-        if (erlang::nif::make_i64_list_from_c_array(env, tensor->dims_signature->size, tensor->dims_signature->data, shape_signature)) {
-            return false;
-        }
-        out = shape_signature;
-        return true;
-    } else {
+    if (tensor->dims_signature == nullptr || tensor->dims_signature->size == 0) {
         return _tflitetensor_shape(env, tensor, out);
     }
+
+    ERL_NIF_TERM shape_signature;
+    if (erlang::nif::make_i64_list_from_c_array(env, tensor->dims_signature->size, tensor->dims_signature->data, shape_signature)) {
+        return false;
+    }
+    out = shape_signature;
+    return true;
 }
 
 int _tflitetensor_type(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF_TERM &out) {
@@ -74,8 +77,7 @@ int _tflitetensor_quantization_params(ErlNifEnv *env, TfLiteTensor * tensor, ERL
     int32_t quantized_dimension = 0;
 
     if (quantization.type == kTfLiteAffineQuantization) {
-        const TfLiteAffineQuantization* q_params =
-                reinterpret_cast<const TfLiteAffineQuantization*>(quantization.params);
+        const TfLiteAffineQuantization* q_params = reinterpret_cast<const TfLiteAffineQuantization*>(quantization.params);
         if (q_params) {
             if (q_params->scale) {
                 scales_data = q_params->scale->data;
@@ -107,68 +109,74 @@ int _tflitetensor_sparsity_params(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF
     if (tensor->sparsity == nullptr) {
         out = enif_make_new_map(env);
         return true;
-    } else {
-        auto param = tensor->sparsity;
-
-        ERL_NIF_TERM sparsity_keys[3];
-        ERL_NIF_TERM sparsity_vals[3];
-
-        sparsity_keys[0] = erlang::nif::atom(env, "traversal_order");
-        if (erlang::nif::make_i64_list_from_c_array(env, param->traversal_order->size, param->traversal_order->data, sparsity_vals[0])) {
-            return false;
-        }
-
-        sparsity_keys[1] = erlang::nif::atom(env, "block_map");
-        if (erlang::nif::make_i64_list_from_c_array(env, param->block_map->size, param->block_map->data, sparsity_vals[1])) {
-            return false;
-        }
-
-        sparsity_keys[2] = erlang::nif::atom(env, "dim_metadata");
-        ERL_NIF_TERM * dim_metadata = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * param->dim_metadata_size);
-        if (dim_metadata == nullptr) {
-            return false;
-        }
-        for (int i = 0; i < param->dim_metadata_size; i++) {
-            ERL_NIF_TERM dim_metadata_i;
-            ERL_NIF_TERM dim_metadata_i_keys[3];
-            ERL_NIF_TERM dim_metadata_i_vals[3];
-
-            if (param->dim_metadata[i].format == kTfLiteDimDense) {
-                dim_metadata_i_keys[0] = erlang::nif::atom(env, "format");
-                dim_metadata_i_vals[0] = erlang::nif::make(env, (long)0);
-
-                dim_metadata_i_keys[1] = erlang::nif::atom(env, "dense_size");
-                dim_metadata_i_vals[1] = erlang::nif::make(env, (long)param->dim_metadata[i].dense_size);
-
-                enif_make_map_from_arrays(env, dim_metadata_i_keys, dim_metadata_i_vals, 2, &dim_metadata_i);
-            } else {
-                dim_metadata_i_keys[0] = erlang::nif::atom(env, "format");
-                dim_metadata_i_vals[0] = erlang::nif::make(env, (long)1);
-
-                const auto* array_segments = param->dim_metadata[i].array_segments;
-                const auto* array_indices = param->dim_metadata[i].array_indices;
-
-                dim_metadata_i_keys[1] = erlang::nif::atom(env, "array_segments");
-                if (erlang::nif::make_i64_list_from_c_array(env, array_segments->size, array_segments->data, dim_metadata_i_vals[1])) {
-                    return false;
-                }
-
-                dim_metadata_i_keys[2] = erlang::nif::atom(env, "array_indices");
-                if (erlang::nif::make_i64_list_from_c_array(env, array_indices->size, array_indices->data, dim_metadata_i_vals[2])) {
-                    return false;
-                }
-
-                enif_make_map_from_arrays(env, dim_metadata_i_keys, dim_metadata_i_vals, 3, &dim_metadata_i);
-            }
-            dim_metadata[i] = dim_metadata_i;
-        }
-        sparsity_vals[2] = enif_make_list_from_array(env, dim_metadata, (unsigned)param->dim_metadata_size);
-        enif_free(dim_metadata);
-
-        enif_make_map_from_arrays(env, sparsity_keys, sparsity_vals, 3, &out);
-
-        return true;
     }
+
+    auto param = tensor->sparsity;
+
+    const size_t NUM_SPARITY_ITEMS = 3;
+    ERL_NIF_TERM sparsity_keys[NUM_SPARITY_ITEMS];
+    ERL_NIF_TERM sparsity_vals[NUM_SPARITY_ITEMS];
+    const size_t TRAVERSAL_ORDER_INDEX = 0;
+    const size_t BLOCK_MAP_INDEX = 1;
+    const size_t DIM_METADATA_INDEX = 2;
+
+    sparsity_keys[TRAVERSAL_ORDER_INDEX] = erlang::nif::atom(env, "traversal_order");
+    if (erlang::nif::make_i64_list_from_c_array(env, param->traversal_order->size, param->traversal_order->data, sparsity_vals[TRAVERSAL_ORDER_INDEX])) {
+        return false;
+    }
+
+    sparsity_keys[BLOCK_MAP_INDEX] = erlang::nif::atom(env, "block_map");
+    if (erlang::nif::make_i64_list_from_c_array(env, param->block_map->size, param->block_map->data, sparsity_vals[BLOCK_MAP_INDEX])) {
+        return false;
+    }
+
+    sparsity_keys[DIM_METADATA_INDEX] = erlang::nif::atom(env, "dim_metadata");
+    ERL_NIF_TERM * dim_metadata = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * param->dim_metadata_size);
+    if (dim_metadata == nullptr) {
+        return false;
+    }
+
+    const size_t NUM_DIM_METADTA_ITEMS = 3;
+    for (int i = 0; i < param->dim_metadata_size; i++) {
+        ERL_NIF_TERM dim_metadata_i;
+        ERL_NIF_TERM dim_metadata_i_keys[NUM_DIM_METADTA_ITEMS];
+        ERL_NIF_TERM dim_metadata_i_vals[NUM_DIM_METADTA_ITEMS];
+
+        if (param->dim_metadata[i].format == kTfLiteDimDense) {
+            dim_metadata_i_keys[0] = erlang::nif::atom(env, "format");
+            dim_metadata_i_vals[0] = erlang::nif::make(env, (long)0);
+
+            dim_metadata_i_keys[1] = erlang::nif::atom(env, "dense_size");
+            dim_metadata_i_vals[1] = erlang::nif::make(env, (long)param->dim_metadata[i].dense_size);
+
+            enif_make_map_from_arrays(env, dim_metadata_i_keys, dim_metadata_i_vals, 2, &dim_metadata_i);
+        } else {
+            dim_metadata_i_keys[0] = erlang::nif::atom(env, "format");
+            dim_metadata_i_vals[0] = erlang::nif::make(env, (long)1);
+
+            const auto* array_segments = param->dim_metadata[i].array_segments;
+            const auto* array_indices = param->dim_metadata[i].array_indices;
+
+            dim_metadata_i_keys[1] = erlang::nif::atom(env, "array_segments");
+            if (erlang::nif::make_i64_list_from_c_array(env, array_segments->size, array_segments->data, dim_metadata_i_vals[1])) {
+                return false;
+            }
+
+            dim_metadata_i_keys[2] = erlang::nif::atom(env, "array_indices");
+            if (erlang::nif::make_i64_list_from_c_array(env, array_indices->size, array_indices->data, dim_metadata_i_vals[2])) {
+                return false;
+            }
+
+            enif_make_map_from_arrays(env, dim_metadata_i_keys, dim_metadata_i_vals, 3, &dim_metadata_i);
+        }
+        dim_metadata[i] = dim_metadata_i;
+    }
+    sparsity_vals[DIM_METADATA_INDEX] = enif_make_list_from_array(env, dim_metadata, (unsigned)param->dim_metadata_size);
+    enif_free(dim_metadata);
+
+    enif_make_map_from_arrays(env, sparsity_keys, sparsity_vals, NUM_SPARITY_ITEMS, &out);
+
+    return true;
 }
 
 ERL_NIF_TERM tflitetensor_type(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
@@ -176,17 +184,14 @@ ERL_NIF_TERM tflitetensor_type(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv
 
     ERL_NIF_TERM self_nif = argv[0];
     NifResTfLiteTensor *self_res;
-    if (enif_get_resource(env, self_nif, NifResTfLiteTensor::type, (void **) &self_res)) {
-        if (self_res->val) {
-            ERL_NIF_TERM ret = erlang::nif::error(env, "invalid tensor");
-            _tflitetensor_type(env, self_res->val, ret);
-            return ret;
-        } else {
-            return erlang::nif::error(env, "oh nyo erlang");
-        }
-    } else {
-        return erlang::nif::error(env, "cannot access resource");
+
+    if (!enif_get_resource(env, self_nif, NifResTfLiteTensor::type, (void **)&self_res) || self_res->val == nullptr) {
+        return erlang::nif::error(env, "cannot access NifResTfLiteTensor resource");
     }
+
+    ERL_NIF_TERM ret = erlang::nif::error(env, "invalid tensor");
+    _tflitetensor_type(env, self_res->val, ret);
+    return ret;
 }
 
 ERL_NIF_TERM tflitetensor_dims(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
@@ -194,19 +199,16 @@ ERL_NIF_TERM tflitetensor_dims(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv
 
     ERL_NIF_TERM self_nif = argv[0];
     NifResTfLiteTensor *self_res;
-    if (enif_get_resource(env, self_nif, NifResTfLiteTensor::type, (void **) &self_res)) {
-        if (self_res->val) {
-            ERL_NIF_TERM tensor_shape;
-            if (!_tflitetensor_shape(env, self_res->val, tensor_shape)) {
-                return erlang::nif::error(env, "cannot allocate memory for storing tensor shape");
-            }
-            return erlang::nif::ok(env, tensor_shape);
-        } else {
-            return erlang::nif::error(env, "oh nyo erlang");
-        }
-    } else {
-        return erlang::nif::error(env, "cannot access resource");
+
+    if (!enif_get_resource(env, self_nif, NifResTfLiteTensor::type, (void **)&self_res) || self_res->val == nullptr) {
+        return erlang::nif::error(env, "cannot access NifResTfLiteTensor resource");
     }
+
+    ERL_NIF_TERM tensor_shape;
+    if (!_tflitetensor_shape(env, self_res->val, tensor_shape)) {
+        return erlang::nif::error(env, "cannot allocate memory for storing tensor shape");
+    }
+    return erlang::nif::ok(env, tensor_shape);
 }
 
 ERL_NIF_TERM tflitetensor_quantization_params(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
@@ -214,19 +216,15 @@ ERL_NIF_TERM tflitetensor_quantization_params(ErlNifEnv *env, int argc, const ER
 
     ERL_NIF_TERM self_nif = argv[0];
     NifResTfLiteTensor *self_res;
-    if (enif_get_resource(env, self_nif, NifResTfLiteTensor::type, (void **) &self_res)) {
-        if (self_res->val) {
-            ERL_NIF_TERM tensor_quantization_params;
-            if (!_tflitetensor_quantization_params(env, self_res->val, tensor_quantization_params)) {
-                return erlang::nif::error(env, "cannot allocate memory for storing tensor quantization params");
-            }
-            return erlang::nif::ok(env, tensor_quantization_params);
-        } else {
-            return erlang::nif::error(env, "oh nyo erlang");
-        }
-    } else {
-        return erlang::nif::error(env, "cannot access resource");
+    if (!enif_get_resource(env, self_nif, NifResTfLiteTensor::type, (void **)&self_res) || self_res->val == nullptr) {
+        return erlang::nif::error(env, "cannot access NifResTfLiteTensor resource");
     }
+
+    ERL_NIF_TERM tensor_quantization_params;
+    if (!_tflitetensor_quantization_params(env, self_res->val, tensor_quantization_params)) {
+        return erlang::nif::error(env, "cannot allocate memory for storing tensor quantization params");
+    }
+    return erlang::nif::ok(env, tensor_quantization_params);
 }
 
 ERL_NIF_TERM tflitetensor_to_binary(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
@@ -236,26 +234,28 @@ ERL_NIF_TERM tflitetensor_to_binary(ErlNifEnv *env, int argc, const ERL_NIF_TERM
     ERL_NIF_TERM limit = argv[1];
     NifResTfLiteTensor *self_res;
     ErlNifUInt64 limit_len;
-    if (enif_get_resource(env, self_nif, NifResTfLiteTensor::type, (void **) &self_res) &&
-        enif_get_uint64(env, limit, (ErlNifUInt64 *)&limit_len)) {
-        if (self_res->val) {
-            ErlNifBinary tensor_data;
-            size_t tensor_size = self_res->val->bytes;
-            size_t bytes_to_return = tensor_size;
-            if (limit_len != 0 && limit_len < tensor_size) {
-                bytes_to_return = limit_len;
-            }
-            if (!enif_alloc_binary(bytes_to_return, &tensor_data))
-                return erlang::nif::error(env, "cannot allocate enough memory for the tensor");
 
-            memcpy(tensor_data.data, self_res->val->data.data, bytes_to_return);
-            return erlang::nif::ok(env, enif_make_binary(env, &tensor_data));
-        } else {
-            return erlang::nif::error(env, "oh nyo erlang");
-        }
-    } else {
-        return erlang::nif::error(env, "cannot access resource");
+    if (!enif_get_resource(env, self_nif, NifResTfLiteTensor::type, (void **)&self_res) || self_res->val == nullptr) {
+        return erlang::nif::error(env, "cannot access NifResTfLiteTensor resource");
     }
+
+    if (!enif_get_uint64(env, limit, (ErlNifUInt64 *)&limit_len)) {
+        return erlang::nif::error(env, "expecting limit to be an unsigned integer");
+    }
+
+    ErlNifBinary tensor_data;
+    size_t tensor_size = self_res->val->bytes;
+    size_t bytes_to_return = tensor_size;
+    if (limit_len != 0 && limit_len < tensor_size) {
+        bytes_to_return = limit_len;
+    }
+
+    if (!enif_alloc_binary(bytes_to_return, &tensor_data)) {
+        return erlang::nif::error(env, "cannot allocate enough memory for the tensor");
+    }
+
+    memcpy(tensor_data.data, self_res->val->data.data, bytes_to_return);
+    return erlang::nif::ok(env, enif_make_binary(env, &tensor_data));
 }
 
 ERL_NIF_TERM tflitetensor_set_data(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
@@ -265,26 +265,24 @@ ERL_NIF_TERM tflitetensor_set_data(ErlNifEnv *env, int argc, const ERL_NIF_TERM 
     ERL_NIF_TERM data_nif = argv[1];
     ErlNifBinary data;
     NifResTfLiteTensor *self_res;
-    if (enif_get_resource(env, self_nif, NifResTfLiteTensor::type, (void **) &self_res)) {
-        if (self_res->val) {
-            if (enif_inspect_binary(env, data_nif, &data)) {
-                if (self_res->val->data.data == nullptr) {
-                    return erlang::nif::error(env, "tensor is not allocated yet? Please call TFLite.Interpreter.allocateTensors first");
-                } else {
-                    size_t maximum_bytes = self_res->val->bytes;
-                    if (data.size < maximum_bytes) {
-                        maximum_bytes = data.size;
-                    }
-                    memcpy(self_res->val->data.data, data.data, maximum_bytes);
-                    return erlang::nif::ok(env);
-                }
-            } else {
-                return erlang::nif::error(env, "cannot get input data");
-            }
-        } else {
-            return erlang::nif::error(env, "oh nyo erlang");
-        }
-    } else {
-        return erlang::nif::error(env, "cannot access resource");
+
+    if (!enif_get_resource(env, self_nif, NifResTfLiteTensor::type, (void **)&self_res) || self_res->val == nullptr) {
+        return erlang::nif::error(env, "cannot access NifResTfLiteTensor resource");
     }
+
+    if (!enif_inspect_binary(env, data_nif, &data)) {
+        return erlang::nif::error(env, "cannot get input data");
+    }
+
+    if (self_res->val->data.data == nullptr) {
+        return erlang::nif::error(env, "tensor is not allocated yet? Please call TFLite.Interpreter.allocateTensors first");
+    }
+
+    size_t maximum_bytes = self_res->val->bytes;
+    if (data.size < maximum_bytes) {
+        maximum_bytes = data.size;
+    }
+
+    memcpy(self_res->val->data.data, data.data, maximum_bytes);
+    return erlang::nif::ok(env);
 }

@@ -16,16 +16,13 @@ ERL_NIF_TERM tflite_printInterpreterState(ErlNifEnv *env, int argc, const ERL_NI
 
     ERL_NIF_TERM interpreter_nif = argv[0];
     NifResInterpreter * interpreter_res;
-    if (enif_get_resource(env, interpreter_nif, NifResInterpreter::type, (void **)&interpreter_res)) {
-        if (interpreter_res->val) {
-            tflite::PrintInterpreterState(interpreter_res->val);
-            return erlang::nif::atom(env, "nil");
-        } else {
-            return erlang::nif::error(env, "invalid resource");
-        }
-    } else {
-        return erlang::nif::error(env, "cannot access resource");
+
+    if (!enif_get_resource(env, interpreter_nif, NifResInterpreter::type, (void **)&interpreter_res) || interpreter_res->val == nullptr) {
+        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
     }
+
+    tflite::PrintInterpreterState(interpreter_res->val);
+    return erlang::nif::atom(env, "nil");
 }
 
 ERL_NIF_TERM tflite_resetVariableTensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
@@ -33,14 +30,11 @@ ERL_NIF_TERM tflite_resetVariableTensor(ErlNifEnv *env, int argc, const ERL_NIF_
 
     ERL_NIF_TERM tensor_nif = argv[0];
     NifResTfLiteTensor *self_res = nullptr;
-    if (enif_get_resource(env, tensor_nif, NifResTfLiteTensor::type, (void **) &self_res)) {
-        if (self_res->val) {
-            TfLiteStatus status = tflite::ResetVariableTensor(self_res->val);
-            return tflite_status_to_erl_term(env, status);
-        } else {
-            return erlang::nif::error(env, "invalid resource");
-        }
-    } else {
-        return erlang::nif::error(env, "cannot access resource");
+
+    if (!enif_get_resource(env, tensor_nif, NifResTfLiteTensor::type, (void **)&self_res) || self_res->val == nullptr) {
+        return erlang::nif::error(env, "cannot access NifResTfLiteTensor resource");
     }
+
+    TfLiteStatus status = tflite::ResetVariableTensor(self_res->val);
+    return tflite_status_to_erl_term(env, status);
 }
