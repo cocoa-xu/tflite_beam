@@ -12,10 +12,6 @@
 
 #pragma once
 
-using NifResEdgeTpuContext = erlang_nif_res<edgetpu::EdgeTpuContext *>;
-using NifResFlatBufferModel = erlang_nif_res<tflite::FlatBufferModel *>;
-using NifResInterpreter = erlang_nif_res<tflite::Interpreter *>;
-
 void destruct_egdetpu_context(ErlNifEnv *env, void *args);
 
 ERL_NIF_TERM coral_contains_edgetpu_custom_op(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);

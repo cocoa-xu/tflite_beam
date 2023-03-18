@@ -62,13 +62,11 @@ namespace erlang {
         // Numeric types
 
         int get(ErlNifEnv *env, ERL_NIF_TERM term, int *var) {
-            return enif_get_int(env, term,
-                                reinterpret_cast<int *>(var));
+            return enif_get_int(env, term, var);
         }
 
         int get(ErlNifEnv *env, ERL_NIF_TERM term, int64_t *var) {
-            return enif_get_int64(env, term,
-                                  reinterpret_cast<ErlNifSInt64 *>(var));
+            return enif_get_int64(env, term, reinterpret_cast<ErlNifSInt64 *>(var));
         }
 
         int get(ErlNifEnv *env, ERL_NIF_TERM term, double *var) {
@@ -201,7 +199,7 @@ namespace erlang {
             unsigned char *ptr;
             size_t len = strlen(c_string);
             if ((ptr = enif_make_new_binary(env, len, &binary_str)) != nullptr) {
-                strcpy((char *) ptr, c_string);
+                memcpy((char *)ptr, c_string, len);
                 return binary_str;
             } else {
                 fprintf(stderr, "internal error: cannot allocate memory for binary string\r\n");

@@ -15,10 +15,6 @@
 
 std::map<void *, std::shared_ptr<edgetpu::EdgeTpuContext>> managedContext;
 
-using NifResEdgeTpuContext = erlang_nif_res<edgetpu::EdgeTpuContext *>;
-using NifResFlatBufferModel = erlang_nif_res<tflite::FlatBufferModel *>;
-using NifResInterpreter = erlang_nif_res<tflite::Interpreter *>;
-
 void destruct_egdetpu_context(ErlNifEnv *env, void *args) {
     auto res = (NifResEdgeTpuContext *)args;
     if (res->val) {
@@ -94,10 +90,10 @@ ERL_NIF_TERM coral_get_edgetpu_context(ErlNifEnv *env, int argc, const ERL_NIF_T
 
     std::string device;
     if (erlang::nif::get(env, argv[0], device)) {
-        NifResEdgeTpuContext * res;
+        NifResEdgeTpuContext * res = nullptr;
         auto c = coral::GetEdgeTpuContext(device);
         if (c.get() != nullptr) {
-            if (alloc_resource(&res)) {
+            if ((res = alloc_resource_NifResEdgeTpuContext())) {
                 // take ownership
                 edgetpu::EdgeTpuContext * context = c.get();
                 res->val = context;
@@ -124,7 +120,7 @@ ERL_NIF_TERM coral_make_edgetpu_interpreter(ErlNifEnv *env, int argc, const ERL_
     ERL_NIF_TERM context_term = argv[1];
     NifResFlatBufferModel * model_res;
     NifResEdgeTpuContext * context_res;
-    NifResInterpreter * interpreter_res;
+    NifResInterpreter * interpreter_res = nullptr;
 
     if (!enif_get_resource(env, model_term, NifResFlatBufferModel::type, (void **)&model_res)) {
         return erlang::nif::error(env, "cannot access model resource");
@@ -136,7 +132,8 @@ ERL_NIF_TERM coral_make_edgetpu_interpreter(ErlNifEnv *env, int argc, const ERL_
     if (model_res->val == nullptr || context_res->val == nullptr) {
         return erlang::nif::error(env, "oh nyo erlang");
     }
-    if (!alloc_resource(&interpreter_res)) {
+    interpreter_res = alloc_resource_NifResInterpreter();
+    if (interpreter_res == nullptr) {
         return erlang::nif::error(env, "cannot allocate memory for interpreter resource");
     }
 

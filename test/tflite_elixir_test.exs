@@ -25,7 +25,7 @@ defmodule TFLiteElixir.Test do
            "Coral support is disabled when compiling this library. Please enable Coral support and recompile this library."} ->
             :ok
 
-          other ->
+          _other ->
             false
         end
 
@@ -44,7 +44,7 @@ defmodule TFLiteElixir.Test do
            "Coral support is disabled when compiling this library. Please enable Coral support and recompile this library."} ->
             :ok
 
-          other ->
+          _other ->
             false
         end
     end

@@ -37,11 +37,20 @@ limitations under the License.
 #include "tflite/status.h"
 #include "tflite/tflite.h"
 #include "tflite/tflitetensor.h"
-#include "tflite/verifier.h"
+
+ErlNifResourceType * NifResBuiltinOpResolver::type = nullptr;
+ErlNifResourceType * NifResInterpreterBuilder::type = nullptr;
+ErlNifResourceType * NifResFlatBufferModel::type = nullptr;
+ErlNifResourceType * NifResInterpreter::type = nullptr;
+ErlNifResourceType * NifResErrorReporter::type = nullptr;
+ErlNifResourceType * NifResTfLiteTensor::type = nullptr;
 
 #ifdef CORAL_SUPPORT_ENABLED
+
 #include "tflite/public/edgetpu.h"
 #include "coral/coral.h"
+ErlNifResourceType * NifResEdgeTpuContext::type = nullptr;
+
 #endif
 
 static ERL_NIF_TERM not_compiled(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
@@ -52,38 +61,34 @@ static int
 on_load(ErlNifEnv* env, void**, ERL_NIF_TERM)
 {
     ErlNifResourceType *rt;
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "FlatBufferModel", destruct_raw_ptr<tflite::FlatBufferModel>, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "FlatBufferModel", destruct_flatbuffer_model, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
-    erlang_nif_res<tflite::FlatBufferModel *>::type = rt;
+    NifResFlatBufferModel::type = rt;
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "BuiltinOpResolver", destruct_raw_ptr<tflite::ops::builtin::BuiltinOpResolver>, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "BuiltinOpResolver", destruct_builtin_op_resolver, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
-    erlang_nif_res<tflite::ops::builtin::BuiltinOpResolver *>::type = rt;
+    NifResBuiltinOpResolver::type = rt;
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "InterpreterBuilder", destruct_raw_ptr<tflite::InterpreterBuilder>, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "InterpreterBuilder", destruct_interpreter_builder, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
-    erlang_nif_res<tflite::InterpreterBuilder *>::type = rt;
+    NifResInterpreterBuilder::type = rt;
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "Interpreter", destruct_raw_ptr<tflite::Interpreter>, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "Interpreter", destruct_interpreter, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
-    erlang_nif_res<tflite::Interpreter *>::type = rt;
+    NifResInterpreter::type = rt;
 
     rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "TfLiteTensor", destruct_tensor_ptr, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
-    erlang_nif_res<TfLiteTensor *>::type = rt;
+    NifResTfLiteTensor::type = rt;
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "TfLiteVerifier", NULL, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "ErrorReporter", destruct_error_reporter, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
-    erlang_nif_res<tflite::TfLiteVerifier *>::type = rt;
-
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "ErrorReporter", destruct_raw_ptr<tflite::ErrorReporter>, ERL_NIF_RT_CREATE, NULL);
-    if (!rt) return -1;
-    erlang_nif_res<tflite::ErrorReporter *>::type = rt;
+    NifResErrorReporter::type = rt;
 
 #ifdef CORAL_SUPPORT_ENABLED
     rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "EdgeTpuContext", destruct_egdetpu_context, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
-    erlang_nif_res<edgetpu::EdgeTpuContext *>::type = rt;
+    NifResEdgeTpuContext::type = rt;
 #endif
 
     return 0;
@@ -108,7 +113,7 @@ static ErlNifFunc nif_functions[] = {
     F(errorReporter_DefaultErrorReporter, 0),
 
     F_IO(flatBufferModel_buildFromFile, 2),
-    F_IO(flatBufferModel_verifyAndBuildFromFile, 3),
+    F_IO(flatBufferModel_verifyAndBuildFromFile, 2),
     F_CPU(flatBufferModel_buildFromBuffer, 2),
     F(flatBufferModel_initialized, 1),
     F(flatBufferModel_error_reporter, 1),

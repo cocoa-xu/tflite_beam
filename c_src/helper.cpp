@@ -183,3 +183,62 @@ bool tensor_type_from_erl_term(ErlNifEnv *env, const ERL_NIF_TERM in_term, TfLit
     return ok;
 }
 
+NifResBuiltinOpResolver * alloc_resource_NifResBuiltinOpResolver() {
+    NifResBuiltinOpResolver * res = (NifResBuiltinOpResolver *)enif_alloc_resource(NifResBuiltinOpResolver::type, sizeof(NifResBuiltinOpResolver));
+    if (res != nullptr) {
+        res->reference_count = 0;
+        res->dropped_in_erlang = false;
+        res->deleted = false;
+    }
+    
+    return res;
+}
+
+NifResInterpreterBuilder * alloc_resource_NifResInterpreterBuilder() {
+    NifResInterpreterBuilder * res = (NifResInterpreterBuilder *)enif_alloc_resource(NifResInterpreterBuilder::type, sizeof(NifResInterpreterBuilder));
+    if (res != nullptr) {
+        res->op_resolver = nullptr;
+        res->flatbuffer_model = nullptr;
+    }
+
+    return res;
+}
+
+NifResFlatBufferModel * alloc_resource_NifResFlatBufferModel() {
+    NifResFlatBufferModel * res = (NifResFlatBufferModel *)enif_alloc_resource(NifResFlatBufferModel::type, sizeof(NifResFlatBufferModel));
+    if (res != nullptr) {
+        res->reference_count = 0;
+        res->dropped_in_erlang = false;
+        res->deleted = false;
+    }
+
+    return res;
+}
+
+NifResInterpreter * alloc_resource_NifResInterpreter() {
+    NifResInterpreter * res = (NifResInterpreter *)enif_alloc_resource(NifResInterpreter::type, sizeof(NifResInterpreter));
+    if (res != nullptr) {
+        res->flatbuffer_model = nullptr;
+    }
+
+    return res;
+}
+
+NifResErrorReporter * alloc_resource_NifResErrorReporter() {
+    NifResErrorReporter * res = (NifResErrorReporter *)enif_alloc_resource(NifResErrorReporter::type, sizeof(NifResErrorReporter));
+    return res;
+}
+
+NifResTfLiteTensor * alloc_resource_NifResTfLiteTensor() {
+    NifResTfLiteTensor * res = (NifResTfLiteTensor *)enif_alloc_resource(NifResTfLiteTensor::type, sizeof(NifResTfLiteTensor));
+    return res;
+}
+
+#ifdef CORAL_SUPPORT_ENABLED
+
+NifResEdgeTpuContext * alloc_resource_NifResEdgeTpuContext() {
+    NifResEdgeTpuContext * res = (NifResEdgeTpuContext *)enif_alloc_resource(NifResEdgeTpuContext::type, sizeof(NifResEdgeTpuContext));
+    return res;
+}
+
+#endif

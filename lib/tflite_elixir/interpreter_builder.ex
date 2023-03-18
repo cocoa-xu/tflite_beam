@@ -37,7 +37,7 @@ defmodule TFLiteElixir.InterpreterBuilder do
   Returns `true` on success, `{:error, reason}` on error.
   """
   @spec set_num_threads(reference(), integer()) :: :ok | nif_error()
-  def set_num_threads(self, num_threads) when is_integer(num_threads) and num_threads >= -1 do
+  def set_num_threads(self, num_threads) when is_integer(num_threads) and num_threads >= 1 do
     TFLiteElixir.Nif.interpreterBuilder_setNumThreads(self, num_threads)
   end
 
