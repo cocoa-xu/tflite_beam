@@ -103,7 +103,16 @@ ERL_NIF_TERM interpreter_getInputName(ErlNifEnv *env, int argc, const ERL_NIF_TE
         return erlang::nif::error(env, "expecting index to be an integer");
     }
 
-    auto name = self_res->val->GetInputName(index);
+    const auto& inputs = self_res->val->inputs();
+    if (inputs.size() <= index || index < 0) {
+        return erlang::nif::error(env, "index out of bound");
+    }
+
+    const char * name = self_res->val->GetInputName(index);
+    if (name == nullptr) {
+        return erlang::nif::error(env, "cannot get tensor's name");
+    }
+
     return erlang::nif::ok(env, erlang::nif::make_binary(env, name));
 }
 
@@ -204,7 +213,16 @@ ERL_NIF_TERM interpreter_getOutputName(ErlNifEnv *env, int argc, const ERL_NIF_T
         return erlang::nif::error(env, "expecting index to be an integer");
     }
 
-    auto name = self_res->val->GetOutputName(index);
+    const auto& inputs = self_res->val->inputs();
+    if (inputs.size() <= index || index < 0) {
+        return erlang::nif::error(env, "index out of bound");
+    }
+
+    const char * name = self_res->val->GetOutputName(index);
+    if (name == nullptr) {
+        return erlang::nif::error(env, "cannot get tensor's name");
+    }
+
     return erlang::nif::ok(env, erlang::nif::make_binary(env, name));
 }
 
@@ -310,15 +328,15 @@ ERL_NIF_TERM interpreter_setNumThreads(ErlNifEnv *env, int argc, const ERL_NIF_T
 
     ERL_NIF_TERM self_nif = argv[0];
     ERL_NIF_TERM num_threads_nif = argv[1];
-    int num_threads = -1;
+    int num_threads = 1;
     NifResInterpreter * self_res;
 
     if (!enif_get_resource(env, self_nif, NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
         return erlang::nif::error(env, "cannot access resource");
     }
 
-    if (!enif_get_int(env, num_threads_nif, &num_threads)) {
-        return erlang::nif::error(env, "expecting num_threads to be an integer");
+    if (!enif_get_int(env, num_threads_nif, &num_threads) || num_threads < 1) {
+        return erlang::nif::error(env, "expecting num_threads to be an positive integer");
     }
 
     auto status = self_res->val->SetNumThreads(num_threads);
@@ -385,7 +403,13 @@ ERL_NIF_TERM interpreter_get_signature_defs(ErlNifEnv *env, int argc, const ERL_
                 input_item_index++;
             }
         }
-        enif_make_map_from_arrays(env, inputs_keys, inputs_vals, input_item_index, &signature_def_vals[0]);
+        if (!enif_make_map_from_arrays(env, inputs_keys, inputs_vals, input_item_index, &signature_def_vals[0])) {
+            enif_free(keys);
+            enif_free(vals);
+            enif_free(inputs_keys);
+            enif_free(inputs_vals);
+            return erlang::nif::error(env, "duplicate keys found in signature_def_inputs");
+        }
         enif_free(inputs_keys);
         enif_free(inputs_vals);
 
@@ -411,7 +435,13 @@ ERL_NIF_TERM interpreter_get_signature_defs(ErlNifEnv *env, int argc, const ERL_
                 output_item_index++;
             }
         }
-        enif_make_map_from_arrays(env, outputs_keys, outputs_vals, output_item_index, &signature_def_vals[1]);
+        if (!enif_make_map_from_arrays(env, outputs_keys, outputs_vals, output_item_index, &signature_def_vals[1])) {
+            enif_free(keys);
+            enif_free(vals);
+            enif_free(outputs_keys);
+            enif_free(outputs_vals);
+            return erlang::nif::error(env, "duplicate keys found in signature_def_outputs");
+        }
         enif_free(outputs_keys);
         enif_free(outputs_vals);
 
