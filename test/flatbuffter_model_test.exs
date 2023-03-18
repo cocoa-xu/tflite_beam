@@ -90,12 +90,6 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
              FlatBufferModel.read_all_metadata!(model)
   end
 
-  test "print_interpreter_state/1" do
-    filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
-    model = FlatBufferModel.build_from_buffer(File.read!(filename))
-    TFLiteElixir.print_interpreter_state(interpreter)
-  end
-
   def verify_loaded_model(model, input_data, expected_out, print_state)
       when is_binary(input_data) and is_binary(expected_out) and
              is_boolean(print_state) do
@@ -142,6 +136,7 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
     Interpreter.invoke!(interpreter)
     output_data = Interpreter.output_tensor!(interpreter, 0)
     true = expected_out == output_data
+
     :ok
   end
 end
