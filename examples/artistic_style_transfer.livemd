@@ -1,0 +1,248 @@
+# Artistic Style Transfer with TensorFlow Lite
+
+```elixir
+Mix.install([
+  {:tflite_elixir, "0.1.5"},
+  {:evision, "0.1.29"},
+  {:kino, "~> 0.8.0"},
+  {:req, "~> 0.3.0"}
+])
+```
+
+## Introduction
+
+One of the most exciting developments in deep learning to come out recently is
+[artistic style transfer](https://arxiv.org/abs/1508.06576), or the ability to create a new image, known as a
+[pastiche](https://en.wikipedia.org/wiki/Pastiche), based on two input images: one representing the artistic style and
+one representing the content.
+
+Using this technique, we can generate beautiful new artworks in a range of
+styles.
+
+https://www.tensorflow.org/lite/examples/style_transfer/overview
+
+## Understand the model architecture
+
+![](https://storage.googleapis.com/download.tensorflow.org/models/tflite/arbitrary_style_transfer/architecture.png)
+
+This Artistic Style Transfer model consists of two submodels:
+
+1. **Style Prediciton Model**: A MobilenetV2-based neural network that takes an
+   input style image to a 100-dimension style bottleneck vector.
+2. **Style Transform Model**: A neural network that takes apply a style bottleneck vector to a content image and creates a stylized image.
+
+## Download data files
+
+Download the content and style images, and the pre-trained TensorFlow Lite models.
+
+```elixir
+downloads_dir = System.tmp_dir!()
+# for nerves demo user
+# change to a directory with write-permission
+# downloads_dir = "/data/livebook"
+
+download = fn url ->
+  save_as = Path.join(downloads_dir, URI.encode_www_form(url))
+  unless File.exists?(save_as), do: Req.get!(url, output: save_as)
+  save_as
+end
+
+data_files =
+  [
+    content:
+      "https://storage.googleapis.com/khanhlvg-public.appspot.com/arbitrary-style-transfer/belfry-2611573_1280.jpg",
+    style:
+      "https://storage.googleapis.com/khanhlvg-public.appspot.com/arbitrary-style-transfer/style23.jpg",
+    style_predict:
+      "https://tfhub.dev/google/lite-model/magenta/arbitrary-image-stylization-v1-256/int8/prediction/1?lite-format=tflite",
+    style_transform:
+      "https://tfhub.dev/google/lite-model/magenta/arbitrary-image-stylization-v1-256/int8/transfer/1?lite-format=tflite"
+  ]
+  |> Enum.map(fn {key, url} -> {key, download.(url)} end)
+  |> Map.new()
+```
+
+## Alias modules
+
+```elixir
+alias Evision, as: Cv
+alias TFLiteElixir, as: TFLite
+alias TFLiteElixir.TFLiteTensor
+```
+
+## Pre-process the inputs
+
+* The content image and the style image must be RGB images with pixel values
+  being float32 numbers between [0..1].
+* The style image size must be (1, 256, 256, 3). We central crop the image and
+  resize it.
+* The content image must be (1, 384, 384, 3). We central crop the image and
+  resize it.
+
+```elixir
+# Load an image from a file, and add a batch dimension.
+load_image = fn path_to_img ->
+  path_to_img
+  |> Cv.imread()
+  |> Cv.cvtColor(Cv.Constant.cv_COLOR_BGR2RGB(), dstCn: 3)
+end
+
+# Function to pre-process by resizing an central cropping it.
+preprocess_image = fn image, target_dim ->
+  # Resize the image so that the shorter dimension becomes 256px.
+  {h, w, _} = image.shape
+
+  {resize_h, resize_w} =
+    if h > w do
+      scale = target_dim / w
+      {trunc(h * scale), target_dim}
+    else
+      scale = target_dim / h
+      {target_dim, trunc(w * scale)}
+    end
+
+  image = Cv.resize(image, {resize_h, resize_w})
+
+  # Central crop the image.
+  {centre_h, centre_w} = {resize_h / 2, resize_w / 2}
+  x = trunc(centre_w - target_dim / 2)
+  y = trunc(centre_h - target_dim / 2)
+  new_shape = {y, x, target_dim, target_dim}
+  cropped_image = Cv.Mat.roi(image, new_shape)
+
+  %{
+    image:
+      cropped_image
+      |> Cv.cvtColor(Cv.Constant.cv_COLOR_RGB2BGR()),
+    tensor:
+      cropped_image
+      |> Cv.Mat.to_nx(Nx.BinaryBackend)
+      |> Nx.new_axis(0)
+      |> Nx.as_type({:f, 32})
+      # Change the range from [0..255] to [0..1]
+      |> Nx.divide(255)
+  }
+end
+
+# Load the input images.
+%Cv.Mat{} = content_image = load_image.(data_files.content)
+%Cv.Mat{} = style_image = load_image.(data_files.style)
+
+# Preprocess the input images.
+%{} = preprocessed_content = preprocess_image.(content_image, 384)
+%{} = preprocessed_style = preprocess_image.(style_image, 256)
+
+IO.puts(["Style Image Shape: ", inspect(preprocessed_style.tensor.shape)])
+IO.puts(["Content Image Shape: ", inspect(preprocessed_content.tensor.shape)])
+```
+
+## Visualize the inputs
+
+```elixir
+IO.puts("Content Image")
+preprocessed_content.image
+```
+
+```elixir
+IO.puts("Style Image")
+preprocessed_style.image
+```
+
+## Run style transfer with TensorFlow Lite
+
+### Style prediction
+
+```elixir
+# Run style prediction on preprocessed style image.
+run_style_predict = fn <<_::binary>> = preprocessed_style_data ->
+  # Load the model.
+  {:ok, interpreter} = TFLite.Interpreter.new(data_files.style_predict)
+
+  # Get input and output tensors.
+  {:ok, _input_tensors} = TFLite.Interpreter.inputs(interpreter)
+  {:ok, output_tensors} = TFLite.Interpreter.outputs(interpreter)
+
+  # Run the model
+  TFLite.Interpreter.input_tensor(interpreter, 0, preprocessed_style_data)
+  TFLite.Interpreter.invoke(interpreter)
+
+  # Calculate style bottleneck for the preprocessed style image.
+  TFLite.Interpreter.tensor(interpreter, Enum.at(output_tensors, 0))
+  |> TFLiteTensor.to_nx(backend: Nx.BinaryBackend)
+end
+
+style_bottleneck = run_style_predict.(Nx.to_binary(preprocessed_style.tensor))
+
+IO.puts(["Style Bottleneck Shape: ", inspect(style_bottleneck.shape)])
+```
+
+### Style transform
+
+```elixir
+# Run style transform on preprocessed style image.
+run_style_transform = fn <<_::binary>> = style_bottleneck_data,
+                         <<_::binary>> = preprocessed_content_data ->
+  # Load the model.
+  {:ok, interpreter} = TFLite.Interpreter.new(data_files.style_transform)
+
+  # Get input and output tensors.
+  {:ok, _input_tensors} = TFLite.Interpreter.inputs(interpreter)
+  {:ok, output_tensors} = TFLite.Interpreter.outputs(interpreter)
+
+  # Run the model.
+  TFLite.Interpreter.input_tensor(interpreter, 0, preprocessed_content_data)
+  TFLite.Interpreter.input_tensor(interpreter, 1, style_bottleneck_data)
+  TFLite.Interpreter.invoke(interpreter)
+
+  # Transform content image.
+  out_tensor = TFLite.Interpreter.tensor(interpreter, Enum.at(output_tensors, 0))
+  [1 | shape] = TFLite.TFLiteTensor.dims(out_tensor)
+
+  out_tensor
+  |> TFLiteTensor.to_nx(backend: Nx.BinaryBackend)
+  # Change the range from [0..1] to [0..255]
+  |> Nx.multiply(255)
+  |> Nx.reshape(List.to_tuple(shape))
+  |> Nx.as_type({:u, 8})
+  |> Cv.Mat.from_nx_2d()
+  |> Cv.cvtColor(Cv.Constant.cv_COLOR_RGB2BGR())
+end
+
+# Stylize the content image using the style bottleneck.
+_stylized_image =
+  run_style_transform.(
+    Nx.to_binary(style_bottleneck),
+    Nx.to_binary(preprocessed_content.tensor)
+  )
+```
+
+### Style blending
+
+```elixir
+# Calculate style bottleneck of the content image.
+style_bottleneck_content =
+  preprocess_image.(content_image, 256).tensor
+  |> Nx.to_binary()
+  |> run_style_predict.()
+```
+
+```elixir
+# Define content blending ratio between [0..1].
+# 0.0: 0% style extracts from content image.
+# 1.0: 100% style extracted from content image.
+content_blending_ratio = 0.5
+
+# Blend the style bottleneck of style image and content image
+style_bottleneck_blended =
+  Nx.add(
+    Nx.multiply(content_blending_ratio, style_bottleneck_content),
+    Nx.multiply(1 - content_blending_ratio, style_bottleneck)
+  )
+
+# Stylize the content image using the style bottleneck.
+stylized_image_blended =
+  run_style_transform.(
+    Nx.to_binary(style_bottleneck_blended),
+    Nx.to_binary(preprocessed_content.tensor)
+  )
+```
