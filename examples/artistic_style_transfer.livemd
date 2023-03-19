@@ -80,7 +80,7 @@ alias TFLiteElixir.TFLiteTensor
   resize it.
 
 ```elixir
-# Function to load an image from a file, and add a batch dimension.
+# Load an image from a file, and add a batch dimension.
 load_image = fn path_to_img ->
   path_to_img
   |> Cv.imread()
@@ -152,89 +152,97 @@ preprocessed_style.image
 
 ### Style prediction
 
-* Run style prediction on preprocessed style image.
-
 ```elixir
-# Load the model.
-{:ok, interpreter} = TFLite.Interpreter.new(data_files.style_predict)
+# Run style prediction on preprocessed style image.
+run_style_predict = fn <<_::binary>> = preprocessed_style_data ->
+  # Load the model.
+  {:ok, interpreter} = TFLite.Interpreter.new(data_files.style_predict)
 
-# Get input and output tensors.
-{:ok, _input_tensors} = TFLite.Interpreter.inputs(interpreter)
-{:ok, output_tensors} = TFLite.Interpreter.outputs(interpreter)
+  # Get input and output tensors.
+  {:ok, _input_tensors} = TFLite.Interpreter.inputs(interpreter)
+  {:ok, output_tensors} = TFLite.Interpreter.outputs(interpreter)
 
-# Run the model
-TFLite.Interpreter.input_tensor(interpreter, 0, Nx.to_binary(preprocessed_style.tensor))
-TFLite.Interpreter.invoke(interpreter)
+  # Run the model
+  TFLite.Interpreter.input_tensor(interpreter, 0, preprocessed_style_data)
+  TFLite.Interpreter.invoke(interpreter)
 
-# Calculate style bottleneck for the preprocessed style image.
-style_bottleneck = TFLite.Interpreter.tensor(interpreter, Enum.at(output_tensors, 0))
-
-style_bottleneck_data =
-  style_bottleneck
+  # Calculate style bottleneck for the preprocessed style image.
+  TFLite.Interpreter.tensor(interpreter, Enum.at(output_tensors, 0))
   |> TFLiteTensor.to_nx(backend: Nx.BinaryBackend)
-  |> Nx.to_binary()
+end
+
+style_bottleneck = run_style_predict.(Nx.to_binary(preprocessed_style.tensor))
 
 IO.puts(["Style Bottleneck Shape: ", inspect(style_bottleneck.shape)])
 ```
 
 ### Style transform
 
-* Run style transform on preprocessed style image
-
 ```elixir
-# Load the model.
-{:ok, interpreter} = TFLite.Interpreter.new(data_files.style_transform)
+# Run style transform on preprocessed style image.
+run_style_transform = fn <<_::binary>> = style_bottleneck_data,
+                         <<_::binary>> = preprocessed_content_data ->
+  # Load the model.
+  {:ok, interpreter} = TFLite.Interpreter.new(data_files.style_transform)
 
-# Get input and output tensors.
-{:ok, input_tensors} = TFLite.Interpreter.inputs(interpreter)
-{:ok, output_tensors} = TFLite.Interpreter.outputs(interpreter)
+  # Get input and output tensors.
+  {:ok, _input_tensors} = TFLite.Interpreter.inputs(interpreter)
+  {:ok, output_tensors} = TFLite.Interpreter.outputs(interpreter)
 
-# Run the model.
-TFLite.Interpreter.input_tensor(interpreter, 0, Nx.to_binary(preprocessed_content.tensor))
-TFLite.Interpreter.input_tensor(interpreter, 1, style_bottleneck_data)
-TFLite.Interpreter.invoke(interpreter)
+  # Run the model.
+  TFLite.Interpreter.input_tensor(interpreter, 0, preprocessed_content_data)
+  TFLite.Interpreter.input_tensor(interpreter, 1, style_bottleneck_data)
+  TFLite.Interpreter.invoke(interpreter)
 
-# Transform content image.
-{:ok, output_tensors} = TFLite.Interpreter.outputs(interpreter)
-{:ok, output_data} = TFLite.Interpreter.output_tensor(interpreter, 0)
-out_tensor = TFLite.Interpreter.tensor(interpreter, Enum.at(output_tensors, 0))
-[1 | shape] = TFLite.TFLiteTensor.dims(out_tensor)
-type = TFLite.TFLiteTensor.type(out_tensor)
+  # Transform content image.
+  out_tensor = TFLite.Interpreter.tensor(interpreter, Enum.at(output_tensors, 0))
+  [1 | shape] = TFLite.TFLiteTensor.dims(out_tensor)
 
-# Visualize the output.
-out_tensor
-|> TFLiteTensor.to_nx(backend: Nx.BinaryBackend)
-# Change the range from [0..1] to [0..255]
-|> Nx.multiply(255)
-|> Nx.reshape(List.to_tuple(shape))
-|> Nx.as_type({:u, 8})
-|> Cv.Mat.from_nx_2d()
-|> Cv.cvtColor(Cv.Constant.cv_COLOR_RGB2BGR())
+  out_tensor
+  |> TFLiteTensor.to_nx(backend: Nx.BinaryBackend)
+  # Change the range from [0..1] to [0..255]
+  |> Nx.multiply(255)
+  |> Nx.reshape(List.to_tuple(shape))
+  |> Nx.as_type({:u, 8})
+  |> Cv.Mat.from_nx_2d()
+  |> Cv.cvtColor(Cv.Constant.cv_COLOR_RGB2BGR())
+end
+
+# Stylize the content image using the style bottleneck.
+_stylized_image =
+  run_style_transform.(
+    Nx.to_binary(style_bottleneck),
+    Nx.to_binary(preprocessed_content.tensor)
+  )
 ```
 
 ### Style blending
 
 ```elixir
-# # Calculate style bottleneck of the content image.
-# style_bottleneck_content = run_style_predict(
-#   preprocess_image(content_image, 256)
-# )
+# Calculate style bottleneck of the content image.
+style_bottleneck_content =
+  preprocess_image.(content_image, 256).tensor
+  |> Nx.to_binary()
+  |> run_style_predict.()
 ```
 
 ```elixir
-# # Define content blending ratio between [0..1].
-# # 0.0: 0% style extracts from content image.
-# # 1.0: 100% style extracted from content image.
-# content_blending_ratio = 0.5
+# Define content blending ratio between [0..1].
+# 0.0: 0% style extracts from content image.
+# 1.0: 100% style extracted from content image.
+content_blending_ratio = 0.5
 
-# # Blend the style bottleneck of style image and content image
-# style_bottleneck_blended = content_blending_ratio * style_bottleneck_content \
-#                            + (1 - content_blending_ratio) * style_bottleneck
+# Blend the style bottleneck of style image and content image
+style_bottleneck_blended =
+  Nx.add(
+    Nx.multiply(content_blending_ratio, style_bottleneck_content),
+    Nx.multiply(1 - content_blending_ratio, style_bottleneck)
+  )
 
-# # Stylize the content image using the style bottleneck.
-# stylized_image_blended = run_style_transform(style_bottleneck_blended,
-#                                              preprocessed_content_image)
-
-# # Visualize the output.
-# imshow(stylized_image_blended, 'Blended Stylized Image')
+# Stylize the content image using the style bottleneck.
+stylized_image_blended =
+  run_style_transform.(
+    Nx.to_binary(style_bottleneck_blended),
+    Nx.to_binary(preprocessed_content.tensor)
+  )
 ```
