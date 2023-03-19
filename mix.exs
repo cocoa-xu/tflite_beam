@@ -8,7 +8,7 @@ defmodule TfliteElixir.MixProject do
   @prefer_precompiled "YES"
   @github_url "https://github.com/cocoa-xu/tflite_elixir"
   @libedgetpu_runtime_github_url "https://github.com/cocoa-xu/libedgetpu"
-  @libedgetpu_runtime_version "1.0.4"
+  @libedgetpu_runtime_version "0.1.5"
   # only means compatible. need to write more tests
   @compatible_tflite_versions [
     "2.7.0",
