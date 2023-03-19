@@ -4,6 +4,7 @@
 #pragma once
 
 #include <atomic>
+#include <string>
 #include <erl_nif.h>
 
 #include "tensorflow/lite/c/c_api.h"

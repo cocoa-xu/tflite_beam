@@ -25,7 +25,6 @@ NifResEdgeTpuContext * alloc_resource_NifResEdgeTpuContext();
 static void destruct_edge_tpu_context(ErlNifEnv *env, void *args) {
     auto res = (NifResEdgeTpuContext *)args;
     if (res->val) {
-        delete res->val;
         res->val = nullptr;
     }
 }
