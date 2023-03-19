@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.1.6 (2022-03-19)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_elixir/tree/v0.1.6) | [Released Assets](https://github.com/cocoa-xu/tflite_elixir/releases/tag/v0.1.6)
+
+### Fixed
+- [edgetpu] Improved edgetpu context handling, and bumped libedgetpu_runtime_version to v0.1.5. Fixed [#30](https://github.com/cocoa-xu/tflite_elixir/issues/30)
+
+### Added
+- [example] artistic-style-transfer example (#27) @mnishiguchi
+
 ## v0.1.5 (2022-03-18)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_elixir/tree/v0.1.5) | [Released Assets](https://github.com/cocoa-xu/tflite_elixir/releases/tag/v0.1.5)
 
