@@ -279,6 +279,11 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
         return erlang::nif::error(env, "expecting index to be an integer");
     }
 
+    const size_t num_tensors = self_res->val->tensors_size();
+    if (num_tensors <= index || index < 0) {
+        return erlang::nif::error(env, "index out of bound");
+    }
+
     NifResTfLiteTensor * tensor_res = nullptr;
     if (!(tensor_res = alloc_resource_NifResTfLiteTensor())) {
         return erlang::nif::error(env, "cannot allocate memory for resource");
