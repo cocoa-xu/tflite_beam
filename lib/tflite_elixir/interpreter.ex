@@ -321,6 +321,28 @@ defmodule TFLiteElixir.Interpreter do
   deferror(get_output_name(self, index))
 
   @doc """
+  Return the number of tensors in the model.
+  """
+  @spec tensors_size(reference()) :: non_neg_integer() | nif_error()
+  def tensors_size(self) when is_reference(self) do
+    case TFLiteElixir.Nif.interpreter_tensors_size(self) do
+      {:ok, tensors_size} -> tensors_size
+      error -> error
+    end
+  end
+
+  @doc """
+  Return the number of ops in the model.
+  """
+  @spec nodes_size(reference()) :: non_neg_integer() | nif_error()
+  def nodes_size(self) when is_reference(self) do
+    case TFLiteElixir.Nif.interpreter_nodes_size(self) do
+      {:ok, nodes_size} -> nodes_size
+      error -> error
+    end
+  end
+
+  @doc """
   Get the name of the input tensor
 
   Note that the index here means the index in the result list of `outputs/1`. For example,

@@ -218,6 +218,34 @@ ERL_NIF_TERM interpreter_get_output_name(ErlNifEnv *env, int argc, const ERL_NIF
     return erlang::nif::ok(env, erlang::nif::make_binary(env, name));
 }
 
+ERL_NIF_TERM interpreter_tensors_size(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+
+    ERL_NIF_TERM self_nif = argv[0];
+    NifResInterpreter *self_res;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
+    }
+
+    return erlang::nif::ok(env, enif_make_uint64(env, self_res->val->tensors_size()));
+}
+
+ERL_NIF_TERM interpreter_nodes_size(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+
+    ERL_NIF_TERM self_nif = argv[0];
+    NifResInterpreter *self_res;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
+    }
+
+    return erlang::nif::ok(env, enif_make_uint64(env, self_res->val->nodes_size()));
+}
+
 ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 2) return enif_make_badarg(env);
 

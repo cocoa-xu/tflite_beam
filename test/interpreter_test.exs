@@ -52,6 +52,18 @@ defmodule TFLiteElixir.Interpreter.Test do
     assert {:ok, [0]} == Interpreter.inputs(interpreter)
   end
 
+  test "get_input_name/2" do
+    filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
+    model = FlatBufferModel.build_from_file(filename)
+    resolver = BuiltinResolver.new!()
+    builder = InterpreterBuilder.new!(model, resolver)
+    interpreter = Interpreter.new!()
+    :ok = InterpreterBuilder.build!(builder, interpreter)
+
+    assert {:ok, "map/TensorArrayStack/TensorArrayGatherV3"} ==
+             Interpreter.get_input_name(interpreter, 0)
+  end
+
   test "outputs/1" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     model = FlatBufferModel.build_from_file(filename)
@@ -70,18 +82,6 @@ defmodule TFLiteElixir.Interpreter.Test do
     assert {:ok, []} == Interpreter.variables(interpreter)
   end
 
-  test "get_input_name/2" do
-    filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
-    model = FlatBufferModel.build_from_file(filename)
-    resolver = BuiltinResolver.new!()
-    builder = InterpreterBuilder.new!(model, resolver)
-    interpreter = Interpreter.new!()
-    :ok = InterpreterBuilder.build!(builder, interpreter)
-
-    assert {:ok, "map/TensorArrayStack/TensorArrayGatherV3"} ==
-             Interpreter.get_input_name(interpreter, 0)
-  end
-
   test "get_output_name/2" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     model = FlatBufferModel.build_from_file(filename)
@@ -91,6 +91,20 @@ defmodule TFLiteElixir.Interpreter.Test do
     :ok = InterpreterBuilder.build!(builder, interpreter)
 
     assert {:ok, "prediction"} == Interpreter.get_output_name(interpreter, 0)
+  end
+
+  test "tensors_size/1" do
+    filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
+    interpreter = Interpreter.new!(filename)
+
+    assert 179 == Interpreter.tensors_size(interpreter)
+  end
+
+  test "nodes_size/1" do
+    filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
+    interpreter = Interpreter.new!(filename)
+
+    assert 65 == Interpreter.nodes_size(interpreter)
   end
 
   test "tensor/2" do

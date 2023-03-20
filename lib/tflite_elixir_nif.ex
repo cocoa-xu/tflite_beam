@@ -43,6 +43,8 @@ defmodule TFLiteElixir.Nif do
   def interpreter_outputs(_self), do: :erlang.nif_error(:not_loaded)
   def interpreter_variables(_self), do: :erlang.nif_error(:not_loaded)
   def interpreter_get_output_name(_self, _index), do: :erlang.nif_error(:not_loaded)
+  def interpreter_tensors_size(_self), do: :erlang.nif_error(:not_loaded)
+  def interpreter_nodes_size(_self), do: :erlang.nif_error(:not_loaded)
   def interpreter_tensor(_self, _tensor_index), do: :erlang.nif_error(:not_loaded)
   def interpreter_input_tensor(_self, _index, _data), do: :erlang.nif_error(:not_loaded)
   def interpreter_output_tensor(_self, _index), do: :erlang.nif_error(:not_loaded)
