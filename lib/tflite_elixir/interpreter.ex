@@ -118,14 +118,17 @@ defmodule TFLiteElixir.Interpreter do
         Enum.zip_with([input_tensors, input], fn [input_index, input_tensor] ->
           fill_input(interpreter, input_index, input_tensor)
         end)
+
       all_filled = Enum.all?(fill_results, fn r -> r == :ok end)
+
       if all_filled do
         :ok
       else
         Enum.reject(fill_results, fn x -> x == :ok end)
       end
     else
-      {:error, "length mismatch: there are #{length(input_tensors)} input tensors while the input list has #{length(input)} elements"}
+      {:error,
+       "length mismatch: there are #{length(input_tensors)} input tensors while the input list has #{length(input)} elements"}
     end
   end
 

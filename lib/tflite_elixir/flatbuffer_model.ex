@@ -15,6 +15,7 @@ defmodule TFLiteElixir.FlatBufferModel do
     :metadata,
     :model
   ]
+
   alias __MODULE__, as: T
 
   @doc """
@@ -33,7 +34,8 @@ defmodule TFLiteElixir.FlatBufferModel do
   def build_from_file(filename, opts \\ []) when is_binary(filename) and is_list(opts) do
     error_reporter = ErrorReporter.from_struct(opts[:error_reporter])
 
-    with {:ok, model} <- TFLiteElixir.Nif.flatbuffer_model_build_from_file(filename, error_reporter) do
+    with {:ok, model} <-
+           TFLiteElixir.Nif.flatbuffer_model_build_from_file(filename, error_reporter) do
       %T{
         initialized: TFLiteElixir.Nif.flatbuffer_model_initialized(model),
         minimum_runtime: TFLiteElixir.Nif.flatbuffer_model_get_minimum_runtime(model),
@@ -90,7 +92,8 @@ defmodule TFLiteElixir.FlatBufferModel do
   def build_from_buffer(buffer, opts \\ []) when is_binary(buffer) and is_list(opts) do
     error_reporter = ErrorReporter.from_struct(opts[:error_reporter])
 
-    with {:ok, model} <- TFLiteElixir.Nif.flatbuffer_model_build_from_buffer(buffer, error_reporter) do
+    with {:ok, model} <-
+           TFLiteElixir.Nif.flatbuffer_model_build_from_buffer(buffer, error_reporter) do
       %T{model: model}
     else
       error -> error

@@ -1,9 +1,6 @@
 defmodule TFLiteElixir.Interpreter.Test do
   use ExUnit.Case
 
-  alias TFLiteElixir.InterpreterBuilder
-  alias TFLiteElixir.Ops.Builtin.BuiltinResolver
-  alias TFLiteElixir.FlatBufferModel
   alias TFLiteElixir.Interpreter
   alias TFLiteElixir.TFLiteTensor
   alias TFLiteElixir.TFLiteQuantizationParams
@@ -43,22 +40,14 @@ defmodule TFLiteElixir.Interpreter.Test do
 
   test "inputs/1" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
-    model = FlatBufferModel.build_from_file(filename)
-    resolver = BuiltinResolver.new!()
-    builder = InterpreterBuilder.new!(model, resolver)
-    interpreter = Interpreter.new!()
-    :ok = InterpreterBuilder.build!(builder, interpreter)
+    interpreter = Interpreter.new!(filename)
 
     assert {:ok, [0]} == Interpreter.inputs(interpreter)
   end
 
   test "get_input_name/2" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
-    model = FlatBufferModel.build_from_file(filename)
-    resolver = BuiltinResolver.new!()
-    builder = InterpreterBuilder.new!(model, resolver)
-    interpreter = Interpreter.new!()
-    :ok = InterpreterBuilder.build!(builder, interpreter)
+    interpreter = Interpreter.new!(filename)
 
     assert {:ok, "map/TensorArrayStack/TensorArrayGatherV3"} ==
              Interpreter.get_input_name(interpreter, 0)
@@ -66,11 +55,7 @@ defmodule TFLiteElixir.Interpreter.Test do
 
   test "outputs/1" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
-    model = FlatBufferModel.build_from_file(filename)
-    resolver = BuiltinResolver.new!()
-    builder = InterpreterBuilder.new!(model, resolver)
-    interpreter = Interpreter.new!()
-    :ok = InterpreterBuilder.build!(builder, interpreter)
+    interpreter = Interpreter.new!(filename)
 
     assert {:ok, [171]} == Interpreter.outputs(interpreter)
   end
@@ -84,11 +69,7 @@ defmodule TFLiteElixir.Interpreter.Test do
 
   test "get_output_name/2" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
-    model = FlatBufferModel.build_from_file(filename)
-    resolver = BuiltinResolver.new!()
-    builder = InterpreterBuilder.new!(model, resolver)
-    interpreter = Interpreter.new!()
-    :ok = InterpreterBuilder.build!(builder, interpreter)
+    interpreter = Interpreter.new!(filename)
 
     assert {:ok, "prediction"} == Interpreter.get_output_name(interpreter, 0)
   end
@@ -109,11 +90,7 @@ defmodule TFLiteElixir.Interpreter.Test do
 
   test "tensor/2" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
-    model = FlatBufferModel.build_from_file(filename)
-    resolver = BuiltinResolver.new!()
-    builder = InterpreterBuilder.new!(model, resolver)
-    interpreter = Interpreter.new!()
-    :ok = InterpreterBuilder.build!(builder, interpreter)
+    interpreter = Interpreter.new!(filename)
 
     %TFLiteTensor{
       name: "map/TensorArrayStack/TensorArrayGatherV3",
@@ -132,22 +109,14 @@ defmodule TFLiteElixir.Interpreter.Test do
 
   test "tensor/2 with out-of-bound index" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
-    model = FlatBufferModel.build_from_file(filename)
-    resolver = BuiltinResolver.new!()
-    builder = InterpreterBuilder.new!(model, resolver)
-    interpreter = Interpreter.new!()
-    :ok = InterpreterBuilder.build!(builder, interpreter)
+    interpreter = Interpreter.new!(filename)
 
-    assert {:error, "index out of bound"} == Interpreter.tensor(interpreter, 100000)
+    assert {:error, "index out of bound"} == Interpreter.tensor(interpreter, 100_000)
   end
 
   test "allocate_tensors/1" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
-    model = FlatBufferModel.build_from_file(filename)
-    resolver = BuiltinResolver.new!()
-    builder = InterpreterBuilder.new!(model, resolver)
-    interpreter = Interpreter.new!()
-    :ok = InterpreterBuilder.build!(builder, interpreter)
+    interpreter = Interpreter.new!(filename)
 
     assert :ok == Interpreter.allocate_tensors!(interpreter)
   end
@@ -155,11 +124,7 @@ defmodule TFLiteElixir.Interpreter.Test do
   test "input_tensor/1" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
-    model = FlatBufferModel.build_from_file(filename)
-    resolver = BuiltinResolver.new!()
-    builder = InterpreterBuilder.new!(model, resolver)
-    interpreter = Interpreter.new!()
-    :ok = InterpreterBuilder.build!(builder, interpreter)
+    interpreter = Interpreter.new!(filename)
 
     assert :ok == Interpreter.allocate_tensors!(interpreter)
     assert :ok == Interpreter.input_tensor!(interpreter, 0, input_data)
@@ -168,11 +133,7 @@ defmodule TFLiteElixir.Interpreter.Test do
   test "invoke/1" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
-    model = FlatBufferModel.build_from_file(filename)
-    resolver = BuiltinResolver.new!()
-    builder = InterpreterBuilder.new!(model, resolver)
-    interpreter = Interpreter.new!()
-    :ok = InterpreterBuilder.build!(builder, interpreter)
+    interpreter = Interpreter.new!(filename)
 
     assert :ok == Interpreter.allocate_tensors!(interpreter)
     assert :ok == Interpreter.input_tensor!(interpreter, 0, input_data)
@@ -183,18 +144,19 @@ defmodule TFLiteElixir.Interpreter.Test do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
     expected_out = Path.join([__DIR__, "test_data", "parrot-expected-out.bin"]) |> File.read!()
-    model = FlatBufferModel.build_from_file(filename)
-    resolver = BuiltinResolver.new!()
-    builder = InterpreterBuilder.new!(model, resolver)
-    interpreter = Interpreter.new!()
-    :ok = InterpreterBuilder.build!(builder, interpreter)
-    :ok = Interpreter.allocate_tensors!(interpreter)
+    interpreter = Interpreter.new!(filename)
 
     input_tensor = Nx.from_binary(input_data, :f32)
-    assert {:error, "input data type, {:f, 32}, does not match the data type of the tensor, {:u, 8}, tensor index: 0"} == Interpreter.predict(interpreter, input_tensor)
+
+    assert {:error,
+            "input data type, {:f, 32}, does not match the data type of the tensor, {:u, 8}, tensor index: 0"} ==
+             Interpreter.predict(interpreter, input_tensor)
 
     input_tensor = Nx.from_binary(input_data, :u8)
-    assert {:error, "input data shape, {150528}, does not match the shape type of the tensor, {1, 224, 224, 3}, tensor index: 0"} == Interpreter.predict(interpreter, input_tensor)
+
+    assert {:error,
+            "input data shape, {150528}, does not match the shape type of the tensor, {1, 224, 224, 3}, tensor index: 0"} ==
+             Interpreter.predict(interpreter, input_tensor)
 
     input_tensor = Nx.reshape(input_tensor, {1, 224, 224, 3})
     [output_data] = Interpreter.predict(interpreter, input_tensor)
@@ -204,21 +166,37 @@ defmodule TFLiteElixir.Interpreter.Test do
     assert expected_out == Nx.to_binary(output_data)
 
     error = Interpreter.predict(interpreter, [input_tensor, input_tensor])
-    assert {:error, "length mismatch: there are 1 input tensors while the input list has 2 elements"} == error
+
+    assert {:error,
+            "length mismatch: there are 1 input tensors while the input list has 2 elements"} ==
+             error
 
     error = Interpreter.predict(interpreter, [Nx.from_binary(input_data, :f32)])
-    assert [error: "input data type, {:f, 32}, does not match the data type of the tensor, {:u, 8}, tensor index: 0"] == error
+
+    assert [
+             error:
+               "input data type, {:f, 32}, does not match the data type of the tensor, {:u, 8}, tensor index: 0"
+           ] == error
 
     error = Interpreter.predict(interpreter, %{"A" => input_tensor})
-    assert {:error, "missing input data for tensor `map/TensorArrayStack/TensorArrayGatherV3`, tensor index: 0"} == error
 
-    [output_data] = Interpreter.predict(interpreter, %{"map/TensorArrayStack/TensorArrayGatherV3" => input_tensor})
+    assert {:error,
+            "missing input data for tensor `map/TensorArrayStack/TensorArrayGatherV3`, tensor index: 0"} ==
+             error
+
+    [output_data] =
+      Interpreter.predict(interpreter, %{
+        "map/TensorArrayStack/TensorArrayGatherV3" => input_tensor
+      })
+
     assert expected_out == Nx.to_binary(output_data)
 
     [output_data] = Interpreter.predict(interpreter, [input_data])
     assert expected_out == Nx.to_binary(output_data)
 
-    [output_data] = Interpreter.predict(interpreter, %{"map/TensorArrayStack/TensorArrayGatherV3" => input_data})
+    [output_data] =
+      Interpreter.predict(interpreter, %{"map/TensorArrayStack/TensorArrayGatherV3" => input_data})
+
     assert expected_out == Nx.to_binary(output_data)
   end
 
@@ -226,11 +204,7 @@ defmodule TFLiteElixir.Interpreter.Test do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
     expected_out = Path.join([__DIR__, "test_data", "parrot-expected-out.bin"]) |> File.read!()
-    model = FlatBufferModel.build_from_file(filename)
-    resolver = BuiltinResolver.new!()
-    builder = InterpreterBuilder.new!(model, resolver)
-    interpreter = Interpreter.new!()
-    :ok = InterpreterBuilder.build!(builder, interpreter)
+    interpreter = Interpreter.new!(filename)
 
     assert :ok == Interpreter.allocate_tensors!(interpreter)
     assert :ok == Interpreter.input_tensor!(interpreter, 0, input_data)

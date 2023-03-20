@@ -54,19 +54,21 @@ defmodule TFLiteElixir.TFLiteTensor.Test do
     t = Interpreter.tensor(interpreter, 0)
 
     assert %TFLiteElixir.TFLiteQuantizationParams{
-      scale: [0.0078125],
-      zero_point: [128],
-      quantized_dimension: 0
-    } == TFLiteTensor.quantization_params(t)
+             scale: [0.0078125],
+             zero_point: [128],
+             quantized_dimension: 0
+           } == TFLiteTensor.quantization_params(t)
+
     assert %TFLiteElixir.TFLiteQuantizationParams{
-      scale: [0.0078125],
-      zero_point: [128],
-      quantized_dimension: 0
-    } == TFLiteTensor.quantization_params(t.reference)
+             scale: [0.0078125],
+             zero_point: [128],
+             quantized_dimension: 0
+           } == TFLiteTensor.quantization_params(t.reference)
   end
 
   test "quantization_params/1 with invalid reference" do
-    assert {:error, "cannot access NifResTfLiteTensor resource"} == TFLiteTensor.quantization_params(make_ref())
+    assert {:error, "cannot access NifResTfLiteTensor resource"} ==
+             TFLiteTensor.quantization_params(make_ref())
   end
 
   test "set_data/2" do
@@ -120,7 +122,8 @@ defmodule TFLiteElixir.TFLiteTensor.Test do
   end
 
   test "to_binary/2 with invalid reference" do
-    assert {:error, "cannot access NifResTfLiteTensor resource"} == TFLiteTensor.to_binary(make_ref())
+    assert {:error, "cannot access NifResTfLiteTensor resource"} ==
+             TFLiteTensor.to_binary(make_ref())
   end
 
   test "to_nx/1" do
@@ -183,13 +186,19 @@ defmodule TFLiteElixir.TFLiteTensor.Test do
     :ok = Interpreter.allocate_tensors!(interpreter)
 
     t = Interpreter.tensor(interpreter, 0)
-    assert_raise RuntimeError, "Expecting keyword parameter `backend` to be a module, however, got `42`", fn ->
-      TFLiteTensor.to_nx(t, backend: 42)
-    end
+
+    assert_raise RuntimeError,
+                 "Expecting keyword parameter `backend` to be a module, however, got `42`",
+                 fn ->
+                   TFLiteTensor.to_nx(t, backend: 42)
+                 end
 
     t = Interpreter.tensor(interpreter, 0)
-    assert_raise RuntimeError, "Expecting keyword parameter `backend` to be a module, however, got `true`", fn ->
-      TFLiteTensor.to_nx(t, backend: true)
-    end
+
+    assert_raise RuntimeError,
+                 "Expecting keyword parameter `backend` to be a module, however, got `true`",
+                 fn ->
+                   TFLiteTensor.to_nx(t, backend: true)
+                 end
   end
 end
