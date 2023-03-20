@@ -20,6 +20,14 @@ NifResBuiltinOpResolver * NifResBuiltinOpResolver::allocate_resource(ErlNifEnv *
     return res;
 }
 
+NifResBuiltinOpResolver * NifResBuiltinOpResolver::get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error) {
+    NifResBuiltinOpResolver * self_res;
+    if (!enif_get_resource(env, term, NifResBuiltinOpResolver::type, (void **)&self_res) || self_res->val == nullptr) {
+        error = erlang::nif::error(env, "cannot access NifResBuiltinOpResolver resource");
+    }
+    return self_res;
+}
+
 void NifResBuiltinOpResolver::destruct_resource(ErlNifEnv *env, void *args) {
     auto res = (NifResBuiltinOpResolver *)args;
     if (res) {
@@ -41,6 +49,14 @@ NifResErrorReporter * NifResErrorReporter::allocate_resource(ErlNifEnv * env, ER
     }
 
     return res;
+}
+
+NifResErrorReporter * NifResErrorReporter::get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error) {
+    NifResErrorReporter * self_res;
+    if (!enif_get_resource(env, term, NifResErrorReporter::type, (void **)&self_res) || self_res->val == nullptr) {
+        error = erlang::nif::error(env, "cannot access NifResErrorReporter resource");
+    }
+    return self_res;
 }
 
 void NifResErrorReporter::destruct_resource(ErlNifEnv *env, void *args) {
@@ -69,6 +85,14 @@ NifResFlatBufferModel * NifResFlatBufferModel::allocate_resource(ErlNifEnv * env
     return res;
 }
 
+NifResFlatBufferModel * NifResFlatBufferModel::get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error) {
+    NifResFlatBufferModel * self_res;
+    if (!enif_get_resource(env, term, NifResFlatBufferModel::type, (void **)&self_res) || self_res->val == nullptr) {
+        error = erlang::nif::error(env, "cannot access NifResFlatBufferModel resource");
+    }
+    return self_res;
+}
+
 void NifResFlatBufferModel::destruct_resource(ErlNifEnv *env, void *args) {
     auto res = (NifResFlatBufferModel *)args;
     if (res) {
@@ -93,6 +117,14 @@ NifResInterpreterBuilder * NifResInterpreterBuilder::allocate_resource(ErlNifEnv
     res->flatbuffer_model = nullptr;
 
     return res;
+}
+
+NifResInterpreterBuilder * NifResInterpreterBuilder::get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error) {
+    NifResInterpreterBuilder * self_res;
+    if (!enif_get_resource(env, term, NifResInterpreterBuilder::type, (void **)&self_res) || self_res->val == nullptr) {
+        error = erlang::nif::error(env, "cannot access NifResInterpreterBuilder resource");
+    }
+    return self_res;
 }
 
 void NifResInterpreterBuilder::destruct_resource(ErlNifEnv *env, void *args) {
@@ -143,6 +175,14 @@ NifResInterpreter * NifResInterpreter::allocate_resource(ErlNifEnv * env, ERL_NI
     return res;
 }
 
+NifResInterpreter * NifResInterpreter::get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error) {
+    NifResInterpreter * self_res;
+    if (!enif_get_resource(env, term, NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
+        error = erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    }
+    return self_res;
+}
+
 void NifResInterpreter::destruct_resource(ErlNifEnv *env, void *args) {
     auto res = (NifResInterpreter *)args;
     if (res) {
@@ -176,6 +216,14 @@ NifResTfLiteTensor * NifResTfLiteTensor::allocate_resource(ErlNifEnv * env, ERL_
     return res;
 }
 
+NifResTfLiteTensor * NifResTfLiteTensor::get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error) {
+    NifResTfLiteTensor * self_res;
+    if (!enif_get_resource(env, term, NifResTfLiteTensor::type, (void **)&self_res) || self_res->val == nullptr) {
+        error = erlang::nif::error(env, "cannot access NifResTfLiteTensor resource");
+    }
+    return self_res;
+}
+
 void NifResTfLiteTensor::destruct_resource(ErlNifEnv *env, void *args) {
     auto res = (NifResTfLiteTensor *)args;
     if (res) {
@@ -198,6 +246,14 @@ NifResEdgeTpuContext * NifResEdgeTpuContext::allocate_resource(ErlNifEnv * env, 
     }
 
     return res;
+}
+
+NifResEdgeTpuContext * NifResEdgeTpuContext::get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error) {
+    NifResEdgeTpuContext * self_res;
+    if (!enif_get_resource(env, term, NifResEdgeTpuContext::type, (void **)&self_res) || self_res->val == nullptr) {
+        error = erlang::nif::error(env, "cannot access NifResEdgeTpuContext resource");
+    }
+    return self_res;
 }
 
 void NifResEdgeTpuContext::destruct_resource(ErlNifEnv *env, void *args) {
