@@ -116,6 +116,7 @@ set(SOURCE_FILES
     "${C_SRC}/tflite/tflitetensor.cpp"
     "${C_SRC}/tflite/tflite.cpp"
     "${C_SRC}/bindings.cpp"
+    "${C_SRC}/erlang_nif_resource.cpp"
 )
 
 if(${TFLITE_ELIXIR_CORAL_SUPPORT})

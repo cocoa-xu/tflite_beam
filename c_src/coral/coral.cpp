@@ -3,7 +3,7 @@
 
 #include <erl_nif.h>
 #include "../nif_utils.hpp"
-#include "../erlang_nif_resource.hpp"
+#include "../erlang_nif_resource.h"
 #include "../helper.h"
 
 #include "coral/tflite_utils.h"
@@ -110,21 +110,22 @@ ERL_NIF_TERM coral_get_edgetpu_context(ErlNifEnv *env, int argc, const ERL_NIF_T
     }
 
     NifResEdgeTpuContext * res = nullptr;
+    ERL_NIF_TERM ret;
 
     auto c = coral::GetEdgeTpuContext(device);
     if (c.get() == nullptr) {
         return erlang::nif::error(env, "cannot find any available TPU");
     }
 
-    if (!(res = alloc_resource_NifResEdgeTpuContext())) {
-        return erlang::nif::error(env, "cannot allocate NifResEdgeTpuContext resource");
+    if (!(res = NifResEdgeTpuContext::allocate_resource(env, ret))) {
+        return ret;
     }
 
     res->val = c.get();
     const edgetpu::EdgeTpuManager::DeviceEnumerationRecord& record = c->GetDeviceEnumRecord();
     managedContext[record.path] = c;
 
-    ERL_NIF_TERM ret = enif_make_resource(env, res);
+    ret = enif_make_resource(env, res);
     // todo: should we keep it?
     enif_keep_resource(res);
     return erlang::nif::ok(env, ret);
@@ -139,6 +140,8 @@ ERL_NIF_TERM coral_make_edgetpu_interpreter(ErlNifEnv *env, int argc, const ERL_
     NifResEdgeTpuContext * context_res;
     NifResInterpreter * interpreter_res = nullptr;
 
+    ERL_NIF_TERM ret;
+
     if (!enif_get_resource(env, model_term, NifResFlatBufferModel::type, (void **)&model_res) || model_res->val == nullptr) {
         return erlang::nif::error(env, "cannot access NifResFlatBufferModel resource");
     }
@@ -147,9 +150,8 @@ ERL_NIF_TERM coral_make_edgetpu_interpreter(ErlNifEnv *env, int argc, const ERL_
         return erlang::nif::error(env, "cannot access NifResEdgeTpuContext resource");
     }
 
-    interpreter_res = alloc_resource_NifResInterpreter();
-    if (interpreter_res == nullptr) {
-        return erlang::nif::error(env, "cannot allocate memory for interpreter resource");
+    if (!(interpreter_res = NifResInterpreter::allocate_resource(env, ret))) {
+        return ret;
     }
 
     tflite::FlatBufferModel * model = model_res->val;
@@ -169,7 +171,7 @@ ERL_NIF_TERM coral_make_edgetpu_interpreter(ErlNifEnv *env, int argc, const ERL_
     interpreter_res->flatbuffer_model = model_res;
     interpreter_res->flatbuffer_model->reference_count++;
 
-    ERL_NIF_TERM ret = enif_make_resource(env, interpreter_res);
+    ret = enif_make_resource(env, interpreter_res);
     enif_release_resource(interpreter_res);
     return erlang::nif::ok(env, ret);
 }

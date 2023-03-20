@@ -3,7 +3,7 @@
 
 #include <erl_nif.h>
 #include "../nif_utils.hpp"
-#include "../erlang_nif_resource.hpp"
+#include "../erlang_nif_resource.h"
 #include "../helper.h"
 
 #include "tensorflow/lite/core/api/verifier.h"
@@ -210,9 +210,8 @@ NifResFlatBufferModel * _make_flatbuffer_model_resource(ErlNifEnv *env, std::uni
         return res;
     }
 
-    if (!(res = alloc_resource_NifResFlatBufferModel())) {
+    if (!(res = NifResFlatBufferModel::allocate_resource(env, out))) {
         m.reset(nullptr);
-        out = erlang::nif::error(env, "cannot allocate memory for resource");
         return res;
     } 
 

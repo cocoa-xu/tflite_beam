@@ -1,6 +1,6 @@
 #include <erl_nif.h>
 #include "../nif_utils.hpp"
-#include "../erlang_nif_resource.hpp"
+#include "../erlang_nif_resource.h"
 #include "../helper.h"
 
 #include "tensorflow/lite/c/c_api.h"

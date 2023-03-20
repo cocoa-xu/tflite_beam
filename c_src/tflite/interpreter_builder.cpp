@@ -1,6 +1,6 @@
 #include <erl_nif.h>
 #include "../nif_utils.hpp"
-#include "../erlang_nif_resource.hpp"
+#include "../erlang_nif_resource.h"
 #include "../helper.h"
 
 #include "tensorflow/lite/model_builder.h"
@@ -19,6 +19,7 @@ ERL_NIF_TERM interpreterBuilder_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM
     NifResFlatBufferModel * model_res = nullptr;
     NifResBuiltinOpResolver * resolver_res = nullptr;
     NifResInterpreterBuilder * res = nullptr;
+    ERL_NIF_TERM ret;
 
     if (!enif_get_resource(env, model_nif, NifResFlatBufferModel::type, (void **)&model_res) || model_res->val == nullptr) {
         return erlang::nif::error(env, "cannot access NifResFlatBufferModel resource");
@@ -28,8 +29,8 @@ ERL_NIF_TERM interpreterBuilder_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM
         return erlang::nif::error(env, "cannot access NifResBuiltinOpResolver resource");
     }
 
-    if (!(res = alloc_resource_NifResInterpreterBuilder())) {
-        return erlang::nif::error(env, "cannot allocate NifResInterpreterBuilder resource");
+    if (!(res = NifResInterpreterBuilder::allocate_resource(env, ret))) {
+        return ret;
     }
 
     res->val = new tflite::InterpreterBuilder(*model_res->val, *resolver_res->val);
@@ -38,7 +39,7 @@ ERL_NIF_TERM interpreterBuilder_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM
 
     res->flatbuffer_model = model_res;
     res->flatbuffer_model->reference_count++;
-    ERL_NIF_TERM ret = enif_make_resource(env, res);
+    ret = enif_make_resource(env, res);
     enif_release_resource(res);
     return erlang::nif::ok(env, ret);
 }

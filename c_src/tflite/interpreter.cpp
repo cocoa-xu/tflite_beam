@@ -1,6 +1,6 @@
 #include <erl_nif.h>
 #include "../nif_utils.hpp"
-#include "../erlang_nif_resource.hpp"
+#include "../erlang_nif_resource.h"
 #include "../helper.h"
 
 #include "tensorflow/lite/interpreter.h"
@@ -13,13 +13,14 @@
 
 ERL_NIF_TERM interpreter_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     NifResInterpreter * res = nullptr;
+    ERL_NIF_TERM ret;
 
-    if (!(res = alloc_resource_NifResInterpreter())) {
-        return erlang::nif::error(env, "cannot allocate NifResInterpreter resource");
+    if (!(res = NifResInterpreter::allocate_resource(env, ret))) {
+        return ret;
     }
-    
+
     res->val = new tflite::Interpreter();
-    ERL_NIF_TERM ret = enif_make_resource(env, res);
+    ret = enif_make_resource(env, res);
     enif_release_resource(res);
     return erlang::nif::ok(env, ret);
 }
@@ -270,6 +271,7 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
     ERL_NIF_TERM index_nif = argv[1];
     int index;
     NifResInterpreter *self_res;
+    ERL_NIF_TERM ret;
 
     if (!enif_get_resource(env, self_nif, NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
         return erlang::nif::error(env, "cannot access NifResInterpreter resource");
@@ -285,8 +287,8 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
     }
 
     NifResTfLiteTensor * tensor_res = nullptr;
-    if (!(tensor_res = alloc_resource_NifResTfLiteTensor())) {
-        return erlang::nif::error(env, "cannot allocate memory for resource");
+    if (!(tensor_res = NifResTfLiteTensor::allocate_resource(env, ret))) {
+        return ret;
     }
 
     tensor_res->val = self_res->val->tensor(index);

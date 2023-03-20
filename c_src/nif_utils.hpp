@@ -9,7 +9,7 @@
 #include <string>
 #include <cstring>
 #include <vector>
-#include "erlang_nif_resource.hpp"
+#include "erlang_nif_resource.h"
 
 namespace erlang {
     namespace nif {

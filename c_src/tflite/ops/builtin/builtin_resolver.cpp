@@ -1,6 +1,6 @@
 #include <erl_nif.h>
 #include "../../../nif_utils.hpp"
-#include "../../../erlang_nif_resource.hpp"
+#include "../../../erlang_nif_resource.h"
 #include "../../../helper.h"
 
 #include "tensorflow/lite/kernels/register.h"
@@ -10,12 +10,14 @@
 
 ERL_NIF_TERM ops_builtin_builtinResolver_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     NifResBuiltinOpResolver * res = nullptr;
-    if (!(res = alloc_resource_NifResBuiltinOpResolver())) {
-        return erlang::nif::error(env, "cannot allocate memory for resource");
+    ERL_NIF_TERM ret;
+
+    if (!(res = NifResBuiltinOpResolver::allocate_resource(env, ret))) {
+        return ret;
     }
 
     res->val = new tflite::ops::builtin::BuiltinOpResolver();
-    ERL_NIF_TERM ret = enif_make_resource(env, res);
+    ret = enif_make_resource(env, res);
     enif_release_resource(res);
     return erlang::nif::ok(env, ret);
 }
