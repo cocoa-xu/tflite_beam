@@ -9,8 +9,12 @@ defmodule TFLiteElixir.FlatBufferModel do
 
   @type nif_error :: {:error, String.t()}
 
-  @behaviour Access
-  defstruct [:model]
+  defstruct [
+    :initialized,
+    :minimum_runtime,
+    :metadata,
+    :model
+  ]
   alias __MODULE__, as: T
 
   @doc """
@@ -30,7 +34,12 @@ defmodule TFLiteElixir.FlatBufferModel do
     error_reporter = ErrorReporter.from_struct(opts[:error_reporter])
 
     with {:ok, model} <- TFLiteElixir.Nif.flatBufferModel_buildFromFile(filename, error_reporter) do
-      %T{model: model}
+      %T{
+        initialized: TFLiteElixir.Nif.flatBufferModel_initialized(model),
+        minimum_runtime: TFLiteElixir.Nif.flatBufferModel_getMinimumRuntime(model),
+        metadata: TFLiteElixir.Nif.flatBufferModel_readAllMetadata(model),
+        model: model
+      }
     else
       error -> error
     end
@@ -128,32 +137,6 @@ defmodule TFLiteElixir.FlatBufferModel do
   @spec read_all_metadata(%T{}) :: %{String.t() => String.t()} | nif_error()
   def read_all_metadata(%T{model: self}) when is_reference(self) do
     TFLiteElixir.Nif.flatBufferModel_readAllMetadata(self)
-  end
-
-  @doc false
-  @impl true
-  def fetch(self, :initialized) do
-    {:ok, initialized(self)}
-  end
-
-  @impl true
-  def fetch(self, :minimum_runtime) do
-    {:ok, get_minimum_runtime(self)}
-  end
-
-  @impl true
-  def fetch(self, :metadata) do
-    {:ok, read_all_metadata(self)}
-  end
-
-  @impl true
-  def get_and_update(_self, key, _func) do
-    raise RuntimeError, "cannot write to readonly property: #{inspect(key)}"
-  end
-
-  @impl true
-  def pop(_self, key) do
-    raise RuntimeError, "cannot pop readonly property: #{inspect(key)}"
   end
 
   defimpl Inspect, for: T do
