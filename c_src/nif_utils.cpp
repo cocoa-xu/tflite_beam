@@ -203,7 +203,7 @@ int make(ErlNifEnv *env, const std::vector<double>& array, ERL_NIF_TERM &out) {
     return make_f64_list_from_c_array(env, count, data, out);
 }
 
-int make(ErlNifEnv *env, const std::vector<const std::string>& array, ERL_NIF_TERM &out) {
+int make(ErlNifEnv *env, const std::vector<std::string>& array, ERL_NIF_TERM &out) {
     size_t count = array.size();
     if (count == 0) {
         out = enif_make_list_from_array(env, nullptr, 0);

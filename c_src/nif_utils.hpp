@@ -157,7 +157,7 @@ int make(ErlNifEnv *env, const std::vector<int32_t>& array, ERL_NIF_TERM &out);
 int make(ErlNifEnv *env, const std::vector<int64_t>& array, ERL_NIF_TERM &out);
 int make(ErlNifEnv *env, const std::vector<float>& array, ERL_NIF_TERM &out);
 int make(ErlNifEnv *env, const std::vector<double>& array, ERL_NIF_TERM &out);
-int make(ErlNifEnv *env, const std::vector<const std::string>& array, ERL_NIF_TERM &out);
+int make(ErlNifEnv *env, const std::vector<std::string>& array, ERL_NIF_TERM &out);
 int make(ErlNifEnv *env, const std::vector<const std::string*>& array, ERL_NIF_TERM &out);
 
 ERL_NIF_TERM make_binary(ErlNifEnv *env, const char *c_string);
