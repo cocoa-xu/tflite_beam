@@ -198,7 +198,7 @@ resolver = TFLite.Ops.Builtin.BuiltinResolver.new!()
 builder = TFLite.InterpreterBuilder.new!(model, resolver)
 interpreter = TFLite.Interpreter.new!()
 :ok = TFLite.InterpreterBuilder.build!(builder, interpreter)
-:ok = TFLite.Interpreter.allocate_tensors!(interpreter)
+:ok = TFLite.Interpreter.allocate_tensors(interpreter)
 
 # verify loaded model, feel free to skip
 # [0] = TFLite.Interpreter.inputs!(interpreter)

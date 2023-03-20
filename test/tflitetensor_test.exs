@@ -14,7 +14,7 @@ defmodule TFLiteElixir.TFLiteTensor.Test do
     builder = InterpreterBuilder.new!(model, resolver)
     interpreter = Interpreter.new!()
     :ok = InterpreterBuilder.build!(builder, interpreter)
-    :ok = Interpreter.allocate_tensors!(interpreter)
+    :ok = Interpreter.allocate_tensors(interpreter)
 
     t = Interpreter.tensor(interpreter, 0)
     assert {:u, 8} == TFLiteTensor.type(t)
@@ -32,7 +32,7 @@ defmodule TFLiteElixir.TFLiteTensor.Test do
     builder = InterpreterBuilder.new!(model, resolver)
     interpreter = Interpreter.new!()
     :ok = InterpreterBuilder.build!(builder, interpreter)
-    :ok = Interpreter.allocate_tensors!(interpreter)
+    :ok = Interpreter.allocate_tensors(interpreter)
 
     t = Interpreter.tensor(interpreter, 0)
     assert [1, 224, 224, 3] == TFLiteTensor.dims(t)
@@ -50,7 +50,7 @@ defmodule TFLiteElixir.TFLiteTensor.Test do
     builder = InterpreterBuilder.new!(model, resolver)
     interpreter = Interpreter.new!()
     :ok = InterpreterBuilder.build!(builder, interpreter)
-    :ok = Interpreter.allocate_tensors!(interpreter)
+    :ok = Interpreter.allocate_tensors(interpreter)
     t = Interpreter.tensor(interpreter, 0)
 
     assert %TFLiteElixir.TFLiteQuantizationParams{
@@ -78,7 +78,7 @@ defmodule TFLiteElixir.TFLiteTensor.Test do
     builder = InterpreterBuilder.new!(model, resolver)
     interpreter = Interpreter.new!()
     :ok = InterpreterBuilder.build!(builder, interpreter)
-    :ok = Interpreter.allocate_tensors!(interpreter)
+    :ok = Interpreter.allocate_tensors(interpreter)
     t = Interpreter.tensor(interpreter, 0)
 
     zeros = Nx.broadcast(Nx.tensor(0, type: :u8), {1, 224, 224, 3})
@@ -110,7 +110,7 @@ defmodule TFLiteElixir.TFLiteTensor.Test do
     builder = InterpreterBuilder.new!(model, resolver)
     interpreter = Interpreter.new!()
     :ok = InterpreterBuilder.build!(builder, interpreter)
-    :ok = Interpreter.allocate_tensors!(interpreter)
+    :ok = Interpreter.allocate_tensors(interpreter)
     t = Interpreter.tensor(interpreter, 0)
 
     ones = Nx.broadcast(Nx.tensor(1, type: :u8), {1, 224, 224, 3})
@@ -133,7 +133,7 @@ defmodule TFLiteElixir.TFLiteTensor.Test do
     builder = InterpreterBuilder.new!(model, resolver)
     interpreter = Interpreter.new!()
     :ok = InterpreterBuilder.build!(builder, interpreter)
-    :ok = Interpreter.allocate_tensors!(interpreter)
+    :ok = Interpreter.allocate_tensors(interpreter)
 
     t = Interpreter.tensor(interpreter, 0)
     %Nx.Tensor{} = nx_tensor = TFLiteTensor.to_nx(t)
@@ -148,7 +148,7 @@ defmodule TFLiteElixir.TFLiteTensor.Test do
     builder = InterpreterBuilder.new!(model, resolver)
     interpreter = Interpreter.new!()
     :ok = InterpreterBuilder.build!(builder, interpreter)
-    :ok = Interpreter.allocate_tensors!(interpreter)
+    :ok = Interpreter.allocate_tensors(interpreter)
 
     t = Interpreter.tensor(interpreter, 0)
     %Nx.Tensor{} = nx_tensor = TFLiteTensor.to_nx(t, backend: Nx.BinaryBackend)
@@ -168,7 +168,7 @@ defmodule TFLiteElixir.TFLiteTensor.Test do
     builder = InterpreterBuilder.new!(model, resolver)
     interpreter = Interpreter.new!()
     :ok = InterpreterBuilder.build!(builder, interpreter)
-    :ok = Interpreter.allocate_tensors!(interpreter)
+    :ok = Interpreter.allocate_tensors(interpreter)
 
     t = Interpreter.tensor(interpreter, 0)
     %Nx.Tensor{} = nx_tensor = TFLiteTensor.to_nx(t, backend: nil)
@@ -183,7 +183,7 @@ defmodule TFLiteElixir.TFLiteTensor.Test do
     builder = InterpreterBuilder.new!(model, resolver)
     interpreter = Interpreter.new!()
     :ok = InterpreterBuilder.build!(builder, interpreter)
-    :ok = Interpreter.allocate_tensors!(interpreter)
+    :ok = Interpreter.allocate_tensors(interpreter)
 
     t = Interpreter.tensor(interpreter, 0)
 

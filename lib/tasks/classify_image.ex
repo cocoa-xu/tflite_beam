@@ -94,7 +94,7 @@ defmodule Mix.Tasks.ClassifyImage do
       end
 
     interpreter = make_interpreter(model, args[:jobs], args[:use_tpu], tpu_context)
-    Interpreter.allocate_tensors!(interpreter)
+    :ok = Interpreter.allocate_tensors(interpreter)
 
     [input_tensor_number | _] = Interpreter.inputs!(interpreter)
     [output_tensor_number | _] = Interpreter.outputs!(interpreter)

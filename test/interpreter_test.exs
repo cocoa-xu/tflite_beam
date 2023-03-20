@@ -118,7 +118,7 @@ defmodule TFLiteElixir.Interpreter.Test do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     interpreter = Interpreter.new!(filename)
 
-    assert :ok == Interpreter.allocate_tensors!(interpreter)
+    assert :ok == Interpreter.allocate_tensors(interpreter)
   end
 
   test "input_tensor/1" do
@@ -126,7 +126,7 @@ defmodule TFLiteElixir.Interpreter.Test do
     input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
     interpreter = Interpreter.new!(filename)
 
-    assert :ok == Interpreter.allocate_tensors!(interpreter)
+    assert :ok == Interpreter.allocate_tensors(interpreter)
     assert :ok == Interpreter.input_tensor!(interpreter, 0, input_data)
   end
 
@@ -135,7 +135,7 @@ defmodule TFLiteElixir.Interpreter.Test do
     input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
     interpreter = Interpreter.new!(filename)
 
-    assert :ok == Interpreter.allocate_tensors!(interpreter)
+    assert :ok == Interpreter.allocate_tensors(interpreter)
     assert :ok == Interpreter.input_tensor!(interpreter, 0, input_data)
     assert :ok == Interpreter.invoke!(interpreter)
   end
@@ -206,7 +206,7 @@ defmodule TFLiteElixir.Interpreter.Test do
     expected_out = Path.join([__DIR__, "test_data", "parrot-expected-out.bin"]) |> File.read!()
     interpreter = Interpreter.new!(filename)
 
-    assert :ok == Interpreter.allocate_tensors!(interpreter)
+    assert :ok == Interpreter.allocate_tensors(interpreter)
     assert :ok == Interpreter.input_tensor!(interpreter, 0, input_data)
     assert :ok == Interpreter.invoke!(interpreter)
 

@@ -184,7 +184,7 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
     {:u, 8} = TFLiteTensor.type(output_tensor)
 
     # run forwarding
-    :ok = Interpreter.allocate_tensors!(interpreter)
+    :ok = Interpreter.allocate_tensors(interpreter)
     Interpreter.input_tensor!(interpreter, 0, input_data)
     Interpreter.invoke!(interpreter)
     output_data = Interpreter.output_tensor!(interpreter, 0)
