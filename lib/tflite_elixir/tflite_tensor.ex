@@ -122,7 +122,14 @@ defmodule TFLiteElixir.TFLiteTensor do
     shape = List.to_tuple(dims(self_struct))
 
     with {:ok, binary} <- to_binary(self_struct) do
-      Nx.from_binary(binary, type, backend: opts[:backend])
+      case opts[:backend] do
+        nil ->
+          Nx.from_binary(binary, type)
+        module when is_atom(module) ->
+          Nx.from_binary(binary, type, backend: module)
+        error ->
+          raise "Expecting keyword parameter `backend` to be a module, however, got #{inspect(error)}"
+      end
       |> Nx.reshape(shape)
     else
       error -> error
@@ -134,7 +141,14 @@ defmodule TFLiteElixir.TFLiteTensor do
     shape = List.to_tuple(dims!(self))
 
     with {:ok, binary} <- to_binary(self) do
-      Nx.from_binary(binary, type, backend: opts[:backend])
+      case opts[:backend] do
+        nil ->
+          Nx.from_binary(binary, type)
+        module when is_atom(module) ->
+          Nx.from_binary(binary, type, backend: module)
+        error ->
+          raise "Expecting keyword parameter `backend` to be a module, however, got #{inspect(error)}"
+      end
       |> Nx.reshape(shape)
     else
       error -> error
