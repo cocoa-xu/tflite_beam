@@ -1,13 +1,31 @@
 defmodule TFLiteElixir.Test do
   use ExUnit.Case
 
-  test "TFLite.Interpreter.new(model_path)" do
-    model_path = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
-    _interpreter = TFLiteElixir.Interpreter.new!(model_path)
+  alias TFLiteElixir.Interpreter
+  alias TFLiteElixir.TFLiteTensor
 
-    {error_at_stage, {:error, reason}} = TFLiteElixir.Interpreter.new("/dev/null")
-    assert :build_from_file == error_at_stage
-    assert reason == "cannot get flatbuffer model"
+  test "print_interpreter_state/1" do
+    filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
+    interpreter = TFLiteElixir.Interpreter.new!(filename)
+
+    assert nil == TFLiteElixir.print_interpreter_state(interpreter)
+  end
+
+  test "reset_variable_tensor/1" do
+    filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
+    interpreter = Interpreter.new!(filename)
+    t = Interpreter.tensor(interpreter, 0)
+
+    zeros = Nx.broadcast(Nx.tensor(0, type: :u8), {1, 224, 224, 3})
+    ones = Nx.broadcast(Nx.tensor(1, type: :u8), {1, 224, 224, 3})
+
+    TFLiteTensor.set_data(t, ones)
+    t = Interpreter.tensor(interpreter, 0)
+    assert Nx.all_close(ones, TFLiteTensor.to_nx(t, backend: Nx.BinaryBackend))
+
+    TFLiteElixir.reset_variable_tensor(t)
+    t = Interpreter.tensor(interpreter, 0)
+    assert Nx.all_close(zeros, TFLiteTensor.to_nx(t, backend: Nx.BinaryBackend))
   end
 
   with {:module, TFLiteElixir.Coral} <- Code.ensure_compiled(TFLiteElixir.Coral) do

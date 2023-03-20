@@ -31,6 +31,19 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
     assert :ok == verify_loaded_model(model, input_data, expected_out, true)
   end
 
+  test "buildFromFile!/2" do
+    filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
+    input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
+    expected_out = Path.join([__DIR__, "test_data", "parrot-expected-out.bin"]) |> File.read!()
+
+    %FlatBufferModel{} = model =
+      FlatBufferModel.build_from_file!(filename,
+        error_reporter: ErrorReporter.default_error_reporter()
+      )
+
+    assert :ok == verify_loaded_model(model, input_data, expected_out, true)
+  end
+
   test "verify_and_build_from_file/2" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
@@ -44,6 +57,17 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
     assert :ok == verify_loaded_model(model, input_data, expected_out, true)
   end
 
+  test "verify_and_build_from_file/2 with invalid file" do
+    filename = Path.join([__DIR__, "test_data", "cat.jpeg"])
+
+    error =
+      FlatBufferModel.verify_and_build_from_file(filename,
+        error_reporter: ErrorReporter.default_error_reporter()
+      )
+
+    assert :invalid == error
+  end
+
   test "buildFromBuffer/1" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
@@ -51,6 +75,12 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
     %FlatBufferModel{} = model = FlatBufferModel.build_from_buffer(File.read!(filename))
 
     assert :ok == verify_loaded_model(model, input_data, expected_out, true)
+  end
+
+  test "buildFromBuffer/1 with invalid file" do
+    filename = Path.join([__DIR__, "test_data", "cat.jpeg"])
+
+    assert {:error, "cannot get flatbuffer model"} == FlatBufferModel.build_from_buffer(File.read!(filename))
   end
 
   test "buildFromBuffer/2" do
@@ -91,6 +121,18 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
 
     assert %{"TFLITE_METADATA" => <<28>>, "min_runtime_version" => "1.5.0"} ==
              FlatBufferModel.read_all_metadata(model)
+  end
+
+  test "inspect/1" do
+    filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
+
+    %FlatBufferModel{} = model =
+      FlatBufferModel.build_from_file!(filename,
+        error_reporter: ErrorReporter.default_error_reporter()
+      )
+
+    inspect_ = inspect(model)
+    assert "#FlatBufferModel<%{\"initialized\" => true, \"metadata\" => %{\"TFLITE_METADATA\" => <<28>>, \"min_runtime_version\" => \"1.5.0\"}, \"minimum_runtime\" => \"1.5.0\"}>" == inspect_
   end
 
   def verify_loaded_model(model, input_data, expected_out, print_state)
