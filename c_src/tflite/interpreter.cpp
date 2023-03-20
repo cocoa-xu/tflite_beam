@@ -25,14 +25,36 @@ ERL_NIF_TERM interpreter_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]
     return erlang::nif::ok(env, ret);
 }
 
+ERL_NIF_TERM interpreter_set_inputs(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 2) return enif_make_badarg(env);
+
+    ERL_NIF_TERM self_nif = argv[0];
+    ERL_NIF_TERM inputs_nif = argv[1];
+    NifResInterpreter * self_res;
+    std::vector<int> inputs;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
+    }
+
+    if (!erlang::nif::get_list(env, inputs_nif, inputs)) {
+        return erlang::nif::error(env, "expecting `inputs` to be a list of non-negative integers");
+    }
+
+    TfLiteStatus status = self_res->val->SetInputs(inputs);
+    return tflite_status_to_erl_term(env, status);
+}
+
 ERL_NIF_TERM interpreter_allocateTensors(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
     NifResInterpreter * self_res;
+    ERL_NIF_TERM ret;
 
-    if (!enif_get_resource(env, self_nif, NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
     }
 
     switch (self_res->val->AllocateTensors()) {
@@ -60,15 +82,14 @@ ERL_NIF_TERM interpreter_inputs(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
 
     ERL_NIF_TERM self_nif = argv[0];
     NifResInterpreter *self_res;
+    ERL_NIF_TERM ret;
 
-    if (!enif_get_resource(env, self_nif, NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
     }
 
     const std::vector<int>& inputs = self_res->val->inputs();
     size_t cnt = inputs.size();
-
-    ERL_NIF_TERM ret;
 
     if (cnt > 0) {
         ERL_NIF_TERM * arr = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * cnt);
@@ -95,9 +116,10 @@ ERL_NIF_TERM interpreter_getInputName(ErlNifEnv *env, int argc, const ERL_NIF_TE
     ERL_NIF_TERM index_nif = argv[1];
     int index;
     NifResInterpreter *self_res;
-    
-    if (!enif_get_resource(env, self_nif, NifResInterpreter::type, (void **) &self_res) || self_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
     }
 
     if (!enif_get_int(env, index_nif, &index)) {
@@ -126,9 +148,10 @@ ERL_NIF_TERM interpreter_input_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TE
     int index;
     ErlNifBinary data;
     NifResInterpreter *self_res;
+    ERL_NIF_TERM ret;
 
-    if (!enif_get_resource(env, self_nif, NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
     }
 
     if (!enif_get_int(env, index_nif, &index)) {
@@ -162,11 +185,12 @@ ERL_NIF_TERM interpreter_invoke(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
 
     ERL_NIF_TERM self_nif = argv[0];
     NifResInterpreter *self_res;
+    ERL_NIF_TERM ret;
 
-    if (!enif_get_resource(env, self_nif, NifResInterpreter::type, (void **) &self_res) || self_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
     }
-    
+
     return tflite_status_to_erl_term(env, self_res->val->Invoke());
 }
 
@@ -175,14 +199,14 @@ ERL_NIF_TERM interpreter_outputs(ErlNifEnv *env, int argc, const ERL_NIF_TERM ar
 
     ERL_NIF_TERM self_nif = argv[0];
     NifResInterpreter *self_res;
+    ERL_NIF_TERM ret;
 
-    if (!enif_get_resource(env, self_nif, NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
     }
 
     const std::vector<int>&  outputs = self_res->val->outputs();
     size_t cnt = outputs.size();
-    ERL_NIF_TERM ret;
 
     if (cnt > 0) {
         ERL_NIF_TERM * arr = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * cnt);
@@ -199,7 +223,7 @@ ERL_NIF_TERM interpreter_outputs(ErlNifEnv *env, int argc, const ERL_NIF_TERM ar
         // Returns an empty list if cnt is 0.
         ret = enif_make_list(env, 0, nullptr);
     }
-    
+
     return erlang::nif::ok(env, ret);
 }
 
@@ -210,9 +234,10 @@ ERL_NIF_TERM interpreter_getOutputName(ErlNifEnv *env, int argc, const ERL_NIF_T
     ERL_NIF_TERM index_nif = argv[1];
     int index;
     NifResInterpreter *self_res;
+    ERL_NIF_TERM ret;
 
-    if (!enif_get_resource(env, self_nif, NifResInterpreter::type, (void **) &self_res) || self_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
     }
 
     if (!enif_get_int(env, index_nif, &index)) {
@@ -239,9 +264,10 @@ ERL_NIF_TERM interpreter_output_tensor(ErlNifEnv *env, int argc, const ERL_NIF_T
     ERL_NIF_TERM index_nif = argv[1];
     int index;
     NifResInterpreter *self_res;
+    ERL_NIF_TERM ret;
 
-    if (!enif_get_resource(env, self_nif, NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
     }
 
     if (!enif_get_int(env, index_nif, &index)) {
@@ -273,8 +299,8 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
     NifResInterpreter *self_res;
     ERL_NIF_TERM ret;
 
-    if (!enif_get_resource(env, self_nif, NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
     }
 
     if (!enif_get_int(env, index_nif, &index)) {
@@ -347,9 +373,10 @@ ERL_NIF_TERM interpreter_setNumThreads(ErlNifEnv *env, int argc, const ERL_NIF_T
     ERL_NIF_TERM num_threads_nif = argv[1];
     int num_threads = 1;
     NifResInterpreter * self_res;
+    ERL_NIF_TERM ret;
 
-    if (!enif_get_resource(env, self_nif, NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access resource");
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
     }
 
     if (!enif_get_int(env, num_threads_nif, &num_threads) || num_threads < 1) {
@@ -365,9 +392,10 @@ ERL_NIF_TERM interpreter_get_signature_defs(ErlNifEnv *env, int argc, const ERL_
 
     ERL_NIF_TERM self_nif = argv[0];
     NifResInterpreter * self_res;
+    ERL_NIF_TERM ret;
 
-    if (!enif_get_resource(env, self_nif, NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
     }
 
     auto interpreter_ = self_res->val;

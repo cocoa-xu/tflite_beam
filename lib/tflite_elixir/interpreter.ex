@@ -67,6 +67,16 @@ defmodule TFLiteElixir.Interpreter do
   deferror(new(model_path))
 
   @doc """
+  Provide a list of tensor indexes that are inputs to the model.
+  Each index is bound check and this modifies the consistent_ flag of the
+  interpreter.
+  """
+  @spec set_inputs(reference, maybe_improper_list) :: :ok | nif_error()
+  def set_inputs(self, inputs) when is_reference(self) and is_list(inputs) do
+    TFLiteElixir.Nif.interpreter_set_inputs(self, inputs)
+  end
+
+  @doc """
   Fill input data to corresponding input tensor of the interpreter,
   call `Interpreter.invoke` and return output tensor(s)
   """

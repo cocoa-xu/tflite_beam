@@ -35,6 +35,7 @@ defmodule TFLiteElixir.Nif do
   def interpreterBuilder_setNumThreads(_self, _num_threads), do: :erlang.nif_error(:not_loaded)
 
   def interpreter_new(), do: :erlang.nif_error(:not_loaded)
+  def interpreter_set_inputs(_self, _inputs), do: :erlang.nif_error(:not_loaded)
   def interpreter_allocateTensors(_self), do: :erlang.nif_error(:not_loaded)
   def interpreter_inputs(_self), do: :erlang.nif_error(:not_loaded)
   def interpreter_getInputName(_self, _index), do: :erlang.nif_error(:not_loaded)

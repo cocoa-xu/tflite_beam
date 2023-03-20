@@ -8,6 +8,17 @@ defmodule TFLiteElixir.Interpreter.Test do
   alias TFLiteElixir.TFLiteTensor
   alias TFLiteElixir.TFLiteQuantizationParams
 
+  test "set_inputs/2" do
+    filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
+    interpreter = Interpreter.new!(filename)
+
+    assert {:ok, [0]} == Interpreter.inputs(interpreter)
+    assert :ok == Interpreter.set_inputs(interpreter, [1])
+    assert {:ok, [1]} == Interpreter.inputs(interpreter)
+    assert :ok == Interpreter.set_inputs(interpreter, [0])
+    assert {:ok, [0]} == Interpreter.inputs(interpreter)
+  end
+
   test "inputs/1" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     model = FlatBufferModel.build_from_file(filename)

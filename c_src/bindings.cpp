@@ -58,8 +58,7 @@ static ERL_NIF_TERM not_compiled(ErlNifEnv *env, int argc, const ERL_NIF_TERM ar
 }
 
 static int
-on_load(ErlNifEnv* env, void**, ERL_NIF_TERM)
-{
+on_load(ErlNifEnv* env, void**, ERL_NIF_TERM) {
     ErlNifResourceType *rt;
 
     rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "BuiltinOpResolver", NifResBuiltinOpResolver::destruct_resource, ERL_NIF_RT_CREATE, NULL);
@@ -95,13 +94,11 @@ on_load(ErlNifEnv* env, void**, ERL_NIF_TERM)
     return 0;
 }
 
-static int on_reload(ErlNifEnv*, void**, ERL_NIF_TERM)
-{
+static int on_reload(ErlNifEnv*, void**, ERL_NIF_TERM) {
     return 0;
 }
 
-static int on_upgrade(ErlNifEnv*, void**, void**, ERL_NIF_TERM)
-{
+static int on_upgrade(ErlNifEnv*, void**, void**, ERL_NIF_TERM) {
     return 0;
 }
 
@@ -128,6 +125,7 @@ static ErlNifFunc nif_functions[] = {
     F(interpreterBuilder_setNumThreads, 2),
 
     F(interpreter_new, 0),
+    F(interpreter_set_inputs, 2),
     F(interpreter_allocateTensors, 1),
     F(interpreter_inputs, 1),
     F(interpreter_getInputName, 2),
