@@ -135,6 +135,7 @@ static ErlNifFunc nif_functions[] = {
     F(interpreter_get_output_name, 2),
     F(interpreter_tensors_size, 1),
     F(interpreter_nodes_size, 1),
+    F(interpreter_execution_plan, 1),
     F(interpreter_tensor, 2),
     F_CPU(interpreter_input_tensor, 3),
     F_CPU(interpreter_output_tensor, 2),
