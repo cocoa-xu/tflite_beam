@@ -50,7 +50,7 @@ ERL_NIF_TERM flatBufferModel_verifyAndBuildFromFile(ErlNifEnv *env, int argc, co
     ERL_NIF_TERM ret;
 
     if (!erlang::nif::get(env, filename_term, filename)) {
-        return erlang::nif::error(env, "expected the filename to be a string");
+        return erlang::nif::error(env, "expecting the filename to be a string");
     }
 
     tflite::TfLiteVerifier * verifier = nullptr;
