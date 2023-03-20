@@ -1,4 +1,4 @@
-defmodule TFLiteElixir.Interpreter.Test do
+defmodule TFLiteElixir.TFLiteTensor.Test do
   use ExUnit.Case
 
   alias TFLiteElixir.InterpreterBuilder
