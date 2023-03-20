@@ -98,22 +98,19 @@ defmodule TFLiteElixir.TFLiteTensor do
   @doc """
   Get binary data
   """
+  @spec to_binary(%T{} | reference(), non_neg_integer()) :: binary() | {:error, String.t()}
   def to_binary(self, limit \\ 0)
 
-  @spec to_binary(%T{}, non_neg_integer()) :: {:ok, binary()} | {:error, String.t()}
   def to_binary(%T{reference: reference}, limit) when limit >= 0 do
-    TFLiteElixir.Nif.tflitetensor_to_binary(reference, limit)
+    to_binary(reference, limit)
   end
 
-  @spec to_binary(reference(), non_neg_integer()) :: {:ok, binary()} | {:error, String.t()}
   def to_binary(self, limit) when is_reference(self) and limit >= 0 do
-    TFLiteElixir.Nif.tflitetensor_to_binary(self, limit)
-  end
-
-  @doc false
-  # Convert `Nx.Tensor` to `TFLiteElixir.TFLiteTensor`
-  def from_nx(%Nx.Tensor{} = _tensor) do
-    raise "not implemented"
+    with {:ok, binary} <- TFLiteElixir.Nif.tflitetensor_to_binary(self, limit) do
+      binary
+    else
+      error -> error
+    end
   end
 
   @doc """
@@ -127,10 +124,10 @@ defmodule TFLiteElixir.TFLiteTensor do
     shape = List.to_tuple(dims(self_struct))
     backend = opts[:backend]
 
-    with {:ok, binary} <- to_binary(self_struct) do
-      to_nx_backend(binary, type, backend)
-      |> Nx.reshape(shape)
-    else
+    case to_binary(self_struct) do
+      binary when is_binary(binary) ->
+        to_nx_backend(binary, type, backend)
+        |> Nx.reshape(shape)
       error -> error
     end
   end
@@ -140,10 +137,10 @@ defmodule TFLiteElixir.TFLiteTensor do
     shape = List.to_tuple(dims(self))
     backend = opts[:backend]
 
-    with {:ok, binary} <- to_binary(self) do
-      to_nx_backend(binary, type, backend)
-      |> Nx.reshape(shape)
-    else
+    case to_binary(self) do
+      binary when is_binary(binary) ->
+        to_nx_backend(binary, type, backend)
+        |> Nx.reshape(shape)
       error -> error
     end
   end
@@ -156,10 +153,10 @@ defmodule TFLiteElixir.TFLiteTensor do
         if Code.ensure_loaded?(module) do
           Nx.from_binary(binary, type, backend: module)
         else
-          raise "Expecting keyword parameter `backend` to be a module, however, got #{inspect(module)}"
+          raise "Expecting keyword parameter `backend` to be a module, however, got `#{inspect(module)}`"
         end
       error ->
-        raise "Expecting keyword parameter `backend` to be a module, however, got #{inspect(error)}"
+        raise "Expecting keyword parameter `backend` to be a module, however, got `#{inspect(error)}`"
     end
   end
 end
