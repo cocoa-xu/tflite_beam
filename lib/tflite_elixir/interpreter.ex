@@ -77,6 +77,16 @@ defmodule TFLiteElixir.Interpreter do
   end
 
   @doc """
+  Provide a list of tensor indexes that are outputs to the model.
+  Each index is bound check and this modifies the consistent_ flag of the
+  interpreter.
+  """
+  @spec set_outputs(reference, maybe_improper_list) :: :ok | nif_error()
+  def set_outputs(self, outputs) when is_reference(self) and is_list(outputs) do
+    TFLiteElixir.Nif.interpreter_set_outputs(self, outputs)
+  end
+
+  @doc """
   Fill input data to corresponding input tensor of the interpreter,
   call `Interpreter.invoke` and return output tensor(s)
   """

@@ -46,6 +46,27 @@ ERL_NIF_TERM interpreter_set_inputs(ErlNifEnv *env, int argc, const ERL_NIF_TERM
     return tflite_status_to_erl_term(env, status);
 }
 
+ERL_NIF_TERM interpreter_set_outputs(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 2) return enif_make_badarg(env);
+
+    ERL_NIF_TERM self_nif = argv[0];
+    ERL_NIF_TERM outputs_nif = argv[1];
+    NifResInterpreter * self_res;
+    std::vector<int> outputs;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
+    }
+
+    if (!erlang::nif::get_list(env, outputs_nif, outputs)) {
+        return erlang::nif::error(env, "expecting `outputs` to be a list of non-negative integers");
+    }
+
+    TfLiteStatus status = self_res->val->SetOutputs(outputs);
+    return tflite_status_to_erl_term(env, status);
+}
+
 ERL_NIF_TERM interpreter_allocate_tensors(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
 

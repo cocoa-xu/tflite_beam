@@ -126,6 +126,7 @@ static ErlNifFunc nif_functions[] = {
 
     F(interpreter_new, 0),
     F(interpreter_set_inputs, 2),
+    F(interpreter_set_outputs, 2),
     F(interpreter_allocate_tensors, 1),
     F(interpreter_inputs, 1),
     F(interpreter_get_input_name, 2),

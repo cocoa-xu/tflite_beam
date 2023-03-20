@@ -19,6 +19,17 @@ defmodule TFLiteElixir.Interpreter.Test do
     assert {:ok, [0]} == Interpreter.inputs(interpreter)
   end
 
+  test "set_outputs/2" do
+    filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
+    interpreter = Interpreter.new!(filename)
+
+    assert {:ok, [171]} == Interpreter.outputs(interpreter)
+    assert :ok == Interpreter.set_outputs(interpreter, [170])
+    assert {:ok, [170]} == Interpreter.outputs(interpreter)
+    assert :ok == Interpreter.set_outputs(interpreter, [171])
+    assert {:ok, [171]} == Interpreter.outputs(interpreter)
+  end
+
   test "inputs/1" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     model = FlatBufferModel.build_from_file(filename)
