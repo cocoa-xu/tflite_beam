@@ -8,7 +8,7 @@
 
 #include "builtin_resolver.h"
 
-ERL_NIF_TERM ops_builtin_builtinResolver_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM ops_builtin_builtin_resolver_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     NifResBuiltinOpResolver * res = nullptr;
     ERL_NIF_TERM ret;
 

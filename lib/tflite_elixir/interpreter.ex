@@ -206,7 +206,7 @@ defmodule TFLiteElixir.Interpreter do
   """
   @spec allocate_tensors(reference()) :: :ok | nif_error()
   def allocate_tensors(self) when is_reference(self) do
-    TFLiteElixir.Nif.interpreter_allocateTensors(self)
+    TFLiteElixir.Nif.interpreter_allocate_tensors(self)
   end
 
   deferror(allocate_tensors(self))
@@ -232,7 +232,7 @@ defmodule TFLiteElixir.Interpreter do
   """
   @spec get_input_name(reference(), non_neg_integer()) :: {:ok, String.t()} | nif_error()
   def get_input_name(self, index) when is_reference(self) and index >= 0 do
-    TFLiteElixir.Nif.interpreter_getInputName(self, index)
+    TFLiteElixir.Nif.interpreter_get_input_name(self, index)
   end
 
   deferror(get_input_name(self, index))
@@ -287,7 +287,7 @@ defmodule TFLiteElixir.Interpreter do
   """
   @spec get_output_name(reference(), non_neg_integer()) :: {:ok, String.t()} | nif_error()
   def get_output_name(self, index) when is_reference(self) and index >= 0 do
-    TFLiteElixir.Nif.interpreter_getOutputName(self, index)
+    TFLiteElixir.Nif.interpreter_get_output_name(self, index)
   end
 
   deferror(get_output_name(self, index))
@@ -355,7 +355,7 @@ defmodule TFLiteElixir.Interpreter do
   """
   @spec set_num_threads(reference(), integer()) :: :ok | nif_error()
   def set_num_threads(self, num_threads) when is_integer(num_threads) and num_threads >= 1 do
-    TFLiteElixir.Nif.interpreter_setNumThreads(self, num_threads)
+    TFLiteElixir.Nif.interpreter_set_num_threads(self, num_threads)
   end
 
   deferror(set_num_threads(self, num_threads))

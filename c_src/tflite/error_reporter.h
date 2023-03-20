@@ -8,7 +8,7 @@
 
 // --------------------- nif api --------------------
 
-ERL_NIF_TERM errorReporter_DefaultErrorReporter(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
+ERL_NIF_TERM error_reporter_default_error_reporter(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 
 // ------------------ internal api ------------------
 

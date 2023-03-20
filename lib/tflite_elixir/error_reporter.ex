@@ -13,7 +13,7 @@ defmodule TFLiteElixir.ErrorReporter do
   """
   @spec default_error_reporter :: %T{} | {:error, String.t()}
   def default_error_reporter do
-    with {:ok, error_reporter} <- TFLiteElixir.Nif.errorReporter_DefaultErrorReporter() do
+    with {:ok, error_reporter} <- TFLiteElixir.Nif.error_reporter_default_error_reporter() do
       %T{ref: error_reporter}
     else
       error -> error
