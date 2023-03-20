@@ -17,7 +17,7 @@ TensorFlow Lite-Elixir binding with TPU support.
 ```elixir
 # will download and install precompiled version
 Mix.install([
-  {:tflite_elixir, "~> 0.1.3"}
+  {:tflite_elixir, "~> 0.1.6"}
 ])
 
 # parrot.jpeg and the tflite file can be found in the test/test_data directory
@@ -253,17 +253,23 @@ bash "3rd_party/cache/${TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME}/edgetpu_runtime/
 ```
 
 ### Compile-Time Environment Variable
+- `TFLITE_ELIXIR_PREFER_PRECOMPILED`
+
+  Use precompiled binaries when `TFLITE_ELIXIR_PREFER_PRECOMPILED` is `YES`. Otherwise, this library will compile from source.
+
+  Defaults to `YES`.
+
 - `TFLITE_ELIXIR_CORAL_SUPPORT`
 
   Enable Coral Support.
 
-  Default to `YES`.
+  Defaults to `YES`.
 
 - `TFLITE_ELIXIR_CORAL_USB_THROTTLE`
 
   Throttling USB Coral Devices. Please see the official warning here, [google-coral/libedgetpu](https://github.com/google-coral/libedgetpu#warning).
 
-  Default value is `YES`.
+  Defaults to `YES`.
 
   Note that only when `TFLITE_ELIXIR_CORAL_USB_THROTTLE` is set to `NO`, `:tflite_elixir` will use the non-throttled libedgetpu libraries.
 
@@ -281,19 +287,13 @@ bash "3rd_party/cache/${TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME}/edgetpu_runtime/
   |------------------|---------------------|
   | `aarch64`        | Linux arm64         |
   | `armv7l`         | Linux armv7         |
+  | `armv6`          | Linux armv6         |
   | `k8`             | Linux x86_64        |
   | `x86_64`         | Linux x86_64        |
   | `riscv64`        | Linux riscv64       |
   | `darwin_arm64`   | macOS Apple Silicon |
   | `darwin_x86_64`  | macOS x86_64        |
-  | `x64_windows`    | Windows x86_64      |
 
-
-- `TFLITE_ELIXIR_CACHE_DIR`
-
-  Cache directory for the runtime zip file.
-
-  Default value is `./3rd_party/cache`.
 
 ## Installation
 
@@ -303,7 +303,7 @@ by adding `tflite_elixir` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:tflite_elixir, "~> 0.1.0", github: "cocoa-xu/tflite_elixir"}
+    {:tflite_elixir, "~> 0.1", github: "cocoa-xu/tflite_elixir"}
   ]
 end
 ```
