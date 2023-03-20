@@ -84,9 +84,18 @@ defmodule TFLiteElixir.Interpreter do
   defp fill_input(interpreter, input_tensors, input)
        when is_list(input_tensors) and is_list(input) do
     if length(input_tensors) == length(input) do
-      Enum.zip_with([input_tensors, input], fn [input_index, input_tensor] ->
-        fill_input(interpreter, input_index, input_tensor)
-      end)
+      fill_results =
+        Enum.zip_with([input_tensors, input], fn [input_index, input_tensor] ->
+          fill_input(interpreter, input_index, input_tensor)
+        end)
+      all_filled = Enum.all?(fill_results, fn r -> r == :ok end)
+      if all_filled do
+        :ok
+      else
+        Enum.reject(fill_results, fn x -> x == :ok end)
+      end
+    else
+      {:error, "length mismatch: there are #{length(input_tensors)} input tensors while the input list has #{length(input)} elements"}
     end
   end
 
@@ -144,7 +153,7 @@ defmodule TFLiteElixir.Interpreter do
           fill_input(out_tensor, data)
           :ok
         else
-          "missing input data for tensor #{name}, tensor index: #{input_tensor_index}"
+          "missing input data for tensor `#{name}`, tensor index: #{input_tensor_index}"
         end
       end)
       |> Enum.reject(fn r -> r == :ok end)
