@@ -127,11 +127,11 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
         sparsity_params: %{}
       } = Interpreter.tensor(interpreter, 0)
 
-    [1, 224, 224, 3] = TFLiteTensor.dims!(input_tensor)
+    [1, 224, 224, 3] = TFLiteTensor.dims(input_tensor)
     {:u, 8} = TFLiteTensor.type(input_tensor)
     %TFLiteTensor{} = output_tensor = Interpreter.tensor(interpreter, 171)
-    [1, 965] = TFLiteTensor.dims!(output_tensor)
-    {:u, 8} = TFLiteTensor.type!(output_tensor)
+    [1, 965] = TFLiteTensor.dims(output_tensor)
+    {:u, 8} = TFLiteTensor.type(output_tensor)
 
     # run forwarding
     :ok = Interpreter.allocate_tensors!(interpreter)
