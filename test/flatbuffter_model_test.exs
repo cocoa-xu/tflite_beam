@@ -23,7 +23,8 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
     input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
     expected_out = Path.join([__DIR__, "test_data", "parrot-expected-out.bin"]) |> File.read!()
 
-    %FlatBufferModel{} = model =
+    %FlatBufferModel{} =
+      model =
       FlatBufferModel.build_from_file(filename,
         error_reporter: ErrorReporter.default_error_reporter()
       )
@@ -36,7 +37,8 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
     input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
     expected_out = Path.join([__DIR__, "test_data", "parrot-expected-out.bin"]) |> File.read!()
 
-    %FlatBufferModel{} = model =
+    %FlatBufferModel{} =
+      model =
       FlatBufferModel.build_from_file!(filename,
         error_reporter: ErrorReporter.default_error_reporter()
       )
@@ -49,7 +51,8 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
     input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
     expected_out = Path.join([__DIR__, "test_data", "parrot-expected-out.bin"]) |> File.read!()
 
-    %FlatBufferModel{} = model =
+    %FlatBufferModel{} =
+      model =
       FlatBufferModel.verify_and_build_from_file(filename,
         error_reporter: ErrorReporter.default_error_reporter()
       )
@@ -80,7 +83,8 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
   test "buildFromBuffer/1 with invalid file" do
     filename = Path.join([__DIR__, "test_data", "cat.jpeg"])
 
-    assert {:error, "cannot get flatbuffer model"} == FlatBufferModel.build_from_buffer(File.read!(filename))
+    assert {:error, "cannot get flatbuffer model"} ==
+             FlatBufferModel.build_from_buffer(File.read!(filename))
   end
 
   test "buildFromBuffer/2" do
@@ -88,7 +92,8 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
     input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
     expected_out = Path.join([__DIR__, "test_data", "parrot-expected-out.bin"]) |> File.read!()
 
-    %FlatBufferModel{} = model =
+    %FlatBufferModel{} =
+      model =
       FlatBufferModel.build_from_buffer(File.read!(filename),
         error_reporter: ErrorReporter.default_error_reporter()
       )
@@ -126,13 +131,16 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
   test "inspect/1" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
 
-    %FlatBufferModel{} = model =
+    %FlatBufferModel{} =
+      model =
       FlatBufferModel.build_from_file!(filename,
         error_reporter: ErrorReporter.default_error_reporter()
       )
 
     inspect_ = inspect(model)
-    assert "#FlatBufferModel<%{\"initialized\" => true, \"metadata\" => %{\"TFLITE_METADATA\" => <<28>>, \"min_runtime_version\" => \"1.5.0\"}, \"minimum_runtime\" => \"1.5.0\"}>" == inspect_
+
+    assert "#FlatBufferModel<%{\"initialized\" => true, \"metadata\" => %{\"TFLITE_METADATA\" => <<28>>, \"min_runtime_version\" => \"1.5.0\"}, \"minimum_runtime\" => \"1.5.0\"}>" ==
+             inspect_
   end
 
   def verify_loaded_model(model, input_data, expected_out, print_state)
@@ -176,7 +184,7 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
     {:u, 8} = TFLiteTensor.type(output_tensor)
 
     # run forwarding
-    :ok = Interpreter.allocate_tensors!(interpreter)
+    :ok = Interpreter.allocate_tensors(interpreter)
     Interpreter.input_tensor!(interpreter, 0, input_data)
     Interpreter.invoke!(interpreter)
     output_data = Interpreter.output_tensor!(interpreter, 0)

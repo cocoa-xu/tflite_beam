@@ -13,7 +13,7 @@ defmodule TFLiteElixir.InterpreterBuilder do
   """
   @spec new(%FlatBufferModel{}, reference()) :: nif_resource_ok() | nif_error()
   def new(%FlatBufferModel{model: model}, resolver) when is_reference(resolver) do
-    TFLiteElixir.Nif.interpreterBuilder_new(model, resolver)
+    TFLiteElixir.Nif.interpreter_builder_new(model, resolver)
   end
 
   deferror(new(model, resolver))
@@ -27,7 +27,7 @@ defmodule TFLiteElixir.InterpreterBuilder do
   """
   @spec build(reference(), reference()) :: :ok | nif_error()
   def build(self, interpreter) do
-    TFLiteElixir.Nif.interpreterBuilder_build(self, interpreter)
+    TFLiteElixir.Nif.interpreter_builder_build(self, interpreter)
   end
 
   deferror(build(self, interpreter))
@@ -38,7 +38,7 @@ defmodule TFLiteElixir.InterpreterBuilder do
   """
   @spec set_num_threads(reference(), integer()) :: :ok | nif_error()
   def set_num_threads(self, num_threads) when is_integer(num_threads) and num_threads >= 1 do
-    TFLiteElixir.Nif.interpreterBuilder_setNumThreads(self, num_threads)
+    TFLiteElixir.Nif.interpreter_builder_set_num_threads(self, num_threads)
   end
 
   deferror(set_num_threads(self, num_threads))

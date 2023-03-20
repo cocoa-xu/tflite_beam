@@ -26,6 +26,7 @@ struct NifResBuiltinOpResolver {
 
     static ErlNifResourceType * type;
     static NifResBuiltinOpResolver * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
+    static NifResBuiltinOpResolver * get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error);
     static void destruct_resource(ErlNifEnv *env, void *args);
 };
 
@@ -35,6 +36,7 @@ struct NifResErrorReporter {
 
     static ErlNifResourceType * type;
     static NifResErrorReporter * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
+    static NifResErrorReporter * get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error);
     static void destruct_resource(ErlNifEnv *env, void *args);
 };
 
@@ -47,6 +49,7 @@ struct NifResFlatBufferModel {
 
     static ErlNifResourceType * type;
     static NifResFlatBufferModel * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
+    static NifResFlatBufferModel * get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error);
     static void destruct_resource(ErlNifEnv *env, void *args);
 };
 
@@ -57,6 +60,7 @@ struct NifResInterpreterBuilder {
 
     static ErlNifResourceType * type;
     static NifResInterpreterBuilder * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
+    static NifResInterpreterBuilder * get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error);
     static void destruct_resource(ErlNifEnv *env, void *args);
 };
 
@@ -66,6 +70,7 @@ struct NifResInterpreter {
 
     static ErlNifResourceType * type;
     static NifResInterpreter * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
+    static NifResInterpreter * get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error);
     static void destruct_resource(ErlNifEnv *env, void *args);
 };
 
@@ -75,6 +80,7 @@ struct NifResTfLiteTensor {
 
     static ErlNifResourceType * type;
     static NifResTfLiteTensor * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
+    static NifResTfLiteTensor * get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error);
     static void destruct_resource(ErlNifEnv *env, void *args);
 };
 
@@ -87,6 +93,7 @@ struct NifResEdgeTpuContext {
 
     static ErlNifResourceType * type;
     static NifResEdgeTpuContext * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
+    static NifResEdgeTpuContext * get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error);
     static void destruct_resource(ErlNifEnv *env, void *args);
 };
 

@@ -13,7 +13,7 @@ defmodule TFLiteElixir do
   """
   @spec print_interpreter_state(reference()) :: nil
   def print_interpreter_state(interpreter) do
-    TFLiteElixir.Nif.tflite_printInterpreterState(interpreter)
+    TFLiteElixir.Nif.tflite_print_interpreter_state(interpreter)
     nil
   end
 
@@ -22,6 +22,6 @@ defmodule TFLiteElixir do
   """
   @spec reset_variable_tensor(%TFLiteTensor{}) :: any
   def reset_variable_tensor(%TFLiteTensor{} = tflite_tensor) do
-    TFLiteElixir.Nif.tflite_resetVariableTensor(tflite_tensor)
+    TFLiteElixir.Nif.tflite_reset_variable_tensor(tflite_tensor)
   end
 end

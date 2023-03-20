@@ -177,7 +177,7 @@ defmodule TFLiteElixir.Ops.Builtin.BuiltinResolver do
   """
   @spec new() :: nif_resource_ok() | nif_error()
   def new() do
-    TFLiteElixir.Nif.ops_builtin_builtinResolver_new()
+    TFLiteElixir.Nif.ops_builtin_builtin_resolver_new()
   end
 
   deferror(new())

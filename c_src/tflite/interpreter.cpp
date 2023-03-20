@@ -1,3 +1,5 @@
+#include <string>
+
 #include <erl_nif.h>
 #include "../nif_utils.hpp"
 #include "../erlang_nif_resource.h"
@@ -25,34 +27,67 @@ ERL_NIF_TERM interpreter_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]
     return erlang::nif::ok(env, ret);
 }
 
-ERL_NIF_TERM interpreter_allocateTensors(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    if (argc != 1) return enif_make_badarg(env);
+ERL_NIF_TERM interpreter_set_inputs(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 2) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
+    ERL_NIF_TERM inputs_nif = argv[1];
     NifResInterpreter * self_res;
+    std::vector<int> inputs;
+    ERL_NIF_TERM ret;
 
-    if (!enif_get_resource(env, self_nif, NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
     }
 
-    switch (self_res->val->AllocateTensors()) {
-        case kTfLiteOk:
-            return erlang::nif::atom(env, "ok");
-        case kTfLiteError:
-            return erlang::nif::error(env, "General runtime error");
-        case kTfLiteDelegateError:
-            return erlang::nif::error(env, "TfLiteDelegate");
-        case kTfLiteApplicationError:
-            return erlang::nif::error(env, "Application");
-        case kTfLiteDelegateDataNotFound:
-            return erlang::nif::error(env, "DelegateDataNotFound");
-        case kTfLiteDelegateDataWriteError:
-            return erlang::nif::error(env, "DelegateDataWriteError");
-        case kTfLiteDelegateDataReadError:
-            return erlang::nif::error(env, "DelegateDataReadError");
-        default:
-            return erlang::nif::error(env, "unknown error");
+    if (!erlang::nif::get_list(env, inputs_nif, inputs)) {
+        return erlang::nif::error(env, "expecting `inputs` to be a list of non-negative integers");
     }
+
+    TfLiteStatus status = self_res->val->SetInputs(inputs);
+    return tflite_status_to_erl_term(env, status);
+}
+
+ERL_NIF_TERM interpreter_set_outputs(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 2) return enif_make_badarg(env);
+
+    ERL_NIF_TERM self_nif = argv[0];
+    ERL_NIF_TERM outputs_nif = argv[1];
+    NifResInterpreter * self_res;
+    std::vector<int> outputs;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
+    }
+
+    if (!erlang::nif::get_list(env, outputs_nif, outputs)) {
+        return erlang::nif::error(env, "expecting `outputs` to be a list of non-negative integers");
+    }
+
+    TfLiteStatus status = self_res->val->SetOutputs(outputs);
+    return tflite_status_to_erl_term(env, status);
+}
+
+ERL_NIF_TERM interpreter_set_variables(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 2) return enif_make_badarg(env);
+
+    ERL_NIF_TERM self_nif = argv[0];
+    ERL_NIF_TERM variables_nif = argv[1];
+    NifResInterpreter * self_res;
+    std::vector<int> variables;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
+    }
+
+    if (!erlang::nif::get_list(env, variables_nif, variables)) {
+        return erlang::nif::error(env, "expecting `variables` to be a list of non-negative integers");
+    }
+
+    TfLiteStatus status = self_res->val->SetVariables(variables);
+    return tflite_status_to_erl_term(env, status);
 }
 
 ERL_NIF_TERM interpreter_inputs(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
@@ -60,15 +95,14 @@ ERL_NIF_TERM interpreter_inputs(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
 
     ERL_NIF_TERM self_nif = argv[0];
     NifResInterpreter *self_res;
+    ERL_NIF_TERM ret;
 
-    if (!enif_get_resource(env, self_nif, NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
     }
 
     const std::vector<int>& inputs = self_res->val->inputs();
     size_t cnt = inputs.size();
-
-    ERL_NIF_TERM ret;
 
     if (cnt > 0) {
         ERL_NIF_TERM * arr = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * cnt);
@@ -88,16 +122,17 @@ ERL_NIF_TERM interpreter_inputs(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
     return erlang::nif::ok(env, ret);
 }
 
-ERL_NIF_TERM interpreter_getInputName(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM interpreter_get_input_name(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 2) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
     ERL_NIF_TERM index_nif = argv[1];
     int index;
     NifResInterpreter *self_res;
-    
-    if (!enif_get_resource(env, self_nif, NifResInterpreter::type, (void **) &self_res) || self_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
     }
 
     if (!enif_get_int(env, index_nif, &index)) {
@@ -117,102 +152,55 @@ ERL_NIF_TERM interpreter_getInputName(ErlNifEnv *env, int argc, const ERL_NIF_TE
     return erlang::nif::ok(env, erlang::nif::make_binary(env, name));
 }
 
-ERL_NIF_TERM interpreter_input_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    if (argc != 3) return enif_make_badarg(env);
-
-    ERL_NIF_TERM self_nif = argv[0];
-    ERL_NIF_TERM index_nif = argv[1];
-    ERL_NIF_TERM data_nif = argv[2];
-    int index;
-    ErlNifBinary data;
-    NifResInterpreter *self_res;
-
-    if (!enif_get_resource(env, self_nif, NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
-    }
-
-    if (!enif_get_int(env, index_nif, &index)) {
-        return erlang::nif::error(env, "expecting index to be an integer");
-    }
-
-    if (!enif_inspect_binary(env, data_nif, &data)) {
-        return erlang::nif::error(env, "cannot get input data");
-    }
-
-    const auto& inputs = self_res->val->inputs();
-    if (inputs.size() <= index || index < 0) {
-        return erlang::nif::error(env, "index out of bound");
-    }
-
-    auto input_tensor = self_res->val->input_tensor(index);
-    if (input_tensor->data.data == nullptr) {
-        return erlang::nif::error(env, "tensor is not allocated yet? Please call TFLiteElixir.Interpreter.allocate_tensors first");
-    }
-
-    size_t maximum_bytes = input_tensor->bytes;
-    if (data.size < maximum_bytes) {
-        maximum_bytes = data.size;
-    }
-    memcpy(input_tensor->data.data, data.data, maximum_bytes);
-    return erlang::nif::ok(env);
-}
-
-ERL_NIF_TERM interpreter_invoke(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    if (argc != 1) return enif_make_badarg(env);
-
-    ERL_NIF_TERM self_nif = argv[0];
-    NifResInterpreter *self_res;
-
-    if (!enif_get_resource(env, self_nif, NifResInterpreter::type, (void **) &self_res) || self_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
-    }
-    
-    return tflite_status_to_erl_term(env, self_res->val->Invoke());
-}
-
 ERL_NIF_TERM interpreter_outputs(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
     NifResInterpreter *self_res;
-
-    if (!enif_get_resource(env, self_nif, NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
-    }
-
-    const std::vector<int>&  outputs = self_res->val->outputs();
-    size_t cnt = outputs.size();
     ERL_NIF_TERM ret;
 
-    if (cnt > 0) {
-        ERL_NIF_TERM * arr = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * cnt);
-        if (!arr) {
-            return erlang::nif::error(env, "enif_alloc failed");
-        }
-
-        for (size_t i = 0; i < cnt; i++) {
-            arr[i] = enif_make_int(env, outputs[i]);
-        }
-        ret = enif_make_list_from_array(env, arr, (unsigned)cnt);
-        enif_free((void *)arr);
-    } else {
-        // Returns an empty list if cnt is 0.
-        ret = enif_make_list(env, 0, nullptr);
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
     }
-    
+
+    const std::vector<int>& outputs = self_res->val->outputs();
+    if (erlang::nif::make(env, outputs, ret)) {
+        return erlang::nif::error(env, "enif_alloc failed");
+    }
+
     return erlang::nif::ok(env, ret);
 }
 
-ERL_NIF_TERM interpreter_getOutputName(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM interpreter_variables(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+
+    ERL_NIF_TERM self_nif = argv[0];
+    NifResInterpreter *self_res;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
+    }
+
+    const std::vector<int>& variables = self_res->val->variables();
+    if (erlang::nif::make(env, variables, ret)) {
+        return erlang::nif::error(env, "enif_alloc failed");
+    }
+
+    return erlang::nif::ok(env, ret);
+}
+
+ERL_NIF_TERM interpreter_get_output_name(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 2) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
     ERL_NIF_TERM index_nif = argv[1];
     int index;
     NifResInterpreter *self_res;
+    ERL_NIF_TERM ret;
 
-    if (!enif_get_resource(env, self_nif, NifResInterpreter::type, (void **) &self_res) || self_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
     }
 
     if (!enif_get_int(env, index_nif, &index)) {
@@ -232,36 +220,51 @@ ERL_NIF_TERM interpreter_getOutputName(ErlNifEnv *env, int argc, const ERL_NIF_T
     return erlang::nif::ok(env, erlang::nif::make_binary(env, name));
 }
 
-ERL_NIF_TERM interpreter_output_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    if (argc != 2) return enif_make_badarg(env);
+ERL_NIF_TERM interpreter_tensors_size(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
-    ERL_NIF_TERM index_nif = argv[1];
-    int index;
     NifResInterpreter *self_res;
+    ERL_NIF_TERM ret;
 
-    if (!enif_get_resource(env, self_nif, NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
     }
 
-    if (!enif_get_int(env, index_nif, &index)) {
-        return erlang::nif::error(env, "expecting index to be an integer");
+    return erlang::nif::ok(env, enif_make_uint64(env, self_res->val->tensors_size()));
+}
+
+ERL_NIF_TERM interpreter_nodes_size(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+
+    ERL_NIF_TERM self_nif = argv[0];
+    NifResInterpreter *self_res;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
     }
 
-    const auto& outputs = self_res->val->outputs();
-    if (outputs.size() <= index || index < 0) {
-        return erlang::nif::error(env, "index out of bound");
+    return erlang::nif::ok(env, enif_make_uint64(env, self_res->val->nodes_size()));
+}
+
+ERL_NIF_TERM interpreter_execution_plan(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+
+    ERL_NIF_TERM self_nif = argv[0];
+    NifResInterpreter *self_res;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
     }
 
-    auto t = self_res->val->output_tensor(index);
-    ErlNifBinary tensor_data;
-    size_t tensor_size = t->bytes;
-    if (!enif_alloc_binary(tensor_size, &tensor_data)) {
-        return erlang::nif::error(env, "cannot allocate enough memory for the tensor");
+    const std::vector<int>& execution_plan = self_res->val->execution_plan();
+    if (erlang::nif::make(env, execution_plan, ret)) {
+        return erlang::nif::error(env, "enif_alloc failed");
     }
 
-    memcpy(tensor_data.data, t->data.data, tensor_size);
-    return erlang::nif::ok(env, enif_make_binary(env, &tensor_data));
+    return erlang::nif::ok(env, ret);
 }
 
 ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
@@ -273,8 +276,8 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
     NifResInterpreter *self_res;
     ERL_NIF_TERM ret;
 
-    if (!enif_get_resource(env, self_nif, NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
     }
 
     if (!enif_get_int(env, index_nif, &index)) {
@@ -340,24 +343,128 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
     ));
 }
 
-ERL_NIF_TERM interpreter_setNumThreads(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM interpreter_signature_keys(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+
+    ERL_NIF_TERM self_nif = argv[0];
+    NifResInterpreter *self_res;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
+    }
+
+    const std::vector<const std::string*> signature_keys = self_res->val->signature_keys();
+    if (erlang::nif::make(env, signature_keys, ret)) {
+        return erlang::nif::error(env, "enif_alloc failed");
+    }
+
+    return erlang::nif::ok(env, ret);
+}
+
+ERL_NIF_TERM interpreter_input_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 3) return enif_make_badarg(env);
+
+    ERL_NIF_TERM self_nif = argv[0];
+    ERL_NIF_TERM index_nif = argv[1];
+    ERL_NIF_TERM data_nif = argv[2];
+    int index;
+    ErlNifBinary data;
+    NifResInterpreter *self_res;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
+    }
+
+    if (!enif_get_int(env, index_nif, &index)) {
+        return erlang::nif::error(env, "expecting index to be an integer");
+    }
+
+    if (!enif_inspect_binary(env, data_nif, &data)) {
+        return erlang::nif::error(env, "cannot get input data");
+    }
+
+    const auto& inputs = self_res->val->inputs();
+    if (inputs.size() <= index || index < 0) {
+        return erlang::nif::error(env, "index out of bound");
+    }
+
+    auto input_tensor = self_res->val->input_tensor(index);
+    if (input_tensor->data.data == nullptr) {
+        return erlang::nif::error(env, "tensor is not allocated yet? Please call TFLiteElixir.Interpreter.allocate_tensors first");
+    }
+
+    size_t maximum_bytes = input_tensor->bytes;
+    if (data.size < maximum_bytes) {
+        maximum_bytes = data.size;
+    }
+    memcpy(input_tensor->data.data, data.data, maximum_bytes);
+    return erlang::nif::ok(env);
+}
+
+ERL_NIF_TERM interpreter_output_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 2) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
-    ERL_NIF_TERM num_threads_nif = argv[1];
-    int num_threads = 1;
+    ERL_NIF_TERM index_nif = argv[1];
+    int index;
+    NifResInterpreter *self_res;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
+    }
+
+    if (!enif_get_int(env, index_nif, &index)) {
+        return erlang::nif::error(env, "expecting index to be an integer");
+    }
+
+    const auto& outputs = self_res->val->outputs();
+    if (outputs.size() <= index || index < 0) {
+        return erlang::nif::error(env, "index out of bound");
+    }
+
+    auto t = self_res->val->output_tensor(index);
+    ErlNifBinary tensor_data;
+    size_t tensor_size = t->bytes;
+    if (!enif_alloc_binary(tensor_size, &tensor_data)) {
+        return erlang::nif::error(env, "cannot allocate enough memory for the tensor");
+    }
+
+    memcpy(tensor_data.data, t->data.data, tensor_size);
+    return erlang::nif::ok(env, enif_make_binary(env, &tensor_data));
+}
+
+ERL_NIF_TERM interpreter_allocate_tensors(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+
+    ERL_NIF_TERM self_nif = argv[0];
     NifResInterpreter * self_res;
+    ERL_NIF_TERM ret;
 
-    if (!enif_get_resource(env, self_nif, NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access resource");
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
     }
 
-    if (!enif_get_int(env, num_threads_nif, &num_threads) || num_threads < 1) {
-        return erlang::nif::error(env, "expecting num_threads to be an positive integer");
+    switch (self_res->val->AllocateTensors()) {
+        case kTfLiteOk:
+            return erlang::nif::atom(env, "ok");
+        case kTfLiteError:
+            return erlang::nif::error(env, "General runtime error");
+        case kTfLiteDelegateError:
+            return erlang::nif::error(env, "TfLiteDelegate");
+        case kTfLiteApplicationError:
+            return erlang::nif::error(env, "Application");
+        case kTfLiteDelegateDataNotFound:
+            return erlang::nif::error(env, "DelegateDataNotFound");
+        case kTfLiteDelegateDataWriteError:
+            return erlang::nif::error(env, "DelegateDataWriteError");
+        case kTfLiteDelegateDataReadError:
+            return erlang::nif::error(env, "DelegateDataReadError");
+        default:
+            return erlang::nif::error(env, "unknown error");
     }
-
-    auto status = self_res->val->SetNumThreads(num_threads);
-    return tflite_status_to_erl_term(env, status);
 }
 
 ERL_NIF_TERM interpreter_get_signature_defs(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
@@ -365,9 +472,10 @@ ERL_NIF_TERM interpreter_get_signature_defs(ErlNifEnv *env, int argc, const ERL_
 
     ERL_NIF_TERM self_nif = argv[0];
     NifResInterpreter * self_res;
+    ERL_NIF_TERM ret;
 
-    if (!enif_get_resource(env, self_nif, NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
     }
 
     auto interpreter_ = self_res->val;
@@ -471,4 +579,39 @@ ERL_NIF_TERM interpreter_get_signature_defs(ErlNifEnv *env, int argc, const ERL_
     enif_free(keys);
     enif_free(vals);
     return erlang::nif::ok(env, result);
+}
+
+ERL_NIF_TERM interpreter_invoke(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+
+    ERL_NIF_TERM self_nif = argv[0];
+    NifResInterpreter *self_res;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
+    }
+
+    return tflite_status_to_erl_term(env, self_res->val->Invoke());
+}
+
+ERL_NIF_TERM interpreter_set_num_threads(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 2) return enif_make_badarg(env);
+
+    ERL_NIF_TERM self_nif = argv[0];
+    ERL_NIF_TERM num_threads_nif = argv[1];
+    int num_threads = 1;
+    NifResInterpreter * self_res;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
+    }
+
+    if (!enif_get_int(env, num_threads_nif, &num_threads) || num_threads < 1) {
+        return erlang::nif::error(env, "expecting num_threads to be an positive integer");
+    }
+
+    auto status = self_res->val->SetNumThreads(num_threads);
+    return tflite_status_to_erl_term(env, status);
 }

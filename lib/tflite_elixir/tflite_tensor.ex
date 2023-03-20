@@ -66,11 +66,13 @@ defmodule TFLiteElixir.TFLiteTensor do
   @doc """
   Get the quantization params
   """
-  @spec quantization_params(%T{} | reference()) :: %TFLiteElixir.TFLiteQuantizationParams{} | nif_error()
+  @spec quantization_params(%T{} | reference()) ::
+          %TFLiteElixir.TFLiteQuantizationParams{} | nif_error()
   def quantization_params(%T{quantization_params: quantization_params}), do: quantization_params
 
   def quantization_params(self) do
-    with {:ok, {scale, zero_point, quantized_dimension}} <- TFLiteElixir.Nif.tflitetensor_quantization_params(self) do
+    with {:ok, {scale, zero_point, quantized_dimension}} <-
+           TFLiteElixir.Nif.tflitetensor_quantization_params(self) do
       %TFLiteElixir.TFLiteQuantizationParams{
         scale: scale,
         zero_point: zero_point,
@@ -128,7 +130,9 @@ defmodule TFLiteElixir.TFLiteTensor do
       binary when is_binary(binary) ->
         to_nx_backend(binary, type, backend)
         |> Nx.reshape(shape)
-      error -> error
+
+      error ->
+        error
     end
   end
 
@@ -141,7 +145,9 @@ defmodule TFLiteElixir.TFLiteTensor do
       binary when is_binary(binary) ->
         to_nx_backend(binary, type, backend)
         |> Nx.reshape(shape)
-      error -> error
+
+      error ->
+        error
     end
   end
 
@@ -149,12 +155,14 @@ defmodule TFLiteElixir.TFLiteTensor do
     case backend do
       nil ->
         Nx.from_binary(binary, type)
+
       module when is_atom(module) ->
         if Code.ensure_loaded?(module) do
           Nx.from_binary(binary, type, backend: module)
         else
           raise "Expecting keyword parameter `backend` to be a module, however, got `#{inspect(module)}`"
         end
+
       error ->
         raise "Expecting keyword parameter `backend` to be a module, however, got `#{inspect(error)}`"
     end

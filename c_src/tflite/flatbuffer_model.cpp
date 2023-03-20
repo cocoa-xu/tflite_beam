@@ -13,7 +13,7 @@
 #include "error_reporter.h"
 
 #ifndef TFLITE_MCU
-ERL_NIF_TERM flatBufferModel_buildFromFile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM flatbuffer_model_build_from_file(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 2) return enif_make_badarg(env);
 
     std::string filename;
@@ -38,7 +38,7 @@ ERL_NIF_TERM flatBufferModel_buildFromFile(ErlNifEnv *env, int argc, const ERL_N
     return ret;
 }
 
-ERL_NIF_TERM flatBufferModel_verifyAndBuildFromFile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM flatbuffer_model_verify_and_build_from_file(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 2) return enif_make_badarg(env);
 
     std::string filename;
@@ -50,7 +50,7 @@ ERL_NIF_TERM flatBufferModel_verifyAndBuildFromFile(ErlNifEnv *env, int argc, co
     ERL_NIF_TERM ret;
 
     if (!erlang::nif::get(env, filename_term, filename)) {
-        return erlang::nif::error(env, "expected the filename to be a string");
+        return erlang::nif::error(env, "expecting the filename to be a string");
     }
 
     tflite::TfLiteVerifier * verifier = nullptr;
@@ -70,19 +70,19 @@ ERL_NIF_TERM flatBufferModel_verifyAndBuildFromFile(ErlNifEnv *env, int argc, co
 
 #else
 
-ERL_NIF_TERM flatBufferModel_buildFromFile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM flatbuffer_model_build_from_file(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     return erlang::nif::error(env, "FlatBufferModel::BuildFromFile is not available: "
                                    "Library compiled with TFLITE_MCU");
 }
 
-ERL_NIF_TERM flatBufferModel_VerifyAndBuildFromFile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM flatbuffer_model_verify_and_build_from_file(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     return erlang::nif::error(env, "FlatBufferModel::VerifyAndBuildFromFile is not available: "
                                    "Library compiled with TFLITE_MCU");
 }
 
 #endif
 
-ERL_NIF_TERM flatBufferModel_buildFromBuffer(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM flatbuffer_model_build_from_buffer(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 2) return enif_make_badarg(env);
 
     ErlNifBinary data;
@@ -108,7 +108,7 @@ ERL_NIF_TERM flatBufferModel_buildFromBuffer(ErlNifEnv *env, int argc, const ERL
     return ret;
 }
 
-ERL_NIF_TERM flatBufferModel_initialized(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM flatbuffer_model_initialized(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
@@ -125,7 +125,7 @@ ERL_NIF_TERM flatBufferModel_initialized(ErlNifEnv *env, int argc, const ERL_NIF
     }
 }
 
-ERL_NIF_TERM flatBufferModel_error_reporter(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM flatbuffer_model_error_reporter(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
@@ -145,7 +145,7 @@ ERL_NIF_TERM flatBufferModel_error_reporter(ErlNifEnv *env, int argc, const ERL_
     return ret;
 }
 
-ERL_NIF_TERM flatBufferModel_getMinimumRuntime(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM flatbuffer_model_get_minimum_runtime(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
@@ -159,7 +159,7 @@ ERL_NIF_TERM flatBufferModel_getMinimumRuntime(ErlNifEnv *env, int argc, const E
     return erlang::nif::make_binary(env, runtime.c_str());
 }
 
-ERL_NIF_TERM flatBufferModel_readAllMetadata(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM flatbuffer_model_read_all_metadata(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];

@@ -58,8 +58,7 @@ static ERL_NIF_TERM not_compiled(ErlNifEnv *env, int argc, const ERL_NIF_TERM ar
 }
 
 static int
-on_load(ErlNifEnv* env, void**, ERL_NIF_TERM)
-{
+on_load(ErlNifEnv* env, void**, ERL_NIF_TERM) {
     ErlNifResourceType *rt;
 
     rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "BuiltinOpResolver", NifResBuiltinOpResolver::destruct_resource, ERL_NIF_RT_CREATE, NULL);
@@ -95,13 +94,11 @@ on_load(ErlNifEnv* env, void**, ERL_NIF_TERM)
     return 0;
 }
 
-static int on_reload(ErlNifEnv*, void**, ERL_NIF_TERM)
-{
+static int on_reload(ErlNifEnv*, void**, ERL_NIF_TERM) {
     return 0;
 }
 
-static int on_upgrade(ErlNifEnv*, void**, void**, ERL_NIF_TERM)
-{
+static int on_upgrade(ErlNifEnv*, void**, void**, ERL_NIF_TERM) {
     return 0;
 }
 
@@ -111,33 +108,41 @@ static int on_upgrade(ErlNifEnv*, void**, void**, ERL_NIF_TERM)
 #define F_IO(NAME, ARITY) {#NAME, ARITY, NAME, ERL_NIF_DIRTY_JOB_IO_BOUND}
 
 static ErlNifFunc nif_functions[] = {
-    F(errorReporter_DefaultErrorReporter, 0),
+    F(error_reporter_default_error_reporter, 0),
 
-    F_IO(flatBufferModel_buildFromFile, 2),
-    F_IO(flatBufferModel_verifyAndBuildFromFile, 2),
-    F_CPU(flatBufferModel_buildFromBuffer, 2),
-    F(flatBufferModel_initialized, 1),
-    F(flatBufferModel_error_reporter, 1),
-    F(flatBufferModel_getMinimumRuntime, 1),
-    F(flatBufferModel_readAllMetadata, 1),
+    F_IO(flatbuffer_model_build_from_file, 2),
+    F_IO(flatbuffer_model_verify_and_build_from_file, 2),
+    F_CPU(flatbuffer_model_build_from_buffer, 2),
+    F(flatbuffer_model_initialized, 1),
+    F(flatbuffer_model_error_reporter, 1),
+    F(flatbuffer_model_get_minimum_runtime, 1),
+    F(flatbuffer_model_read_all_metadata, 1),
 
-    F(ops_builtin_builtinResolver_new, 0),
+    F(ops_builtin_builtin_resolver_new, 0),
 
-    F(interpreterBuilder_new, 2),
-    F(interpreterBuilder_build, 2),
-    F(interpreterBuilder_setNumThreads, 2),
+    F(interpreter_builder_new, 2),
+    F(interpreter_builder_build, 2),
+    F(interpreter_builder_set_num_threads, 2),
 
     F(interpreter_new, 0),
-    F(interpreter_allocateTensors, 1),
+    F(interpreter_set_inputs, 2),
+    F(interpreter_set_outputs, 2),
+    F(interpreter_set_variables, 2),
     F(interpreter_inputs, 1),
-    F(interpreter_getInputName, 2),
-    F_CPU(interpreter_input_tensor, 3),
-    F_CPU(interpreter_invoke, 1),
+    F(interpreter_get_input_name, 2),
     F(interpreter_outputs, 1),
-    F(interpreter_getOutputName, 2),
-    F_CPU(interpreter_output_tensor, 2),
+    F(interpreter_variables, 1),
+    F(interpreter_get_output_name, 2),
+    F(interpreter_tensors_size, 1),
+    F(interpreter_nodes_size, 1),
+    F(interpreter_execution_plan, 1),
     F(interpreter_tensor, 2),
-    F(interpreter_setNumThreads, 2),
+    F(interpreter_signature_keys, 1),
+    F_CPU(interpreter_input_tensor, 3),
+    F_CPU(interpreter_output_tensor, 2),
+    F(interpreter_allocate_tensors, 1),
+    F_CPU(interpreter_invoke, 1),
+    F(interpreter_set_num_threads, 2),
     F(interpreter_get_signature_defs, 1),
 
     F(tflitetensor_type, 1),
@@ -146,8 +151,8 @@ static ErlNifFunc nif_functions[] = {
     F(tflitetensor_to_binary, 2),
     F(tflitetensor_set_data, 2),
 
-    F_IO(tflite_printInterpreterState, 1),
-    F_CPU(tflite_resetVariableTensor, 1),
+    F_IO(tflite_print_interpreter_state, 1),
+    F_CPU(tflite_reset_variable_tensor, 1),
 
     /* ======= Coral ======= */
 #ifdef CORAL_SUPPORT_ENABLED

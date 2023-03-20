@@ -11,7 +11,7 @@
 
 #include "status.h"
 
-ERL_NIF_TERM tflite_printInterpreterState(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM tflite_print_interpreter_state(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM interpreter_nif = argv[0];
@@ -25,7 +25,7 @@ ERL_NIF_TERM tflite_printInterpreterState(ErlNifEnv *env, int argc, const ERL_NI
     return erlang::nif::atom(env, "nil");
 }
 
-ERL_NIF_TERM tflite_resetVariableTensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM tflite_reset_variable_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
 
     ERL_NIF_TERM tensor_nif = argv[0];

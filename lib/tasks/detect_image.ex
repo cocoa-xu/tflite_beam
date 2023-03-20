@@ -58,7 +58,7 @@ defmodule Mix.Tasks.DetectImage do
     input_image = %StbImage{shape: {h, w, _c}} = load_input(args[:input])
     labels = load_labels(args[:labels])
     interpreter = make_interpreter(model, args[:jobs])
-    Interpreter.allocate_tensors!(interpreter)
+    :ok = Interpreter.allocate_tensors(interpreter)
 
     [input_tensor_number | _] = Interpreter.inputs!(interpreter)
     output_tensor_numbers = Interpreter.outputs!(interpreter)

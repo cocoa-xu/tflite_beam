@@ -11,7 +11,7 @@
 #include "interpreter_builder.h"
 #include "status.h"
 
-ERL_NIF_TERM interpreterBuilder_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM interpreter_builder_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 2) return enif_make_badarg(env);
 
     ERL_NIF_TERM model_nif = argv[0];
@@ -44,7 +44,7 @@ ERL_NIF_TERM interpreterBuilder_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM
     return erlang::nif::ok(env, ret);
 }
 
-ERL_NIF_TERM interpreterBuilder_build(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM interpreter_builder_build(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 2) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
@@ -69,7 +69,7 @@ ERL_NIF_TERM interpreterBuilder_build(ErlNifEnv *env, int argc, const ERL_NIF_TE
     return erlang::nif::ok(env);
 }
 
-ERL_NIF_TERM interpreterBuilder_setNumThreads(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+ERL_NIF_TERM interpreter_builder_set_num_threads(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 2) return enif_make_badarg(env);
 
     ERL_NIF_TERM self_nif = argv[0];
