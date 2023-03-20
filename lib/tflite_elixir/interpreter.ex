@@ -71,7 +71,7 @@ defmodule TFLiteElixir.Interpreter do
   Each index is bound check and this modifies the consistent_ flag of the
   interpreter.
   """
-  @spec set_inputs(reference, maybe_improper_list) :: :ok | nif_error()
+  @spec set_inputs(reference, list(integer())) :: :ok | nif_error()
   def set_inputs(self, inputs) when is_reference(self) and is_list(inputs) do
     TFLiteElixir.Nif.interpreter_set_inputs(self, inputs)
   end
@@ -81,9 +81,19 @@ defmodule TFLiteElixir.Interpreter do
   Each index is bound check and this modifies the consistent_ flag of the
   interpreter.
   """
-  @spec set_outputs(reference, maybe_improper_list) :: :ok | nif_error()
+  @spec set_outputs(reference, list(integer())) :: :ok | nif_error()
   def set_outputs(self, outputs) when is_reference(self) and is_list(outputs) do
     TFLiteElixir.Nif.interpreter_set_outputs(self, outputs)
+  end
+
+  @doc """
+  Provide a list of tensor indexes that are variable tensors.
+  Each index is bound check and this modifies the consistent_ flag of the
+  interpreter.
+  """
+  @spec set_variables(reference, list(integer())) :: :ok | nif_error()
+  def set_variables(self, variables) when is_reference(self) and is_list(variables) do
+    TFLiteElixir.Nif.interpreter_set_variables(self, variables)
   end
 
   @doc """
@@ -289,6 +299,14 @@ defmodule TFLiteElixir.Interpreter do
   end
 
   deferror(outputs(self))
+
+  @doc """
+  Get the list of variable tensors.
+  """
+  @spec variables(reference()) :: {:ok, [non_neg_integer()]} | nif_error()
+  def variables(self) when is_reference(self) do
+    TFLiteElixir.Nif.interpreter_variables(self)
+  end
 
   @doc """
   Get the list of output tensors.

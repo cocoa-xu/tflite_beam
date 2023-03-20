@@ -30,6 +30,17 @@ defmodule TFLiteElixir.Interpreter.Test do
     assert {:ok, [171]} == Interpreter.outputs(interpreter)
   end
 
+  test "set_variables/2" do
+    filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
+    interpreter = Interpreter.new!(filename)
+
+    assert {:ok, []} == Interpreter.variables(interpreter)
+    assert :ok == Interpreter.set_variables(interpreter, [1, 2])
+    assert {:ok, [1, 2]} == Interpreter.variables(interpreter)
+    assert :ok == Interpreter.set_variables(interpreter, [])
+    assert {:ok, []} == Interpreter.variables(interpreter)
+  end
+
   test "inputs/1" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     model = FlatBufferModel.build_from_file(filename)
@@ -50,6 +61,13 @@ defmodule TFLiteElixir.Interpreter.Test do
     :ok = InterpreterBuilder.build!(builder, interpreter)
 
     assert {:ok, [171]} == Interpreter.outputs(interpreter)
+  end
+
+  test "variables/1" do
+    filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
+    interpreter = Interpreter.new!(filename)
+
+    assert {:ok, []} == Interpreter.variables(interpreter)
   end
 
   test "get_input_name/2" do
