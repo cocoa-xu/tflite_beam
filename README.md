@@ -206,10 +206,10 @@ interpreter = TFLite.Interpreter.new!()
 # "map/TensorArrayStack/TensorArrayGatherV3" = TFLite.Interpreter.get_input_name!(interpreter, 0)
 # "prediction" = TFLite.Interpreter.get_output_name!(interpreter, 0)
 # input_tensor = TFLite.Interpreter.tensor(interpreter, 0)
-# [1, 224, 224, 3] = TFLite.TFLiteTensor.dims!(input_tensor)
+# [1, 224, 224, 3] = TFLite.TFLiteTensor.dims(input_tensor)
 # {:u, 8} = TFLite.TFLiteTensor.type(input_tensor)
 # output_tensor = TFLite.Interpreter.tensor(interpreter, 171)
-# [1, 965] = TFLite.TFLiteTensor.dims!(output_tensor)
+# [1, 965] = TFLite.TFLiteTensor.dims(output_tensor)
 # {:u, 8} = TFLite.TFLiteTensor.type(output_tensor)
 
 # parrot.bin - if you don't have :evision
