@@ -137,7 +137,7 @@ defmodule Mix.Tasks.ClassifyImage do
       |> Nx.as_type(:u8)
       |> Nx.to_binary()
     end
-    |> then(&TFLiteTensor.set_data!(input_tensor, &1))
+    |> then(&TFLiteTensor.set_data(input_tensor, &1))
 
     IO.puts("----INFERENCE TIME----")
 
