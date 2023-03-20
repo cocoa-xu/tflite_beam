@@ -1,3 +1,5 @@
+#include <string>
+
 #include <erl_nif.h>
 #include "../nif_utils.hpp"
 #include "../erlang_nif_resource.h"
@@ -339,6 +341,25 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
         tensor_sparsity_params,
         tensor_reference
     ));
+}
+
+ERL_NIF_TERM interpreter_signature_keys(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+
+    ERL_NIF_TERM self_nif = argv[0];
+    NifResInterpreter *self_res;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
+    }
+
+    const std::vector<const std::string*> signature_keys = self_res->val->signature_keys();
+    if (erlang::nif::make(env, signature_keys, ret)) {
+        return erlang::nif::error(env, "enif_alloc failed");
+    }
+
+    return erlang::nif::ok(env, ret);
 }
 
 ERL_NIF_TERM interpreter_input_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {

@@ -181,7 +181,7 @@ defmodule TFLiteElixir.Interpreter do
 
   Experimental interface, subject to change.
   """
-  @spec nodes_size(reference()) :: [non_neg_integer()] | nif_error()
+  @spec execution_plan(reference()) :: [non_neg_integer()] | nif_error()
   def execution_plan(self) when is_reference(self) do
     case TFLiteElixir.Nif.interpreter_execution_plan(self) do
       {:ok, execution_plan} -> execution_plan
@@ -216,6 +216,20 @@ defmodule TFLiteElixir.Interpreter do
       }
     else
       e -> e
+    end
+  end
+
+  @doc """
+  Returns list of all keys of different method signatures defined in the
+  model.
+
+  WARNING: Experimental interface, subject to change
+  """
+  @spec signature_keys(reference) :: [String.t()] | nif_error()
+  def signature_keys(self) when is_reference(self) do
+    case TFLiteElixir.Nif.interpreter_signature_keys(self) do
+      {:ok, signature_keys} -> signature_keys
+      error -> error
     end
   end
 

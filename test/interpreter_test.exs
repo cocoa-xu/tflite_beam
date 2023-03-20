@@ -121,6 +121,13 @@ defmodule TFLiteElixir.Interpreter.Test do
     assert {:error, "index out of bound"} == Interpreter.tensor(interpreter, 100_000)
   end
 
+  test "signature_keys/1" do
+    filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
+    interpreter = Interpreter.new!(filename)
+
+    assert [] == Interpreter.signature_keys(interpreter)
+  end
+
   test "allocate_tensors/1" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     interpreter = Interpreter.new!(filename)
