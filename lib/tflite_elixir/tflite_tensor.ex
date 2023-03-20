@@ -106,12 +106,13 @@ defmodule TFLiteElixir.TFLiteTensor do
   end
 
   @doc false
+  # Convert `Nx.Tensor` to `TFLiteElixir.TFLiteTensor`
   def from_nx(%Nx.Tensor{} = _tensor) do
     raise "not implemented"
   end
 
   @doc """
-  Convert `Nx.Tensor` to `TFLiteElixir.TFLiteTensor`
+  Convert `TFLiteElixir.TFLiteTensor` to `Nx.Tensor`
   """
   @spec to_nx(reference() | %T{}, Keyword.t()) :: %Nx.Tensor{}
   def to_nx(self_struct, opts \\ [])
