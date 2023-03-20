@@ -1,6 +1,6 @@
 #include <erl_nif.h>
 #include "../nif_utils.hpp"
-#include "../erlang_nif_resource.hpp"
+#include "../erlang_nif_resource.h"
 #include "../helper.h"
 
 #include "tensorflow/lite/core/api/error_reporter.h"
@@ -38,8 +38,7 @@ bool _get_error_reporter(ErlNifEnv *env, ERL_NIF_TERM error_reporter_term, NifRe
 NifResErrorReporter * _make_error_reporter(ErlNifEnv *env, tflite::ErrorReporter * e, ERL_NIF_TERM &out) {
     NifResErrorReporter * res = nullptr;
 
-    if (!(res = alloc_resource_NifResErrorReporter())) {
-        out = erlang::nif::error(env, "cannot allocate memory for resource");
+    if (!(res = NifResErrorReporter::allocate_resource(env, out))) {
         return res;
     }
 

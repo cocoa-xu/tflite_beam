@@ -61,27 +61,28 @@ static int
 on_load(ErlNifEnv* env, void**, ERL_NIF_TERM)
 {
     ErlNifResourceType *rt;
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "FlatBufferModel", destruct_flatbuffer_model, ERL_NIF_RT_CREATE, NULL);
-    if (!rt) return -1;
-    NifResFlatBufferModel::type = rt;
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "BuiltinOpResolver", destruct_builtin_op_resolver, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "BuiltinOpResolver", NifResBuiltinOpResolver::destruct_resource, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
     NifResBuiltinOpResolver::type = rt;
+    
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "FlatBufferModel", NifResFlatBufferModel::destruct_resource, ERL_NIF_RT_CREATE, NULL);
+    if (!rt) return -1;
+    NifResFlatBufferModel::type = rt;    
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "InterpreterBuilder", destruct_interpreter_builder, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "InterpreterBuilder", NifResInterpreterBuilder::destruct_resource, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
     NifResInterpreterBuilder::type = rt;
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "Interpreter", destruct_interpreter, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "Interpreter", NifResInterpreter::destruct_resource, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
     NifResInterpreter::type = rt;
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "TfLiteTensor", destruct_tensor_ptr, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "TfLiteTensor", NifResTfLiteTensor::destruct_resource, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
     NifResTfLiteTensor::type = rt;
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "ErrorReporter", destruct_error_reporter, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "ErrorReporter", NifResErrorReporter::destruct_resource, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
     NifResErrorReporter::type = rt;
 

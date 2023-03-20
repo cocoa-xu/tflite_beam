@@ -1,5 +1,5 @@
-#ifndef TFLITE_ELIXIR_ERLANG_NIF_RESOURCE_HPP
-#define TFLITE_ELIXIR_ERLANG_NIF_RESOURCE_HPP
+#ifndef TFLITE_ELIXIR_ERLANG_NIF_RESOURCE_H
+#define TFLITE_ELIXIR_ERLANG_NIF_RESOURCE_H
 
 #pragma once
 
@@ -23,7 +23,19 @@ struct NifResBuiltinOpResolver {
     std::atomic_int64_t reference_count{0};
     std::atomic_bool dropped_in_erlang{false};
     std::atomic_bool deleted{false};
+
     static ErlNifResourceType * type;
+    static NifResBuiltinOpResolver * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
+    static void destruct_resource(ErlNifEnv *env, void *args);
+};
+
+struct NifResErrorReporter {
+    tflite::ErrorReporter * val;
+    std::atomic_bool is_default{false};
+
+    static ErlNifResourceType * type;
+    static NifResErrorReporter * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
+    static void destruct_resource(ErlNifEnv *env, void *args);
 };
 
 struct NifResFlatBufferModel {
@@ -32,32 +44,38 @@ struct NifResFlatBufferModel {
     std::atomic_int64_t reference_count{0};
     std::atomic_bool dropped_in_erlang{false};
     std::atomic_bool deleted{false};
+
     static ErlNifResourceType * type;
+    static NifResFlatBufferModel * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
+    static void destruct_resource(ErlNifEnv *env, void *args);
 };
 
 struct NifResInterpreterBuilder {
     tflite::InterpreterBuilder * val;
     NifResBuiltinOpResolver * op_resolver;
     NifResFlatBufferModel * flatbuffer_model;
+
     static ErlNifResourceType * type;
+    static NifResInterpreterBuilder * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
+    static void destruct_resource(ErlNifEnv *env, void *args);
 };
 
 struct NifResInterpreter {
     tflite::Interpreter * val;
     NifResFlatBufferModel * flatbuffer_model;
-    static ErlNifResourceType * type;
-};
 
-struct NifResErrorReporter {
-    tflite::ErrorReporter * val;
-    std::atomic_bool is_default{false};
     static ErlNifResourceType * type;
+    static NifResInterpreter * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
+    static void destruct_resource(ErlNifEnv *env, void *args);
 };
 
 struct NifResTfLiteTensor {
     TfLiteTensor * val;
     std::atomic_bool borrowed{false};
+
     static ErlNifResourceType * type;
+    static NifResTfLiteTensor * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
+    static void destruct_resource(ErlNifEnv *env, void *args);
 };
 
 #ifdef CORAL_SUPPORT_ENABLED
@@ -66,7 +84,10 @@ struct NifResTfLiteTensor {
 
 struct NifResEdgeTpuContext {
     edgetpu::EdgeTpuContext * val;
+
     static ErlNifResourceType * type;
+    static NifResEdgeTpuContext * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
+    static void destruct_resource(ErlNifEnv *env, void *args);
 };
 
 #endif

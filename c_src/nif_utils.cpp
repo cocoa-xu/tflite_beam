@@ -3,7 +3,7 @@
 //
 
 #include "nif_utils.hpp"
-#include "erlang_nif_resource.hpp"
+#include "erlang_nif_resource.h"
 
 namespace erlang {
     namespace nif {
