@@ -182,8 +182,7 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
 
     inspect_ = inspect(model)
 
-    assert "#FlatBufferModel<%{\"initialized\" => true, \"metadata\" => %{\"TFLITE_METADATA\" => <<28>>, \"min_runtime_version\" => \"1.5.0\"}, \"minimum_runtime\" => \"1.5.0\"}>" ==
-             inspect_
+    assert "#FlatBufferModel<%{initialized: true, minimum_runtime: \"1.5.0\"}>" == inspect_
   end
 
   def verify_loaded_model(model, input_data, expected_out, print_state)
