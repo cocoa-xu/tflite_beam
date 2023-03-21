@@ -135,12 +135,47 @@ ERL_NIF_TERM make(ErlNifEnv *env, ErlNifBinary var) {
     return enif_make_binary(env, &var);
 }
 
-ERL_NIF_TERM make(ErlNifEnv *env, std::string var) {
+ERL_NIF_TERM make(ErlNifEnv *env, const std::string& var) {
     return enif_make_string(env, var.c_str(), ERL_NIF_LATIN1);
 }
 
 ERL_NIF_TERM make(ErlNifEnv *env, const char *string) {
     return enif_make_string(env, string, ERL_NIF_LATIN1);
+}
+
+int make(ErlNifEnv *env, bool var, ERL_NIF_TERM &out) {
+    out = make(env, var);
+    return 0;
+}
+
+int make(ErlNifEnv *env, long var, ERL_NIF_TERM &out) {
+    out = make(env, var);
+    return 0;
+}
+
+int make(ErlNifEnv *env, int var, ERL_NIF_TERM &out) {
+    out = make(env, var);
+    return 0;
+}
+
+int make(ErlNifEnv *env, double var, ERL_NIF_TERM &out) {
+    out = make(env, var);
+    return 0;
+}
+
+int make(ErlNifEnv *env, ErlNifBinary var, ERL_NIF_TERM &out) {
+    out = make(env, var);
+    return 0;
+}
+
+int make(ErlNifEnv *env, const std::string& var, ERL_NIF_TERM &out) {
+    out = make_binary(env, var);
+    return 0;
+}
+
+int make(ErlNifEnv *env, const char *var, ERL_NIF_TERM &out) {
+    out = make_binary(env, var);
+    return 0;
 }
 
 int make(ErlNifEnv *env, const std::vector<uint8_t>& array, ERL_NIF_TERM &out) {
@@ -215,7 +250,7 @@ int make(ErlNifEnv *env, const std::vector<std::string>& array, ERL_NIF_TERM &ou
         return 1;
     }
     for (size_t i = 0; i < count; ++i) {
-        terms[i] = make(env, array[i]);
+        terms[i] = make_binary(env, array[i]);
     }
     out = enif_make_list_from_array(env, terms, (unsigned)count);
     enif_free(terms);
@@ -234,7 +269,7 @@ int make(ErlNifEnv *env, const std::vector<const std::string*>& array, ERL_NIF_T
         return 1;
     }
     for (size_t i = 0; i < count; ++i) {
-        terms[i] = make(env, *array[i]);
+        terms[i] = make_binary(env, *array[i]);
     }
     out = enif_make_list_from_array(env, terms, (unsigned)count);
     enif_free(terms);

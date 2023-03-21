@@ -11,6 +11,8 @@
 
 #include "flatbuffer_model.h"
 #include "error_reporter.h"
+#include "../metadata_schema_generated.h"
+#include "metadata.h"
 
 #ifndef TFLITE_MCU
 ERL_NIF_TERM flatbuffer_model_build_from_file(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
@@ -204,6 +206,8 @@ ERL_NIF_TERM flatbuffer_model_read_all_metadata(ErlNifEnv *env, int argc, const 
                 if (!ok) {
                     values[index] = erlang::nif::make_binary(env, "min_runtime_version in model metadata is malformed");
                 }
+            } else if (iter.first == "TFLITE_METADATA") {
+                values[index] = tflite_metadata_to_erl_term(env, iter.second.c_str());
             } else {
                 values[index] = erlang::nif::make_binary(env, iter.second);
             }
