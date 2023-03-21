@@ -303,7 +303,7 @@ by adding `tflite_elixir` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:tflite_elixir, "~> 0.1", github: "cocoa-xu/tflite_elixir"}
+    {:tflite_elixir, "~> 0.1"}
   ]
 end
 ```
