@@ -12,7 +12,6 @@ defmodule TFLiteElixir.FlatBufferModel do
   defstruct [
     :initialized,
     :minimum_runtime,
-    :metadata,
     :model
   ]
 
@@ -39,7 +38,6 @@ defmodule TFLiteElixir.FlatBufferModel do
       %T{
         initialized: TFLiteElixir.Nif.flatbuffer_model_initialized(model),
         minimum_runtime: TFLiteElixir.Nif.flatbuffer_model_get_minimum_runtime(model),
-        metadata: TFLiteElixir.Nif.flatbuffer_model_read_all_metadata(model),
         model: model
       }
     else
@@ -150,9 +148,8 @@ defmodule TFLiteElixir.FlatBufferModel do
         "#FlatBufferModel<",
         to_doc(
           %{
-            "initialized" => T.initialized(self),
-            "metadata" => T.read_all_metadata(self),
-            "minimum_runtime" => T.get_minimum_runtime(self)
+            :initialized => T.initialized(self),
+            :minimum_runtime => T.get_minimum_runtime(self)
           },
           opts
         ),

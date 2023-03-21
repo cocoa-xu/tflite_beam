@@ -188,8 +188,8 @@ ERL_NIF_TERM flatbuffer_model_read_all_metadata(ErlNifEnv *env, int argc, const 
     size_t index = 0;
     for (auto &iter : metadata) {
         if (iter.first.length() > 0 && iter.second.length() > 0) {
-            keys[index] = erlang::nif::make_binary(env, iter.first);
             if (iter.first == "min_runtime_version") {
+                keys[index] = erlang::nif::atom(env, iter.first.c_str());
                 const char * data = iter.second.c_str();
                 // Get the real length of the runtime string, since there might be
                 // trailing
@@ -207,8 +207,10 @@ ERL_NIF_TERM flatbuffer_model_read_all_metadata(ErlNifEnv *env, int argc, const 
                     values[index] = erlang::nif::make_binary(env, "min_runtime_version in model metadata is malformed");
                 }
             } else if (iter.first == "TFLITE_METADATA") {
+                keys[index] = erlang::nif::atom(env, iter.first.c_str());
                 values[index] = tflite_metadata_to_erl_term(env, iter.second.c_str());
             } else {
+                keys[index] = erlang::nif::make_binary(env, iter.first);
                 values[index] = erlang::nif::make_binary(env, iter.second);
             }
             index++;

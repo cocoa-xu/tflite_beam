@@ -124,7 +124,50 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     %FlatBufferModel{} = model = FlatBufferModel.build_from_buffer(File.read!(filename))
 
-    assert %{"TFLITE_METADATA" => <<28>>, "min_runtime_version" => "1.5.0"} ==
+    assert %{
+             TFLITE_METADATA: %{
+               description:
+                 "Identify the most prominent object in the image from a known set of categories.",
+               min_parser_version: "1.0.0",
+               name: "ImageClassifier",
+               subgraph_metadata: [
+                 %{
+                   input_tensor_metadata: [
+                     %{
+                       content: %{
+                         content_properties: %{color_space: "RGB"},
+                         content_properties_type: "ImageProperties"
+                       },
+                       description: "Input image to be classified.",
+                       name: "image",
+                       process_units: [
+                         %{
+                           options: %{mean: [127.5], std: [127.5]},
+                           options_type: "NormalizationOptions"
+                         }
+                       ],
+                       stats: %{max: [255.0], min: [0.0]}
+                     }
+                   ],
+                   output_tensor_metadata: [
+                     %{
+                       associated_files: [
+                         %{
+                           description: "Labels for categories that the model can recognize.",
+                           name: "inat_bird_labels.txt",
+                           type: "TENSOR_AXIS_LABELS"
+                         }
+                       ],
+                       description: "Probabilities of the labels respectively.",
+                       name: "probability",
+                       stats: %{max: [255.0], min: [0.0]}
+                     }
+                   ]
+                 }
+               ]
+             },
+             min_runtime_version: "1.5.0"
+           } ==
              FlatBufferModel.read_all_metadata(model)
   end
 
