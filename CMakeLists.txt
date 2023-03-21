@@ -110,6 +110,7 @@ set(SOURCE_FILES
     "${C_SRC}/tflite/error_reporter.cpp"
     "${C_SRC}/tflite/flatbuffer_model.cpp"
     "${C_SRC}/tflite/interpreter.cpp"
+    "${C_SRC}/tflite/metadata.cpp"
     "${C_SRC}/tflite/interpreter_builder.cpp"
     "${C_SRC}/tflite/ops/builtin/builtin_resolver.cpp"
     "${C_SRC}/tflite/status.cpp"

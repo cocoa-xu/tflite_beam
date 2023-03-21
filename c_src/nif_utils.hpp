@@ -13,6 +13,11 @@
 
 namespace erlang {
 namespace nif {
+// Atoms
+
+int get_atom(ErlNifEnv *env, ERL_NIF_TERM term, std::string &var);
+ERL_NIF_TERM atom(ErlNifEnv *env, const char *msg);
+
 // Helper for returning `{:error, msg}` from NIF.
 ERL_NIF_TERM error(ErlNifEnv *env, const char *msg);
 
@@ -134,19 +139,21 @@ int get(ErlNifEnv *env, ERL_NIF_TERM term, double *var);
 int get(ErlNifEnv *env, ERL_NIF_TERM term, std::string &var);
 
 ERL_NIF_TERM make(ErlNifEnv *env, bool var);
-
 ERL_NIF_TERM make(ErlNifEnv *env, long var);
-
 ERL_NIF_TERM make(ErlNifEnv *env, int var);
-
+ERL_NIF_TERM make(ErlNifEnv *env, uint32_t var);
 ERL_NIF_TERM make(ErlNifEnv *env, double var);
-
 ERL_NIF_TERM make(ErlNifEnv *env, ErlNifBinary var);
-
 ERL_NIF_TERM make(ErlNifEnv *env, std::string var);
-
 ERL_NIF_TERM make(ErlNifEnv *env, const char *string);
 
+int make(ErlNifEnv *env, bool var, ERL_NIF_TERM &out);
+int make(ErlNifEnv *env, long var, ERL_NIF_TERM &out);
+int make(ErlNifEnv *env, int var, ERL_NIF_TERM &out);
+int make(ErlNifEnv *env, double var, ERL_NIF_TERM &out);
+int make(ErlNifEnv *env, ErlNifBinary var, ERL_NIF_TERM &out);
+int make(ErlNifEnv *env, const std::string& var, ERL_NIF_TERM &out);
+int make(ErlNifEnv *env, const char *string, ERL_NIF_TERM &out);
 int make(ErlNifEnv *env, const std::vector<uint8_t>& array, ERL_NIF_TERM &out);
 int make(ErlNifEnv *env, const std::vector<uint16_t>& array, ERL_NIF_TERM &out);
 int make(ErlNifEnv *env, const std::vector<uint32_t>& array, ERL_NIF_TERM &out);
@@ -161,11 +168,84 @@ int make(ErlNifEnv *env, const std::vector<std::string>& array, ERL_NIF_TERM &ou
 int make(ErlNifEnv *env, const std::vector<const std::string*>& array, ERL_NIF_TERM &out);
 
 ERL_NIF_TERM make_binary(ErlNifEnv *env, const char *c_string);
+ERL_NIF_TERM make_binary(ErlNifEnv *env, const std::string& string);
 
-// Atoms
+template <typename Key, typename Value>
+int make(ErlNifEnv *env, const std::map<Key, Value>& map, ERL_NIF_TERM &out, bool atom_key) {
+    bool failed = false;
+    size_t size = map.size();
+    
+    if (size == 0) {
+        out = enif_make_new_map(env);
+        return 0;
+    }
 
-int get_atom(ErlNifEnv *env, ERL_NIF_TERM term, std::string &var);
-ERL_NIF_TERM atom(ErlNifEnv *env, const char *msg);
+    ERL_NIF_TERM * keys = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * size);
+    if (!keys) {
+        return 1;
+    }
+    ERL_NIF_TERM * values = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * size);
+    if (!values) {
+        enif_free(keys);
+        return 1;
+    }
+
+    size_t index = 0;
+    for (const auto &p : map) {
+        if (atom_key) {
+            keys[index] = atom(env, p.first.c_str());
+        } else {
+            if (make(env, p.first, keys[index])) {
+                failed = true;
+                break;
+            }
+        }
+
+        if (make(env, p.second, values[index])) {
+            failed = true;
+            break;
+        }
+
+        index++;
+    }
+
+    if (failed) {
+        enif_free(keys);
+        enif_free(values);
+        return 1;
+    }
+
+    ERL_NIF_TERM map_out;
+    if (!enif_make_map_from_arrays(env, keys, values, index, &map_out)) {
+        return 1;
+    }
+
+    out = map_out;
+    return 0;
+}
+
+template <typename Key, typename Value>
+int make(ErlNifEnv *env, const std::vector<std::map<Key, Value>>& array, ERL_NIF_TERM &out, bool atom_key) {
+    size_t count = array.size();
+    if (count == 0) {
+        out = enif_make_list_from_array(env, nullptr, 0);
+        return 0;
+    }
+
+    ERL_NIF_TERM *terms = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * count);
+    if (terms == nullptr) {
+        return 1;
+    }
+    for (size_t i = 0; i < count; ++i) {
+        if (make(env, array[i], terms[i], atom_key)) {
+            enif_free(terms);
+            return 1;
+        }
+    }
+    out = enif_make_list_from_array(env, terms, (unsigned)count);
+    enif_free(terms);
+    return 0;
+}
 
 // Check if :nil
 int check_nil(ErlNifEnv *env, ERL_NIF_TERM term);
