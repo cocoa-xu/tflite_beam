@@ -161,6 +161,7 @@ int make(ErlNifEnv *env, const std::vector<std::string>& array, ERL_NIF_TERM &ou
 int make(ErlNifEnv *env, const std::vector<const std::string*>& array, ERL_NIF_TERM &out);
 
 ERL_NIF_TERM make_binary(ErlNifEnv *env, const char *c_string);
+ERL_NIF_TERM make_binary(ErlNifEnv *env, const std::string& string);
 
 // Atoms
 

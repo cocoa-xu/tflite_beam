@@ -169,7 +169,7 @@ ERL_NIF_TERM flatbuffer_model_read_all_metadata(ErlNifEnv *env, int argc, const 
         return erlang::nif::error(env, "cannot access resource");
     }
 
-    auto metadata = self_res->val->ReadAllMetadata();
+    std::map<std::string, std::string> metadata = self_res->val->ReadAllMetadata();
     size_t cnt = metadata.size();
     ERL_NIF_TERM ret;
     ERL_NIF_TERM * keys = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * cnt);
@@ -186,8 +186,27 @@ ERL_NIF_TERM flatbuffer_model_read_all_metadata(ErlNifEnv *env, int argc, const 
     size_t index = 0;
     for (auto &iter : metadata) {
         if (iter.first.length() > 0 && iter.second.length() > 0) {
-            keys[index] = erlang::nif::make_binary(env, iter.first.c_str());
-            values[index] = erlang::nif::make_binary(env, iter.second.c_str());
+            keys[index] = erlang::nif::make_binary(env, iter.first);
+            if (iter.first == "min_runtime_version") {
+                const char * data = iter.second.c_str();
+                // Get the real length of the runtime string, since there might be
+                // trailing
+                // '\0's in the buffer.
+                bool ok = false;
+                for (int len = 0; len < iter.second.size(); ++len) {
+                    if (data[len] == '\0') {
+                        values[index] = erlang::nif::make_binary(env, std::string(data, len));
+                        ok = true;
+                        break;
+                    }
+                }
+
+                if (!ok) {
+                    values[index] = erlang::nif::make_binary(env, "min_runtime_version in model metadata is malformed");
+                }
+            } else {
+                values[index] = erlang::nif::make_binary(env, iter.second);
+            }
             index++;
         }
     }

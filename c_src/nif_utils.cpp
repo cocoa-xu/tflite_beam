@@ -254,6 +254,19 @@ ERL_NIF_TERM make_binary(ErlNifEnv *env, const char *c_string) {
     }
 }
 
+ERL_NIF_TERM make_binary(ErlNifEnv *env, const std::string& string) {
+    ERL_NIF_TERM binary_str;
+    unsigned char *ptr;
+    size_t len = string.size();
+    if ((ptr = enif_make_new_binary(env, len, &binary_str)) != nullptr) {
+        memcpy((char *)ptr, string.c_str(), len);
+        return binary_str;
+    } else {
+        fprintf(stderr, "internal error: cannot allocate memory for binary string\r\n");
+        return atom(env, "error");
+    }
+}
+
 // Check if :nil
 int check_nil(ErlNifEnv *env, ERL_NIF_TERM term) {
     std::string atom_str;
