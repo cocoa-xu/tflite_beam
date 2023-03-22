@@ -2,6 +2,10 @@ name: linux-x86_64
 
 on:
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'examples/**/*.livemd'
+      - 'examples/*.livemd'
   push:
     branches:
       - main
@@ -11,7 +15,8 @@ on:
       - fix-*
     paths-ignore:
       - '**/*.md'
-      - 'examples/**'
+      - 'examples/**/*.livemd'
+      - 'examples/*.livemd'
       - 'nerves/**'
       - '.github/FUNDING.yml'
       - '.github/workflows/nerves-*'
