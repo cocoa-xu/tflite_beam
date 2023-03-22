@@ -1,6 +1,10 @@
 # Changelog
 
-## main
+## v0.1.7
+
+### Breaking Changes
+- Deprecated `TFLiteElixir.Interpreter.allocate_tensors!/1`
+- Deprecated Access behaviour for `TFLiteElixir.FlatBufferModel`
 
 ### Fixed
 - Properly implemented `TFLiteElixir.FlatBufferModel.read_all_metadata/1`.
@@ -54,6 +58,23 @@
     min_runtime_version: "1.5.0"
   }
   ```
+
+### Changed
+- Improve `TFLiteElixir.TFLiteTensor.to_nx/2` (#33) by @cocoa-xu
+- [doc] Improve doc for to_nx (#31) by @mnishiguchi
+
+### Added
+- Implemented 
+  - `FlatBufferModel.{list_associated_files/1,get_associated_file/2}`
+  - `TFLiteElixir.Interpreter.signature_keys/1`
+  - `TFLiteElixir.Interpreter.execution_plan/1`
+  - `TFLiteElixir.Interpreter.new_from_buffer/1`
+  - `TFLiteElixir.Interpreter.tensors_size/1`
+  - `TFLiteElixir.Interpreter.variables/1`
+  - `TFLiteElixir.Interpreter.set_variables/2`
+  - `TFLiteElixir.Interpreter.set_inputs/2`
+  - `TFLiteElixir.Interpreter.set_outputs/2`
+- [example] object detection example (#40) by @mnishiguchi
 
 ## v0.1.6 (2022-03-19)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_elixir/tree/v0.1.6) | [Released Assets](https://github.com/cocoa-xu/tflite_elixir/releases/tag/v0.1.6)
