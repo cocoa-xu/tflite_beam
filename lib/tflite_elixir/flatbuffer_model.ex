@@ -140,6 +140,68 @@ defmodule TFLiteElixir.FlatBufferModel do
     TFLiteElixir.Nif.flatbuffer_model_read_all_metadata(self)
   end
 
+  @doc """
+  Get a list of all associated file(s) in a TFLite model file
+  """
+  @spec list_associated_files(binary()) :: [String.t()] | nif_error()
+  def list_associated_files(model_buffer) do
+    with {:ok, entries} <- :zip.table(model_buffer) do
+      Enum.flat_map(entries, fn entry ->
+        case entry do
+            {:zip_file, filename, _, _, _, _} ->
+                [List.to_string(filename)]
+            _ ->
+              []
+        end
+      end)
+    else
+      error -> error
+    end
+  end
+
+  @doc """
+  Get associated file(s) from a FlatBuffer model
+  """
+  @spec get_associated_file(binary(), [String.t()] | String.t()) :: %{String.t() => String.t()} | String.t() | nif_error()
+  def get_associated_file(model, filename)
+
+  def get_associated_file(model_buffer, filename) when is_binary(model_buffer) and (is_list(filename) or is_binary(filename)) do
+    with associated_files = list_associated_files(model_buffer),
+         {true, _} <- {is_list(associated_files), associated_files},
+         {:zip_open, {:ok, z}} <- {:zip_open, :zip.zip_open(model_buffer, [:memory])} do
+      file_content =
+        if is_list(filename) do
+          Enum.map(filename, fn file ->
+            if Enum.member?(associated_files, file) do
+              {file, get_associated_file_impl(z, file)}
+            else
+              {file, {:error, "cannot find associated file `#{inspect(file)}`"}}
+            end
+          end)
+          |> Map.new()
+        else
+          if Enum.member?(associated_files, filename) do
+            get_associated_file_impl(z, filename)
+          else
+            {:error, "cannot find associated file `#{inspect(filename)}`"}
+          end
+        end
+        :zip.zip_close(z)
+      file_content
+    else
+      {_, error} -> error
+    end
+  end
+
+  defp get_associated_file_impl(z, filename) do
+    case :zip.zip_get(filename, z) do
+      {:ok, {_, content}} ->
+        content
+      error ->
+        error
+    end
+  end
+
   defimpl Inspect, for: T do
     import Inspect.Algebra
 
