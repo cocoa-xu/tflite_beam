@@ -42,7 +42,7 @@ defmodule TFLiteElixir.Interpreter do
   deferror(new())
 
   @doc """
-  New interpreter with model
+  New interpreter with model filepath
   """
   @spec new(String.t()) :: nif_resource_ok() | nif_error()
   def new(model_path) do
@@ -65,6 +65,31 @@ defmodule TFLiteElixir.Interpreter do
   end
 
   deferror(new(model_path))
+
+  @doc """
+  New interpreter with model buffer
+  """
+  @spec new_from_buffer(binary()) :: nif_resource_ok() | nif_error()
+  def new_from_buffer(model_buffer) do
+    with {:build_from_file, %FlatBufferModel{} = model} <-
+           {:build_from_file, FlatBufferModel.build_from_buffer(model_buffer)},
+         {:builtin_resolver, {:ok, resolver}} <-
+           {:builtin_resolver, TFLiteElixir.Ops.Builtin.BuiltinResolver.new()},
+         {:interpreter_build, {:ok, builder}} <-
+           {:interpreter_build, InterpreterBuilder.new(model, resolver)},
+         {:new_interpreter, {:ok, interpreter}} <-
+           {:new_interpreter, Interpreter.new()},
+         {:build_interpreter, :ok} <-
+           {:build_interpreter, InterpreterBuilder.build(builder, interpreter)},
+         {:allocate_tensors, :ok} <-
+           {:allocate_tensors, Interpreter.allocate_tensors(interpreter)} do
+      {:ok, interpreter}
+    else
+      error -> error
+    end
+  end
+
+  deferror(new(model_buffer))
 
   @doc """
   Provide a list of tensor indexes that are inputs to the model.
