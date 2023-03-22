@@ -89,8 +89,6 @@ defmodule TFLiteElixir.Interpreter do
     end
   end
 
-  deferror(new(model_buffer))
-
   @doc """
   Provide a list of tensor indexes that are inputs to the model.
   Each index is bound check and this modifies the consistent_ flag of the
