@@ -2,7 +2,7 @@
 
 ```elixir
 Mix.install([
-  {:tflite_elixir, "0.1.6"},
+  {:tflite_elixir, "0.1.7"},
   {:evision, "0.1.29"},
   {:kino, "~> 0.8.0"},
   {:req, "~> 0.3.0"}
@@ -40,8 +40,6 @@ data_files =
   [
     model:
       "https://tfhub.dev/tensorflow/lite-model/efficientdet/lite4/detection/metadata/2?lite-format=tflite",
-    coco_names:
-      "https://raw.githubusercontent.com/cocoa-xu/evision/main/test/testdata/models/coco_names.txt",
     input_image: Kino.Input.read(input_image_url_input)
   ]
   |> Enum.map(fn {key, url} -> {key, download.(url)} end)
@@ -59,9 +57,8 @@ alias TFLiteElixir.TFLiteTensor
 ## Load lables
 
 ```elixir
-class_names =
-  data_files.coco_names
-|> File.read!()
+model_buffer = File.read!(data_files.model)
+TFLite.FlatBufferModel.get_associated_file(model_buffer, "labelmap.txt")
   |> String.split("\n")
 ```
 
@@ -130,8 +127,7 @@ detect_objects = fn interpreter, input_image_tensor, score_threshold ->
 end
 
 # Load TFLite model and allocate tensors
-{:ok, interpreter} = TFLite.Interpreter.new(data_files.model)
-:ok = TFLite.Interpreter.allocate_tensors(interpreter)
+{:ok, interpreter} = TFLite.Interpreter.new_from_buffer(model_buffer)
 
 prediction_results = detect_objects.(interpreter, input_image_tensor, 0.5)
 ```
