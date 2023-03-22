@@ -1,6 +1,7 @@
 # Changelog
 
-## v0.1.7
+## v0.1.7 (2022-03-22)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_elixir/tree/v0.1.7) | [Released Assets](https://github.com/cocoa-xu/tflite_elixir/releases/tag/v0.1.7)
 
 ### Breaking Changes
 - Deprecated `TFLiteElixir.Interpreter.allocate_tensors!/1`
