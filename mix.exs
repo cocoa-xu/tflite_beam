@@ -1,4 +1,4 @@
-defmodule TfliteElixir.MixProject do
+defmodule TFLiteElixir.MixProject do
   use Mix.Project
   require Logger
 
