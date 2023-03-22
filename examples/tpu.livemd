@@ -2,7 +2,7 @@
 
 ```elixir
 Mix.install([
-  {:tflite_elixir, "~> 0.1.6"},
+  {:tflite_elixir, "~> 0.1.7"},
   {:nx, "~> 0.5.0"},
   {:req, "~> 0.3.0"},
   {:stb_image, "~> 0.6.0"}
@@ -28,7 +28,7 @@ download = fn url ->
 end
 
 data_files = %{
-  class_labals:
+  class_labels:
     "https://raw.githubusercontent.com/cocoa-xu/tflite_elixir/main/test/test_data/inat_bird_labels.txt"
     |> download.(),
   cpu_model:
@@ -265,7 +265,7 @@ interpreter =
   ClassifyImage.run(
     model: data_files.cpu_model,
     input: data_files.test_image,
-    labels: data_files.class_labals,
+    labels: data_files.class_labels,
     top: 3,
     threshold: 0.3,
     count: 5,
@@ -281,7 +281,7 @@ interpreter =
   ClassifyImage.run(
     model: data_files.tpu_model,
     input: data_files.test_image,
-    labels: data_files.class_labals,
+    labels: data_files.class_labels,
     top: 3,
     threshold: 0.3,
     count: 5,
