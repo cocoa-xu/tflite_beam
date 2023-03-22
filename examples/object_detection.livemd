@@ -39,7 +39,7 @@ end
 data_files =
   [
     model:
-      "https://tfhub.dev/tensorflow/lite-model/efficientdet/lite4/detection/default/2?lite-format=tflite",
+      "https://tfhub.dev/tensorflow/lite-model/efficientdet/lite4/detection/metadata/2?lite-format=tflite",
     coco_names:
       "https://raw.githubusercontent.com/cocoa-xu/evision/main/test/testdata/models/coco_names.txt",
     input_image: Kino.Input.read(input_image_url_input)
