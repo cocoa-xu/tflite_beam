@@ -58,7 +58,8 @@ alias TFLiteElixir.TFLiteTensor
 
 ```elixir
 model_buffer = File.read!(data_files.model)
-TFLite.FlatBufferModel.get_associated_file(model_buffer, "labelmap.txt")
+class_names =
+  TFLite.FlatBufferModel.get_associated_file(model_buffer, "labelmap.txt")
   |> String.split("\n")
 ```
 
