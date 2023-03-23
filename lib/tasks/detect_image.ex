@@ -75,10 +75,10 @@ defmodule Mix.Tasks.DetectImage do
 
     {height, width} =
       case input_tensor.shape do
-        [_n, height, width, _c] ->
+        {_n, height, width, _c} ->
           {height, width}
 
-        [_n, height, width] ->
+        {_n, height, width} ->
           {height, width}
 
         shape ->
@@ -93,7 +93,7 @@ defmodule Mix.Tasks.DetectImage do
       |> StbImage.to_nx()
       |> Nx.new_axis(0)
 
-    Nx.broadcast(0, List.to_tuple(input_tensor.shape))
+    Nx.broadcast(0, input_tensor.shape)
     |> Nx.as_type(:u8)
     |> Nx.put_slice([0, 0, 0, 0], input_image)
     |> Nx.to_binary()
@@ -128,7 +128,7 @@ defmodule Mix.Tasks.DetectImage do
         %TFLiteTensor{} =
           output_tensor_3 = Interpreter.tensor(interpreter, Enum.at(output_tensor_numbers, 3))
 
-        if output_tensor_3.shape == [1] do
+        if output_tensor_3.shape == {1} do
           boxes_tensor_id = Enum.at(output_tensor_numbers, 0)
           class_ids_tensor_id = Enum.at(output_tensor_numbers, 1)
           scores_tensor_id = Enum.at(output_tensor_numbers, 2)

@@ -3,6 +3,8 @@ defmodule TFLiteElixir.TFLiteTensor do
   A typed multi-dimensional array used in Tensorflow Lite.
   """
 
+  alias TFLiteElixir.TFLiteQuantizationParams
+
   @type nif_resource_ok :: {:ok, reference()}
   @type nif_error :: {:error, String.t()}
   @type tensor_type ::
@@ -49,10 +51,10 @@ defmodule TFLiteElixir.TFLiteTensor do
   end
 
   @doc """
-  Get the dimensions
+  Get the dimensions (C++) API
   """
   @spec dims(%T{}) :: [integer()]
-  def dims(%T{shape: shape}), do: shape
+  def dims(%T{shape: shape}), do: Tuple.to_list(shape)
 
   @spec dims(reference()) :: [integer()] | nif_error()
   def dims(self) do
@@ -64,16 +66,30 @@ defmodule TFLiteElixir.TFLiteTensor do
   end
 
   @doc """
+  Get the tensor shape
+  """
+  @spec shape(%T{}) :: tuple()
+  def shape(%T{shape: shape}), do: shape
+
+  @spec shape(reference()) :: tuple() | nif_error()
+  def shape(self) do
+    with {:ok, dims} <- TFLiteElixir.Nif.tflitetensor_dims(self) do
+      List.to_tuple(dims)
+    else
+      error -> error
+    end
+  end
+
+  @doc """
   Get the quantization params
   """
-  @spec quantization_params(%T{} | reference()) ::
-          %TFLiteElixir.TFLiteQuantizationParams{} | nif_error()
+  @spec quantization_params(%T{} | reference()) :: %TFLiteQuantizationParams{} | nif_error()
   def quantization_params(%T{quantization_params: quantization_params}), do: quantization_params
 
   def quantization_params(self) do
     with {:ok, {scale, zero_point, quantized_dimension}} <-
            TFLiteElixir.Nif.tflitetensor_quantization_params(self) do
-      %TFLiteElixir.TFLiteQuantizationParams{
+      %TFLiteQuantizationParams{
         scale: scale,
         zero_point: zero_point,
         quantized_dimension: quantized_dimension

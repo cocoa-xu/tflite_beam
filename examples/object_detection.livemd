@@ -99,7 +99,7 @@ get_output_tensor_at_index = fn interpreter, index ->
   {:ok, output_tensor_indices} = TFLite.Interpreter.outputs(interpreter)
   tensor_index = Enum.at(output_tensor_indices, index)
   tflite_tensor = TFLite.Interpreter.tensor(interpreter, tensor_index)
-  [1 | tensor_shape] = tflite_tensor.shape
+  [1 | tensor_shape] = TFLite.TFLiteTensor.dims(tflite_tensor)
 
   data
   |> Nx.from_binary(tflite_tensor.type)
