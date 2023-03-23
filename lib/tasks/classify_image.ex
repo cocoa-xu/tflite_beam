@@ -106,10 +106,10 @@ defmodule Mix.Tasks.ClassifyImage do
 
     {h, w} =
       case input_tensor.shape do
-        [_n, h, w, _c] ->
+        {_n, h, w, _c} ->
           {h, w}
 
-        [_n, h, w] ->
+        {_n, h, w} ->
           {h, w}
 
         shape ->

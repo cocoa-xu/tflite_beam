@@ -1206,7 +1206,7 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
       %TFLiteTensor{
         name: "map/TensorArrayStack/TensorArrayGatherV3",
         index: 0,
-        shape: [1, 224, 224, 3],
+        shape: {1, 224, 224, 3},
         shape_signature: [1, 224, 224, 3],
         type: {:u, 8},
         quantization_params: %TFLiteQuantizationParams{

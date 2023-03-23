@@ -226,7 +226,7 @@ defmodule TFLiteElixir.Interpreter do
       %TFLiteTensor{
         name: name,
         index: index,
-        shape: shape,
+        shape: List.to_tuple(shape),
         shape_signature: shape_signature,
         type: type,
         quantization_params: %TFLiteQuantizationParams{
@@ -402,9 +402,9 @@ defmodule TFLiteElixir.Interpreter do
     with {:match_type, _, _, true} <-
            {:match_type, tensor.type, Nx.type(input), tensor.type == Nx.type(input)},
          {:match_shape, _, _, true} <-
-           {:match_shape, List.to_tuple(tensor.shape), Nx.shape(input),
-            tensor.shape == Tuple.to_list(Nx.shape(input)) or
-              tensor.shape == [1 | Tuple.to_list(Nx.shape(input))]} do
+           {:match_shape, tensor.shape, Nx.shape(input),
+            tensor.shape == Nx.shape(input) or
+              TFLiteTensor.dims(tensor) == [1 | Tuple.to_list(Nx.shape(input))]} do
       TFLiteTensor.set_data(tensor, Nx.to_binary(input))
     else
       {:match_type, tensor_type, input_type, _} ->
