@@ -44,7 +44,7 @@ end
 data_files =
   [
     movenet_model:
-      "https://tfhub.dev/google/lite-model/movenet/singlepose/lightning/tflite/int8/4?lite-format=tflite",
+      "https://tfhub.dev/google/lite-model/movenet/singlepose/thunder/3?lite-format=tflite",
     input_image: Kino.Input.read(input_url_input)
   ]
   |> Enum.map(fn {key, url} -> {key, download.(url)} end)
@@ -61,9 +61,9 @@ alias TFLiteElixir.TFLiteTensor
 
 ## Load input image
 
-* A frame of video or an image, represented as an uint8 tensor of shape: 192x192x3.
-* Channels order: RGB with values in [0, 255].
-* See https://tfhub.dev/google/lite-model/movenet/singlepose/lightning/tflite/int8
+* Input is a frame of video or an image, represented as an float32 tensor of
+shape: 256x256x3. Channels order is RGB with values in [0, 255].
+* See https://tfhub.dev/google/lite-model/movenet/singlepose/thunder/3
 
 ```elixir
 resize_with_pad = fn %Cv.Mat{} = input_image_mat, desired_size when is_number(desired_size) ->
@@ -87,25 +87,24 @@ resize_with_pad = fn %Cv.Mat{} = input_image_mat, desired_size when is_number(de
   )
 end
 
-# Input is a frame of video or an image, represented as an uint8 tensor of shape: 192x192x3
-# See https://tfhub.dev/google/lite-model/movenet/singlepose/lightning/tflite/int8
 input_image_mat =
   data_files.input_image
   |> Cv.imread()
-  |> resize_with_pad.(192)
+  |> resize_with_pad.(256)
 
 input_image_tensor =
   input_image_mat
   |> Cv.Mat.to_nx(Nx.BinaryBackend)
   |> Nx.new_axis(0)
-  |> Nx.as_type({:u, 8})
+  |> Nx.as_type({:f, 32})
 
 input_image_mat
 ```
 
 ## Run inference
 
-Runs detection on an input image.
+* Output is a float32 tensor of shape [1, 1, 17, 3]
+* See https://tfhub.dev/google/lite-model/movenet/singlepose/thunder/3
 
 ```elixir
 # Initialize the TFLite interpreter
@@ -120,8 +119,6 @@ TFLite.Interpreter.invoke(interpreter)
 {:ok, [tflite_tensor_index]} = TFLite.Interpreter.outputs(interpreter)
 tflite_tensor = TFLite.Interpreter.tensor(interpreter, tflite_tensor_index)
 
-# Output is a float32 tensor of shape [1, 1, 17, 3]
-# See https://tfhub.dev/google/lite-model/movenet/singlepose/lightning/tflite/int8
 {:f, 32} = output_type = tflite_tensor.type
 {1, 1, 17, 3} = output_shape = List.to_tuple(tflite_tensor.shape)
 
@@ -156,8 +153,8 @@ keypoint_names = [
   :right_ankle
 ]
 
-edge_color1 = {0, 0, 255}
-edge_color2 = {0, 255, 0}
+edge_color1 = {255, 0, 255}
+edge_color2 = {255, 255, 0}
 edge_color3 = {0, 255, 255}
 
 keypoint_edge_to_color = %{
@@ -220,7 +217,7 @@ draw_keypoints = fn %Cv.Mat{} = input_image_mat, keypoints ->
       Cv.circle(
         acc_mat,
         {trunc(x), trunc(y)},
-        5,
+        3,
         {0, 0, 255},
         thickness: 5,
         lineType: Cv.Constant.cv_FILLED()
@@ -246,6 +243,6 @@ end
 data_files.input_image
 |> Cv.imread()
 |> resize_with_pad.(display_size)
-|> draw_keypoints.(keypoints)
 |> draw_keypoint_edges.(keypoint_edges)
+|> draw_keypoints.(keypoints)
 ```
