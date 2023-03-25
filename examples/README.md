@@ -26,3 +26,10 @@ Detect multiple objects with bounding boxes. Yes, dogs and cats too.
 An audio classification model for recognizing various audio events. Yes, dogs and cats too!
 
 [![Run in Livebook](https://livebook.dev/badge/v1/gray.svg)](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2Fcocoa-xu%2Ftflite_elixir%2Fblob%2Fmain%2Fexamples%2Faudio_classification.livemd)
+
+## Pose estimation
+
+Estimate poses for single or multiple people. Imagine the possibilities, including stick figure dance parties.
+
+[![Run in Livebook](https://livebook.dev/badge/v1/gray.svg)](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2Fcocoa-xu%2Ftflite_elixir%2Fblob%2Fmain%2Fexamples%2F.nlivemd)
+se_estimation
