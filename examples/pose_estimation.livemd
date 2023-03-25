@@ -1,9 +1,9 @@
-# Human Pose Estimation with MoveNet and TensorFlow Lite - Single Image Example
+# Human Pose Estimation with MoveNet and TensorFlow Lite - Single Image
 
 ```elixir
 Mix.install([
   {:tflite_elixir, "0.1.7"},
-  {:evision, "0.1.29"},
+  {:evision, "0.1.30"},
   {:kino, "~> 0.8.0"},
   {:req, "~> 0.3.0"}
 ])
@@ -181,7 +181,7 @@ keypoint_edge_to_color = %{
   {14, 16} => edge_color2
 }
 
-{display_height, display_width} = {1280, 1280}
+display_size = 1280
 keypoint_threshold = 0.11
 
 keypoints =
@@ -189,7 +189,7 @@ keypoints =
   |> Enum.zip(keypoint_names)
   |> Enum.with_index(fn
     {[y, x, score], name}, index when score > keypoint_threshold ->
-      %{x: x * display_width, y: y * display_height, name: name, index: index, score: score}
+      %{x: x * display_size, y: y * display_size, name: name, index: index, score: score}
 
     _keypoint, _index ->
       nil
@@ -245,7 +245,7 @@ end
 
 data_files.input_image
 |> Cv.imread()
-|> resize_with_pad.({display_height, display_width})
+|> resize_with_pad.(display_size)
 |> draw_keypoints.(keypoints)
 |> draw_keypoint_edges.(keypoint_edges)
 ```
