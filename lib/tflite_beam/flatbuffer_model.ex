@@ -18,10 +18,10 @@ defmodule TFLiteBEAM.FlatBufferModel do
   alias __MODULE__, as: T
 
   @doc """
-  Build model from a given tflite file
+  Build model from a given .tflite file
 
   Note that if the tensorflow-lite library was compiled with `TFLITE_MCU`,
-  then this function will always have return type `nif_error()`
+  then this function will always have return type `nif_error()`.
 
   ##### Keyword parameters
   - `error_reporter`: `TFLiteBEAM.ErrorReporter`.
@@ -33,15 +33,15 @@ defmodule TFLiteBEAM.FlatBufferModel do
   def build_from_file(filename, opts \\ []) when is_binary(filename) and is_list(opts) do
     error_reporter = ErrorReporter.from_struct(opts[:error_reporter])
 
-    with {:ok, model} <-
-           :tflite_beam_nif.flatbuffer_model_build_from_file(filename, error_reporter) do
-      %T{
-        initialized: :tflite_beam_nif.flatbuffer_model_initialized(model),
-        minimum_runtime: :tflite_beam_nif.flatbuffer_model_get_minimum_runtime(model),
-        model: model
-      }
-    else
-      error -> error
+    case :tflite_beam_flatbuffer_model.build_from_file(filename, [{:error_reporter, error_reporter}]) do
+      {:tflite_beam_flatbuffer_model, initialized, minimum_runtime, ref} ->
+        %T{
+          initialized: initialized,
+          minimum_runtime: minimum_runtime,
+          model: ref
+        }
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -64,11 +64,17 @@ defmodule TFLiteBEAM.FlatBufferModel do
   def verify_and_build_from_file(filename, opts \\ []) do
     error_reporter = ErrorReporter.from_struct(opts[:error_reporter])
 
-    with {:ok, model} <-
-           :tflite_beam_nif.flatbuffer_model_verify_and_build_from_file(filename, error_reporter) do
-      %T{model: model}
-    else
-      error -> error
+    case :tflite_beam_flatbuffer_model.verify_and_build_from_file(filename, [{:error_reporter, error_reporter}]) do
+      {:tflite_beam_flatbuffer_model, initialized, minimum_runtime, ref} ->
+        %T{
+          initialized: initialized,
+          minimum_runtime: minimum_runtime,
+          model: ref
+        }
+      :invalid ->
+        :invalid
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -90,11 +96,15 @@ defmodule TFLiteBEAM.FlatBufferModel do
   def build_from_buffer(buffer, opts \\ []) when is_binary(buffer) and is_list(opts) do
     error_reporter = ErrorReporter.from_struct(opts[:error_reporter])
 
-    with {:ok, model} <-
-           :tflite_beam_nif.flatbuffer_model_build_from_buffer(buffer, error_reporter) do
-      %T{model: model}
-    else
-      error -> error
+    case :tflite_beam_flatbuffer_model.build_from_buffer(buffer, [{:error_reporter, error_reporter}]) do
+      {:tflite_beam_flatbuffer_model, initialized, minimum_runtime, ref} ->
+        %T{
+          initialized: initialized,
+          minimum_runtime: minimum_runtime,
+          model: ref
+        }
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -103,14 +113,19 @@ defmodule TFLiteBEAM.FlatBufferModel do
   """
   @spec initialized(%T{}) :: bool() | nif_error()
   def initialized(%T{model: self}) when is_reference(self) do
-    :tflite_beam_nif.flatbuffer_model_initialized(self)
+    :tflite_beam_flatbuffer_model.initialized(self)
   end
 
+  @doc """
+  Get the error report of the current FlatBuffer model.
+  """
   @spec error_reporter(%T{:model => reference()}) :: %ErrorReporter{} | {:error, String.t()}
   def error_reporter(%T{model: self}) when is_reference(self) do
-    case :tflite_beam_nif.flatbuffer_model_error_reporter(self) do
-      {:ok, ref} when is_reference(ref) -> %ErrorReporter{ref: ref}
-      error -> error
+    case :tflite_beam_flatbuffer_model.error_reporter(self) do
+      {:tflite_beam_error_reporter, ref} when is_reference(ref) ->
+        %ErrorReporter{ref: ref}
+      {:error, error} ->
+        {:error, error}
     end
   end
 
@@ -127,7 +142,7 @@ defmodule TFLiteBEAM.FlatBufferModel do
   """
   @spec get_minimum_runtime(%T{}) :: String.t() | nif_error()
   def get_minimum_runtime(%T{model: self}) when is_reference(self) do
-    :tflite_beam_nif.flatbuffer_model_get_minimum_runtime(self)
+    :tflite_beam_flatbuffer_model.get_minimum_runtime(self)
   end
 
   @doc """
@@ -137,69 +152,23 @@ defmodule TFLiteBEAM.FlatBufferModel do
   """
   @spec read_all_metadata(%T{}) :: %{String.t() => String.t()} | nif_error()
   def read_all_metadata(%T{model: self}) when is_reference(self) do
-    :tflite_beam_nif.flatbuffer_model_read_all_metadata(self)
+    :tflite_beam_flatbuffer_model.read_all_metadata(self)
   end
 
   @doc """
   Get a list of all associated file(s) in a TFLite model file
   """
   @spec list_associated_files(binary()) :: [String.t()] | nif_error()
-  def list_associated_files(model_buffer) do
-    with {:ok, entries} <- :zip.table(model_buffer) do
-      Enum.flat_map(entries, fn entry ->
-        case entry do
-            {:zip_file, filename, _, _, _, _} ->
-                [List.to_string(filename)]
-            _ ->
-              []
-        end
-      end)
-    else
-      error -> error
-    end
+  def list_associated_files(buffer) do
+    :tflite_beam_flatbuffer_model.list_associated_files(buffer)
   end
 
   @doc """
   Get associated file(s) from a FlatBuffer model
   """
   @spec get_associated_file(binary(), [String.t()] | String.t()) :: %{String.t() => String.t()} | String.t() | nif_error()
-  def get_associated_file(model, filename)
-
-  def get_associated_file(model_buffer, filename) when is_binary(model_buffer) and (is_list(filename) or is_binary(filename)) do
-    with associated_files = list_associated_files(model_buffer),
-         {true, _} <- {is_list(associated_files), associated_files},
-         {:zip_open, {:ok, z}} <- {:zip_open, :zip.zip_open(model_buffer, [:memory])} do
-      file_content =
-        if is_list(filename) do
-          Enum.map(filename, fn file ->
-            if Enum.member?(associated_files, file) do
-              {file, get_associated_file_impl(z, file)}
-            else
-              {file, {:error, "cannot find associated file `#{inspect(file)}`"}}
-            end
-          end)
-          |> Map.new()
-        else
-          if Enum.member?(associated_files, filename) do
-            get_associated_file_impl(z, filename)
-          else
-            {:error, "cannot find associated file `#{inspect(filename)}`"}
-          end
-        end
-        :zip.zip_close(z)
-      file_content
-    else
-      {_, error} -> error
-    end
-  end
-
-  defp get_associated_file_impl(z, filename) do
-    case :zip.zip_get(filename, z) do
-      {:ok, {_, content}} ->
-        content
-      error ->
-        error
-    end
+  def get_associated_file(buffer, filename) when is_binary(buffer) and (is_list(filename) or is_binary(filename)) do
+    :tflite_beam_flatbuffer_model.get_associated_file(buffer, filename)
   end
 
   defimpl Inspect, for: T do
