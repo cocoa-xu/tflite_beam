@@ -1,3 +1,7 @@
+%% @moduledoc
+%% An RAII object that represents a read-only tflite model, copied from disk, or
+%% mmapped.
+
 -module(tflite_beam_flatbuffer_model).
 -export([
     build_from_file/1, build_from_file/2, 
