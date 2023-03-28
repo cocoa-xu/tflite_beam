@@ -1,14 +1,14 @@
-defmodule TFLiteElixir.Interpreter do
+defmodule TFLiteBEAM.Interpreter do
   @moduledoc """
   An interpreter for a graph of nodes that input and output from tensors.
   """
-  import TFLiteElixir.Errorize
+  import TFLiteBEAM.Errorize
 
-  alias TFLiteElixir.TFLiteTensor
-  alias TFLiteElixir.TFLiteQuantizationParams
-  alias TFLiteElixir.FlatBufferModel
-  alias TFLiteElixir.Interpreter
-  alias TFLiteElixir.InterpreterBuilder
+  alias TFLiteBEAM.TFLiteTensor
+  alias TFLiteBEAM.TFLiteQuantizationParams
+  alias TFLiteBEAM.FlatBufferModel
+  alias TFLiteBEAM.Interpreter
+  alias TFLiteBEAM.InterpreterBuilder
 
   @type nif_resource_ok :: {:ok, reference()}
   @type nif_error :: {:error, String.t()}
@@ -36,7 +36,7 @@ defmodule TFLiteElixir.Interpreter do
   """
   @spec new() :: nif_resource_ok() | nif_error()
   def new() do
-    TFLiteElixir.Nif.interpreter_new()
+    :tflite_beam_nif.interpreter_new()
   end
 
   deferror(new())
@@ -49,7 +49,7 @@ defmodule TFLiteElixir.Interpreter do
     with {:build_from_file, %FlatBufferModel{} = model} <-
            {:build_from_file, FlatBufferModel.build_from_file(model_path)},
          {:builtin_resolver, {:ok, resolver}} <-
-           {:builtin_resolver, TFLiteElixir.Ops.Builtin.BuiltinResolver.new()},
+           {:builtin_resolver, TFLiteBEAM.Ops.Builtin.BuiltinResolver.new()},
          {:interpreter_build, {:ok, builder}} <-
            {:interpreter_build, InterpreterBuilder.new(model, resolver)},
          {:new_interpreter, {:ok, interpreter}} <-
@@ -74,7 +74,7 @@ defmodule TFLiteElixir.Interpreter do
     with {:build_from_file, %FlatBufferModel{} = model} <-
            {:build_from_file, FlatBufferModel.build_from_buffer(model_buffer)},
          {:builtin_resolver, {:ok, resolver}} <-
-           {:builtin_resolver, TFLiteElixir.Ops.Builtin.BuiltinResolver.new()},
+           {:builtin_resolver, TFLiteBEAM.Ops.Builtin.BuiltinResolver.new()},
          {:interpreter_build, {:ok, builder}} <-
            {:interpreter_build, InterpreterBuilder.new(model, resolver)},
          {:new_interpreter, {:ok, interpreter}} <-
@@ -96,7 +96,7 @@ defmodule TFLiteElixir.Interpreter do
   """
   @spec set_inputs(reference, list(integer())) :: :ok | nif_error()
   def set_inputs(self, inputs) when is_reference(self) and is_list(inputs) do
-    TFLiteElixir.Nif.interpreter_set_inputs(self, inputs)
+    :tflite_beam_nif.interpreter_set_inputs(self, inputs)
   end
 
   @doc """
@@ -106,7 +106,7 @@ defmodule TFLiteElixir.Interpreter do
   """
   @spec set_outputs(reference, list(integer())) :: :ok | nif_error()
   def set_outputs(self, outputs) when is_reference(self) and is_list(outputs) do
-    TFLiteElixir.Nif.interpreter_set_outputs(self, outputs)
+    :tflite_beam_nif.interpreter_set_outputs(self, outputs)
   end
 
   @doc """
@@ -116,7 +116,7 @@ defmodule TFLiteElixir.Interpreter do
   """
   @spec set_variables(reference, list(integer())) :: :ok | nif_error()
   def set_variables(self, variables) when is_reference(self) and is_list(variables) do
-    TFLiteElixir.Nif.interpreter_set_variables(self, variables)
+    :tflite_beam_nif.interpreter_set_variables(self, variables)
   end
 
   @doc """
@@ -126,7 +126,7 @@ defmodule TFLiteElixir.Interpreter do
   """
   @spec inputs(reference()) :: {:ok, [non_neg_integer()]} | nif_error()
   def inputs(self) when is_reference(self) do
-    TFLiteElixir.Nif.interpreter_inputs(self)
+    :tflite_beam_nif.interpreter_inputs(self)
   end
 
   deferror(inputs(self))
@@ -140,7 +140,7 @@ defmodule TFLiteElixir.Interpreter do
   """
   @spec get_input_name(reference(), non_neg_integer()) :: {:ok, String.t()} | nif_error()
   def get_input_name(self, index) when is_reference(self) and index >= 0 do
-    TFLiteElixir.Nif.interpreter_get_input_name(self, index)
+    :tflite_beam_nif.interpreter_get_input_name(self, index)
   end
 
   deferror(get_input_name(self, index))
@@ -152,7 +152,7 @@ defmodule TFLiteElixir.Interpreter do
   """
   @spec outputs(reference()) :: {:ok, [non_neg_integer()]} | nif_error()
   def outputs(self) when is_reference(self) do
-    TFLiteElixir.Nif.interpreter_outputs(self)
+    :tflite_beam_nif.interpreter_outputs(self)
   end
 
   deferror(outputs(self))
@@ -162,7 +162,7 @@ defmodule TFLiteElixir.Interpreter do
   """
   @spec variables(reference()) :: {:ok, [non_neg_integer()]} | nif_error()
   def variables(self) when is_reference(self) do
-    TFLiteElixir.Nif.interpreter_variables(self)
+    :tflite_beam_nif.interpreter_variables(self)
   end
 
   @doc """
@@ -172,7 +172,7 @@ defmodule TFLiteElixir.Interpreter do
   """
   @spec get_output_name(reference(), non_neg_integer()) :: {:ok, String.t()} | nif_error()
   def get_output_name(self, index) when is_reference(self) and index >= 0 do
-    TFLiteElixir.Nif.interpreter_get_output_name(self, index)
+    :tflite_beam_nif.interpreter_get_output_name(self, index)
   end
 
   deferror(get_output_name(self, index))
@@ -182,7 +182,7 @@ defmodule TFLiteElixir.Interpreter do
   """
   @spec tensors_size(reference()) :: non_neg_integer() | nif_error()
   def tensors_size(self) when is_reference(self) do
-    case TFLiteElixir.Nif.interpreter_tensors_size(self) do
+    case :tflite_beam_nif.interpreter_tensors_size(self) do
       {:ok, tensors_size} -> tensors_size
       error -> error
     end
@@ -193,7 +193,7 @@ defmodule TFLiteElixir.Interpreter do
   """
   @spec nodes_size(reference()) :: non_neg_integer() | nif_error()
   def nodes_size(self) when is_reference(self) do
-    case TFLiteElixir.Nif.interpreter_nodes_size(self) do
+    case :tflite_beam_nif.interpreter_nodes_size(self) do
       {:ok, nodes_size} -> nodes_size
       error -> error
     end
@@ -206,7 +206,7 @@ defmodule TFLiteElixir.Interpreter do
   """
   @spec execution_plan(reference()) :: [non_neg_integer()] | nif_error()
   def execution_plan(self) when is_reference(self) do
-    case TFLiteElixir.Nif.interpreter_execution_plan(self) do
+    case :tflite_beam_nif.interpreter_execution_plan(self) do
       {:ok, execution_plan} -> execution_plan
       error -> error
     end
@@ -222,7 +222,7 @@ defmodule TFLiteElixir.Interpreter do
   def tensor(self, tensor_index) when is_reference(self) and tensor_index >= 0 do
     with {:ok,
           {name, index, shape, shape_signature, type, {scale, zero_point, quantized_dimension},
-           sparsity_params, ref}} <- TFLiteElixir.Nif.interpreter_tensor(self, tensor_index) do
+           sparsity_params, ref}} <- :tflite_beam_nif.interpreter_tensor(self, tensor_index) do
       %TFLiteTensor{
         name: name,
         index: index,
@@ -250,7 +250,7 @@ defmodule TFLiteElixir.Interpreter do
   """
   @spec signature_keys(reference) :: [String.t()] | nif_error()
   def signature_keys(self) when is_reference(self) do
-    case TFLiteElixir.Nif.interpreter_signature_keys(self) do
+    case :tflite_beam_nif.interpreter_signature_keys(self) do
       {:ok, signature_keys} -> signature_keys
       error -> error
     end
@@ -272,7 +272,7 @@ defmodule TFLiteElixir.Interpreter do
   @spec input_tensor(reference(), non_neg_integer(), binary()) :: :ok | nif_error()
   def input_tensor(self, index, data)
       when is_reference(self) and index >= 0 and is_binary(data) do
-    TFLiteElixir.Nif.interpreter_input_tensor(self, index, data)
+    :tflite_beam_nif.interpreter_input_tensor(self, index, data)
   end
 
   deferror(input_tensor(self, index, data))
@@ -287,7 +287,7 @@ defmodule TFLiteElixir.Interpreter do
   @spec output_tensor(reference(), non_neg_integer()) ::
           {:ok, tensor_type(), binary()} | nif_error()
   def output_tensor(self, index) when is_reference(self) and index >= 0 do
-    TFLiteElixir.Nif.interpreter_output_tensor(self, index)
+    :tflite_beam_nif.interpreter_output_tensor(self, index)
   end
 
   deferror(output_tensor(self, index))
@@ -297,7 +297,7 @@ defmodule TFLiteElixir.Interpreter do
   """
   @spec allocate_tensors(reference()) :: :ok | nif_error()
   def allocate_tensors(self) when is_reference(self) do
-    TFLiteElixir.Nif.interpreter_allocate_tensors(self)
+    :tflite_beam_nif.interpreter_allocate_tensors(self)
   end
 
   deferror(allocate_tensors(self))
@@ -307,7 +307,7 @@ defmodule TFLiteElixir.Interpreter do
   """
   @spec invoke(reference()) :: :ok | nif_error()
   def invoke(self) when is_reference(self) do
-    TFLiteElixir.Nif.interpreter_invoke(self)
+    :tflite_beam_nif.interpreter_invoke(self)
   end
 
   deferror(invoke(self))
@@ -330,7 +330,7 @@ defmodule TFLiteElixir.Interpreter do
   """
   @spec set_num_threads(reference(), integer()) :: :ok | nif_error()
   def set_num_threads(self, num_threads) when is_integer(num_threads) and num_threads >= 1 do
-    TFLiteElixir.Nif.interpreter_set_num_threads(self, num_threads)
+    :tflite_beam_nif.interpreter_set_num_threads(self, num_threads)
   end
 
   deferror(set_num_threads(self, num_threads))
@@ -338,7 +338,7 @@ defmodule TFLiteElixir.Interpreter do
   @doc """
   Get SignatureDef dict from the Metadata of a TfLite flatbuffer buffer.
 
-  `self`: `TFLiteElixir.Interpreter`
+  `self`: `TFLiteBEAM.Interpreter`
 
     TFLite model buffer to get the signature_def.
 
@@ -348,7 +348,7 @@ defmodule TFLiteElixir.Interpreter do
   """
   @spec get_signature_defs(reference()) :: {:ok, Map.t()} | nil | {:error, String.t()}
   def get_signature_defs(self) do
-    TFLiteElixir.Nif.interpreter_get_signature_defs(self)
+    :tflite_beam_nif.interpreter_get_signature_defs(self)
   end
 
   deferror(get_signature_defs(self))

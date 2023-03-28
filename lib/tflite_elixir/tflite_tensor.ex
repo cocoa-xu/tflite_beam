@@ -1,9 +1,9 @@
-defmodule TFLiteElixir.TFLiteTensor do
+defmodule TFLiteBEAM.TFLiteTensor do
   @moduledoc """
   A typed multi-dimensional array used in Tensorflow Lite.
   """
 
-  alias TFLiteElixir.TFLiteQuantizationParams
+  alias TFLiteBEAM.TFLiteQuantizationParams
 
   @type nif_resource_ok :: {:ok, reference()}
   @type nif_error :: {:error, String.t()}
@@ -47,7 +47,7 @@ defmodule TFLiteElixir.TFLiteTensor do
 
   @spec type(reference()) :: tensor_type() | nif_error()
   def type(self) when is_reference(self) do
-    TFLiteElixir.Nif.tflitetensor_type(self)
+    :tflite_beam_nif.tflitetensor_type(self)
   end
 
   @doc """
@@ -58,7 +58,7 @@ defmodule TFLiteElixir.TFLiteTensor do
 
   @spec dims(reference()) :: [integer()] | nif_error()
   def dims(self) do
-    with {:ok, dims} <- TFLiteElixir.Nif.tflitetensor_dims(self) do
+    with {:ok, dims} <- :tflite_beam_nif.tflitetensor_dims(self) do
       dims
     else
       error -> error
@@ -73,7 +73,7 @@ defmodule TFLiteElixir.TFLiteTensor do
 
   @spec shape(reference()) :: tuple() | nif_error()
   def shape(self) do
-    with {:ok, dims} <- TFLiteElixir.Nif.tflitetensor_dims(self) do
+    with {:ok, dims} <- :tflite_beam_nif.tflitetensor_dims(self) do
       List.to_tuple(dims)
     else
       error -> error
@@ -88,7 +88,7 @@ defmodule TFLiteElixir.TFLiteTensor do
 
   def quantization_params(self) do
     with {:ok, {scale, zero_point, quantized_dimension}} <-
-           TFLiteElixir.Nif.tflitetensor_quantization_params(self) do
+           :tflite_beam_nif.tflitetensor_quantization_params(self) do
       %TFLiteQuantizationParams{
         scale: scale,
         zero_point: zero_point,
@@ -106,11 +106,11 @@ defmodule TFLiteElixir.TFLiteTensor do
   def set_data(%T{reference: reference}, data), do: set_data(reference, data)
 
   def set_data(self, %Nx.Tensor{} = data) when is_reference(self) do
-    TFLiteElixir.Nif.tflitetensor_set_data(self, Nx.to_binary(data))
+    :tflite_beam_nif.tflitetensor_set_data(self, Nx.to_binary(data))
   end
 
   def set_data(self, data) when is_reference(self) and is_binary(data) do
-    TFLiteElixir.Nif.tflitetensor_set_data(self, data)
+    :tflite_beam_nif.tflitetensor_set_data(self, data)
   end
 
   @doc """
@@ -124,7 +124,7 @@ defmodule TFLiteElixir.TFLiteTensor do
   end
 
   def to_binary(self, limit) when is_reference(self) and limit >= 0 do
-    with {:ok, binary} <- TFLiteElixir.Nif.tflitetensor_to_binary(self, limit) do
+    with {:ok, binary} <- :tflite_beam_nif.tflitetensor_to_binary(self, limit) do
       binary
     else
       error -> error
@@ -132,7 +132,7 @@ defmodule TFLiteElixir.TFLiteTensor do
   end
 
   @doc """
-  Convert `TFLiteElixir.TFLiteTensor` to `Nx.Tensor`
+  Convert `TFLiteBEAM.TFLiteTensor` to `Nx.Tensor`
   """
   @spec to_nx(reference() | %T{}, Keyword.t()) :: %Nx.Tensor{}
   def to_nx(self_struct, opts \\ [])
