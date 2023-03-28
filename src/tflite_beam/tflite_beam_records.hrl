@@ -1,1 +1,2 @@
 -record(tflite_beam_error_reporter, {ref}).
+-record(tflite_beam_flatbuffer_model, {initialized, minimum_runtime, ref}).
