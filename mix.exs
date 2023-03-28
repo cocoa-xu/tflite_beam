@@ -55,7 +55,7 @@ defmodule TFLiteBEAM.MixProject do
   @enable_coral_support_by_default "YES"
 
   def project do
-    prefer_precompiled = System.get_env("TFLITE_ELIXIR_PREFER_PRECOMPILED", @prefer_precompiled)
+    prefer_precompiled = System.get_env("TFLITE_BEAM_PREFER_PRECOMPILED", @prefer_precompiled)
 
     prefer_precompiled =
       case prefer_precompiled do
@@ -74,8 +74,6 @@ defmodule TFLiteBEAM.MixProject do
       deps: deps(),
       source_url: @github_url,
       description: description(),
-      elixirc_paths: elixirc_paths(),
-      erlc_paths: erlc_paths(),
       package: package(),
       test_coverage: [ignore_modules: [TFLiteBEAM.Nif, TFLiteBEAM.Coral], tool: ExCoveralls],
       preferred_cli_env: [
@@ -96,14 +94,14 @@ defmodule TFLiteBEAM.MixProject do
     tflite_version = System.get_env("TFLITE_VER", @tflite_version)
 
     enable_coral_support =
-      System.get_env("TFLITE_ELIXIR_CORAL_SUPPORT", @enable_coral_support_by_default)
+      System.get_env("TFLITE_BEAM_CORAL_SUPPORT", @enable_coral_support_by_default)
 
-    System.put_env("TFLITE_ELIXIR_CORAL_SUPPORT", enable_coral_support)
+    System.put_env("TFLITE_BEAM_CORAL_SUPPORT", enable_coral_support)
 
     edgetpu_libraries =
-      System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", @default_edgetpu_libraries)
+      System.get_env("TFLITE_BEAM_CORAL_LIBEDGETPU_LIBRARIES", @default_edgetpu_libraries)
 
-    System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", edgetpu_libraries)
+    System.put_env("TFLITE_BEAM_CORAL_LIBEDGETPU_LIBRARIES", edgetpu_libraries)
 
     case has_precompiled_binaries(tflite_version, enable_coral_support, edgetpu_libraries) do
       {true, url, filename} ->
@@ -111,7 +109,7 @@ defmodule TFLiteBEAM.MixProject do
 
         with :ok <- download_precompiled("#{filename}.tar.gz", url, unarchive_to) do
           System.put_env(
-            "TFLITE_ELIXIR_ONLY_COPY_PRIV",
+            "TFLITE_BEAM_ONLY_COPY_PRIV",
             Path.join([unarchive_to, filename, "priv"])
           )
 
@@ -129,22 +127,22 @@ defmodule TFLiteBEAM.MixProject do
   end
 
   defp use_precompiled(false) do
-    System.put_env("TFLITE_ELIXIR_PREFER_PRECOMPILED", "NO")
-    System.put_env("TFLITE_ELIXIR_ONLY_COPY_PRIV", "NO")
+    System.put_env("TFLITE_BEAM_PREFER_PRECOMPILED", "NO")
+    System.put_env("TFLITE_BEAM_ONLY_COPY_PRIV", "NO")
 
     enable_coral_support =
-      System.get_env("TFLITE_ELIXIR_CORAL_SUPPORT", @enable_coral_support_by_default)
+      System.get_env("TFLITE_BEAM_CORAL_SUPPORT", @enable_coral_support_by_default)
 
-    System.put_env("TFLITE_ELIXIR_CORAL_SUPPORT", enable_coral_support)
+    System.put_env("TFLITE_BEAM_CORAL_SUPPORT", enable_coral_support)
 
     if enable_coral_support == "YES" do
       edgetpu_libraries =
-        System.get_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES", @default_edgetpu_libraries)
+        System.get_env("TFLITE_BEAM_CORAL_LIBEDGETPU_LIBRARIES", @default_edgetpu_libraries)
 
       with {:ok, url, filename, triplet} <- edgetpu_runtime_url(edgetpu_libraries) do
-        System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_URL", url)
-        System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_TRIPLET", triplet)
-        System.put_env("TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME", filename)
+        System.put_env("TFLITE_BEAM_CORAL_LIBEDGETPU_URL", url)
+        System.put_env("TFLITE_BEAM_CORAL_LIBEDGETPU_TRIPLET", triplet)
+        System.put_env("TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME", filename)
         {:ok, [:elixir_make] ++ Mix.compilers()}
       else
         {:error, error} ->
@@ -313,9 +311,6 @@ defmodule TFLiteBEAM.MixProject do
     "TensorFlow Lite BEAM binding with TPU support."
   end
 
-  defp elixirc_paths, do: ["lib"]
-  defp erlc_paths, do: [""]
-
   defp package() do
     [
       name: to_string(@app),
@@ -330,6 +325,7 @@ defmodule TFLiteBEAM.MixProject do
         scripts CMakeLists.txt Makefile
         .gitmodules
         lib
+        src
         .formatter.exs
         mix.exs
         README*
@@ -359,7 +355,7 @@ defmodule TFLiteBEAM.MixProject do
 
   defp cache_dir() do
     System.get_env(
-      "TFLITE_ELIXIR_CACHE_DIR",
+      "TFLITE_BEAM_CACHE_DIR",
       Path.join(Path.dirname(Path.expand(__ENV__.file)), "3rd_party/cache")
     )
   end
