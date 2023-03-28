@@ -28,3 +28,7 @@ tflite_beam-*.tar
 .DS_Store
 .vscode/
 .idea/
+
+# The directory rebar3 will write compiled artifacts to.
+priv/
+cmake_tflite_beam/
