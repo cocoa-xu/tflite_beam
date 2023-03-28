@@ -3,7 +3,7 @@
 ```elixir
 Mix.install([
   {:nx_signal, "~> 0.1"},
-  {:tflite_elixir, "~> 0.1.7"},
+  {:tflite_beam, "~> 0.1.7"},
   {:nx, "~> 0.5"},
   {:kino, "~> 0.9.0"},
   {:req, "~> 0.3.6"}

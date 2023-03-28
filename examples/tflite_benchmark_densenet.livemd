@@ -2,7 +2,7 @@
 
 ```elixir
 Mix.install([
-  {:tflite_elixir, "~> 0.1.7"},
+  {:tflite_beam, "~> 0.1.7"},
   {:req, "~> 0.3.0"}
 ])
 ```
