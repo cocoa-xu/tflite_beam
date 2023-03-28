@@ -290,12 +290,17 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
     }
 
     NifResTfLiteTensor * tensor_res = nullptr;
-    if (!(tensor_res = NifResTfLiteTensor::allocate_resource(env, ret))) {
-        return ret;
-    }
+    auto cached_tensor_res = self_res->tensors->find(index);
+    if (cached_tensor_res != self_res->tensors->end()) {
+        tensor_res = cached_tensor_res->second;
+    } else {
+        if (!(tensor_res = NifResTfLiteTensor::allocate_resource(env, ret))) {
+            return ret;
+        }
 
-    tensor_res->val = self_res->val->tensor(index);
-    tensor_res->borrowed = true;
+        tensor_res->val = self_res->val->tensor(index);
+        tensor_res->borrowed = true;
+    }
 
     ERL_NIF_TERM tensor_type;
     if (!_tflitetensor_type(env, tensor_res->val, tensor_type)) {
@@ -328,7 +333,11 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
     }
 
     ERL_NIF_TERM tensor_reference = enif_make_resource(env, tensor_res);
-    enif_release_resource(tensor_res);
+    
+    if (cached_tensor_res == self_res->tensors->end()) {
+        enif_keep_resource(tensor_res);
+        (*self_res->tensors)[index] = tensor_res;
+    }
 
     return erlang::nif::ok(env, enif_make_tuple8(
         env,

@@ -64,9 +64,11 @@ struct NifResInterpreterBuilder {
     static void destruct_resource(ErlNifEnv *env, void *args);
 };
 
+struct NifResTfLiteTensor;
 struct NifResInterpreter {
     tflite::Interpreter * val;
     NifResFlatBufferModel * flatbuffer_model;
+    std::map<int, NifResTfLiteTensor *> * tensors;
 
     static ErlNifResourceType * type;
     static NifResInterpreter * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
@@ -77,6 +79,7 @@ struct NifResInterpreter {
 struct NifResTfLiteTensor {
     TfLiteTensor * val;
     std::atomic_bool borrowed{false};
+    std::atomic_bool interpreter_has_gone{false};
 
     static ErlNifResourceType * type;
     static NifResTfLiteTensor * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
