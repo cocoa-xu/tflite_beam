@@ -21,15 +21,15 @@ Mix.install([
 ])
 
 # parrot.jpeg and the tflite file can be found in the test/test_data directory
-interpreter = TFLiteElixir.Interpreter.new!("/path/to/mobilenet_v2_1.0_224_inat_bird_quant.tflite")
+interpreter = TFLiteBEAM.Interpreter.new!("/path/to/mobilenet_v2_1.0_224_inat_bird_quant.tflite")
 input =
   StbImage.read_file!("/path/to/parrot.jpeg")
   |> StbImage.resize(224, 224)
   |> StbImage.to_nx()
 
-[output_tensor_0] = TFLiteElixir.Interpreter.predict(interpreter, input)
+[output_tensor_0] = TFLiteBEAM.Interpreter.predict(interpreter, input)
 nx_tensor =
-  TFLiteElixir.TFLiteTensor.to_binary(output_tensor_0)
+  TFLiteBEAM.TFLiteTensor.to_binary(output_tensor_0)
   |> Nx.from_binary(:u8)
 
 # get top k predictions (numerical id of the class)
@@ -186,7 +186,7 @@ Labels: [inat_bird_labels.txt](https://github.com/google-coral/edgetpu/blob/mast
 
 ```elixir
 alias Evision, as: Cv
-alias TFLiteElixir, as: TFLite
+alias TFLiteBEAM, as: TFLite
 
 # load labels
 labels = File.read!("inat_bird_labels.txt") |> String.split("\n")

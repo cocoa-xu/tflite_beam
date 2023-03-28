@@ -1,9 +1,9 @@
-defmodule TFLiteElixir.InterpreterBuilder do
+defmodule TFLiteBEAM.InterpreterBuilder do
   @moduledoc """
   Build an interpreter capable of interpreting model.
   """
-  import TFLiteElixir.Errorize
-  alias TFLiteElixir.FlatBufferModel
+  import TFLiteBEAM.Errorize
+  alias TFLiteBEAM.FlatBufferModel
 
   @type nif_resource_ok :: {:ok, reference()}
   @type nif_error :: {:error, String.t()}
@@ -13,7 +13,7 @@ defmodule TFLiteElixir.InterpreterBuilder do
   """
   @spec new(%FlatBufferModel{}, reference()) :: nif_resource_ok() | nif_error()
   def new(%FlatBufferModel{model: model}, resolver) when is_reference(resolver) do
-    TFLiteElixir.Nif.interpreter_builder_new(model, resolver)
+    :tflite_beam_nif.interpreter_builder_new(model, resolver)
   end
 
   deferror(new(model, resolver))
@@ -27,7 +27,7 @@ defmodule TFLiteElixir.InterpreterBuilder do
   """
   @spec build(reference(), reference()) :: :ok | nif_error()
   def build(self, interpreter) do
-    TFLiteElixir.Nif.interpreter_builder_build(self, interpreter)
+    :tflite_beam_nif.interpreter_builder_build(self, interpreter)
   end
 
   deferror(build(self, interpreter))
@@ -38,7 +38,7 @@ defmodule TFLiteElixir.InterpreterBuilder do
   """
   @spec set_num_threads(reference(), integer()) :: :ok | nif_error()
   def set_num_threads(self, num_threads) when is_integer(num_threads) and num_threads >= 1 do
-    TFLiteElixir.Nif.interpreter_builder_set_num_threads(self, num_threads)
+    :tflite_beam_nif.interpreter_builder_set_num_threads(self, num_threads)
   end
 
   deferror(set_num_threads(self, num_threads))

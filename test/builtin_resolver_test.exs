@@ -1,7 +1,7 @@
-defmodule TFLiteElixir.Ops.Builtin.BuiltinResolver.Test do
+defmodule TFLiteBEAM.Ops.Builtin.BuiltinResolver.Test do
   use ExUnit.Case
 
-  alias TFLiteElixir.Ops.Builtin.BuiltinResolver
+  alias TFLiteBEAM.Ops.Builtin.BuiltinResolver
 
   test "new builtin resolver" do
     {:ok, resolver} = BuiltinResolver.new()

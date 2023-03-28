@@ -1,14 +1,14 @@
-defmodule TFLiteElixir.Test do
+defmodule TFLiteBEAM.Test do
   use ExUnit.Case
 
-  alias TFLiteElixir.Interpreter
-  alias TFLiteElixir.TFLiteTensor
+  alias TFLiteBEAM.Interpreter
+  alias TFLiteBEAM.TFLiteTensor
 
   test "print_interpreter_state/1" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
-    interpreter = TFLiteElixir.Interpreter.new!(filename)
+    interpreter = TFLiteBEAM.Interpreter.new!(filename)
 
-    assert nil == TFLiteElixir.print_interpreter_state(interpreter)
+    assert nil == TFLiteBEAM.print_interpreter_state(interpreter)
   end
 
   test "reset_variable_tensor/1" do
@@ -23,16 +23,16 @@ defmodule TFLiteElixir.Test do
     t = Interpreter.tensor(interpreter, 0)
     assert Nx.all_close(ones, TFLiteTensor.to_nx(t, backend: Nx.BinaryBackend))
 
-    TFLiteElixir.reset_variable_tensor(t)
+    TFLiteBEAM.reset_variable_tensor(t)
     t = Interpreter.tensor(interpreter, 0)
     assert Nx.all_close(zeros, TFLiteTensor.to_nx(t, backend: Nx.BinaryBackend))
   end
 
-  with {:module, TFLiteElixir.Coral} <- Code.ensure_compiled(TFLiteElixir.Coral) do
+  with {:module, TFLiteBEAM.Coral} <- Code.ensure_compiled(TFLiteBEAM.Coral) do
     test "Contains EdgeTpu Custom Op" do
       filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
-      model = TFLiteElixir.FlatBufferModel.build_from_buffer(File.read!(filename))
-      ret = TFLiteElixir.Coral.contains_edge_tpu_custom_op?(model)
+      model = TFLiteBEAM.FlatBufferModel.build_from_buffer(File.read!(filename))
+      ret = TFLiteBEAM.Coral.contains_edge_tpu_custom_op?(model)
 
       :ok =
         case ret do
@@ -50,8 +50,8 @@ defmodule TFLiteElixir.Test do
       filename =
         Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant_edgetpu.tflite"])
 
-      model = TFLiteElixir.FlatBufferModel.build_from_buffer(File.read!(filename))
-      ret = TFLiteElixir.Coral.contains_edge_tpu_custom_op?(model)
+      model = TFLiteBEAM.FlatBufferModel.build_from_buffer(File.read!(filename))
+      ret = TFLiteBEAM.Coral.contains_edge_tpu_custom_op?(model)
 
       :ok =
         case ret do

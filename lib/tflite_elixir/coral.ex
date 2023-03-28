@@ -1,20 +1,20 @@
-defmodule TFLiteElixir.Coral do
+defmodule TFLiteBEAM.Coral do
   @moduledoc """
   This module contains libcoral C++ API, which provides
   convenient functions to perform inferencing and on-device transfer learning
   with TensorFlow Lite models on [Coral devices](https://coral.ai/products/).
   """
 
-  import TFLiteElixir.Errorize
+  import TFLiteBEAM.Errorize
 
-  alias TFLiteElixir.FlatBufferModel
+  alias TFLiteBEAM.FlatBufferModel
 
   @doc """
   Checks whether a tflite model contains any Edge TPU custom operator.
   """
   @spec contains_edge_tpu_custom_op?(%FlatBufferModel{}) :: any
   def contains_edge_tpu_custom_op?(%FlatBufferModel{model: model}) do
-    TFLiteElixir.Nif.coral_contains_edgetpu_custom_op(model)
+    :tflite_beam_nif.coral_contains_edgetpu_custom_op(model)
   end
 
   @doc """
@@ -22,7 +22,7 @@ defmodule TFLiteElixir.Coral do
   """
   @spec edge_tpu_devices() :: [String.t()] | {:error, String.t()}
   def edge_tpu_devices() do
-    TFLiteElixir.Nif.coral_edgetpu_devices()
+    :tflite_beam_nif.coral_edgetpu_devices()
   end
 
   @doc """
@@ -92,7 +92,7 @@ defmodule TFLiteElixir.Coral do
   def get_edge_tpu_context(opts \\ []) do
     device = opts[:device] || ""
     options = opts[:options] || %{}
-    TFLiteElixir.Nif.coral_get_edgetpu_context(device, options)
+    :tflite_beam_nif.coral_get_edgetpu_context(device, options)
   end
 
   deferror(get_edge_tpu_context(opts))
@@ -107,7 +107,7 @@ defmodule TFLiteElixir.Coral do
   - `model`: `FlatBufferModel`. The tflite model.
   - `edgetpu_context`: `reference()`.
 
-    The Edge TPU context, from `TFLiteElixir.Coral::get_edge_tpu_context`.
+    The Edge TPU context, from `TFLiteBEAM.Coral::get_edge_tpu_context`.
 
     If left `nil`, the given interpreter will not resolve an Edge TPU delegate.
     PoseNet custom op is always supported.
@@ -122,7 +122,7 @@ defmodule TFLiteElixir.Coral do
   @spec make_edge_tpu_interpreter(%FlatBufferModel{}, reference()) ::
           {:ok, reference()} | {:error, String.t()}
   def make_edge_tpu_interpreter(%FlatBufferModel{model: model}, edgetpu_context) do
-    TFLiteElixir.Nif.coral_make_edgetpu_interpreter(model, edgetpu_context)
+    :tflite_beam_nif.coral_make_edgetpu_interpreter(model, edgetpu_context)
   end
 
   deferror(make_edge_tpu_interpreter(model, edgetpu_context))
@@ -132,7 +132,7 @@ defmodule TFLiteElixir.Coral do
   """
   def dequantize_tensor(interpreter, tensor_index, as_type \\ nil) do
     as_type = map_type(as_type)
-    TFLiteElixir.Nif.coral_dequantize_tensor(interpreter, tensor_index, as_type)
+    :tflite_beam_nif.coral_dequantize_tensor(interpreter, tensor_index, as_type)
   end
 
   defp map_type({:f, 32}), do: :f32

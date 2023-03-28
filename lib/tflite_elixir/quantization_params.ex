@@ -1,4 +1,4 @@
-defmodule TFLiteElixir.TFLiteQuantizationParams do
+defmodule TFLiteBEAM.TFLiteQuantizationParams do
   @moduledoc """
   Quantization parameters that corresponds to the table QuantizationParameters
   in the [TFLite Model schema file].

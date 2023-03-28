@@ -170,4 +170,4 @@ static ErlNifFunc nif_functions[] = {
 #endif
 };
 
-ERL_NIF_INIT(Elixir.TFLiteElixir.Nif, nif_functions, on_load, on_reload, on_upgrade, NULL);
+ERL_NIF_INIT(tflite_beam_nif, nif_functions, on_load, on_reload, on_upgrade, NULL);

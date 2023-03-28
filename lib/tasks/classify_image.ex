@@ -27,10 +27,10 @@ defmodule Mix.Tasks.ClassifyImage do
 
   use Mix.Task
 
-  alias TFLiteElixir.Interpreter
-  alias TFLiteElixir.InterpreterBuilder
-  alias TFLiteElixir.TFLiteTensor
-  alias TFLiteElixir.FlatBufferModel
+  alias TFLiteBEAM.Interpreter
+  alias TFLiteBEAM.InterpreterBuilder
+  alias TFLiteBEAM.TFLiteTensor
+  alias TFLiteBEAM.FlatBufferModel
 
   @shortdoc "Image Classification"
   def run(argv) do
@@ -88,7 +88,7 @@ defmodule Mix.Tasks.ClassifyImage do
 
     tpu_context =
       if args[:use_tpu] do
-        TFLiteElixir.Coral.get_edge_tpu_context!(device: args[:tpu])
+        TFLiteBEAM.Coral.get_edge_tpu_context!(device: args[:tpu])
       else
         nil
       end
@@ -201,7 +201,7 @@ defmodule Mix.Tasks.ClassifyImage do
   end
 
   defp make_interpreter(model, num_jobs, false, _tpu_context) do
-    resolver = TFLiteElixir.Ops.Builtin.BuiltinResolver.new!()
+    resolver = TFLiteBEAM.Ops.Builtin.BuiltinResolver.new!()
     builder = InterpreterBuilder.new!(model, resolver)
     interpreter = Interpreter.new!()
     InterpreterBuilder.set_num_threads!(builder, num_jobs)
@@ -211,7 +211,7 @@ defmodule Mix.Tasks.ClassifyImage do
   end
 
   defp make_interpreter(model, _num_jobs, true, tpu_context) do
-    TFLiteElixir.Coral.make_edge_tpu_interpreter!(model, tpu_context)
+    TFLiteBEAM.Coral.make_edge_tpu_interpreter!(model, tpu_context)
   end
 
   defp get_scores(output_data, %TFLiteTensor{type: dtype = {:u, _}} = output_tensor) do

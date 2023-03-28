@@ -1,8 +1,8 @@
-defmodule TFLiteElixir.TFLiteTensor.Test do
+defmodule TFLiteBEAM.TFLiteTensor.Test do
   use ExUnit.Case
 
-  alias TFLiteElixir.Interpreter
-  alias TFLiteElixir.TFLiteTensor
+  alias TFLiteBEAM.Interpreter
+  alias TFLiteBEAM.TFLiteTensor
 
   test "type/1" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
@@ -35,13 +35,13 @@ defmodule TFLiteElixir.TFLiteTensor.Test do
     interpreter = Interpreter.new!(filename)
     t = Interpreter.tensor(interpreter, 0)
 
-    assert %TFLiteElixir.TFLiteQuantizationParams{
+    assert %TFLiteBEAM.TFLiteQuantizationParams{
              scale: [0.0078125],
              zero_point: [128],
              quantized_dimension: 0
            } == TFLiteTensor.quantization_params(t)
 
-    assert %TFLiteElixir.TFLiteQuantizationParams{
+    assert %TFLiteBEAM.TFLiteQuantizationParams{
              scale: [0.0078125],
              zero_point: [128],
              quantized_dimension: 0

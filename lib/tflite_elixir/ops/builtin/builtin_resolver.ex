@@ -1,10 +1,10 @@
-defmodule TFLiteElixir.Ops.Builtin.BuiltinResolver do
+defmodule TFLiteBEAM.Ops.Builtin.BuiltinResolver do
   @moduledoc """
   This built-in op resolver provides a list of TfLite delegates that could be
   applied by TfLite interpreter by default.
   """
 
-  import TFLiteElixir.Errorize
+  import TFLiteBEAM.Errorize
 
   @type nif_resource_ok :: {:ok, reference()}
   @type nif_error :: {:error, String.t()}
@@ -177,7 +177,7 @@ defmodule TFLiteElixir.Ops.Builtin.BuiltinResolver do
   """
   @spec new() :: nif_resource_ok() | nif_error()
   def new() do
-    TFLiteElixir.Nif.ops_builtin_builtin_resolver_new()
+    :tflite_beam_nif.ops_builtin_builtin_resolver_new()
   end
 
   deferror(new())
