@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-20.04
     env:
       MIX_ENV: prod
-      TFLITE_ELIXIR_PREFER_PRECOMPILED: NO
+      TFLITE_BEAM_PREFER_PRECOMPILED: NO
 
     strategy:
       fail-fast: false
@@ -88,14 +88,14 @@ jobs:
             export TARGET_ARCH="${{ matrix.pair.target_arch }}"
             export TARGET_OS="${{ matrix.pair.target_os }}"
             export TARGET_ABI="${{ matrix.pair.target_abi }}"
-            export TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES="${{ matrix.pair.libedgetpu_library }}"
+            export TFLITE_BEAM_CORAL_LIBEDGETPU_LIBRARIES="${{ matrix.pair.libedgetpu_library }}"
           fi
 
-          export TFLITE_ELIXIR_PREFER_PRECOMPILED="NO"
+          export TFLITE_BEAM_PREFER_PRECOMPILED="NO"
 
           echo "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}"
-          echo "TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES: ${TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES}"
-          echo "TFLITE_ELIXIR_PREFER_PRECOMPILED: ${TFLITE_ELIXIR_PREFER_PRECOMPILED}"
+          echo "TFLITE_BEAM_CORAL_LIBEDGETPU_LIBRARIES: ${TFLITE_BEAM_CORAL_LIBEDGETPU_LIBRARIES}"
+          echo "TFLITE_BEAM_PREFER_PRECOMPILED: ${TFLITE_BEAM_PREFER_PRECOMPILED}"
           echo "CC: ${CC}"
           echo "CXX: ${CXX}"
           echo "TARGET_ARCH: ${TARGET_ARCH}"

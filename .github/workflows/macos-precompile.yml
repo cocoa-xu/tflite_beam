@@ -16,7 +16,7 @@ jobs:
     runs-on: macos-11
     env:
       MIX_ENV: prod
-      TFLITE_ELIXIR_PREFER_PRECOMPILED: "NO"
+      TFLITE_BEAM_PREFER_PRECOMPILED: "NO"
 
     strategy:
       fail-fast: false
@@ -47,10 +47,10 @@ jobs:
             export TARGET_ABI="darwin"
             export CPPFLAGS="-arch arm64"
             export CMAKE_TFLITE_OPTIONS="-DCMAKE_OSX_ARCHITECTURES=arm64"
-            export TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES="aarch64"
+            export TFLITE_BEAM_CORAL_LIBEDGETPU_LIBRARIES="aarch64"
           fi
 
-          echo "TFLITE_ELIXIR_PREFER_PRECOMPILED: ${TFLITE_ELIXIR_PREFER_PRECOMPILED}"
+          echo "TFLITE_BEAM_PREFER_PRECOMPILED: ${TFLITE_BEAM_PREFER_PRECOMPILED}"
           echo "TARGET_ARCH: ${TARGET_ARCH}"
           echo "TARGET_OS: ${TARGET_OS}"
           echo "TARGET_ABI: ${TARGET_ABI}"
