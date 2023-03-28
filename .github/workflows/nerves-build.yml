@@ -46,8 +46,8 @@ jobs:
       MIX_ENV: prod
       NERVES_PROJ_NAME: nerves_tflite
       NERVES_LIVEBOOK_VER: "v0.8.3"
-      TFLITE_ELIXIR_PREFER_PRECOMPILED: "NO"
-      TFLITE_ELIXIR_CORAL_SUPPORT: "YES"
+      TFLITE_BEAM_PREFER_PRECOMPILED: "NO"
+      TFLITE_BEAM_CORAL_SUPPORT: "YES"
 
     strategy:
       fail-fast: false
@@ -117,8 +117,8 @@ jobs:
           cat mix.exs
 
           export MIX_TARGET=${{ matrix.pair.target }}
-          export TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES=${{ matrix.pair.libedgetpu_library }}
-          export TFLITE_ELIXIR_PREFER_PRECOMPILED=NO
+          export TFLITE_BEAM_CORAL_LIBEDGETPU_LIBRARIES=${{ matrix.pair.libedgetpu_library }}
+          export TFLITE_BEAM_PREFER_PRECOMPILED=NO
 
           mix deps.get 1>/dev/null 2>&1
           cp -a ../tflite_beam/examples                        ./priv/tflite_examples
