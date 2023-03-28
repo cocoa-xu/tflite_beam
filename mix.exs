@@ -6,7 +6,7 @@ defmodule TFLiteBEAM.MixProject do
   @version "0.1.7"
   @tflite_version "2.11.0"
   @prefer_precompiled "YES"
-  @github_url "https://github.com/cocoa-xu/tflite_elixir"
+  @github_url "https://github.com/cocoa-xu/tflite_beam"
   @libedgetpu_runtime_github_url "https://github.com/cocoa-xu/libedgetpu"
   @libedgetpu_runtime_version "0.1.5"
   # only means compatible. need to write more tests
@@ -277,7 +277,7 @@ defmodule TFLiteBEAM.MixProject do
          edgetpu_libraries
        ) do
     with {:ok, triplet} <- get_triplet(edgetpu_libraries) do
-      filename = "tflite_elixir-nif-#{:erlang.system_info(:nif_version)}-#{triplet}-v#{@version}"
+      filename = "tflite_beam-nif-#{:erlang.system_info(:nif_version)}-#{triplet}-v#{@version}"
       {true, "#{@github_url}/releases/download/v#{@version}/#{filename}.tar.gz", filename}
     else
       {:error, requested_triplet, _available_precompiled_triplets} ->

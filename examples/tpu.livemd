@@ -2,7 +2,7 @@
 
 ```elixir
 Mix.install([
-  {:tflite_elixir, "~> 0.1.7"},
+  {:tflite_beam, "~> 0.1.7"},
   {:nx, "~> 0.5.0"},
   {:req, "~> 0.3.0"},
   {:stb_image, "~> 0.6.0"}
@@ -29,16 +29,16 @@ end
 
 data_files = %{
   class_labels:
-    "https://raw.githubusercontent.com/cocoa-xu/tflite_elixir/main/test/test_data/inat_bird_labels.txt"
+    "https://raw.githubusercontent.com/cocoa-xu/tflite_beam/main/test/test_data/inat_bird_labels.txt"
     |> download.(),
   cpu_model:
-    "https://raw.githubusercontent.com/cocoa-xu/tflite_elixir/main/test/test_data/mobilenet_v2_1.0_224_inat_bird_quant.tflite"
+    "https://raw.githubusercontent.com/cocoa-xu/tflite_beam/main/test/test_data/mobilenet_v2_1.0_224_inat_bird_quant.tflite"
     |> download.(),
   tpu_model:
-    "https://raw.githubusercontent.com/cocoa-xu/tflite_elixir/main/test/test_data/mobilenet_v2_1.0_224_inat_bird_quant_edgetpu.tflite"
+    "https://raw.githubusercontent.com/cocoa-xu/tflite_beam/main/test/test_data/mobilenet_v2_1.0_224_inat_bird_quant_edgetpu.tflite"
     |> download.(),
   test_image:
-    "https://raw.githubusercontent.com/cocoa-xu/tflite_elixir/main/test/test_data/parrot.jpeg"
+    "https://raw.githubusercontent.com/cocoa-xu/tflite_beam/main/test/test_data/parrot.jpeg"
     |> download.()
 }
 ```
