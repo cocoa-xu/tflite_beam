@@ -111,7 +111,7 @@ jobs:
 
           LINE="$(grep -n 'toolshed' mix.exs | awk -F: '{print $1+1}')"
           head -n "${LINE}" mix.exs > mix.exs.tmp
-          echo '      {:tflite_elixir, "~> 0.1.3", path: "../tflite_elixir"},' >> mix.exs.tmp
+          echo '      {:tflite_beam, "~> 0.1.3", path: "../tflite_beam"},' >> mix.exs.tmp
           tail -n "+${LINE}" mix.exs >> mix.exs.tmp
           mv mix.exs.tmp mix.exs
           cat mix.exs
@@ -121,7 +121,7 @@ jobs:
           export TFLITE_ELIXIR_PREFER_PRECOMPILED=NO
 
           mix deps.get 1>/dev/null 2>&1
-          cp -a ../tflite_elixir/examples                        ./priv/tflite_examples
+          cp -a ../tflite_beam/examples                        ./priv/tflite_examples
           sed -i 's/"welcome.livemd"\,/"welcome.livemd"\, "tflite_examples",/g' lib/nerves_livebook/application.ex
           
           mix firmware

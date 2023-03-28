@@ -1,10 +1,10 @@
-defmodule TFLiteElixir.InterpreterBuilder.Test do
+defmodule TFLiteBEAM.InterpreterBuilder.Test do
   use ExUnit.Case
 
-  alias TFLiteElixir.InterpreterBuilder
-  alias TFLiteElixir.Ops.Builtin.BuiltinResolver
-  alias TFLiteElixir.FlatBufferModel
-  alias TFLiteElixir.Interpreter
+  alias TFLiteBEAM.InterpreterBuilder
+  alias TFLiteBEAM.Ops.Builtin.BuiltinResolver
+  alias TFLiteBEAM.FlatBufferModel
+  alias TFLiteBEAM.Interpreter
 
   test "get a new interpreter builder" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])

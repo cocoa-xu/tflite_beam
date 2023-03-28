@@ -1,9 +1,9 @@
-defmodule TFLiteElixir.Interpreter.Test do
+defmodule TFLiteBEAM.Interpreter.Test do
   use ExUnit.Case
 
-  alias TFLiteElixir.Interpreter
-  alias TFLiteElixir.TFLiteTensor
-  alias TFLiteElixir.TFLiteQuantizationParams
+  alias TFLiteBEAM.Interpreter
+  alias TFLiteBEAM.TFLiteTensor
+  alias TFLiteBEAM.TFLiteQuantizationParams
 
   test "set_inputs/2" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
@@ -228,11 +228,11 @@ defmodule TFLiteElixir.Interpreter.Test do
     assert expected_out == output_data
   end
 
-  test "TFLiteElixir.Interpreter.new(model_path)" do
+  test "TFLiteBEAM.Interpreter.new(model_path)" do
     model_path = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
-    _interpreter = TFLiteElixir.Interpreter.new!(model_path)
+    _interpreter = TFLiteBEAM.Interpreter.new!(model_path)
 
-    {error_at_stage, {:error, reason}} = TFLiteElixir.Interpreter.new("/dev/null")
+    {error_at_stage, {:error, reason}} = TFLiteBEAM.Interpreter.new("/dev/null")
     assert :build_from_file == error_at_stage
     assert reason == "cannot get flatbuffer model"
   end

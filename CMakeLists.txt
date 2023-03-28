@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
-project(tflite_elixir C CXX)
+project(tflite_beam C CXX)
 
 set(TFLITE_ROOT_DIR "" CACHE PATH
     "Directory that contains the TensorFlow Lite project"
@@ -78,7 +78,7 @@ add_subdirectory(
     EXCLUDE_FROM_ALL
 )
 
-if(${TFLITE_ELIXIR_CORAL_SUPPORT})
+if(${TFLITE_BEAM_CORAL_SUPPORT})
     if(NOT GFLAGS_ROOT_DIR)
         message(FATAL_ERROR "GFLAGS_ROOT_DIR is not set.")
     endif()
@@ -120,7 +120,7 @@ set(SOURCE_FILES
     "${C_SRC}/erlang_nif_resource.cpp"
 )
 
-if(${TFLITE_ELIXIR_CORAL_SUPPORT})
+if(${TFLITE_BEAM_CORAL_SUPPORT})
     include_directories("${C_SRC}/libcoral")
     include_directories("${C_SRC}/libcoral/libedgetpu")
     include_directories("${LIBUSB_INSTALL_DIR}/include")
@@ -160,15 +160,15 @@ if(${TFLITE_ELIXIR_CORAL_SUPPORT})
     list(APPEND SOURCE_FILES "${C_SRC}/coral/coral.cpp")
 endif()
 
-add_library(tflite_elixir SHARED
+add_library(tflite_beam SHARED
     ${SOURCE_FILES}
 )
 install(
-    TARGETS tflite_elixir
+    TARGETS tflite_beam
     RUNTIME DESTINATION "${PRIV_DIR}"
 )
-set(TFLITE_ELIXIR_LINK_LIBRARIES "tensorflow-lite")
-list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES
+set(TFLITE_BEAM_LINK_LIBRARIES "tensorflow-lite")
+list(APPEND TFLITE_BEAM_LINK_LIBRARIES
     absl::any
     absl::flat_hash_map
     absl::flags
@@ -178,39 +178,39 @@ list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES
     absl::synchronization
     absl::variant
 )
-if(${TFLITE_ELIXIR_CORAL_SUPPORT})
+if(${TFLITE_BEAM_CORAL_SUPPORT})
     if(UNIX AND NOT APPLE)
-        list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES "edgetpu")
-        list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES "usb-1.0.0")
-        target_link_directories(tflite_elixir PUBLIC "${PRIV_DIR}/libedgetpu")
+        list(APPEND TFLITE_BEAM_LINK_LIBRARIES "edgetpu")
+        list(APPEND TFLITE_BEAM_LINK_LIBRARIES "usb-1.0.0")
+        target_link_directories(tflite_beam PUBLIC "${PRIV_DIR}/libedgetpu")
     elseif(UNIX AND APPLE)
-        list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES "edgetpu.1.0")
-        list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES "usb-1.0.0")
+        list(APPEND TFLITE_BEAM_LINK_LIBRARIES "edgetpu.1.0")
+        list(APPEND TFLITE_BEAM_LINK_LIBRARIES "usb-1.0.0")
     endif()
-    list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES "gflags")
-    list(APPEND TFLITE_ELIXIR_LINK_LIBRARIES "glog")
+    list(APPEND TFLITE_BEAM_LINK_LIBRARIES "gflags")
+    list(APPEND TFLITE_BEAM_LINK_LIBRARIES "glog")
 endif()
 
-target_link_libraries(tflite_elixir
-    ${TFLITE_ELIXIR_LINK_LIBRARIES}
+target_link_libraries(tflite_beam
+    ${TFLITE_BEAM_LINK_LIBRARIES}
 )
-set_target_properties(tflite_elixir PROPERTIES PREFIX "")
-set_target_properties(tflite_elixir PROPERTIES SUFFIX ".so")
-set_target_properties(tflite_elixir PROPERTIES
+set_target_properties(tflite_beam PROPERTIES PREFIX "")
+set_target_properties(tflite_beam PROPERTIES SUFFIX ".so")
+set_target_properties(tflite_beam PROPERTIES
     INSTALL_RPATH_USE_LINK_PATH TRUE
     BUILD_WITH_INSTALL_RPATH TRUE
 )
 
 if(UNIX AND NOT APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-but-set-variable")
-    set_target_properties(tflite_elixir PROPERTIES INSTALL_RPATH "\$ORIGIN/libedgetpu")
+    set_target_properties(tflite_beam PROPERTIES INSTALL_RPATH "\$ORIGIN/libedgetpu")
 elseif(UNIX AND APPLE)
     set(CMAKE_SHARED_LINKER_FLAGS "-flat_namespace -undefined suppress -undefined dynamic_lookup")
-    set_target_properties(tflite_elixir PROPERTIES INSTALL_RPATH "@loader_path/libedgetpu")
+    set_target_properties(tflite_beam PROPERTIES INSTALL_RPATH "@loader_path/libedgetpu")
 endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -I${ERTS_INCLUDE_DIR}")
-if(${TFLITE_ELIXIR_CORAL_SUPPORT})
+if(${TFLITE_BEAM_CORAL_SUPPORT})
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -L${PRIV_DIR}/libedgetpu")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DCORAL_SUPPORT_ENABLED=1")
 endif()

@@ -1,4 +1,4 @@
-defmodule TFLiteElixir.Test.DetectImage do
+defmodule TFLiteBEAM.Test.DetectImage do
   use ExUnit.Case
 
   import ExUnit.CaptureIO

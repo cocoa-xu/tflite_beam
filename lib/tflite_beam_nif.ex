@@ -1,9 +1,9 @@
-defmodule TFLiteElixir.Nif do
+defmodule :tflite_beam_nif do
   @moduledoc false
   @on_load :load_nif
   def load_nif do
     require Logger
-    nif_file = ~c"#{:code.priv_dir(:tflite_elixir)}/tflite_elixir"
+    nif_file = ~c"#{:code.priv_dir(:tflite_beam)}/tflite_beam"
 
     case :erlang.load_nif(nif_file, 0) do
       :ok -> :ok

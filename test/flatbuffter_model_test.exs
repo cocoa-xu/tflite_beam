@@ -1,13 +1,13 @@
-defmodule TFLiteElixir.FlatBufferModel.Test do
+defmodule TFLiteBEAM.FlatBufferModel.Test do
   use ExUnit.Case, async: false
 
-  alias TFLiteElixir.FlatBufferModel
-  alias TFLiteElixir.ErrorReporter
-  alias TFLiteElixir.InterpreterBuilder
-  alias TFLiteElixir.Interpreter
-  alias TFLiteElixir.Ops.Builtin.BuiltinResolver
-  alias TFLiteElixir.TFLiteTensor
-  alias TFLiteElixir.TFLiteQuantizationParams
+  alias TFLiteBEAM.FlatBufferModel
+  alias TFLiteBEAM.ErrorReporter
+  alias TFLiteBEAM.InterpreterBuilder
+  alias TFLiteBEAM.Interpreter
+  alias TFLiteBEAM.Ops.Builtin.BuiltinResolver
+  alias TFLiteBEAM.TFLiteTensor
+  alias TFLiteBEAM.TFLiteQuantizationParams
 
   test "buildFromFile/1" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
@@ -175,19 +175,19 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
     filename = Path.join([__DIR__, "test_data", "lite-model_efficientdet_lite4_detection_metadata_2.tflite"])
     buffer = File.read!(filename)
 
-    assert ["labelmap.txt"] == TFLiteElixir.FlatBufferModel.list_associated_files(buffer)
+    assert ["labelmap.txt"] == TFLiteBEAM.FlatBufferModel.list_associated_files(buffer)
 
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     buffer = File.read!(filename)
 
-    assert ["inat_bird_labels.txt"] == TFLiteElixir.FlatBufferModel.list_associated_files(buffer)
+    assert ["inat_bird_labels.txt"] == TFLiteBEAM.FlatBufferModel.list_associated_files(buffer)
   end
 
   test "get_associated_file/2 on model with metadata" do
     filename = Path.join([__DIR__, "test_data", "lite-model_efficientdet_lite4_detection_metadata_2.tflite"])
     buffer = File.read!(filename)
 
-    assert "person\nbicycle\ncar\nmotorcycle\nairplane\nbus\ntrain\ntruck\nboat\ntraffic light\nfire hydrant\n???\nstop sign\nparking meter\nbench\nbird\ncat\ndog\nhorse\nsheep\ncow\nelephant\nbear\nzebra\ngiraffe\n???\nbackpack\numbrella\n???\n???\nhandbag\ntie\nsuitcase\nfrisbee\nskis\nsnowboard\nsports ball\nkite\nbaseball bat\nbaseball glove\nskateboard\nsurfboard\ntennis racket\nbottle\n???\nwine glass\ncup\nfork\nknife\nspoon\nbowl\nbanana\napple\nsandwich\norange\nbroccoli\ncarrot\nhot dog\npizza\ndonut\ncake\nchair\ncouch\npotted plant\nbed\n???\ndining table\n???\n???\ntoilet\n???\ntv\nlaptop\nmouse\nremote\nkeyboard\ncell phone\nmicrowave\noven\ntoaster\nsink\nrefrigerator\n???\nbook\nclock\nvase\nscissors\nteddy bear\nhair drier\ntoothbrush\n" == TFLiteElixir.FlatBufferModel.get_associated_file(buffer, "labelmap.txt")
+    assert "person\nbicycle\ncar\nmotorcycle\nairplane\nbus\ntrain\ntruck\nboat\ntraffic light\nfire hydrant\n???\nstop sign\nparking meter\nbench\nbird\ncat\ndog\nhorse\nsheep\ncow\nelephant\nbear\nzebra\ngiraffe\n???\nbackpack\numbrella\n???\n???\nhandbag\ntie\nsuitcase\nfrisbee\nskis\nsnowboard\nsports ball\nkite\nbaseball bat\nbaseball glove\nskateboard\nsurfboard\ntennis racket\nbottle\n???\nwine glass\ncup\nfork\nknife\nspoon\nbowl\nbanana\napple\nsandwich\norange\nbroccoli\ncarrot\nhot dog\npizza\ndonut\ncake\nchair\ncouch\npotted plant\nbed\n???\ndining table\n???\n???\ntoilet\n???\ntv\nlaptop\nmouse\nremote\nkeyboard\ncell phone\nmicrowave\noven\ntoaster\nsink\nrefrigerator\n???\nbook\nclock\nvase\nscissors\nteddy bear\nhair drier\ntoothbrush\n" == TFLiteBEAM.FlatBufferModel.get_associated_file(buffer, "labelmap.txt")
 
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     buffer = File.read!(filename)
@@ -1159,14 +1159,14 @@ defmodule TFLiteElixir.FlatBufferModel.Test do
     Ardenna gravis (Great Shearwater)
     background
     """
-    assert inat_bird_labels == TFLiteElixir.FlatBufferModel.get_associated_file(buffer, "inat_bird_labels.txt")
+    assert inat_bird_labels == TFLiteBEAM.FlatBufferModel.get_associated_file(buffer, "inat_bird_labels.txt")
   end
 
   test "get_associated_file/2 on model with invalid filename" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     buffer = File.read!(filename)
 
-    assert {:error, "cannot find associated file `\"labelmap.txt\"`"} == TFLiteElixir.FlatBufferModel.get_associated_file(buffer, "labelmap.txt")
+    assert {:error, "cannot find associated file `\"labelmap.txt\"`"} == TFLiteBEAM.FlatBufferModel.get_associated_file(buffer, "labelmap.txt")
   end
 
   test "inspect/1" do

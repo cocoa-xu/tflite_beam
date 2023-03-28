@@ -1,4 +1,4 @@
-defmodule TFLiteElixir.Errorize do
+defmodule TFLiteBEAM.Errorize do
   @moduledoc false
 
   # Original version by José

@@ -2,7 +2,7 @@
 
 ```elixir
 Mix.install([
-  {:tflite_elixir, "~> 0.1.7"},
+  {:tflite_beam, "~> 0.1.7"},
   {:nx, "~> 0.5.0"},
   {:req, "~> 0.3.0"},
   {:stb_image, "~> 0.6.0"}
@@ -29,16 +29,16 @@ end
 
 data_files = %{
   class_labels:
-    "https://raw.githubusercontent.com/cocoa-xu/tflite_elixir/main/test/test_data/inat_bird_labels.txt"
+    "https://raw.githubusercontent.com/cocoa-xu/tflite_beam/main/test/test_data/inat_bird_labels.txt"
     |> download.(),
   cpu_model:
-    "https://raw.githubusercontent.com/cocoa-xu/tflite_elixir/main/test/test_data/mobilenet_v2_1.0_224_inat_bird_quant.tflite"
+    "https://raw.githubusercontent.com/cocoa-xu/tflite_beam/main/test/test_data/mobilenet_v2_1.0_224_inat_bird_quant.tflite"
     |> download.(),
   tpu_model:
-    "https://raw.githubusercontent.com/cocoa-xu/tflite_elixir/main/test/test_data/mobilenet_v2_1.0_224_inat_bird_quant_edgetpu.tflite"
+    "https://raw.githubusercontent.com/cocoa-xu/tflite_beam/main/test/test_data/mobilenet_v2_1.0_224_inat_bird_quant_edgetpu.tflite"
     |> download.(),
   test_image:
-    "https://raw.githubusercontent.com/cocoa-xu/tflite_elixir/main/test/test_data/parrot.jpeg"
+    "https://raw.githubusercontent.com/cocoa-xu/tflite_beam/main/test/test_data/parrot.jpeg"
     |> download.()
 }
 ```
@@ -73,10 +73,10 @@ defmodule ClassifyImage do
   Code based on [classify_image.py](https://github.com/google-coral/pycoral/blob/master/examples/classify_image.py)
   """
 
-  alias TFLiteElixir.Interpreter
-  alias TFLiteElixir.InterpreterBuilder
-  alias TFLiteElixir.TFLiteTensor
-  alias TFLiteElixir.FlatBufferModel
+  alias TFLiteBEAM.Interpreter
+  alias TFLiteBEAM.InterpreterBuilder
+  alias TFLiteBEAM.TFLiteTensor
+  alias TFLiteBEAM.FlatBufferModel
 
   @shortdoc "Image Classification"
   def run(args) do
@@ -106,7 +106,7 @@ defmodule ClassifyImage do
 
     tpu_context =
       if args[:use_tpu] do
-        TFLiteElixir.Coral.get_edge_tpu_context!(device: args[:tpu])
+        TFLiteBEAM.Coral.get_edge_tpu_context!(device: args[:tpu])
       else
         nil
       end
@@ -221,7 +221,7 @@ defmodule ClassifyImage do
   end
 
   defp make_interpreter(model, num_jobs, false, _tpu_context) do
-    resolver = TFLiteElixir.Ops.Builtin.BuiltinResolver.new!()
+    resolver = TFLiteBEAM.Ops.Builtin.BuiltinResolver.new!()
     builder = InterpreterBuilder.new!(model, resolver)
     interpreter = Interpreter.new!()
     InterpreterBuilder.set_num_threads!(builder, num_jobs)
@@ -231,7 +231,7 @@ defmodule ClassifyImage do
   end
 
   defp make_interpreter(model, _num_jobs, true, tpu_context) do
-    TFLiteElixir.Coral.make_edge_tpu_interpreter!(model, tpu_context)
+    TFLiteBEAM.Coral.make_edge_tpu_interpreter!(model, tpu_context)
   end
 
   defp get_scores(output_data, %TFLiteTensor{type: dtype = {:u, _}} = output_tensor) do

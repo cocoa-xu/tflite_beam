@@ -1,7 +1,7 @@
-defmodule TFLiteElixir.ErrorReporter.Test do
+defmodule TFLiteBEAM.ErrorReporter.Test do
   use ExUnit.Case
 
-  alias TFLiteElixir.ErrorReporter
+  alias TFLiteBEAM.ErrorReporter
 
   test "get default error reporter" do
     default_error_reporter = ErrorReporter.default_error_reporter()

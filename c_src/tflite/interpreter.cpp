@@ -392,7 +392,7 @@ ERL_NIF_TERM interpreter_input_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TE
 
     auto input_tensor = self_res->val->input_tensor(index);
     if (input_tensor->data.data == nullptr) {
-        return erlang::nif::error(env, "tensor is not allocated yet? Please call TFLiteElixir.Interpreter.allocate_tensors first");
+        return erlang::nif::error(env, "tensor is not allocated yet? Please call TFLiteBEAM.Interpreter.allocate_tensors first");
     }
 
     size_t maximum_bytes = input_tensor->bytes;

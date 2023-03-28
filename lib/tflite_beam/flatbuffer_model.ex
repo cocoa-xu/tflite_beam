@@ -1,11 +1,11 @@
-defmodule TFLiteElixir.FlatBufferModel do
+defmodule TFLiteBEAM.FlatBufferModel do
   @moduledoc """
   An RAII object that represents a read-only tflite model, copied from disk, or
   mmapped.
   """
-  import TFLiteElixir.Errorize
+  import TFLiteBEAM.Errorize
 
-  alias TFLiteElixir.ErrorReporter
+  alias TFLiteBEAM.ErrorReporter
 
   @type nif_error :: {:error, String.t()}
 
@@ -24,7 +24,7 @@ defmodule TFLiteElixir.FlatBufferModel do
   then this function will always have return type `nif_error()`
 
   ##### Keyword parameters
-  - `error_reporter`: `TFLiteElixir.ErrorReporter`.
+  - `error_reporter`: `TFLiteBEAM.ErrorReporter`.
 
     Caller retains ownership of `error_reporter` and must ensure its lifetime
     is longer than the FlatBufferModel instance.
@@ -34,10 +34,10 @@ defmodule TFLiteElixir.FlatBufferModel do
     error_reporter = ErrorReporter.from_struct(opts[:error_reporter])
 
     with {:ok, model} <-
-           TFLiteElixir.Nif.flatbuffer_model_build_from_file(filename, error_reporter) do
+           :tflite_beam_nif.flatbuffer_model_build_from_file(filename, error_reporter) do
       %T{
-        initialized: TFLiteElixir.Nif.flatbuffer_model_initialized(model),
-        minimum_runtime: TFLiteElixir.Nif.flatbuffer_model_get_minimum_runtime(model),
+        initialized: :tflite_beam_nif.flatbuffer_model_initialized(model),
+        minimum_runtime: :tflite_beam_nif.flatbuffer_model_get_minimum_runtime(model),
         model: model
       }
     else
@@ -52,7 +52,7 @@ defmodule TFLiteElixir.FlatBufferModel do
   based on the file.
 
   ##### Keyword parameters
-  - `error_reporter`: `TFLiteElixir.ErrorReporter`.
+  - `error_reporter`: `TFLiteBEAM.ErrorReporter`.
 
     Caller retains ownership of `error_reporter` and must ensure its lifetime
     is longer than the FlatBufferModel instance.
@@ -65,7 +65,7 @@ defmodule TFLiteElixir.FlatBufferModel do
     error_reporter = ErrorReporter.from_struct(opts[:error_reporter])
 
     with {:ok, model} <-
-           TFLiteElixir.Nif.flatbuffer_model_verify_and_build_from_file(filename, error_reporter) do
+           :tflite_beam_nif.flatbuffer_model_verify_and_build_from_file(filename, error_reporter) do
       %T{model: model}
     else
       error -> error
@@ -91,7 +91,7 @@ defmodule TFLiteElixir.FlatBufferModel do
     error_reporter = ErrorReporter.from_struct(opts[:error_reporter])
 
     with {:ok, model} <-
-           TFLiteElixir.Nif.flatbuffer_model_build_from_buffer(buffer, error_reporter) do
+           :tflite_beam_nif.flatbuffer_model_build_from_buffer(buffer, error_reporter) do
       %T{model: model}
     else
       error -> error
@@ -103,12 +103,12 @@ defmodule TFLiteElixir.FlatBufferModel do
   """
   @spec initialized(%T{}) :: bool() | nif_error()
   def initialized(%T{model: self}) when is_reference(self) do
-    TFLiteElixir.Nif.flatbuffer_model_initialized(self)
+    :tflite_beam_nif.flatbuffer_model_initialized(self)
   end
 
   @spec error_reporter(%T{:model => reference()}) :: %ErrorReporter{} | {:error, String.t()}
   def error_reporter(%T{model: self}) when is_reference(self) do
-    case TFLiteElixir.Nif.flatbuffer_model_error_reporter(self) do
+    case :tflite_beam_nif.flatbuffer_model_error_reporter(self) do
       {:ok, ref} when is_reference(ref) -> %ErrorReporter{ref: ref}
       error -> error
     end
@@ -127,7 +127,7 @@ defmodule TFLiteElixir.FlatBufferModel do
   """
   @spec get_minimum_runtime(%T{}) :: String.t() | nif_error()
   def get_minimum_runtime(%T{model: self}) when is_reference(self) do
-    TFLiteElixir.Nif.flatbuffer_model_get_minimum_runtime(self)
+    :tflite_beam_nif.flatbuffer_model_get_minimum_runtime(self)
   end
 
   @doc """
@@ -137,7 +137,7 @@ defmodule TFLiteElixir.FlatBufferModel do
   """
   @spec read_all_metadata(%T{}) :: %{String.t() => String.t()} | nif_error()
   def read_all_metadata(%T{model: self}) when is_reference(self) do
-    TFLiteElixir.Nif.flatbuffer_model_read_all_metadata(self)
+    :tflite_beam_nif.flatbuffer_model_read_all_metadata(self)
   end
 
   @doc """

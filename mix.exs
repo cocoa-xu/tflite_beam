@@ -1,12 +1,12 @@
-defmodule TFLiteElixir.MixProject do
+defmodule TFLiteBEAM.MixProject do
   use Mix.Project
   require Logger
 
-  @app :tflite_elixir
+  @app :tflite_beam
   @version "0.1.7"
   @tflite_version "2.11.0"
   @prefer_precompiled "YES"
-  @github_url "https://github.com/cocoa-xu/tflite_elixir"
+  @github_url "https://github.com/cocoa-xu/tflite_beam"
   @libedgetpu_runtime_github_url "https://github.com/cocoa-xu/libedgetpu"
   @libedgetpu_runtime_version "0.1.5"
   # only means compatible. need to write more tests
@@ -74,8 +74,10 @@ defmodule TFLiteElixir.MixProject do
       deps: deps(),
       source_url: @github_url,
       description: description(),
+      elixirc_paths: elixirc_paths(),
+      erlc_paths: erlc_paths(),
       package: package(),
-      test_coverage: [ignore_modules: [TFLiteElixir.Nif, TFLiteElixir.Coral], tool: ExCoveralls],
+      test_coverage: [ignore_modules: [TFLiteBEAM.Nif, TFLiteBEAM.Coral], tool: ExCoveralls],
       preferred_cli_env: [
         coveralls: :test,
         "coveralls.detail": :test,
@@ -275,7 +277,7 @@ defmodule TFLiteElixir.MixProject do
          edgetpu_libraries
        ) do
     with {:ok, triplet} <- get_triplet(edgetpu_libraries) do
-      filename = "tflite_elixir-nif-#{:erlang.system_info(:nif_version)}-#{triplet}-v#{@version}"
+      filename = "tflite_beam-nif-#{:erlang.system_info(:nif_version)}-#{triplet}-v#{@version}"
       {true, "#{@github_url}/releases/download/v#{@version}/#{filename}.tar.gz", filename}
     else
       {:error, requested_triplet, _available_precompiled_triplets} ->
@@ -308,8 +310,11 @@ defmodule TFLiteElixir.MixProject do
   end
 
   defp description() do
-    "TensorFlow Lite-Elixir binding with TPU support."
+    "TensorFlow Lite BEAM binding with TPU support."
   end
+
+  defp elixirc_paths, do: ["lib"]
+  defp erlc_paths, do: [""]
 
   defp package() do
     [

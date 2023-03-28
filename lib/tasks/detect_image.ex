@@ -16,10 +16,10 @@ defmodule Mix.Tasks.DetectImage do
 
   use Mix.Task
 
-  alias TFLiteElixir.Interpreter
-  alias TFLiteElixir.InterpreterBuilder
-  alias TFLiteElixir.TFLiteTensor
-  alias TFLiteElixir.FlatBufferModel
+  alias TFLiteBEAM.Interpreter
+  alias TFLiteBEAM.InterpreterBuilder
+  alias TFLiteBEAM.TFLiteTensor
+  alias TFLiteBEAM.FlatBufferModel
 
   @shortdoc "Object Detection"
   def run(argv) do
@@ -232,7 +232,7 @@ defmodule Mix.Tasks.DetectImage do
   end
 
   defp make_interpreter(model, num_jobs) do
-    resolver = TFLiteElixir.Ops.Builtin.BuiltinResolver.new!()
+    resolver = TFLiteBEAM.Ops.Builtin.BuiltinResolver.new!()
     builder = InterpreterBuilder.new!(model, resolver)
     interpreter = Interpreter.new!()
     InterpreterBuilder.set_num_threads!(builder, num_jobs)

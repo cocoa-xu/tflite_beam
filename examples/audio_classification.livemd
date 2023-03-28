@@ -3,7 +3,7 @@
 ```elixir
 Mix.install([
   {:nx_signal, "~> 0.1"},
-  {:tflite_elixir, "~> 0.1.7"},
+  {:tflite_beam, "~> 0.1.7"},
   {:nx, "~> 0.5"},
   {:kino, "~> 0.9.0"},
   {:req, "~> 0.3.6"}
@@ -48,11 +48,11 @@ model_buffer = File.read!(data_files.cpu_model)
 
 labels =
   String.split(
-    TFLiteElixir.FlatBufferModel.get_associated_file(model_buffer, "yamnet_label_list.txt"),
+    TFLiteBEAM.FlatBufferModel.get_associated_file(model_buffer, "yamnet_label_list.txt"),
     "\n"
   )
 
-{:ok, interpreter} = TFLiteElixir.Interpreter.new_from_buffer(model_buffer)
+{:ok, interpreter} = TFLiteBEAM.Interpreter.new_from_buffer(model_buffer)
 ```
 
 ## Record audio
@@ -90,7 +90,7 @@ for sample_index <- 0..(num_samples - 1) do
       [downsample_rate]
     )
 
-  [out_tensor] = TFLiteElixir.Interpreter.predict(interpreter, sample)
+  [out_tensor] = TFLiteBEAM.Interpreter.predict(interpreter, sample)
   out_tensor = Nx.reshape(out_tensor, {:auto})
 
   sorted = Nx.argsort(out_tensor, direction: :desc)
