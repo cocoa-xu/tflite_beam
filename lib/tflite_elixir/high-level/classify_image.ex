@@ -206,7 +206,7 @@ defmodule TFLiteElixir.ImageClassification do
   end
 
   defp load_model(model_path) do
-    FlatBufferModel.build_from_buffer(File.read!(model_path))
+    FlatBufferModel.build_from_file(model_path)
   end
 
   defp load_input(nil) do
