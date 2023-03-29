@@ -1,6 +1,10 @@
+%% @moduledoc
+%% ErrorReporter to provide reporting destinations.
+
 -module(tflite_beam_error_reporter).
--compile(nowarn_export_all).
--compile([export_all]).
+-export([
+    default_error_reporter/0
+]).
 
 -include("tflite_beam_records.hrl").
 
