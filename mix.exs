@@ -333,6 +333,7 @@ defmodule TFLiteBEAM.MixProject do
         mix.exs
         README*
         LICENSE*
+        rebar.config
       ),
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => @github_url}
