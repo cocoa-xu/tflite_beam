@@ -104,8 +104,8 @@ ERL_NIF_TERM flatbuffer_model_build_from_buffer(ErlNifEnv *env, int argc, const 
         return ret;
     }
 
-    const char * copied_buffer = (const char *)enif_alloc(sizeof(char) * data.size);
-    memcpy(copied_buffer, data.data, data.size);
+    char * copied_buffer = (char *)enif_alloc(sizeof(char) * data.size);
+    memcpy((void *)copied_buffer, data.data, data.size);
 
     auto m = tflite::FlatBufferModel::BuildFromBuffer(copied_buffer, data.size, error_reporter);
     NifResFlatBufferModel * res = _make_flatbuffer_model_resource(env, m, ret);
