@@ -1,5 +1,47 @@
 # Changelog
 
+## v0.2.9 (2022-03-30)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_elixir/tree/v0.2.0) | [Released Assets](https://github.com/cocoa-xu/tflite_elixir/releases/tag/v0.2.0)
+
+### Breaking Changes
+- Renamed root namespace from `TFLiteElixir` to `TFLiteBEAM`
+
+### Changes
+- `buffer` will be copied and managed when using `TFLiteBEAM.FlatBufferModel.build_from_buffer/1`.
+- `TFLiteBEAM.TFLiteTensor.dims/1` returns a list (following TensorFlow Lite's C++ API convention) while `TFLiteBEAM.TFLiteTensor.shape/1` returns a tuple (folllowing `nx`'s convention.)
+
+### Added
+- Erlang support.
+- [example] added pose estimation example (#43) by @mnishiguchi
+- [example] use thunder model instead of lightning in pose estimation (#45) by @mnishiguchi
+- [example] added audio classification example
+- Experimental high-level module `TFLiteBEAM.ImageClassification`.
+
+  ```elixir
+  iex> alias TFLiteBEAM.ImageClassification
+  iex> {:ok, pid} = ImageClassification.start("test/test_data/mobilenet_v2_1.0_224_inat_bird_quant.tflite")
+  iex> ImageClassification.predict(pid, "test/test_data/parrot.jpeg")
+  %{class_id: 923, score: 0.70703125}
+  iex> ImageClassification.set_label_from_associated_file(pid, "inat_bird_labels.txt")
+  :ok
+  iex> ImageClassification.predict(pid, "test/test_data/parrot.jpeg")
+  %{class_id: 923, label: "Ara macao (Scarlet Macaw)", score: 0.70703125}
+  iex> ImageClassification.predict(pid, "test/test_data/parrot.jpeg", top_k: 3)
+  [
+    %{class_id: 923, label: "Ara macao (Scarlet Macaw)", score: 0.70703125},
+    %{
+      class_id: 837,
+      label: "Platycercus elegans (Crimson Rosella)",
+      score: 0.078125
+    },
+    %{
+      class_id: 245,
+      label: "Coracias caudatus (Lilac-breasted Roller)",
+      score: 0.01953125
+    }
+  ]
+  ```
+
 ## v0.1.7 (2022-03-22)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_elixir/tree/v0.1.7) | [Released Assets](https://github.com/cocoa-xu/tflite_elixir/releases/tag/v0.1.7)
 
