@@ -24,7 +24,7 @@ on:
       - nerves-*
 
     paths-ignore:
-      - '**/README.md'
+      - '**/*.md'
       - 'LICENSE*'
       - 'examples/**'
       - 'Makefile.win'
