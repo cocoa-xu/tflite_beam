@@ -177,7 +177,7 @@ defmodule TFLiteBEAM.Ops.Builtin.BuiltinResolver do
   """
   @spec new() :: nif_resource_ok() | nif_error()
   def new() do
-    :tflite_beam_nif.ops_builtin_builtin_resolver_new()
+    :tflite_beam_ops_builtin_builtin_resolver.new()
   end
 
   deferror(new())
