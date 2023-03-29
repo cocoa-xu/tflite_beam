@@ -14,7 +14,7 @@ defmodule TFLiteBEAM.Coral do
   """
   @spec contains_edge_tpu_custom_op?(%FlatBufferModel{}) :: boolean() | {:error, String.t()}
   def contains_edge_tpu_custom_op?(%FlatBufferModel{model: model}) do
-    :edge_tpu_devices.contains_edge_tpu_custom_op?(model)
+    :tflite_beam_coral.contains_edge_tpu_custom_op?(model)
   end
 
   @doc """
@@ -120,7 +120,7 @@ defmodule TFLiteBEAM.Coral do
   @spec make_edge_tpu_interpreter(%FlatBufferModel{}, reference()) ::
           {:ok, reference()} | {:error, String.t()}
   def make_edge_tpu_interpreter(%FlatBufferModel{model: model}, edgetpu_context) do
-    :tflite_beam_nif.coral_make_edgetpu_interpreter(model, edgetpu_context)
+    :tflite_beam_coral.make_edge_tpu_interpreter(model, edgetpu_context)
   end
 
   deferror(make_edge_tpu_interpreter(model, edgetpu_context))
@@ -130,35 +130,6 @@ defmodule TFLiteBEAM.Coral do
   """
   @spec dequantize_tensor(reference(), non_neg_integer(), term()) :: [number()] | {:error, String.t()}
   def dequantize_tensor(interpreter, tensor_index, as_type \\ nil) do
-    as_type = map_type(as_type)
-    :tflite_beam_nif.coral_dequantize_tensor(interpreter, tensor_index, as_type)
+    :tflite_beam_coral.dequantize_tensor(interpreter, tensor_index, as_type)
   end
-
-  defp map_type({:f, 32}), do: :f32
-  defp map_type({:f, 64}), do: :f64
-  defp map_type(:f32), do: :f32
-  defp map_type(:f64), do: :f64
-
-  defp map_type({:u, 8}), do: :u8
-  defp map_type({:u, 16}), do: :u16
-  defp map_type({:u, 32}), do: :u32
-  defp map_type({:u, 64}), do: :u64
-  defp map_type(:u8), do: :u8
-  defp map_type(:u16), do: :u16
-  defp map_type(:u32), do: :u32
-  defp map_type(:u64), do: :u64
-
-  defp map_type({:s, 8}), do: :s8
-  defp map_type({:s, 16}), do: :s16
-  defp map_type({:s, 32}), do: :s32
-  defp map_type({:s, 64}), do: :s64
-  defp map_type(:s8), do: :s8
-  defp map_type(:s16), do: :s16
-  defp map_type(:s32), do: :s32
-  defp map_type(:s64), do: :s64
-
-  defp map_type(nil), do: nil
-
-  defp map_type(not_supported),
-    do: raise(ArgumentError, "#{inspect(not_supported)} is not supported")
 end
