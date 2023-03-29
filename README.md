@@ -19,7 +19,7 @@ A general workflow looks like this,
 ```elixir
 # will download and install precompiled version
 Mix.install([
-  {:tflite_beam, "~> 0.1.6"}
+  {:tflite_elixir, "~> 0.1.7"}
 ])
 
 # parrot.jpeg and the tflite file can be found in the test/test_data directory
@@ -45,7 +45,7 @@ top_k_indices = Nx.take(sorted_indices, Nx.iota({top_k}))
 top_k_preds = Nx.to_flat_list(top_k_indices)
 ```
 
-A better version of the above demo code can be found the [examples](examples) directory, [tpu.livemd](https://github.com/cocoa-xu/tflite_beam/blob/main/examples/tpu.livemd). It supports both CPU and TPU, and it will show more information, including scores (confidence) and the class name of the predicted results. It's also more flexible where you can adjust different parameters like `top_k` and `threshold` (for confidence) and etc.
+And there is an experimental `ImageClassification` module that does everything for you. It supports both CPU and TPU, and it will show more information, including scores (confidence) and the class name of the predicted results. It's also more flexible where you can adjust different parameters like `top_k` and `threshold` (for confidence) and etc.
 
 ```elixir
 iex> alias TFLiteElixir.ImageClassification
