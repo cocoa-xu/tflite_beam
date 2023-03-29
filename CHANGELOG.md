@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.2.9 (2022-03-30)
+## v0.2.0 (2022-03-30)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_elixir/tree/v0.2.0) | [Released Assets](https://github.com/cocoa-xu/tflite_elixir/releases/tag/v0.2.0)
 
 ### Breaking Changes
