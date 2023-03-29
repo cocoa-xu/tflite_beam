@@ -108,8 +108,7 @@ ERL_NIF_TERM flatbuffer_model_build_from_buffer(ErlNifEnv *env, int argc, const 
     memcpy((void *)copied_buffer, data.data, data.size);
 
     auto m = tflite::FlatBufferModel::BuildFromBuffer(copied_buffer, data.size, error_reporter);
-    NifResFlatBufferModel * res = _make_flatbuffer_model_resource(env, m, ret);
-    res->copied_buffer = copied_buffer;
+    _make_flatbuffer_model_resource(env, m, ret, copied_buffer);
 
     return ret;
 }
@@ -232,7 +231,7 @@ ERL_NIF_TERM flatbuffer_model_read_all_metadata(ErlNifEnv *env, int argc, const 
 
 // ------------------ internal api ------------------
 
-NifResFlatBufferModel * _make_flatbuffer_model_resource(ErlNifEnv *env, std::unique_ptr<tflite::FlatBufferModel>& m, ERL_NIF_TERM &out) {
+NifResFlatBufferModel * _make_flatbuffer_model_resource(ErlNifEnv *env, std::unique_ptr<tflite::FlatBufferModel>& m, ERL_NIF_TERM &out, void * copied_buffer) {
     NifResFlatBufferModel * res = nullptr;
     if (m.get() == nullptr) {
         out = erlang::nif::error(env, "cannot get flatbuffer model");
@@ -249,6 +248,7 @@ NifResFlatBufferModel * _make_flatbuffer_model_resource(ErlNifEnv *env, std::uni
     m.reset(nullptr);
     res->val = model;
     ERL_NIF_TERM ret = enif_make_resource(env, res);
+    res->copied_buffer = (const char *)copied_buffer;
     enif_keep_resource(res);
     out = erlang::nif::ok(env, ret);
     return res;

@@ -154,6 +154,10 @@ void NifResInterpreterBuilder::destruct_resource(ErlNifEnv *env, void *args) {
 
                 if (res->flatbuffer_model->reference_count == 0 && res->flatbuffer_model->dropped_in_erlang) {
                     if (res->flatbuffer_model->val) {
+                        if (res->flatbuffer_model->copied_buffer) {
+                            enif_free((void *)res->flatbuffer_model->copied_buffer);
+                            res->flatbuffer_model->copied_buffer = nullptr;
+                        }
                         delete res->flatbuffer_model->val;
                     }
                     res->flatbuffer_model->val = nullptr;
@@ -199,6 +203,10 @@ void NifResInterpreter::destruct_resource(ErlNifEnv *env, void *args) {
 
                 if (res->flatbuffer_model->reference_count == 0 && res->flatbuffer_model->dropped_in_erlang) {
                     if (res->flatbuffer_model->val) {
+                        if (res->flatbuffer_model->copied_buffer) {
+                            enif_free((void *)res->flatbuffer_model->copied_buffer);
+                            res->flatbuffer_model->copied_buffer = nullptr;
+                        }
                         delete res->flatbuffer_model->val;
                     }
                     res->flatbuffer_model->val = nullptr;
