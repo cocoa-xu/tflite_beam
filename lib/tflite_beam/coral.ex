@@ -12,21 +12,21 @@ defmodule TFLiteBEAM.Coral do
   @doc """
   Checks whether a tflite model contains any Edge TPU custom operator.
   """
-  @spec contains_edge_tpu_custom_op?(%FlatBufferModel{}) :: any
+  @spec contains_edge_tpu_custom_op?(%FlatBufferModel{}) :: boolean() | {:error, String.t()}
   def contains_edge_tpu_custom_op?(%FlatBufferModel{model: model}) do
-    :tflite_beam_nif.coral_contains_edgetpu_custom_op(model)
+    :edge_tpu_devices.contains_edge_tpu_custom_op?(model)
   end
 
   @doc """
-  Returns array of connected edge TPU devices.
+  Returns a list of connected edge TPU devices.
   """
   @spec edge_tpu_devices() :: [String.t()] | {:error, String.t()}
   def edge_tpu_devices() do
-    :tflite_beam_nif.coral_edgetpu_devices()
+    :tflite_beam_coral.edge_tpu_devices()
   end
 
   @doc """
-  Returns TPU context or nullptr if requested TPU context is not available.
+  Returns TPU context or an error-tuple if requested TPU context is not available.
 
   ### Keyword Parameters
   - `device`: `String.t()`. Possible values are
@@ -90,9 +90,7 @@ defmodule TFLiteBEAM.Coral do
   """
   @spec get_edge_tpu_context(Keyword.t()) :: {:ok, reference()} | {:error, String.t()}
   def get_edge_tpu_context(opts \\ []) do
-    device = opts[:device] || ""
-    options = opts[:options] || %{}
-    :tflite_beam_nif.coral_get_edgetpu_context(device, options)
+    :tflite_beam_coral.get_edge_tpu_context(opts)
   end
 
   deferror(get_edge_tpu_context(opts))
@@ -130,6 +128,7 @@ defmodule TFLiteBEAM.Coral do
   @doc """
   Returns a dequantized version of the given tensor.
   """
+  @spec dequantize_tensor(reference(), non_neg_integer(), term()) :: [number()] | {:error, String.t()}
   def dequantize_tensor(interpreter, tensor_index, as_type \\ nil) do
     as_type = map_type(as_type)
     :tflite_beam_nif.coral_dequantize_tensor(interpreter, tensor_index, as_type)
