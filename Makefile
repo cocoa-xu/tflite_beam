@@ -134,6 +134,7 @@ $(NATIVE_BINDINGS_SO): unarchive_source_code install_libedgetpu_runtime libusb
 			  -D GLOG_ROOT_DIR="$(GLOG_ROOT_DIR)" \
 			  -D TFLITE_BEAM_CORAL_SUPPORT="$(TFLITE_BEAM_CORAL_SUPPORT)" \
 			  -D LIBUSB_INSTALL_DIR="$(LIBUSB_INSTALL_DIR)" \
+			  -D MIX_APP_PATH="$(MIX_APP_PATH)" \
 			  $(CMAKE_OPTIONS) \
 			  "$(shell pwd)" && \
 			if [ "$(MAKE_BUILD_FLAGS)" = "auto" ]; then \
