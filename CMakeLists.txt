@@ -1,10 +1,12 @@
 cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 project(tflite_beam C CXX)
 
-if(DEFINED MIX_APP_PATH AND NOT "${MIX_APP_PATH}" STREQUAL "")
-    set(PRIV_DIR "${MIX_APP_PATH}/priv")
-else()
-    set(PRIV_DIR "${CMAKE_CURRENT_SOURCE_DIR}/priv")
+if(NOT DEFINED PRIV_DIR)
+    if(DEFINED MIX_APP_PATH AND NOT "${MIX_APP_PATH}" STREQUAL "")
+        set(PRIV_DIR "${MIX_APP_PATH}/priv")
+    else()
+        set(PRIV_DIR "${CMAKE_CURRENT_SOURCE_DIR}/priv")
+    endif()
 endif()
 message(STATUS "Using PRIV_DIR: ${PRIV_DIR}")
 
