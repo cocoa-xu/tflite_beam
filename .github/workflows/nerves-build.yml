@@ -111,7 +111,7 @@ jobs:
 
           LINE="$(grep -n 'toolshed' mix.exs | awk -F: '{print $1+1}')"
           head -n "${LINE}" mix.exs > mix.exs.tmp
-          echo '      {:tflite_beam, "~> 0.1.3", path: "../tflite_beam"},' >> mix.exs.tmp
+          echo '      {:tflite_beam, "~> 0.2", path: "../tflite_beam"},' >> mix.exs.tmp
           tail -n "+${LINE}" mix.exs >> mix.exs.tmp
           mv mix.exs.tmp mix.exs
           cat mix.exs

@@ -81,6 +81,7 @@ NifResFlatBufferModel * NifResFlatBufferModel::allocate_resource(ErlNifEnv * env
     res->reference_count = 0;
     res->dropped_in_erlang = false;
     res->deleted = false;
+    ref->copied_buffer = nullptr;
 
     return res;
 }
@@ -99,6 +100,10 @@ void NifResFlatBufferModel::destruct_resource(ErlNifEnv *env, void *args) {
         if (res->val) {
             res->dropped_in_erlang = true;
             if (!res->deleted && res->reference_count == 0) {
+                if (res->copied_buffer) {
+                    enif_free((void *)res->copied_buffer);
+                    res->copied_buffer = nullptr;
+                }
                 delete res->val;
                 res->val = nullptr;
             }
@@ -172,6 +177,8 @@ NifResInterpreter * NifResInterpreter::allocate_resource(ErlNifEnv * env, ERL_NI
     }
 
     res->flatbuffer_model = nullptr;
+    res->tensors = new std::map<int, NifResTfLiteTensor *>;
+
     return res;
 }
 
@@ -200,8 +207,19 @@ void NifResInterpreter::destruct_resource(ErlNifEnv *env, void *args) {
                     res->flatbuffer_model = nullptr;
                 }
             }
-            delete res->val;
-            res->val = nullptr;
+
+            if (res->tensors) {
+                if (res->tensors->size()) {
+                    for (auto tensor_res_pair : *res->tensors) {
+                        auto tensor_res = tensor_res_pair.second;
+                        if (tensor_res) {
+                            tensor_res->interpreter_has_gone = true;
+                            enif_release_resource(tensor_res);
+                        }
+                    }
+                }
+                delete res->tensors;
+            }
         }
     }
 }
@@ -213,6 +231,8 @@ NifResTfLiteTensor * NifResTfLiteTensor::allocate_resource(ErlNifEnv * env, ERL_
         return res;
     }
 
+    res->interpreter_has_gone = false;
+
     return res;
 }
 
@@ -220,7 +240,14 @@ NifResTfLiteTensor * NifResTfLiteTensor::get_resource(ErlNifEnv * env, ERL_NIF_T
     NifResTfLiteTensor * self_res;
     if (!enif_get_resource(env, term, NifResTfLiteTensor::type, (void **)&self_res) || self_res->val == nullptr) {
         error = erlang::nif::error(env, "cannot access NifResTfLiteTensor resource");
+        return self_res;
     }
+
+    if (self_res->interpreter_has_gone) {
+        error = erlang::nif::error(env, "cannot access NifResTfLiteTensor resource: associcated interpreter has been dropped");
+        return nullptr;
+    }
+
     return self_res;
 }
 
@@ -230,8 +257,8 @@ void NifResTfLiteTensor::destruct_resource(ErlNifEnv *env, void *args) {
         if (res->val) {
             if (!res->borrowed) {
                 delete res->val;
+                res->val = nullptr;
             }
-            res->val = nullptr;
         }
     }
 }

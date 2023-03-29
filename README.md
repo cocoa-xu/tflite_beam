@@ -14,10 +14,12 @@ TensorFlow Lite-Elixir binding with TPU support.
 | macOS 11 Big Sur | arm64   | darwin    | [![CI](https://github.com/cocoa-xu/tflite_beam/actions/workflows/macos-precompile.yml/badge.svg)](https://github.com/cocoa-xu/tflite_beam/actions/workflows/macos-precompile.yml) | Yes |
 
 ## Try it in Livebook
+A general workflow looks like this,
+
 ```elixir
 # will download and install precompiled version
 Mix.install([
-  {:tflite_beam, "~> 0.1.6"}
+  {:tflite_beam, "~> 0.2.0"}
 ])
 
 # parrot.jpeg and the tflite file can be found in the test/test_data directory
@@ -43,33 +45,31 @@ top_k_indices = Nx.take(sorted_indices, Nx.iota({top_k}))
 top_k_preds = Nx.to_flat_list(top_k_indices)
 ```
 
-A better version of the above demo code can be found the [examples](examples) directory, [tpu.livemd](https://github.com/cocoa-xu/tflite_beam/blob/main/examples/tpu.livemd). It supports both CPU and TPU, and it will show more information, including scores (confidence) and the class name of the predicted results. It's also more flexible where you can adjust different parameters like `top_k` and `threshold` (for confidence) and etc.
+And there is an experimental `ImageClassification` module that does everything for you. It supports both CPU and TPU, and it will show more information, including scores (confidence) and the class name of the predicted results. It's also more flexible where you can adjust different parameters like `top_k` and `threshold` (for confidence) and etc.
 
 ```elixir
-interpreter =
-  ClassifyImage.run(
-    model: "mobilenet_v2_1.0_224_inat_bird_quant_edgetpu.tflite",
-    input: "parrot.jpeg",
-    labels: "inat_bird_labels.txt",
-    top: 3,
-    threshold: 0.3,
-    count: 5,
-    mean: 128.0,
-    std: 128.0,
-    use_tpu: true,
-    tpu: "usb"
-  )
-
-----INFERENCE TIME----
-17.3ms
-4.4ms
-4.3ms
-4.3ms
-4.3ms
--------RESULTS--------
-Ara macao (Scarlet Macaw): 0.71875
-Platycercus elegans (Crimson Rosella): 0.07031
-Coracias caudatus (Lilac-breasted Roller): 0.01953
+iex> alias TFLiteBEAM.ImageClassification
+iex> {:ok, pid} = ImageClassification.start("test/test_data/mobilenet_v2_1.0_224_inat_bird_quant.tflite")
+iex> ImageClassification.predict(pid, "test/test_data/parrot.jpeg")
+%{class_id: 923, score: 0.70703125}
+iex> ImageClassification.set_label_from_associated_file(pid, "inat_bird_labels.txt")
+:ok
+iex> ImageClassification.predict(pid, "test/test_data/parrot.jpeg")
+%{class_id: 923, label: "Ara macao (Scarlet Macaw)", score: 0.70703125}
+iex> ImageClassification.predict(pid, "test/test_data/parrot.jpeg", top_k: 3)
+[
+  %{class_id: 923, label: "Ara macao (Scarlet Macaw)", score: 0.70703125},
+  %{
+    class_id: 837,
+    label: "Platycercus elegans (Crimson Rosella)",
+    score: 0.078125
+  },
+  %{
+    class_id: 245,
+    label: "Coracias caudatus (Lilac-breasted Roller)",
+    score: 0.01953125
+  }
+]
 ```
 
 ## Nerves Support

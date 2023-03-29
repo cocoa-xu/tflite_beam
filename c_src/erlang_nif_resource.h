@@ -47,6 +47,9 @@ struct NifResFlatBufferModel {
     std::atomic_bool dropped_in_erlang{false};
     std::atomic_bool deleted{false};
 
+    // copy the buffer when build from buffer
+    const char * copied_buffer{nullptr};
+
     static ErlNifResourceType * type;
     static NifResFlatBufferModel * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
     static NifResFlatBufferModel * get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error);
@@ -64,9 +67,11 @@ struct NifResInterpreterBuilder {
     static void destruct_resource(ErlNifEnv *env, void *args);
 };
 
+struct NifResTfLiteTensor;
 struct NifResInterpreter {
     tflite::Interpreter * val;
     NifResFlatBufferModel * flatbuffer_model;
+    std::map<int, NifResTfLiteTensor *> * tensors;
 
     static ErlNifResourceType * type;
     static NifResInterpreter * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
@@ -77,6 +82,7 @@ struct NifResInterpreter {
 struct NifResTfLiteTensor {
     TfLiteTensor * val;
     std::atomic_bool borrowed{false};
+    std::atomic_bool interpreter_has_gone{false};
 
     static ErlNifResourceType * type;
     static NifResTfLiteTensor * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
