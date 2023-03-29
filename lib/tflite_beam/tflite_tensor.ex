@@ -47,7 +47,7 @@ defmodule TFLiteBEAM.TFLiteTensor do
 
   @spec type(reference()) :: tensor_type() | nif_error()
   def type(self) when is_reference(self) do
-    :tflite_beam_nif.tflitetensor_type(self)
+    :tflite_beam_tensor.type(self)
   end
 
   @doc """
@@ -58,11 +58,7 @@ defmodule TFLiteBEAM.TFLiteTensor do
 
   @spec dims(reference()) :: [integer()] | nif_error()
   def dims(self) do
-    with {:ok, dims} <- :tflite_beam_nif.tflitetensor_dims(self) do
-      dims
-    else
-      error -> error
-    end
+    :tflite_beam_tensor.dims(self)
   end
 
   @doc """
@@ -73,11 +69,7 @@ defmodule TFLiteBEAM.TFLiteTensor do
 
   @spec shape(reference()) :: tuple() | nif_error()
   def shape(self) do
-    with {:ok, dims} <- :tflite_beam_nif.tflitetensor_dims(self) do
-      List.to_tuple(dims)
-    else
-      error -> error
-    end
+    :tflite_beam_tensor.shape(self)
   end
 
   @doc """
@@ -87,15 +79,15 @@ defmodule TFLiteBEAM.TFLiteTensor do
   def quantization_params(%T{quantization_params: quantization_params}), do: quantization_params
 
   def quantization_params(self) do
-    with {:ok, {scale, zero_point, quantized_dimension}} <-
-           :tflite_beam_nif.tflitetensor_quantization_params(self) do
-      %TFLiteQuantizationParams{
-        scale: scale,
-        zero_point: zero_point,
-        quantized_dimension: quantized_dimension
-      }
-    else
-      error -> error
+    case :tflite_beam_tensor.quantization_params(self) do
+      {:tflite_beam_quantization_params, scale, zero_point, quantized_dimension} ->
+        %TFLiteQuantizationParams{
+          scale: scale,
+          zero_point: zero_point,
+          quantized_dimension: quantized_dimension
+        }
+      {:error, error} ->
+        {:error, error}
     end
   end
 
@@ -106,11 +98,11 @@ defmodule TFLiteBEAM.TFLiteTensor do
   def set_data(%T{reference: reference}, data), do: set_data(reference, data)
 
   def set_data(self, %Nx.Tensor{} = data) when is_reference(self) do
-    :tflite_beam_nif.tflitetensor_set_data(self, Nx.to_binary(data))
+    :tflite_beam_tensor.set_data(self, Nx.to_binary(data))
   end
 
   def set_data(self, data) when is_reference(self) and is_binary(data) do
-    :tflite_beam_nif.tflitetensor_set_data(self, data)
+    :tflite_beam_tensor.set_data(self, data)
   end
 
   @doc """
@@ -124,11 +116,7 @@ defmodule TFLiteBEAM.TFLiteTensor do
   end
 
   def to_binary(self, limit) when is_reference(self) and limit >= 0 do
-    with {:ok, binary} <- :tflite_beam_nif.tflitetensor_to_binary(self, limit) do
-      binary
-    else
-      error -> error
-    end
+    :tflite_beam_tensor.to_binary(self, limit)
   end
 
   @doc """

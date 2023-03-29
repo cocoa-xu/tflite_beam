@@ -308,7 +308,7 @@ defmodule TFLiteBEAM.MixProject do
   end
 
   defp description() do
-    "TensorFlow Lite BEAM binding with TPU support."
+    "TensorFlow Lite BEAM binding with optional TPU support."
   end
 
   defp package() do
@@ -322,7 +322,10 @@ defmodule TFLiteBEAM.MixProject do
         c_src/coral
         c_src/tflite
         cc_toolchain
-        scripts CMakeLists.txt Makefile
+        scripts
+        patches
+        CMakeLists.txt
+        Makefile
         .gitmodules
         lib
         src

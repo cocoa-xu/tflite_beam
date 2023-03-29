@@ -13,7 +13,7 @@ defmodule TFLiteBEAM.ErrorReporter do
   """
   @spec default_error_reporter :: %T{} | {:error, String.t()}
   def default_error_reporter do
-    with {:ok, error_reporter} <- :tflite_beam_nif.error_reporter_default_error_reporter() do
+    with {:tflite_beam_error_reporter, error_reporter} <- :tflite_beam_error_reporter.default_error_reporter() do
       %T{ref: error_reporter}
     else
       error -> error

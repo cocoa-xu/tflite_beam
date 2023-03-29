@@ -60,7 +60,7 @@ CMAKE_OPTIONS += $(CMAKE_CONFIGURE_FLAGS)
 # bindings
 TFLITE_BEAM_COMPILE_WITH_REBAR ?= false
 CMAKE_BINDINGS_BUILD_DIR = $(MIX_APP_PATH)/cmake_tflite_beam
-MAKE_BUILD_FLAGS ?= "-j1"
+MAKE_BUILD_FLAGS ?= auto
 
 .DEFAULT_GLOBAL := build
 
@@ -99,7 +99,7 @@ unarchive_source_code: $(TFLITE_SOURCE_ZIP)
 install_libedgetpu_runtime:
 	@ if [ "$(TFLITE_BEAM_ONLY_COPY_PRIV)" = "NO" ]; then \
    		if [ "$(TFLITE_BEAM_CORAL_SUPPORT)" = "YES" ]; then \
-			bash scripts/copy_libedgetpu_runtime.sh "$(LIBEDGETPU_RUNTIME_PRIV)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_UNZIPPED_DIR)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_TRIPLET)" "$(TFLITE_BEAM_CORAL_USB_THROTTLE)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_URL)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME)" "$(TFLITE_BEAM_CACHE_DIR)" && \
+			bash scripts/copy_libedgetpu_runtime.sh "$(LIBEDGETPU_RUNTIME_PRIV)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_UNZIPPED_DIR)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_TRIPLET)" "$(TFLITE_BEAM_CORAL_USB_THROTTLE)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_URL)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME)" "$(TFLITE_BEAM_CACHE_DIR)" "$(TFLITE_BEAM_COMPILE_WITH_REBAR)" && \
 			git submodule update --init c_src/libcoral && \
 			cd c_src/libcoral && git submodule update --init libedgetpu && cd ../.. ; \
 		fi \
@@ -134,9 +134,18 @@ $(NATIVE_BINDINGS_SO): unarchive_source_code install_libedgetpu_runtime libusb
 			  -D GLOG_ROOT_DIR="$(GLOG_ROOT_DIR)" \
 			  -D TFLITE_BEAM_CORAL_SUPPORT="$(TFLITE_BEAM_CORAL_SUPPORT)" \
 			  -D LIBUSB_INSTALL_DIR="$(LIBUSB_INSTALL_DIR)" \
+			  -D MIX_APP_PATH="$(MIX_APP_PATH)" \
 			  $(CMAKE_OPTIONS) \
 			  "$(shell pwd)" && \
-			make "$(MAKE_BUILD_FLAGS)" && \
+			if [ "$(MAKE_BUILD_FLAGS)" = "auto" ]; then \
+				if [ "$(UNAME_S)" = Darwin ]; then \
+					make "-j$(shell sysctl -n hw.ncpu)" ; \
+				else \
+					make "-j$(shell nproc)" ; \
+				fi; \
+			else \
+				make "$(MAKE_BUILD_FLAGS)" ; \
+			fi && \
 			mkdir -p "$(PRIV_DIR)" && \
 			cp "$(CMAKE_BINDINGS_BUILD_DIR)/tflite_beam.so" "$(NATIVE_BINDINGS_SO)" ; \
 		fi ; \
