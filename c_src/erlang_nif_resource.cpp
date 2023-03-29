@@ -81,7 +81,7 @@ NifResFlatBufferModel * NifResFlatBufferModel::allocate_resource(ErlNifEnv * env
     res->reference_count = 0;
     res->dropped_in_erlang = false;
     res->deleted = false;
-    ref->copied_buffer = nullptr;
+    res->copied_buffer = nullptr;
 
     return res;
 }
