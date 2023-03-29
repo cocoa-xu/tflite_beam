@@ -1,6 +1,6 @@
 {application, tflite_beam,
  [{description, "TensorFlow Lite BEAM binding with optional TPU support."},
-  {vsn, "0.2.0-dev"},
+  {vsn, "0.2.0"},
   {registered, []},
   {applications,
    [kernel,
