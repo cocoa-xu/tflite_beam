@@ -81,6 +81,7 @@ NifResFlatBufferModel * NifResFlatBufferModel::allocate_resource(ErlNifEnv * env
     res->reference_count = 0;
     res->dropped_in_erlang = false;
     res->deleted = false;
+    ref->copied_buffer = nullptr;
 
     return res;
 }
@@ -99,6 +100,10 @@ void NifResFlatBufferModel::destruct_resource(ErlNifEnv *env, void *args) {
         if (res->val) {
             res->dropped_in_erlang = true;
             if (!res->deleted && res->reference_count == 0) {
+                if (res->copied_buffer) {
+                    enif_free((void *)res->copied_buffer);
+                    res->copied_buffer = nullptr;
+                }
                 delete res->val;
                 res->val = nullptr;
             }

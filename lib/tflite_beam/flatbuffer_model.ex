@@ -81,16 +81,7 @@ defmodule TFLiteBEAM.FlatBufferModel do
   @doc """
   Build model from caller owned memory buffer
 
-  Note that `buffer` will NOT be copied. Caller has the ensure that
-  the buffer lives longer than the returned `reference` of `TFLite.FlatBufferModel`
-
-  Discussion:
-
-    We can copy the data in the NIF, but `FlatBufferModel::BuildFromBuffer` always
-    assumes that the buffer is owner by the caller, (in this case, the binding code)
-
-    However, we would have no way to release the copied memory because we couldn't
-    identify if the `allocation_` borrows or owns that memory.
+  Note that `buffer` will be copied.
   """
   @spec build_from_buffer(binary(), Keyword.t()) :: %T{} | nif_error()
   def build_from_buffer(buffer, opts \\ []) when is_binary(buffer) and is_list(opts) do

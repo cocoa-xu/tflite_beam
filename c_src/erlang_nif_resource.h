@@ -47,6 +47,9 @@ struct NifResFlatBufferModel {
     std::atomic_bool dropped_in_erlang{false};
     std::atomic_bool deleted{false};
 
+    // copy the buffer when build from buffer
+    const char * copied_buffer{nullptr};
+
     static ErlNifResourceType * type;
     static NifResFlatBufferModel * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
     static NifResFlatBufferModel * get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error);
