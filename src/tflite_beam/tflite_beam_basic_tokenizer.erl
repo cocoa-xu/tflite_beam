@@ -3,8 +3,12 @@
 
 -module(tflite_beam_basic_tokenizer).
 -export([
-    tokenize/2
+    tokenize/2,
+    punctuation_list/0
 ]).
+
+-define(APPNAME, tflite_beam).
+-define(UNICODE_DATA_FILENAME, "unicode_data.txt").
 
 %% @doc
 %% Tokenizes a piece of text.
@@ -19,7 +23,23 @@ tokenize(Text, IsCaseInsensitive) when is_binary(Text) and is_boolean(IsCaseInse
     end,
     ProcessedBinaryText = unicode:characters_to_binary(ProcessedText),
     SplittedByWhitespace = split_by_whitespace(ProcessedBinaryText),
-    SplittedByWhitespace.
+    TokenizedWithPunctuation = lists:map(
+        fun(BinaryText) ->
+            lists:map(
+                fun(X) ->
+                    case is_list(X) of
+                        true ->
+                            unicode:characters_to_binary(X);
+                        false ->
+                            unicode:characters_to_binary([X])
+                    end
+                end,
+                tokenized_with_punctuation(BinaryText)
+            )
+        end,
+        SplittedByWhitespace
+    ),
+    lists:flatten(TokenizedWithPunctuation).
 
 %% @doc
 %% Normalize string to NFC(Normalization Form Canonical Composition)
@@ -70,6 +90,44 @@ split_by_whitespace_impl(BinaryText, Acc) ->
             lists:reverse(UpdatedAcc)
     end.
 
+tokenized_with_punctuation(BinaryText) ->
+    NfcText = normalize_to_nfc(BinaryText),
+    UnicodeScalars = unicode:characters_to_list(NfcText),
+    tokenized_with_punctuation_impl(UnicodeScalars, [], nil).
+
+tokenized_with_punctuation_impl([], Tokens, CurrentToken) -> 
+    case CurrentToken of
+        nil ->
+            Tokens;
+        _ ->
+            Tokens ++ [CurrentToken]
+    end;
+tokenized_with_punctuation_impl([CodePoint | RestUnicodeScalars], Tokens, CurrentToken) ->
+    IsPuncuation = is_punctuation(CodePoint),
+    {UpdatedTokens, UpdatedCurrentToken} = 
+        case {IsPuncuation, CurrentToken} of
+            {true, nil} ->
+                {Tokens ++ [CodePoint], nil};
+            {true, _} ->
+                {Tokens ++ [CurrentToken, CodePoint], nil};
+            {false, nil} ->
+                {Tokens, [CodePoint]};
+            {false, _} ->
+                {Tokens, CurrentToken ++ [CodePoint]}
+        end,
+    tokenized_with_punctuation_impl(RestUnicodeScalars, UpdatedTokens, UpdatedCurrentToken).
+
+is_punctuation(CodePoint) ->
+    IsASCII = is_ascii(CodePoint),
+    IsAlphaNumeric = is_alphanumeric(CodePoint),
+    NonAlphaNumericASCII = IsASCII andalso (CodePoint > 32) andalso (not IsAlphaNumeric),
+    if 
+        NonAlphaNumericASCII ->
+            true;
+        true ->
+            lists:member(CodePoint, punctuation_list())
+    end.
+
 is_whilespace(CodePoint) ->
     lists:member(CodePoint, whitespace_list()).
 
@@ -94,6 +152,32 @@ is_format(CodePoint) ->
 
 should_be_removed_for_bert(CodePoint) ->
     ((CodePoint == 0) or (CodePoint == 16#FFFD)).
+
+punctuation_list() ->
+    tflite_beam_private_utils_unicode_data:get_puncuation_list_from_unicode_data(unicode_data_file()).
+
+unicode_data_file() ->
+    case code:priv_dir(?APPNAME) of
+        {error, bad_name} ->
+            case filelib:is_dir(filename:join(["..", priv])) of
+                true ->
+                    filename:join(["..", priv, ?UNICODE_DATA_FILENAME]);
+                _ ->
+                    filename:join([priv, ?UNICODE_DATA_FILENAME])
+            end;
+        Dir ->
+            filename:join(Dir, ?UNICODE_DATA_FILENAME)
+    end.
+
+-spec is_ascii(integer()) -> boolean().
+is_ascii(CodePoint) ->
+    (CodePoint >= 0) and (CodePoint =< 127).
+
+-spec is_alphanumeric(integer()) -> boolean().
+is_alphanumeric(CodePoint) ->
+    ((CodePoint >= 16#0041) andalso (CodePoint =< 16#005A)) orelse 
+    ((CodePoint >= 16#0061) andalso (CodePoint =< 16#007A)) orelse
+    ((CodePoint >= 49) andalso (CodePoint =< 58)).
 
 format_list() ->
     [

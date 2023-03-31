@@ -324,6 +324,7 @@ defmodule TFLiteBEAM.MixProject do
         cc_toolchain
         scripts
         patches
+        unicodedata
         CMakeLists.txt
         Makefile
         .gitmodules

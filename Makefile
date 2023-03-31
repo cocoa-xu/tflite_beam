@@ -9,6 +9,8 @@ TFLITE_BEAM_ONLY_COPY_PRIV ?= "NO"
 SCRIPTS_DIR = $(shell pwd)/scripts
 C_SRC = $(shell pwd)/c_src
 LIB_SRC = $(shell pwd)/lib
+UNICODEDATA = $(shell pwd)/unicodedata
+UNICODE_DATA = $(PRIV_DIR)/unicode_data.txt
 ifdef CMAKE_TOOLCHAIN_FILE
 	CMAKE_CONFIGURE_FLAGS=-D CMAKE_TOOLCHAIN_FILE="$(CMAKE_TOOLCHAIN_FILE)"
 endif
@@ -115,7 +117,12 @@ libusb: create_cache_dir
 		fi \
 	fi
 
-$(NATIVE_BINDINGS_SO): unarchive_source_code install_libedgetpu_runtime libusb
+$(UNICODE_DATA):
+	@ if [ ! -e "$(UNICODE_DATA)" ]; then \
+		cp -f "$(UNICODEDATA)/unicode_data.txt" "$(UNICODE_DATA)" ; \
+	fi
+
+$(NATIVE_BINDINGS_SO): $(UNICODE_DATA) unarchive_source_code install_libedgetpu_runtime libusb
 	@ if [ "$(TFLITE_BEAM_ONLY_COPY_PRIV)" = "NO" ]; then \
 		if [ ! -e "$(NATIVE_BINDINGS_SO)" ]; then \
 			echo "CORAL SUPPORT: $(TFLITE_BEAM_CORAL_SUPPORT)" ; \
