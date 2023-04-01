@@ -81,6 +81,11 @@ defmodule TFLiteBEAM.Interpreter.Test do
     assert 179 == Interpreter.tensors_size(interpreter)
   end
 
+  test "tensors_size/1 with invalid interpreter" do
+    {:error, reason} = Interpreter.tensors_size(make_ref())
+    assert "cannot access NifResInterpreter resource" == reason
+  end
+
   test "nodes_size/1" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     interpreter = Interpreter.new!(filename)
@@ -88,11 +93,21 @@ defmodule TFLiteBEAM.Interpreter.Test do
     assert 65 == Interpreter.nodes_size(interpreter)
   end
 
+  test "nodes_size/1 with invalid interpreter" do
+    {:error, reason} = Interpreter.nodes_size(make_ref())
+    assert "cannot access NifResInterpreter resource" == reason
+  end
+
   test "execution_plan/1" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     interpreter = Interpreter.new!(filename)
 
     assert Enum.to_list(0..64) == Interpreter.execution_plan(interpreter)
+  end
+
+  test "execution_plan/1 with invalid interpreter" do
+    {:error, reason} = Interpreter.execution_plan(make_ref())
+    assert "cannot access NifResInterpreter resource" == reason
   end
 
   test "tensor/2" do
@@ -128,6 +143,11 @@ defmodule TFLiteBEAM.Interpreter.Test do
     assert [] == Interpreter.signature_keys(interpreter)
   end
 
+  test "signature_keys/1 with invalid interpreter" do
+    {:error, reason} = Interpreter.signature_keys(make_ref())
+    assert "cannot access NifResInterpreter resource" == reason
+  end
+
   test "allocate_tensors/1" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     interpreter = Interpreter.new!(filename)
@@ -142,6 +162,8 @@ defmodule TFLiteBEAM.Interpreter.Test do
 
     assert :ok == Interpreter.allocate_tensors(interpreter)
     assert :ok == Interpreter.input_tensor!(interpreter, 0, input_data)
+
+    assert :ok == :tflite_beam_interpreter.input_tensor(interpreter, 0, input_data)
   end
 
   test "invoke/1" do
@@ -214,6 +236,34 @@ defmodule TFLiteBEAM.Interpreter.Test do
     assert expected_out == Nx.to_binary(output_data)
   end
 
+  test ":tflite_beam_interpreter.predict/2" do
+    filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
+    input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
+    expected_out = Path.join([__DIR__, "test_data", "parrot-expected-out.bin"]) |> File.read!()
+    interpreter = Interpreter.new!(filename)
+
+    [output_data] = :tflite_beam_interpreter.predict(interpreter, input_data)
+    assert expected_out == output_data
+
+    [output_data] = :tflite_beam_interpreter.predict(interpreter, [input_data])
+    assert expected_out == output_data
+
+    [output_data] = :tflite_beam_interpreter.predict(interpreter, %{"map/TensorArrayStack/TensorArrayGatherV3" => input_data})
+    assert expected_out == output_data
+
+    error = :tflite_beam_interpreter.predict(interpreter, ["", ""])
+
+    assert {:error,
+            "length mismatch: there are 1 input tensors while the input list has 2 elements"} ==
+             error
+
+    error = :tflite_beam_interpreter.predict(interpreter, %{"A" => input_data})
+
+    assert {:error,
+            "missing input data for tensor `map/TensorArrayStack/TensorArrayGatherV3`, tensor index: 0"} ==
+             error
+  end
+
   test "output_tensor/2" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
@@ -226,13 +276,31 @@ defmodule TFLiteBEAM.Interpreter.Test do
 
     output_data = Interpreter.output_tensor!(interpreter, 0)
     assert expected_out == output_data
+
+    {:ok, output_data} = :tflite_beam_interpreter.output_tensor(interpreter, 0)
+    assert expected_out == output_data
   end
 
   test "TFLiteBEAM.Interpreter.new(model_path)" do
     model_path = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     _interpreter = TFLiteBEAM.Interpreter.new!(model_path)
 
-    {:error, reason} = TFLiteBEAM.Interpreter.new("/dev/null")
+    filename = Path.join([__DIR__, "test_data", "cat.jpeg"])
+    {:error, reason} = TFLiteBEAM.Interpreter.new(filename)
+    assert reason == "cannot get flatbuffer model"
+  end
+
+  test ":tflite_beam_interpreter.new(model_path)" do
+    model_path = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
+    {:ok, _interpreter} = :tflite_beam_interpreter.new(String.to_charlist(model_path))
+  end
+
+  test "TFLiteBEAM.Interpreter.new_from_buffer(buffer)" do
+    model_path = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
+    {:ok, _interpreter} = TFLiteBEAM.Interpreter.new_from_buffer(File.read!(model_path))
+
+    filename = Path.join([__DIR__, "test_data", "cat.jpeg"])
+    {:error, reason} = TFLiteBEAM.Interpreter.new_from_buffer(File.read!(filename))
     assert reason == "cannot get flatbuffer model"
   end
 end

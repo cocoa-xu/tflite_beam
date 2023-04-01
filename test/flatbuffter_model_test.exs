@@ -9,13 +9,20 @@ defmodule TFLiteBEAM.FlatBufferModel.Test do
   alias TFLiteBEAM.TFLiteTensor
   alias TFLiteBEAM.TFLiteQuantizationParams
 
-  test "buildFromFile/1" do
+  test "build_from_file/1" do
     filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
     input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
     expected_out = Path.join([__DIR__, "test_data", "parrot-expected-out.bin"]) |> File.read!()
     %FlatBufferModel{} = model = FlatBufferModel.build_from_file(filename)
 
     assert :ok == verify_loaded_model(model, input_data, expected_out, true)
+  end
+
+  test ":tflite_beam_flatbuffer_model.build_from_file/1" do
+    filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
+    model = :tflite_beam_flatbuffer_model.build_from_file(String.to_charlist(filename))
+
+    assert :tflite_beam_flatbuffer_model == elem(model, 0)
   end
 
   test "buildFromFile/2" do
@@ -30,6 +37,14 @@ defmodule TFLiteBEAM.FlatBufferModel.Test do
       )
 
     assert :ok == verify_loaded_model(model, input_data, expected_out, true)
+  end
+
+  test ":tflite_beam_flatbuffer_model.build_from_file/2" do
+    filename = Path.join([__DIR__, "test_data", "mobilenet_v2_1.0_224_inat_bird_quant.tflite"])
+    model = :tflite_beam_flatbuffer_model.build_from_file(String.to_charlist(filename),
+      error_reporter: ErrorReporter.default_error_reporter().ref)
+
+    assert :tflite_beam_flatbuffer_model == elem(model, 0)
   end
 
   test "buildFromFile!/2" do
@@ -51,6 +66,11 @@ defmodule TFLiteBEAM.FlatBufferModel.Test do
     input_data = Path.join([__DIR__, "test_data", "parrot.bin"]) |> File.read!()
     expected_out = Path.join([__DIR__, "test_data", "parrot-expected-out.bin"]) |> File.read!()
 
+    model = :tflite_beam_flatbuffer_model.verify_and_build_from_file(String.to_charlist(filename),
+        error_reporter: ErrorReporter.default_error_reporter().ref
+      )
+    assert :tflite_beam_flatbuffer_model == elem(model, 0)
+
     %FlatBufferModel{} =
       model =
       FlatBufferModel.verify_and_build_from_file(filename,
@@ -66,6 +86,13 @@ defmodule TFLiteBEAM.FlatBufferModel.Test do
     error =
       FlatBufferModel.verify_and_build_from_file(filename,
         error_reporter: ErrorReporter.default_error_reporter()
+      )
+
+    assert :invalid == error
+
+    error =
+      :tflite_beam_flatbuffer_model.verify_and_build_from_file(String.to_charlist(filename),
+        error_reporter: ErrorReporter.default_error_reporter().ref
       )
 
     assert :invalid == error
