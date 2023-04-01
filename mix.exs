@@ -75,7 +75,7 @@ defmodule TFLiteBEAM.MixProject do
       source_url: @github_url,
       description: description(),
       package: package(),
-      test_coverage: [ignore_modules: [TFLiteBEAM.Nif, TFLiteBEAM.Coral], tool: ExCoveralls],
+      test_coverage: [ignore_modules: [:tflite_beam_nif, TFLiteBEAM.Coral], tool: ExCoveralls],
       preferred_cli_env: [
         coveralls: :test,
         "coveralls.detail": :test,
