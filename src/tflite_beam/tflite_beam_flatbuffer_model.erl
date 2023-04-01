@@ -26,7 +26,7 @@
 %% then this function will always have return type `{error, binary()}'.
 -spec build_from_file(list() | binary()) -> #tflite_beam_flatbuffer_model{} | {error, binary()}.
 build_from_file(Filename) when is_list(Filename) ->
-    build_from_file(unicode:iolist_to_binary(Filename), []);
+    build_from_file(unicode:characters_to_binary(Filename), []);
 build_from_file(Filename) when is_binary(Filename) ->
     build_from_file(Filename, []).
 
@@ -42,7 +42,7 @@ build_from_file(Filename) when is_binary(Filename) ->
 %% then this function will always have return type `{error, binary()}'.
 -spec build_from_file(list() | binary(), list()) -> #tflite_beam_flatbuffer_model{} | {error, binary()}.
 build_from_file(Filename, Opts) when is_list(Filename), is_list(Opts) ->
-    build_from_file(unicode:iolist_to_binary(Filename), Opts);
+    build_from_file(unicode:characters_to_binary(Filename), Opts);
 build_from_file(Filename, Opts) when is_binary(Filename), is_list(Opts) ->
     ErrorReporter = case proplists:get_value(error_reporter, Opts, nil) of
         #tflite_beam_error_reporter{ref = ErrorReporterRef} ->
@@ -70,7 +70,7 @@ build_from_file(Filename, Opts) when is_binary(Filename), is_list(Opts) ->
 %% @return `invalid` in case of failure.
 -spec verify_and_build_from_file(list() | binary()) -> #tflite_beam_flatbuffer_model{} | {error, binary()}.
 verify_and_build_from_file(Filename) when is_list(Filename) ->
-    verify_and_build_from_file(unicode:iolist_to_binary(Filename), []);
+    verify_and_build_from_file(unicode:characters_to_binary(Filename), []);
 verify_and_build_from_file(Filename) when is_binary(Filename) ->
     verify_and_build_from_file(Filename, []).
 
@@ -86,7 +86,7 @@ verify_and_build_from_file(Filename) when is_binary(Filename) ->
 %% @return `invalid` in case of failure.
 -spec verify_and_build_from_file(list() | binary(), list()) -> #tflite_beam_flatbuffer_model{} | invalid | {error, binary()}.
 verify_and_build_from_file(Filename, Opts) when is_list(Filename), is_list(Opts) ->
-    verify_and_build_from_file(unicode:iolist_to_binary(Filename), Opts);
+    verify_and_build_from_file(unicode:characters_to_binary(Filename), Opts);
 verify_and_build_from_file(Filename, Opts) when is_binary(Filename), is_list(Opts) ->
     ErrorReporter = case proplists:get_value(error_reporter, Opts, nil) of
         #tflite_beam_error_reporter{ref = ErrorReporterRef} ->
@@ -194,7 +194,7 @@ list_associated_files(Buffer) when is_binary(Buffer) ->
                 fun(Entry) ->
                     case Entry of
                         {zip_file, Filename, _, _, _, _} ->
-                            {true, erlang:iolist_to_binary(Filename)};
+                            {true, unicode:characters_to_binary(Filename)};
                         _ ->
                             false
                     end
@@ -206,7 +206,7 @@ list_associated_files(Buffer) when is_binary(Buffer) ->
 
 %% @doc Get associated file(s) from a FlatBuffer model
 %% TODO: support `list(list())' as `Filename', accepts a list of Erlang strings
--spec get_associated_file(binary, list(binary()) | binary()) -> map() | binary() | {error, binary()}.
+-spec get_associated_file(binary(), list(binary()) | binary()) -> map() | binary() | {error, binary()}.
 get_associated_file(Buffer, Filename) when is_binary(Buffer) and (is_binary(Filename) or is_list(Filename)) ->
     case list_associated_files(Buffer) of
         AssociatedFiles when is_list(AssociatedFiles) ->
@@ -223,7 +223,8 @@ get_associated_file(Buffer, Filename) when is_binary(Buffer) and (is_binary(File
                                             Reason = io_lib:format("cannot find associated file `~s`", [F]),
                                             {F, {error, unicode:characters_to_binary(Reason)}}
                                     end
-                                end
+                                end,
+                                Filename
                             ),
                             map:from_list(MapItems);
                         false ->

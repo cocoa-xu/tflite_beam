@@ -166,6 +166,6 @@ map_type(Atom) when is_atom(Atom) ->
     if Valid ->
         Atom;
     true ->
-        Reason = io:format("Invalid type `~p`", [Atom]),
-        {error, unicode:iolist_to_binary(Reason)}
+        Reason = io_lib:format("Invalid type `~p`", [Atom]),
+        {error, unicode:characters_to_binary(Reason)}
     end.
