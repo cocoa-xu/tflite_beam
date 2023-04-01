@@ -21,8 +21,8 @@ NifResBuiltinOpResolver * NifResBuiltinOpResolver::allocate_resource(ErlNifEnv *
 }
 
 NifResBuiltinOpResolver * NifResBuiltinOpResolver::get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error) {
-    NifResBuiltinOpResolver * self_res;
-    if (!enif_get_resource(env, term, NifResBuiltinOpResolver::type, (void **)&self_res) || self_res->val == nullptr) {
+    NifResBuiltinOpResolver * self_res = nullptr;
+    if (!enif_get_resource(env, term, NifResBuiltinOpResolver::type, (void **)&self_res) || self_res == nullptr || self_res->val == nullptr) {
         error = erlang::nif::error(env, "cannot access NifResBuiltinOpResolver resource");
     }
     return self_res;
@@ -52,8 +52,8 @@ NifResErrorReporter * NifResErrorReporter::allocate_resource(ErlNifEnv * env, ER
 }
 
 NifResErrorReporter * NifResErrorReporter::get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error) {
-    NifResErrorReporter * self_res;
-    if (!enif_get_resource(env, term, NifResErrorReporter::type, (void **)&self_res) || self_res->val == nullptr) {
+    NifResErrorReporter * self_res = nullptr;
+    if (!enif_get_resource(env, term, NifResErrorReporter::type, (void **)&self_res) || self_res == nullptr || self_res->val == nullptr) {
         error = erlang::nif::error(env, "cannot access NifResErrorReporter resource");
     }
     return self_res;
@@ -87,8 +87,8 @@ NifResFlatBufferModel * NifResFlatBufferModel::allocate_resource(ErlNifEnv * env
 }
 
 NifResFlatBufferModel * NifResFlatBufferModel::get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error) {
-    NifResFlatBufferModel * self_res;
-    if (!enif_get_resource(env, term, NifResFlatBufferModel::type, (void **)&self_res) || self_res->val == nullptr) {
+    NifResFlatBufferModel * self_res = nullptr;
+    if (!enif_get_resource(env, term, NifResFlatBufferModel::type, (void **)&self_res) || self_res == nullptr || self_res->val == nullptr) {
         error = erlang::nif::error(env, "cannot access NifResFlatBufferModel resource");
     }
     return self_res;
@@ -125,8 +125,8 @@ NifResInterpreterBuilder * NifResInterpreterBuilder::allocate_resource(ErlNifEnv
 }
 
 NifResInterpreterBuilder * NifResInterpreterBuilder::get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error) {
-    NifResInterpreterBuilder * self_res;
-    if (!enif_get_resource(env, term, NifResInterpreterBuilder::type, (void **)&self_res) || self_res->val == nullptr) {
+    NifResInterpreterBuilder * self_res = nullptr;
+    if (!enif_get_resource(env, term, NifResInterpreterBuilder::type, (void **)&self_res) || self_res == nullptr || self_res->val == nullptr) {
         error = erlang::nif::error(env, "cannot access NifResInterpreterBuilder resource");
     }
     return self_res;
@@ -187,8 +187,8 @@ NifResInterpreter * NifResInterpreter::allocate_resource(ErlNifEnv * env, ERL_NI
 }
 
 NifResInterpreter * NifResInterpreter::get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error) {
-    NifResInterpreter * self_res;
-    if (!enif_get_resource(env, term, NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
+    NifResInterpreter * self_res = nullptr;
+    if (!enif_get_resource(env, term, NifResInterpreter::type, (void **)&self_res) || self_res == nullptr || self_res->val == nullptr) {
         error = erlang::nif::error(env, "cannot access NifResInterpreter resource");
     }
     return self_res;
@@ -245,8 +245,8 @@ NifResTfLiteTensor * NifResTfLiteTensor::allocate_resource(ErlNifEnv * env, ERL_
 }
 
 NifResTfLiteTensor * NifResTfLiteTensor::get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error) {
-    NifResTfLiteTensor * self_res;
-    if (!enif_get_resource(env, term, NifResTfLiteTensor::type, (void **)&self_res) || self_res->val == nullptr) {
+    NifResTfLiteTensor * self_res = nullptr;
+    if (!enif_get_resource(env, term, NifResTfLiteTensor::type, (void **)&self_res) || self_res == nullptr || self_res->val == nullptr) {
         error = erlang::nif::error(env, "cannot access NifResTfLiteTensor resource");
         return self_res;
     }
@@ -284,8 +284,8 @@ NifResEdgeTpuContext * NifResEdgeTpuContext::allocate_resource(ErlNifEnv * env, 
 }
 
 NifResEdgeTpuContext * NifResEdgeTpuContext::get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error) {
-    NifResEdgeTpuContext * self_res;
-    if (!enif_get_resource(env, term, NifResEdgeTpuContext::type, (void **)&self_res) || self_res->val == nullptr) {
+    NifResEdgeTpuContext * self_res = nullptr;
+    if (!enif_get_resource(env, term, NifResEdgeTpuContext::type, (void **)&self_res) || self_res == nullptr || self_res->val == nullptr) {
         error = erlang::nif::error(env, "cannot access NifResEdgeTpuContext resource");
     }
     return self_res;
