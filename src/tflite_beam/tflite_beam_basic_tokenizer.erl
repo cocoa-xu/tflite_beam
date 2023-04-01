@@ -1,10 +1,12 @@
 %% @moduledoc
 %% Runs basic tokenization such as punctuation spliting, lower casing.
+%%
+%% Related link: https://github.com/tensorflow/examples/blob/master/lite/examples/bert_qa/ios/BertQACore/Models/Tokenizers/BasicTokenizer.swift
 
 -module(tflite_beam_basic_tokenizer).
 -export([
     tokenize/2,
-    punctuation_list/0
+    split_by_whitespace/1
 ]).
 
 -define(APPNAME, tflite_beam).

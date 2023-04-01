@@ -1,4 +1,4 @@
-defmodule TFLiteBEAM.BasicTokenizer do
+defmodule TFLiteBEAM.Tokenizer.BasicTokenizer do
   @moduledoc """
   Runs basic tokenization such as punctuation spliting, lower casing.
   """
