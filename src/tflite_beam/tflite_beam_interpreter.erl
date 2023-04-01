@@ -38,7 +38,7 @@ new() ->
 %% @doc New interpreter with model filepath
 -spec new(list() | binary()) -> {ok, reference()} | {error, binary()}.
 new(ModelPath) when is_list(ModelPath) ->
-    new(unicode:iolist_to_binary(ModelPath));
+    new(unicode:characters_to_binary(ModelPath));
 new(ModelPath) when is_binary(ModelPath) ->
     case tflite_beam_flatbuffer_model:build_from_file(ModelPath) of
         #tflite_beam_flatbuffer_model{ref = Model} ->
@@ -301,6 +301,8 @@ predict(Self, Input) when is_reference(Self) and (is_binary(Input) or is_list(In
             {error, Reason}
     end.
 
+fill_input(Self, InputTensors, Input) when is_reference(Self) and is_list(InputTensors) and is_binary(Input) ->
+    fill_input(Self, InputTensors, [Input]);
 fill_input(Self, InputTensors, Input) when is_reference(Self) and is_list(InputTensors) and is_list(Input) ->
     if length(InputTensors) == length(Input) ->
         FillResults = lists:zipwith(
@@ -316,19 +318,15 @@ fill_input(Self, InputTensors, Input) when is_reference(Self) and is_list(InputT
             end,
             FillResults
         ),
-        if AllFilled ->
-            ok;
-        true ->
-            lists:filter(
-                fun(R) ->
-                    R == ok
-                end,
-                FillResults
-            )
+        if 
+            AllFilled ->
+                ok;
+            true ->
+                not_ok_to_reason(FillResults)
         end;
     true ->
-        Reason = io:format("length mismatch: there are ~w input tensors while the input list has ~w elements", [length(InputTensors), length(Input)]),
-        {error, unicode:iolist_to_binary(Reason)}
+        Reason = io_lib:format("length mismatch: there are ~w input tensors while the input list has ~w elements", [length(InputTensors), length(Input)]),
+        {error, unicode:characters_to_binary(Reason)}
     end;
 fill_input(Self, InputTensorIndex, InputData) when is_reference(Self) and is_integer(InputTensorIndex) and is_binary(InputData) ->
     case tflite_beam_interpreter:tensor(Self, InputTensorIndex) of
@@ -343,31 +341,21 @@ fill_input(Self, InputTensors, InputMap) when is_reference(Self) and is_list(Inp
             case tflite_beam_interpreter:tensor(Self, InputTensorIndex) of
                 #tflite_beam_tensor{name = Name} = Tensor ->
                     HasInput = maps:is_key(Name, InputMap),
-                    if HasInput ->
-                        InputData = maps:get(Name, InputMap),
-                        tflite_beam_tensor:set_data(Tensor, InputData);
-                    true ->
-                        Reason = io:format("missing input data for tensor `~ts`, tensor index: ~w", [Name, InputTensorIndex]),
-                        unicode:iolist_to_binary(Reason)
+                    if 
+                        HasInput ->
+                            InputData = maps:get(Name, InputMap),
+                            tflite_beam_tensor:set_data(Tensor, InputData);
+                        true ->
+                            Reason = io_lib:format("missing input data for tensor `~ts`, tensor index: ~w", [Name, InputTensorIndex]),
+                            unicode:characters_to_binary(Reason)
                     end;
                 {error, Reason} ->
-                    {error, Reason}
+                    Reason
             end
         end,
         InputTensors
     ),
-    Filtered = lists:filter(
-        fun(R) ->
-            R == ok
-        end,
-        FillResults
-    ),
-    case Filtered of
-        [] -> 
-            ok;
-        _ ->
-            {error, binary:join(<< "; " >>, Filtered)}
-    end.
+    not_ok_to_reason(FillResults).
 
 fetch_output(Self, OutputTensors) when is_reference(Self) and is_list(OutputTensors) ->
     lists:map(
@@ -379,7 +367,22 @@ fetch_output(Self, OutputTensors) when is_reference(Self) and is_list(OutputTens
 fetch_output(Self, OutputTensorIndex) when is_reference(Self) and is_integer(OutputTensorIndex) ->
     case tflite_beam_interpreter:tensor(Self, OutputTensorIndex) of
         #tflite_beam_tensor{} = Tensor ->
-            Tensor;
+            tflite_beam_tensor:to_binary(Tensor);
         {error, Reason} ->
             {error, Reason}
+    end.
+
+not_ok_to_reason(Results) when is_list(Results) ->
+    Filtered = lists:filter(
+        fun(R) ->
+            not (R == ok)
+        end,
+        Results
+    ),
+    case Filtered of
+        [] -> 
+            ok;
+        _ ->
+            Reason = lists:foldl(fun(R, Acc) -> <<Acc/binary, <<"; ">>/binary, R/binary>> end, <<"">>, Filtered),
+            {error, binary:part(Reason, {2, byte_size(Reason) - 2})}
     end.

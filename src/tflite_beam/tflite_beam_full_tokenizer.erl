@@ -33,7 +33,7 @@ convert_to_id(Tokens, Vocab) ->
                     true ->
                         maps:get(Token, Vocab);
                     false ->
-                        Reason = io:format("Cannot found token `~ts` in the given vocabulary map", [Token]),
+                        Reason = io_lib:format("Cannot found token `~ts` in the given vocabulary map", [Token]),
                         unicode:characters_to_binary(Reason)
                 end
             end,
@@ -48,7 +48,8 @@ convert_to_id(Tokens, Vocab) ->
         ),
     if 
         length(FilteredResults) > 0 ->
-            {error, binary:join(";  \n", FilteredResults)};
+            Reason = lists:foldl(fun(R, Acc) -> <<Acc/binary, <<"; ">>/binary, R/binary>> end, <<"">>, FilteredResults),
+            {error, binary:part(Reason, {2, byte_size(Reason) - 2})};
         true ->
             {ok, MappedResults}
     end.
