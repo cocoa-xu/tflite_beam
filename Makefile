@@ -68,6 +68,9 @@ MAKE_BUILD_FLAGS ?= auto
 
 build: $(NATIVE_BINDINGS_SO) fix_libusb
 
+$(PRIV_DIR):
+	@ mkdir -p "$(PRIV_DIR)"
+
 create_cache_dir:
 	@ mkdir -p "$(TFLITE_BEAM_CACHE_DIR)"
 
@@ -117,7 +120,7 @@ libusb: create_cache_dir
 		fi \
 	fi
 
-$(UNICODE_DATA):
+$(UNICODE_DATA): $(PRIV_DIR)
 	@ if [ ! -e "$(UNICODE_DATA)" ]; then \
 		cp -f "$(UNICODEDATA)/unicode_data.txt" "$(UNICODE_DATA)" ; \
 	fi
