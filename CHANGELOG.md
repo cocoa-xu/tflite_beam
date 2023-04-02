@@ -1,7 +1,19 @@
 # Changelog
 
+## v0.3.0 (2022-04-02)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.3.0) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.3.0)
+
+### Breaking Change
+- This repo will now be the TensorFlow Lite Erlang bindings. For Elixir bindings, please visit [cocoa-xu/tflite_beam](https://github.com/cocoa-xu/tflite_beam).
+
+### Fixed
+- [erlang] Generate correct error message from a list of errors.
+- [c_src] Initialize resource pointers with `nullptr`.
+- Implemented tokenizers for MobileBERT (#57) by @cocoa-xu.
+- [make] Ensure priv dir exist.
+
 ## v0.2.1 (2022-04-02)
-[Browse the Repository](https://github.com/cocoa-xu/tflite_elixir/tree/v0.2.1) | [Released Assets](https://github.com/cocoa-xu/tflite_elixir/releases/tag/v0.2.1)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.2.1) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.2.1)
 
 ### Changed
 - [deps] Use TensorFlow Lite version 2.11.1.
@@ -13,7 +25,7 @@
 - [make] Ensure priv dir exist.
 
 ## v0.2.0 (2022-03-30)
-[Browse the Repository](https://github.com/cocoa-xu/tflite_elixir/tree/v0.2.0) | [Released Assets](https://github.com/cocoa-xu/tflite_elixir/releases/tag/v0.2.0)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.2.0) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.2.0)
 
 ### Breaking Changes
 - Renamed root namespace from `TFLiteElixir` to `TFLiteBEAM`
@@ -55,7 +67,7 @@
   ```
 
 ## v0.1.7 (2022-03-22)
-[Browse the Repository](https://github.com/cocoa-xu/tflite_elixir/tree/v0.1.7) | [Released Assets](https://github.com/cocoa-xu/tflite_elixir/releases/tag/v0.1.7)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.1.7) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.1.7)
 
 ### Breaking Changes
 - Deprecated `TFLiteElixir.Interpreter.allocate_tensors!/1`
@@ -132,16 +144,16 @@
 - [example] object detection example (#40) by @mnishiguchi
 
 ## v0.1.6 (2022-03-19)
-[Browse the Repository](https://github.com/cocoa-xu/tflite_elixir/tree/v0.1.6) | [Released Assets](https://github.com/cocoa-xu/tflite_elixir/releases/tag/v0.1.6)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.1.6) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.1.6)
 
 ### Fixed
-- [edgetpu] Improved edgetpu context handling, and bumped libedgetpu_runtime_version to v0.1.5. Fixed [#30](https://github.com/cocoa-xu/tflite_elixir/issues/30)
+- [edgetpu] Improved edgetpu context handling, and bumped libedgetpu_runtime_version to v0.1.5. Fixed [#30](https://github.com/cocoa-xu/tflite_beam/issues/30)
 
 ### Added
 - [example] artistic-style-transfer example (#27) @mnishiguchi
 
 ## v0.1.5 (2022-03-18)
-[Browse the Repository](https://github.com/cocoa-xu/tflite_elixir/tree/v0.1.5) | [Released Assets](https://github.com/cocoa-xu/tflite_elixir/releases/tag/v0.1.5)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.1.5) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.1.5)
 
 ### Breaking Changes
 - Deprecated functions:
@@ -173,7 +185,7 @@
 - `TFLiteElixir.FlatBufferModel.verify_and_build_from_file/2`
 
 ## v0.1.4 (2022-03-14)
-[Browse the Repository](https://github.com/cocoa-xu/tflite_elixir/tree/v0.1.4) | [Released Assets](https://github.com/cocoa-xu/tflite_elixir/releases/tag/v0.1.4)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.1.4) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.1.4)
 
 ### Breaking Changes
 - Snake case functions (#21) @mnishiguchi
@@ -196,12 +208,12 @@
 - Simple workaround for cortex-a53 and cortex-a57, `vcvtaq_s32_f32`.
 
 ## v0.1.3 (2022-03-09)
-[Browse the Repository](https://github.com/cocoa-xu/tflite_elixir/tree/v0.1.3) | [Released Assets](https://github.com/cocoa-xu/tflite_elixir/releases/tag/v0.1.3)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.1.3) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.1.3)
 
 ### Changes
 - Bump TFLite version to [v2.11.0](https://github.com/tensorflow/tensorflow/tree/v2.11.0).
 
 ## v0.1.2 (2022-03-08)
-[Browse the Repository](https://github.com/cocoa-xu/tflite_elixir/tree/v0.1.2) | [Released Assets](https://github.com/cocoa-xu/tflite_elixir/releases/tag/v0.1.2)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.1.2) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.1.2)
 
 First release on hex.pm.
