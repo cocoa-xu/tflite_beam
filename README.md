@@ -1,6 +1,6 @@
-# TFLite-Elixir
+# TFLiteBEAM
 
-TensorFlow Lite-Elixir binding with TPU support.
+TensorFlow Lite BEAM bindings with optional EdgeTPU support.
 
 [![Coverage Status](https://coveralls.io/repos/github/cocoa-xu/tflite_beam/badge.svg?branch=main)](https://coveralls.io/github/cocoa-xu/tflite_beam?branch=main)
 
