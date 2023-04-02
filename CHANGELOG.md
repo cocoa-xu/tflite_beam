@@ -1,10 +1,25 @@
 # Changelog
 
+## v0.3.2 (2022-04-03)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.3.2) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.3.2)
+
+### Fixed
+- [precompiled-nerves] Guess correct `TARGET_ARCH` from `TARGET_CPU`.
+
+## v0.3.1 (2022-04-03)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.3.1) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.3.1)
+
+### Fixed
+- [deps] Use libedgetpu v0.1.6.
+
+### Changed
+- [examples] Examples moved to [cocoa-xu/tflite_elixir](https://github.com/cocoa-xu/tflite_elixir).
+
 ## v0.3.0 (2022-04-02)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.3.0) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.3.0)
 
 ### Breaking Change
-- This repo will now be the TensorFlow Lite Erlang bindings. For Elixir bindings, please visit [cocoa-xu/tflite_beam](https://github.com/cocoa-xu/tflite_beam).
+- This repo will now be the TensorFlow Lite Erlang bindings. For Elixir bindings, please visit [cocoa-xu/tflite_elixir](https://github.com/cocoa-xu/tflite_elixir).
 
 ### Fixed
 - [erlang] Generate correct error message from a list of errors.

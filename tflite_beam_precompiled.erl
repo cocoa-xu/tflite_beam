@@ -89,9 +89,28 @@ get_target() ->
             end
     end,
     ARCH = maybe_override_by_env("TARGET_ARCH", G_ARCH),
+    CPU = maybe_override_by_env("TARGET_CPU", ""),
+    FinalARCH = 
+        case ARCH of
+            "arm" ->
+                case CPU of 
+                    "arm1176jzf_s" ->
+                        "armv6";
+                    _ ->
+                        IsCortex = string:substr(CPU, 1, 7) =:= "cortex_",
+                        if 
+                            IsCortex ->
+                                "armv7l";
+                            true ->
+                                ARCH
+                        end
+                end;
+            _ ->
+                ARCH
+        end,
     OS = maybe_override_by_env("TARGET_OS", G_OS),
     ABI = maybe_override_by_env("TARGET_ABI", G_ABI),
-    TRIPLET = io_lib:fwrite("~s-~s-~s", [ARCH, OS, ABI]),
+    TRIPLET = io_lib:fwrite("~s-~s-~s", [FinalARCH, OS, ABI]),
     TRIPLET.
 
 get_nif_version() ->
