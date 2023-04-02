@@ -1,4 +1,4 @@
-%% @moduledoc
+%% @doc
 %% Runs end-to-end tokenization.
 %%
 %% Related link: https://github.com/tensorflow/examples/blob/master/lite/examples/bert_qa/ios/BertQACore/Models/Tokenizers/FullTokenizer.swift

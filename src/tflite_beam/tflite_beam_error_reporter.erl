@@ -1,4 +1,4 @@
-%% @moduledoc
+%% @doc
 %% ErrorReporter to provide reporting destinations.
 
 -module(tflite_beam_error_reporter).

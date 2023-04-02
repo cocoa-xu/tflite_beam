@@ -1,4 +1,4 @@
-%% @moduledoc
+%% @doc
 %% An interpreter for a graph of nodes that input and output from tensors.
 
 -module(tflite_beam_interpreter).

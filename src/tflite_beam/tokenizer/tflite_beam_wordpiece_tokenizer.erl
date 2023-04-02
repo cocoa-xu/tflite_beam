@@ -1,4 +1,4 @@
-%% @moduledoc
+%% @doc
 %% Runs WordPiece tokenziation.
 
 -module(tflite_beam_wordpiece_tokenizer).

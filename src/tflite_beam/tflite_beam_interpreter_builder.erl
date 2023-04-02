@@ -1,4 +1,4 @@
-%% @moduledoc
+%% @doc
 %% Build an interpreter capable of interpreting model.
 
 -module(tflite_beam_interpreter_builder).

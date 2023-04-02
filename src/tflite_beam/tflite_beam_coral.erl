@@ -1,4 +1,4 @@
-%% @moduledoc
+%% @doc
 %% This module contains libcoral C++ API, which provides
 %% convenient functions to perform inferencing and on-device transfer learning
 %% with TensorFlow Lite models on [Coral devices](https://coral.ai/products/).

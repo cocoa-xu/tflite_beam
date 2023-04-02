@@ -1,4 +1,4 @@
-%% @moduledoc
+%% @doc
 %% An RAII object that represents a read-only tflite model, copied from disk, or
 %% mmapped.
 
@@ -67,7 +67,7 @@ build_from_file(Filename, Opts) when is_binary(Filename), is_list(Opts) ->
 %% ==== Positional Parameters ====
 %% @param Filename Path to the .tflite file.
 %%
-%% @return `invalid` in case of failure.
+%% @return `invalid' in case of failure.
 -spec verify_and_build_from_file(list() | binary()) -> #tflite_beam_flatbuffer_model{} | {error, binary()}.
 verify_and_build_from_file(Filename) when is_list(Filename) ->
     verify_and_build_from_file(unicode:characters_to_binary(Filename), []);
@@ -83,7 +83,7 @@ verify_and_build_from_file(Filename) when is_binary(Filename) ->
 %% ==== Keyword Parameters ====
 %% @param error_reporter Error reporter.
 %%
-%% @return `invalid` in case of failure.
+%% @return `invalid' in case of failure.
 -spec verify_and_build_from_file(list() | binary(), list()) -> #tflite_beam_flatbuffer_model{} | invalid | {error, binary()}.
 verify_and_build_from_file(Filename, Opts) when is_list(Filename), is_list(Opts) ->
     verify_and_build_from_file(unicode:characters_to_binary(Filename), Opts);

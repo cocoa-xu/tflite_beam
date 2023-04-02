@@ -1,4 +1,4 @@
-%% @moduledoc
+%% @doc
 %% This built-in op resolver provides a list of TfLite delegates that could be
 %% applied by TfLite interpreter by default.
 

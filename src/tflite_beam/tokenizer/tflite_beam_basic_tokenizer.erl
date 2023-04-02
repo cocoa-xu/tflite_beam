@@ -1,4 +1,4 @@
-%% @moduledoc
+%% @doc
 %% Runs basic tokenization such as punctuation spliting, lower casing.
 %%
 %% Related link: https://github.com/tensorflow/examples/blob/master/lite/examples/bert_qa/ios/BertQACore/Models/Tokenizers/BasicTokenizer.swift

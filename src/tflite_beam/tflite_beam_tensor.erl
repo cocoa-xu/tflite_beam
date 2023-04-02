@@ -1,4 +1,4 @@
-%% @moduledoc
+%% @doc
 %% A typed multi-dimensional array used in Tensorflow Lite.
 
 -module(tflite_beam_tensor).
