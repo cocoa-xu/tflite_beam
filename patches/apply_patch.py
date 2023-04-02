@@ -10,8 +10,9 @@ else:
 
 
 def patch_fix_RoundToNearest(tf_version: str, tf_src_root: str):
-    if tf_version not in ['2.11.0']:
+    if tf_version not in ['2.11.0', '2.11.1']:
         print(f"warning: skip applying `patch_fix_RoundToNearest` to tf version `{tf_version}`")
+        return
 
     # kernels/internal/optimized/neon_tensor_utils.cc
     neon_tensor_utils_cc = Path(tf_src_root) / 'kernels' / 'internal' / 'optimized' / 'neon_tensor_utils.cc'

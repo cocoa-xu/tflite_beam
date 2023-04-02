@@ -4,11 +4,11 @@ defmodule TFLiteBEAM.MixProject do
 
   @app :tflite_beam
   @version "0.2.1"
-  @tflite_version "2.11.0"
+  @tflite_version "2.11.1"
   @prefer_precompiled "YES"
   @github_url "https://github.com/cocoa-xu/tflite_beam"
   @libedgetpu_runtime_github_url "https://github.com/cocoa-xu/libedgetpu"
-  @libedgetpu_runtime_version "0.1.5"
+  @libedgetpu_runtime_version "0.1.6"
   # only means compatible. need to write more tests
   @compatible_tflite_versions [
     "2.7.0",
@@ -24,7 +24,8 @@ defmodule TFLiteBEAM.MixProject do
     "2.9.3",
     "2.10.0",
     "2.10.1",
-    "2.11.0"
+    "2.11.0",
+    "2.11.1"
   ]
 
   @precompiled_triplets %{
