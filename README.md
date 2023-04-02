@@ -26,31 +26,31 @@ brew install autoconf automake
 For some Linux OSes you need to manually execute the following command to update udev rules, otherwise, libedgetpu will fail to initialize Coral devices.
 
 ```shell
-bash "3rd_party/cache/${TFLITE_ELIXIR_CORAL_LIBEDGETPU_RUNTIME}/edgetpu_runtime/install.sh"
+bash "3rd_party/cache/${TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME}/edgetpu_runtime/install.sh"
 ```
 
 ### Compile-Time Environment Variable
-- `TFLITE_ELIXIR_PREFER_PRECOMPILED`
+- `TFLITE_BEAM_PREFER_PRECOMPILED`
 
-  Use precompiled binaries when `TFLITE_ELIXIR_PREFER_PRECOMPILED` is `true`. Otherwise, this library will compile from source.
+  Use precompiled binaries when `TFLITE_BEAM_PREFER_PRECOMPILED` is `true`. Otherwise, this library will compile from source.
 
   Defaults to `true`.
 
-- `TFLITE_ELIXIR_CORAL_SUPPORT`
+- `TFLITE_BEAM_CORAL_SUPPORT`
 
   Enable Coral Support.
 
   Defaults to `true`.
 
-- `TFLITE_ELIXIR_CORAL_USB_THROTTLE`
+- `TFLITE_BEAM_CORAL_USB_THROTTLE`
 
   Throttling USB Coral Devices. Please see the official warning here, [google-coral/libedgetpu](https://github.com/google-coral/libedgetpu#warning).
 
   Defaults to `true`.
 
-  Note that only when `TFLITE_ELIXIR_CORAL_USB_THROTTLE` is set to `NO`, `:tflite_beam` will use the non-throttled libedgetpu libraries.
+  Note that only when `TFLITE_BEAM_CORAL_USB_THROTTLE` is set to `NO`, `:tflite_beam` will use the non-throttled libedgetpu libraries.
 
-- `TFLITE_ELIXIR_CORAL_LIBEDGETPU_LIBRARIES`
+- `TFLITE_BEAM_CORAL_LIBEDGETPU_LIBRARIES`
 
   Choose which ones of the libedgetpu libraries to copy to the `priv` directory of the `:tflite_beam` app.
 
