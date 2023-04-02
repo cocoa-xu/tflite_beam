@@ -30,8 +30,8 @@ jobs:
   rebar3_compile:
     runs-on: macos-11
     env:
-      TFLITE_BEAM_CORAL_SUPPORT: "YES"
-      TFLITE_BEAM_PREFER_PRECOMPILED: NO
+      TFLITE_BEAM_CORAL_SUPPORT: "true"
+      TFLITE_BEAM_PREFER_PRECOMPILED: "false"
 
     steps:
       - uses: actions/checkout@v3
