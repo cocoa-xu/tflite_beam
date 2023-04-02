@@ -12,6 +12,7 @@ TFLITE_BEAM_CORAL_LIBEDGETPU_URL ?= "native"
 SCRIPTS_DIR = $(shell pwd)/scripts
 C_SRC = $(shell pwd)/c_src
 LIB_SRC = $(shell pwd)/lib
+LIBCORAL_SRC = $(shell pwd)/c_src/libcoral
 PRECOMPILED_ERL_HELPER = $(shell pwd)/tflite_beam_precompiled.erl
 UNICODEDATA = $(shell pwd)/unicodedata
 UNICODE_DATA = $(PRIV_DIR)/unicode_data.txt
@@ -109,10 +110,11 @@ install_libedgetpu_runtime:
 	@ if [ "$(TFLITE_BEAM_CORAL_SUPPORT)" = "true" ]; then \
 		bash scripts/copy_libedgetpu_runtime.sh "$(LIBEDGETPU_RUNTIME_PRIV)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_UNZIPPED_DIR)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_TRIPLET)" "$(TFLITE_BEAM_CORAL_USB_THROTTLE)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_URL)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME)" "$(TFLITE_BEAM_CACHE_DIR)" "$(TFLITE_BEAM_COMPILE_WITH_REBAR)" && \
 		if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true" ]; then \
-			if [ ! -e "c_src/libcoral" ]; then \
-				git clone --depth 1 https://github.com/cocoa-xu/libcoral.git c_src/libcoral ; \
+			if [ ! -e "$(LIBCORAL_SRC)/Makefile" ]; then \
+				rm -rf "$(LIBCORAL_SRC)" && \
+				git clone --depth 1 https://github.com/cocoa-xu/libcoral.git "$(LIBCORAL_SRC)" ; \
 			fi && \
-			cd c_src/libcoral && git submodule update --init libedgetpu && cd ../.. ; \
+			cd "$(LIBCORAL_SRC)" && git submodule update --init libedgetpu && cd ../.. ; \
 		fi \
 	fi
 
