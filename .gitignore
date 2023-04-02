@@ -32,3 +32,4 @@ tflite_beam-*.tar
 # The directory rebar3 will write compiled artifacts to.
 priv/
 cmake_tflite_beam/
+tflite_beam_precompiled.beam

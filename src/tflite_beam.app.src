@@ -11,7 +11,6 @@
 
   {licenses, ["Apache-2.0"]},
   {links, [{"GitHub", "https://github.com/cocoa-xu/tflite_beam"}]},
-  {exclude_paths, ["mix.exs", "mix.lock", ".formatter.exs"]},
   {doc, "doc"}
  ]
 }.
