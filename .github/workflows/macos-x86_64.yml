@@ -42,9 +42,12 @@ jobs:
           brew install elixir
           mix local.hex --force
           mix local.rebar --force
+          wget https://s3.amazonaws.com/rebar3/rebar3 && chmod +x rebar3
+          ./rebar3 local install
           brew install autoconf automake
 
       - name: Compile
         run: |
+          export PATH="~/.cache/rebar3/bin:$PATH"
           rebar3 deps
           rebar3 compile
