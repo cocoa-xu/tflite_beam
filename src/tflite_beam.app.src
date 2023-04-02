@@ -27,7 +27,8 @@
     "src",
     "README*",
     "LICENSE*",
-    "rebar.config"
+    "rebar.config",
+    "tflite_beam_precompiled.erl"
   ]},
   {exclude_paths, [
     "priv",

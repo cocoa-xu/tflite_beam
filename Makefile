@@ -109,7 +109,9 @@ install_libedgetpu_runtime:
 	@ if [ "$(TFLITE_BEAM_CORAL_SUPPORT)" = "true" ]; then \
 		bash scripts/copy_libedgetpu_runtime.sh "$(LIBEDGETPU_RUNTIME_PRIV)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_UNZIPPED_DIR)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_TRIPLET)" "$(TFLITE_BEAM_CORAL_USB_THROTTLE)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_URL)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME)" "$(TFLITE_BEAM_CACHE_DIR)" "$(TFLITE_BEAM_COMPILE_WITH_REBAR)" && \
 		if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true" ]; then \
-			git clone --depth 1 https://github.com/cocoa-xu/libcoral.git c_src/libcoral && \
+			if [ ! -e "c_src/libcoral" ]; then \
+				git clone --depth 1 https://github.com/cocoa-xu/libcoral.git c_src/libcoral ; \
+			fi && \
 			cd c_src/libcoral && git submodule update --init libedgetpu && cd ../.. ; \
 		fi \
 	fi
@@ -142,8 +144,12 @@ $(NATIVE_BINDINGS_SO): $(UNICODE_DATA) unarchive_source_code install_libedgetpu_
 		echo "CORAL SUPPORT: $(TFLITE_BEAM_CORAL_SUPPORT)" ; \
 		echo "LIBEDGETPU runtime: $(TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME)" ; \
 		echo "Throttle USB Coral Devices: $(TFLITE_BEAM_CORAL_USB_THROTTLE)" ; \
-		git clone --depth 1 https://github.com/gflags/gflags.git 3rd_party/gflags && \
-		git clone --depth 1 https://github.com/google/glog.git 3rd_party/glog && \
+		if [ ! -e "3rd_party/gflags" ]; then \
+			git clone --depth 1 https://github.com/gflags/gflags.git 3rd_party/gflags ; \
+		fi && \
+		if [ ! -e "3rd_party/glog" ]; then \
+			git clone --depth 1 https://github.com/google/glog.git 3rd_party/glog ; \
+		fi && \
 		mkdir -p $(CMAKE_BINDINGS_BUILD_DIR) && \
 		python3 "$(shell pwd)/patches/apply_patch.py" "$(TFLITE_ROOT_DIR)" "$(TFLITE_VER)" && \
 		cd "$(CMAKE_BINDINGS_BUILD_DIR)" && \
