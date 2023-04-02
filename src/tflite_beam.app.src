@@ -11,6 +11,29 @@
 
   {licenses, ["Apache-2.0"]},
   {links, [{"GitHub", "https://github.com/cocoa-xu/tflite_beam"}]},
+  {include_paths, [
+    "c_src/*.h",
+    "c_src/*.cpp",
+    "c_src/*.hpp",
+    "c_src/coral",
+    "c_src/tflite",
+    "cc_toolchain",
+    "scripts",
+    "patches",
+    "unicodedata",
+    "CMakeLists.txt",
+    "Makefile",
+    ".gitmodules",
+    "src",
+    "README*",
+    "LICENSE*",
+    "rebar.config"
+  ]},
+  {exclude_paths, [
+    "priv",
+    "c_src/libcoral",
+    "c_src/metadata_schema.fbs"
+  ]},
   {doc, "doc"}
  ]
 }.

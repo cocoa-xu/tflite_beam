@@ -12,6 +12,7 @@ TFLITE_BEAM_CORAL_LIBEDGETPU_URL ?= "native"
 SCRIPTS_DIR = $(shell pwd)/scripts
 C_SRC = $(shell pwd)/c_src
 LIB_SRC = $(shell pwd)/lib
+PRECOMPILED_ERL_HELPER = $(shell pwd)/tflite_beam_precompiled.erl
 UNICODEDATA = $(shell pwd)/unicodedata
 UNICODE_DATA = $(PRIV_DIR)/unicode_data.txt
 ifdef CMAKE_TOOLCHAIN_FILE
@@ -131,7 +132,8 @@ $(UNICODE_DATA): $(PRIV_DIR)
 $(NATIVE_BINDINGS_SO): $(UNICODE_DATA) unarchive_source_code install_libedgetpu_runtime libusb
 	@ if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" = "true" ] && [ "$(TFLITE_BEAM_COMPILE_WITH_REBAR)" = "true" ]; then \
 		{ \
-			erlc tflite_beam_precompiled.erl && \
+			cd "$(shell pwd)" && \
+			erlc "$(PRECOMPILED_ERL_HELPER)" && \
 			erl -noshell -s tflite_beam_precompiled install_precompiled_binary_if_available -s init stop ; } || \
 		{ \
 			$(TFLITE_BEAM_MAKE) TFLITE_BEAM_PREFER_PRECOMPILED=false TFLITE_BEAM_COMPILE_WITH_REBAR=true ; } ; \
