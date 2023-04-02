@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.2.1 (2022-04-02)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_elixir/tree/v0.2.1) | [Released Assets](https://github.com/cocoa-xu/tflite_elixir/releases/tag/v0.2.1)
+
+### Fixed
+- [erlang] Generate correct error message from a list of errors.
+- [c_src] Initialize resource pointers with `nullptr`.
+- Implemented tokenizers for MobileBERT (#57) by @cocoa-xu.
+- [make] Ensure priv dir exist.
+
+
 ## v0.2.0 (2022-03-30)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_elixir/tree/v0.2.0) | [Released Assets](https://github.com/cocoa-xu/tflite_elixir/releases/tag/v0.2.0)
 

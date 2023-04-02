@@ -19,7 +19,7 @@ A general workflow looks like this,
 ```elixir
 # will download and install precompiled version
 Mix.install([
-  {:tflite_beam, "~> 0.2.0"}
+  {:tflite_beam, "~> 0.2.1"}
 ])
 
 # parrot.jpeg and the tflite file can be found in the test/test_data directory

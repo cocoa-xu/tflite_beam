@@ -3,7 +3,7 @@ defmodule TFLiteBEAM.MixProject do
   require Logger
 
   @app :tflite_beam
-  @version "0.2.0"
+  @version "0.2.1"
   @tflite_version "2.11.0"
   @prefer_precompiled "YES"
   @github_url "https://github.com/cocoa-xu/tflite_beam"
