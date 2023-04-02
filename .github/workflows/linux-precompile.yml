@@ -89,7 +89,7 @@ jobs:
             export TFLITE_BEAM_CORAL_LIBEDGETPU_LIBRARIES="${{ matrix.pair.libedgetpu_library }}"
           fi
 
-          export TFLITE_BEAM_PREFER_PRECOMPILED="NO"
+          export TFLITE_BEAM_PREFER_PRECOMPILED="false"
 
           echo "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}"
           echo "TFLITE_BEAM_CORAL_LIBEDGETPU_LIBRARIES: ${TFLITE_BEAM_CORAL_LIBEDGETPU_LIBRARIES}"

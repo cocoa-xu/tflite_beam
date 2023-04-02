@@ -15,7 +15,7 @@ jobs:
   precompile:
     runs-on: macos-11
     env:
-      TFLITE_BEAM_PREFER_PRECOMPILED: "NO"
+      TFLITE_BEAM_PREFER_PRECOMPILED: "false"
 
     strategy:
       fail-fast: false

@@ -106,7 +106,7 @@ unarchive_source_code: $(TFLITE_SOURCE_ZIP)
 install_libedgetpu_runtime:
 	@ if [ "$(TFLITE_BEAM_CORAL_SUPPORT)" = "true" ]; then \
 		bash scripts/copy_libedgetpu_runtime.sh "$(LIBEDGETPU_RUNTIME_PRIV)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_UNZIPPED_DIR)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_TRIPLET)" "$(TFLITE_BEAM_CORAL_USB_THROTTLE)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_URL)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME)" "$(TFLITE_BEAM_CACHE_DIR)" "$(TFLITE_BEAM_COMPILE_WITH_REBAR)" && \
-		if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" = "NO" ]; then \
+		if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true" ]; then \
 			git submodule update --init c_src/libcoral && \
 			cd c_src/libcoral && git submodule update --init libedgetpu && cd ../.. ; \
 		fi \
