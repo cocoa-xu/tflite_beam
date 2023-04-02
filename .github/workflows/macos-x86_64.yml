@@ -27,15 +27,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  mix_test:
+  rebar3_compile:
     runs-on: macos-11
     env:
-      MIX_ENV: test
       TFLITE_BEAM_CORAL_SUPPORT: "YES"
       TFLITE_BEAM_PREFER_PRECOMPILED: NO
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       
       - name: Install Erlang and Elixir
         run: |
@@ -45,7 +44,7 @@ jobs:
           mix local.rebar --force
           brew install autoconf automake
 
-      - name: Compile and Test
+      - name: Compile
         run: |
-          mix deps.get
-          mix test
+          rebar3 deps
+          rebar3 compile

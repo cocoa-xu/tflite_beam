@@ -15,7 +15,6 @@ jobs:
   precompile:
     runs-on: macos-11
     env:
-      MIX_ENV: prod
       TFLITE_BEAM_PREFER_PRECOMPILED: "NO"
 
     strategy:
@@ -55,11 +54,11 @@ jobs:
           echo "TARGET_OS: ${TARGET_OS}"
           echo "TARGET_ABI: ${TARGET_ABI}"
 
-          mix deps.get
-          mix compile
+          rebar3 deps
+          rebar3 compile
           export PKG_NAME=tflite_beam-nif-${NIF_VERSION}-${{ matrix.pair.arch }}-apple-darwin-${GITHUB_REF##*/}
           mkdir -p "${PKG_NAME}"
-          cp -a _build/${MIX_ENV}/lib/tflite_beam/priv "${PKG_NAME}"
+          cp -a ./priv "${PKG_NAME}"
           tar -czf "${PKG_NAME}.tar.gz" "${PKG_NAME}"
           rm -rf "${PKG_NAME}"
           mkdir -p artifacts

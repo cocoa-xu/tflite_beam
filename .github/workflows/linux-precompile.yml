@@ -15,7 +15,6 @@ jobs:
   precompile:
     runs-on: ubuntu-20.04
     env:
-      MIX_ENV: prod
       TFLITE_BEAM_PREFER_PRECOMPILED: NO
 
     strategy:
@@ -71,7 +70,6 @@ jobs:
       - uses: erlef/setup-beam@v1
         with:
           otp-version: "25.3"
-          elixir-version: "1.14.3"
 
       - name: Install system dependecies
         run: |
@@ -102,11 +100,11 @@ jobs:
           echo "TARGET_OS: ${TARGET_OS}"
           echo "TARGET_ABI: ${TARGET_ABI}"
 
-          mix deps.get
-          mix compile
+          rebar3 deps
+          rebar3 compile
           export PKG_NAME=tflite_beam-nif-${NIF_VERSION}-${{ matrix.pair.arch_name }}-${{ matrix.pair.target_os }}-${{ matrix.pair.target_abi }}-${GITHUB_REF##*/}
           mkdir -p "${PKG_NAME}"
-          cp -a _build/${MIX_ENV}/lib/tflite_beam/priv "${PKG_NAME}"
+          cp -a ./priv "${PKG_NAME}"
           tar -czf "${PKG_NAME}.tar.gz" "${PKG_NAME}"
           rm -rf "${PKG_NAME}"
           ls -lah "${PKG_NAME}.tar.gz"
