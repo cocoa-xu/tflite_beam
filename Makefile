@@ -146,10 +146,12 @@ $(NATIVE_BINDINGS_SO): $(UNICODE_DATA) unarchive_source_code install_libedgetpu_
 		echo "CORAL SUPPORT: $(TFLITE_BEAM_CORAL_SUPPORT)" ; \
 		echo "LIBEDGETPU runtime: $(TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME)" ; \
 		echo "Throttle USB Coral Devices: $(TFLITE_BEAM_CORAL_USB_THROTTLE)" ; \
-		if [ ! -e "3rd_party/gflags" ]; then \
+		if [ ! -e "3rd_party/gflags/CMakeLists.txt" ]; then \
+			rm -rf 3rd_party/gflags && \
 			git clone --depth 1 https://github.com/gflags/gflags.git 3rd_party/gflags ; \
 		fi && \
-		if [ ! -e "3rd_party/glog" ]; then \
+		if [ ! -e "3rd_party/glog/CMakeLists.txt" ]; then \
+			rm -rf 3rd_party/glog && \
 			git clone --depth 1 https://github.com/google/glog.git 3rd_party/glog ; \
 		fi && \
 		mkdir -p $(CMAKE_BINDINGS_BUILD_DIR) && \
