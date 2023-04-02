@@ -15,8 +15,7 @@ jobs:
   precompile:
     runs-on: macos-11
     env:
-      MIX_ENV: prod
-      TFLITE_BEAM_PREFER_PRECOMPILED: "NO"
+      TFLITE_BEAM_PREFER_PRECOMPILED: "false"
 
     strategy:
       fail-fast: false
@@ -37,9 +36,13 @@ jobs:
           brew install elixir erlang autoconf automake
           mix local.hex --force
           mix local.rebar --force
+          wget https://s3.amazonaws.com/rebar3/rebar3 && chmod +x rebar3
+          ./rebar3 local install
 
       - name: Create precompiled library
         run: |
+          export PATH="~/.cache/rebar3/bin:$PATH"
+
           export NIF_VERSION="$(erl -noshell -s init stop -eval "io:format('~ts', [erlang:system_info(nif_version)]).")"
           if [ "${{ matrix.pair.arch }}" = "aarch64" ]; then
             export TARGET_ARCH="${{ matrix.pair.arch }}"
@@ -55,11 +58,11 @@ jobs:
           echo "TARGET_OS: ${TARGET_OS}"
           echo "TARGET_ABI: ${TARGET_ABI}"
 
-          mix deps.get
-          mix compile
+          rebar3 deps
+          rebar3 compile
           export PKG_NAME=tflite_beam-nif-${NIF_VERSION}-${{ matrix.pair.arch }}-apple-darwin-${GITHUB_REF##*/}
           mkdir -p "${PKG_NAME}"
-          cp -a _build/${MIX_ENV}/lib/tflite_beam/priv "${PKG_NAME}"
+          cp -a ./priv "${PKG_NAME}"
           tar -czf "${PKG_NAME}.tar.gz" "${PKG_NAME}"
           rm -rf "${PKG_NAME}"
           mkdir -p artifacts

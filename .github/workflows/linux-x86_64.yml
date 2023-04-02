@@ -29,13 +29,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  mix_test:
+  rebar3_compile:
     runs-on: ubuntu-20.04
     env:
-      MIX_ENV: test
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      TFLITE_BEAM_CORAL_SUPPORT: "YES"
-      TFLITE_BEAM_PREFER_PRECOMPILED: NO
+      TFLITE_BEAM_CORAL_SUPPORT: "true"
+      TFLITE_BEAM_PREFER_PRECOMPILED: "false"
 
     steps:
       - uses: actions/checkout@v3
@@ -43,7 +42,6 @@ jobs:
       - uses: erlef/setup-beam@v1
         with:
           otp-version: "25.3"
-          elixir-version: "1.14.3"
 
       - name: Install system dependecies
         run: |
@@ -52,5 +50,5 @@ jobs:
 
       - name: Compile and Test
         run: |
-          mix deps.get
-          mix coveralls.github
+          rebar3 deps
+          rebar3 compile

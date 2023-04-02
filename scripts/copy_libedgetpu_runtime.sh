@@ -51,7 +51,7 @@ get_libedgetpu_triplet() {
       x86_64-Darwin*)
         echo "x86_64-apple-darwin"
       ;;
-      *-linux*)
+      *-Linux*)
         # check libc type
         ABI="gnu"
 
@@ -125,7 +125,7 @@ download_libedgetpu && unarchive_libedgetpu
 
 mkdir -p "${LIBEDGETPU_RUNTIME_PRIV}"
 LIBEDGETPU_TFLITE_BEAM_CORAL_USB_THROTTLE="throttled"
-if [ "${TFLITE_BEAM_CORAL_USB_THROTTLE}" = "NO" ]; then
+if [ "${TFLITE_BEAM_CORAL_USB_THROTTLE}" = "false" ]; then
   LIBEDGETPU_TFLITE_BEAM_CORAL_USB_THROTTLE="direct"
 fi
 

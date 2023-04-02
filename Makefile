@@ -5,7 +5,10 @@ endif
 PRIV_DIR = $(MIX_APP_PATH)/priv
 NATIVE_BINDINGS_SO = $(PRIV_DIR)/tflite_beam.so
 LIBEDGETPU_RUNTIME_PRIV = $(PRIV_DIR)/libedgetpu
-TFLITE_BEAM_ONLY_COPY_PRIV ?= "NO"
+TFLITE_BEAM_CORAL_SUPPORT ?= "true"
+TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME ?= "native"
+TFLITE_BEAM_PREFER_PRECOMPILED ?= "true"
+TFLITE_BEAM_CORAL_LIBEDGETPU_URL ?= "native"
 SCRIPTS_DIR = $(shell pwd)/scripts
 C_SRC = $(shell pwd)/c_src
 LIB_SRC = $(shell pwd)/lib
@@ -18,7 +21,7 @@ endif
 # Tensorflow
 TFLITE_USE_GIT_HEAD ?= false
 TFLITE_GIT_REPO ?= "https://github.com/tensorflow/tensorflow.git"
-TFLITE_VER ?= 2.11.0
+TFLITE_VER ?= 2.11.1
 TFLITE_VER_V = v$(TFLITE_VER)
 ifneq ($(TFLITE_USE_GIT_HEAD), false)
 	TFLITE_VER_V=$(TFLITE_USE_GIT_BRANCH)
@@ -51,7 +54,7 @@ ifeq ($(TARGET_OS),linux)
 LIBUSB_SHARED_LIBRARY = $(PRIV_DIR)/libedgetpu/libusb-1.0.so.0.3.0
 endif
 
-TFLITE_BEAM_CORAL_USB_THROTTLE ?= YES
+TFLITE_BEAM_CORAL_USB_THROTTLE ?= true
 TFLITE_BEAM_CORAL_LIBEDGETPU_TRIPLET ?= native
 TFLITE_BEAM_CORAL_LIBEDGETPU_UNZIPPED_DIR = $(TFLITE_BEAM_CACHE_DIR)/$(TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME)
 
@@ -75,7 +78,7 @@ create_cache_dir:
 	@ mkdir -p "$(TFLITE_BEAM_CACHE_DIR)"
 
 $(TFLITE_SOURCE_ZIP): create_cache_dir
-	@ if [ "$(TFLITE_BEAM_ONLY_COPY_PRIV)" = "NO" ]; then \
+	@ if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true" ]; then \
 		if [ "$(TFLITE_USE_GIT_HEAD)" = "false" ] && [ ! -e "$(TFLITE_SOURCE_ZIP)" ]; then \
 			if [ -e "$(shell which curl)" ]; then \
 				curl -fSL "$(TFLITE_SOURCE_URL)" -o $(TFLITE_SOURCE_ZIP) ; \
@@ -89,7 +92,7 @@ $(TFLITE_SOURCE_ZIP): create_cache_dir
 	fi
 
 unarchive_source_code: $(TFLITE_SOURCE_ZIP)
-	@ if [ "$(TFLITE_BEAM_ONLY_COPY_PRIV)" = "NO" ]; then \
+	@ if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true" ]; then \
    		if [ ! -d "$(TENSORFLOW_ROOT_DIR)" ]; then \
 			rm -rf "$(TENSORFLOW_ROOT_DIR)" ; \
 			mkdir -p "$(UNZIP_TARGET_DIR)" ; \
@@ -102,17 +105,17 @@ unarchive_source_code: $(TFLITE_SOURCE_ZIP)
 	fi
 
 install_libedgetpu_runtime:
-	@ if [ "$(TFLITE_BEAM_ONLY_COPY_PRIV)" = "NO" ]; then \
-   		if [ "$(TFLITE_BEAM_CORAL_SUPPORT)" = "YES" ]; then \
-			bash scripts/copy_libedgetpu_runtime.sh "$(LIBEDGETPU_RUNTIME_PRIV)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_UNZIPPED_DIR)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_TRIPLET)" "$(TFLITE_BEAM_CORAL_USB_THROTTLE)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_URL)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME)" "$(TFLITE_BEAM_CACHE_DIR)" "$(TFLITE_BEAM_COMPILE_WITH_REBAR)" && \
+	@ if [ "$(TFLITE_BEAM_CORAL_SUPPORT)" = "true" ]; then \
+		bash scripts/copy_libedgetpu_runtime.sh "$(LIBEDGETPU_RUNTIME_PRIV)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_UNZIPPED_DIR)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_TRIPLET)" "$(TFLITE_BEAM_CORAL_USB_THROTTLE)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_URL)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME)" "$(TFLITE_BEAM_CACHE_DIR)" "$(TFLITE_BEAM_COMPILE_WITH_REBAR)" && \
+		if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true" ]; then \
 			git submodule update --init c_src/libcoral && \
 			cd c_src/libcoral && git submodule update --init libedgetpu && cd ../.. ; \
 		fi \
 	fi
 
 libusb: create_cache_dir
-	@ if [ "$(TFLITE_BEAM_ONLY_COPY_PRIV)" = "NO" ]; then \
-		if [ "$(TFLITE_BEAM_CORAL_SUPPORT)" = "YES" ]; then \
+	@ if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true" ]; then \
+		if [ "$(TFLITE_BEAM_CORAL_SUPPORT)" = "true" ]; then \
 			if [ ! -e "$(LIBUSB_SHARED_LIBRARY)" ]; then \
 				bash scripts/build_libusb.sh "$(LIBUSB_SOURCE_URL)" "$(LIBUSB_SOURCE_ARCHIVE)" "$(THIRD_PARTY_DIR)" "$(LIBUSB_SOURCE_DIR)" "$(LIBUSB_INSTALL_DIR)" "$(PRIV_DIR)" "$(LIBUSB_CONFIGURE_AC)" ; \
 			fi && \
@@ -126,44 +129,44 @@ $(UNICODE_DATA): $(PRIV_DIR)
 	fi
 
 $(NATIVE_BINDINGS_SO): $(UNICODE_DATA) unarchive_source_code install_libedgetpu_runtime libusb
-	@ if [ "$(TFLITE_BEAM_ONLY_COPY_PRIV)" = "NO" ]; then \
-		if [ ! -e "$(NATIVE_BINDINGS_SO)" ]; then \
-			echo "CORAL SUPPORT: $(TFLITE_BEAM_CORAL_SUPPORT)" ; \
-			echo "LIBEDGETPU runtime: $(TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME)" ; \
-			echo "Throttle USB Coral Devices: $(TFLITE_BEAM_CORAL_USB_THROTTLE)" ; \
-			git submodule update --init 3rd_party/gflags && \
-			git submodule update --init 3rd_party/glog && \
-			mkdir -p $(CMAKE_BINDINGS_BUILD_DIR) && \
-			python3 "$(shell pwd)/patches/apply_patch.py" "$(TFLITE_ROOT_DIR)" "$(TFLITE_VER)" && \
-			cd "$(CMAKE_BINDINGS_BUILD_DIR)" && \
-			cmake -D C_SRC="$(C_SRC)" \
-			  -D PRIV_DIR="$(PRIV_DIR)" \
-			  -D ERTS_INCLUDE_DIR="$(ERTS_INCLUDE_DIR)" \
-			  -D TFLITE_ROOT_DIR="$(TFLITE_ROOT_DIR)" \
-			  -D GFLAGS_ROOT_DIR="$(GFLAGS_ROOT_DIR)" \
-			  -D GLOG_ROOT_DIR="$(GLOG_ROOT_DIR)" \
-			  -D TFLITE_BEAM_CORAL_SUPPORT="$(TFLITE_BEAM_CORAL_SUPPORT)" \
-			  -D LIBUSB_INSTALL_DIR="$(LIBUSB_INSTALL_DIR)" \
-			  -D MIX_APP_PATH="$(MIX_APP_PATH)" \
-			  $(CMAKE_OPTIONS) \
-			  "$(shell pwd)" && \
-			if [ "$(MAKE_BUILD_FLAGS)" = "auto" ]; then \
-				if [ "$(UNAME_S)" = Darwin ]; then \
-					make "-j$(shell sysctl -n hw.ncpu)" ; \
-				else \
-					make "-j$(shell nproc)" ; \
-				fi; \
+	@ if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" = "true" ] && [ "$(TFLITE_BEAM_COMPILE_WITH_REBAR)" = "true" ]; then \
+		{ \
+			erlc tflite_beam_precompiled.erl && \
+			erl -noshell -s tflite_beam_precompiled install_precompiled_binary_if_available -s init stop ; } || \
+		{ \
+			$(TFLITE_BEAM_MAKE) TFLITE_BEAM_PREFER_PRECOMPILED=false TFLITE_BEAM_COMPILE_WITH_REBAR=true ; } ; \
+	fi && \
+	if [ ! -e "$(NATIVE_BINDINGS_SO)" ]; then \
+		echo "CORAL SUPPORT: $(TFLITE_BEAM_CORAL_SUPPORT)" ; \
+		echo "LIBEDGETPU runtime: $(TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME)" ; \
+		echo "Throttle USB Coral Devices: $(TFLITE_BEAM_CORAL_USB_THROTTLE)" ; \
+		git submodule update --init 3rd_party/gflags && \
+		git submodule update --init 3rd_party/glog && \
+		mkdir -p $(CMAKE_BINDINGS_BUILD_DIR) && \
+		python3 "$(shell pwd)/patches/apply_patch.py" "$(TFLITE_ROOT_DIR)" "$(TFLITE_VER)" && \
+		cd "$(CMAKE_BINDINGS_BUILD_DIR)" && \
+		cmake -D C_SRC="$(C_SRC)" \
+			-D PRIV_DIR="$(PRIV_DIR)" \
+			-D ERTS_INCLUDE_DIR="$(ERTS_INCLUDE_DIR)" \
+			-D TFLITE_ROOT_DIR="$(TFLITE_ROOT_DIR)" \
+			-D GFLAGS_ROOT_DIR="$(GFLAGS_ROOT_DIR)" \
+			-D GLOG_ROOT_DIR="$(GLOG_ROOT_DIR)" \
+			-D TFLITE_BEAM_CORAL_SUPPORT="$(TFLITE_BEAM_CORAL_SUPPORT)" \
+			-D LIBUSB_INSTALL_DIR="$(LIBUSB_INSTALL_DIR)" \
+			-D MIX_APP_PATH="$(MIX_APP_PATH)" \
+			$(CMAKE_OPTIONS) \
+			"$(shell pwd)" && \
+		if [ "$(MAKE_BUILD_FLAGS)" = "auto" ]; then \
+			if [ "$(UNAME_S)" = Darwin ]; then \
+				make "-j$(shell sysctl -n hw.ncpu)" ; \
 			else \
-				make "$(MAKE_BUILD_FLAGS)" ; \
-			fi && \
-			mkdir -p "$(PRIV_DIR)" && \
-			cp "$(CMAKE_BINDINGS_BUILD_DIR)/tflite_beam.so" "$(NATIVE_BINDINGS_SO)" ; \
-		fi ; \
-	else \
-		if [ ! -e "$(NATIVE_BINDINGS_SO)" ]; then \
-			rm -rf "$(PRIV_DIR)" ; \
-			cp -rf "$(TFLITE_BEAM_ONLY_COPY_PRIV)" "$(PRIV_DIR)" ; \
-		fi \
+				make "-j$(shell nproc)" ; \
+			fi; \
+		else \
+			make "$(MAKE_BUILD_FLAGS)" ; \
+		fi && \
+		mkdir -p "$(PRIV_DIR)" && \
+		cp "$(CMAKE_BINDINGS_BUILD_DIR)/tflite_beam.so" "$(NATIVE_BINDINGS_SO)" ; \
 	fi
 
 fix_libusb:
