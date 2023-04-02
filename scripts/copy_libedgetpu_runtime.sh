@@ -19,7 +19,7 @@ get_libedgetpu_triplet() {
         if [ "${TARGET_ARCH}" = "arm" ]; then
           case "${TARGET_CPU}" in
             arm1176jzf_s*)
-              echo "armv6l-${TARGET_OS}-${TARGET_ABI}"
+              echo "armv6-${TARGET_OS}-${TARGET_ABI}"
             ;;
             cortex*)
               echo "armv7l-${TARGET_OS}-${TARGET_ABI}"
