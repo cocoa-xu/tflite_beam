@@ -8,6 +8,7 @@ LIBEDGETPU_RUNTIME_PRIV = $(PRIV_DIR)/libedgetpu
 TFLITE_BEAM_CORAL_SUPPORT ?= "true"
 TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME ?= "native"
 TFLITE_BEAM_PREFER_PRECOMPILED ?= "true"
+TFLITE_BEAM_CORAL_LIBEDGETPU_URL ?= "native"
 SCRIPTS_DIR = $(shell pwd)/scripts
 C_SRC = $(shell pwd)/c_src
 LIB_SRC = $(shell pwd)/lib

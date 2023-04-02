@@ -51,7 +51,7 @@ get_libedgetpu_triplet() {
       x86_64-Darwin*)
         echo "x86_64-apple-darwin"
       ;;
-      *-linux*)
+      *-Linux*)
         # check libc type
         ABI="gnu"
 
