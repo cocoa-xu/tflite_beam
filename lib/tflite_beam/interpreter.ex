@@ -297,7 +297,7 @@ defmodule TFLiteBEAM.Interpreter do
 
   Map containing serving names to SignatureDefs if exists, otherwise, `nil`.
   """
-  @spec get_signature_defs(reference()) :: {:ok, Map.t()} | nil | {:error, String.t()}
+  @spec get_signature_defs(reference()) :: {:ok, map()} | nil | {:error, String.t()}
   def get_signature_defs(self) do
     :tflite_beam_interpreter.get_signature_defs(self)
   end
