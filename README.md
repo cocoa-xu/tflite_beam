@@ -79,7 +79,7 @@ by adding `tflite_beam` to your list of dependencies in `rebar.config`:
 
 ```elixir
 {deps, [
-  {:tflite_beam, "0.2.1"}
+  {:tflite_beam, "0.3.2"}
 ]}
 ```
 
