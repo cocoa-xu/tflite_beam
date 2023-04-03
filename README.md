@@ -77,9 +77,9 @@ bash "3rd_party/cache/${TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME}/edgetpu_runtime/in
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
 by adding `tflite_beam` to your list of dependencies in `rebar.config`:
 
-```elixir
+```erlang
 {deps, [
-  {:tflite_beam, "0.3.2"}
+  {tflite_beam, "0.3.2"}
 ]}
 ```
 
