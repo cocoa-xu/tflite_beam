@@ -20,6 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        otp: ["erlang@25", "erlang@26"]
         include:
           - pair:
               arch: x86_64
@@ -33,7 +34,7 @@ jobs:
 
       - name: Install Erlang and Elixir
         run: |
-          brew install elixir erlang autoconf automake
+          brew install elixir ${{ matrix.otp }} autoconf automake
           mix local.hex --force
           mix local.rebar --force
           wget https://s3.amazonaws.com/rebar3/rebar3 && chmod +x rebar3
