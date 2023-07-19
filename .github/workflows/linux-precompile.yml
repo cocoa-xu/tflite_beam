@@ -20,6 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        otp: ["25.x", "26.x"]
         include:
           - pair:
               arch_name: x86_64
@@ -69,7 +70,7 @@ jobs:
 
       - uses: erlef/setup-beam@v1
         with:
-          otp-version: "25.3"
+          otp-version: ${{ matrix.otp }}
 
       - name: Install system dependecies
         run: |
@@ -78,7 +79,7 @@ jobs:
 
       - name: Create precompiled library
         run: |
-          export NIF_VERSION="$(erl -noshell -s init stop -eval "io:format('~ts', [erlang:system_info(nif_version)]).")"
+          export NIF_VERSION="$(erl -noshell -eval "io:format('~ts', [erlang:system_info(nif_version)])." -s erlang halt)"
           if [ "${{ matrix.pair.cmake_toolchain_file }}" != "" ]; then
             export CMAKE_TOOLCHAIN_FILE="$(pwd)/${{ matrix.pair.cmake_toolchain_file }}"
             export CC="${{ matrix.pair.cc }}"
