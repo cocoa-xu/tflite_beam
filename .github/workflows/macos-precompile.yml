@@ -44,7 +44,7 @@ jobs:
         run: |
           export PATH="~/.cache/rebar3/bin:$PATH"
 
-          export NIF_VERSION="$(erl -noshell -s init stop -eval "io:format('~ts', [erlang:system_info(nif_version)]).")"
+          export NIF_VERSION="$(erl -noshell -eval "io:format('~ts', [erlang:system_info(nif_version)])." -s init stop)"
           if [ "${{ matrix.pair.arch }}" = "aarch64" ]; then
             export TARGET_ARCH="${{ matrix.pair.arch }}"
             export TARGET_OS="apple"
