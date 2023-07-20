@@ -9,7 +9,7 @@ TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME="$6"
 TFLITE_BEAM_CACHE_DIR="$7"
 TFLITE_BEAM_COMPILE_WITH_REBAR="$8"
 
-LIBEDGETPU_VERSION="0.1.6"
+LIBEDGETPU_VERSION="0.1.7"
 LIBEDGETPU_BASE_URL="https://github.com/cocoa-xu/libedgetpu/releases/download/v${LIBEDGETPU_VERSION}"
 
 get_libedgetpu_triplet() {
