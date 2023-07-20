@@ -16,6 +16,7 @@ jobs:
     runs-on: macos-11
     env:
       TFLITE_BEAM_PREFER_PRECOMPILED: "false"
+    name: macOS ${{ matrix.pair.arch }} - OTP ${{ matrix.otp }}
 
     strategy:
       fail-fast: false

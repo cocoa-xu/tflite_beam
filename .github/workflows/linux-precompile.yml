@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-20.04
     env:
       TFLITE_BEAM_PREFER_PRECOMPILED: NO
+    name: Linux ${{ matrix.pair.target_arch }}-${{ matrix.pair.target_os }}-${{ matrix.pair.target_abi }} - OTP ${{ matrix.otp }}
 
     strategy:
       fail-fast: false
