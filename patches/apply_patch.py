@@ -10,7 +10,7 @@ else:
 
 
 def patch_fix_RoundToNearest(tf_version: str, tf_src_root: str):
-    if tf_version not in ['2.11.0', '2.11.1']:
+    if tf_version not in ['2.11.0', '2.11.1', '2.12.0']:
         print(f"warning: skip applying `patch_fix_RoundToNearest` to tf version `{tf_version}`")
         return
 
@@ -38,8 +38,31 @@ def patch_fix_RoundToNearest(tf_version: str, tf_src_root: str):
             dst.truncate(0)
             dst.write(fixed.getvalue())
 
-patches = [patch_fix_RoundToNearest]
+def patch_compiling_telemetry_cc(tf_version: str, tf_src_root: str):
+    if tf_version not in ['2.12.0']:
+        print(f"warning: skip applying `patch_compiling_telemetry_cc` to tf version `{tf_version}`")
+        return
+    
+    cmakelists_txt = Path(tf_src_root) / 'CMakeLists.txt'
+    fixed = StringIO()
+    patched_1 = False
+    with open(cmakelists_txt, 'r') as source:
+        for line in source:
+            line_strip = line.strip()
+            if not patched_1 and line_strip == '${TFLITE_SOURCE_DIR}/profiling/telemetry/profiler.cc':
+                fixed.write(f"  {line_strip} # fixed\n")
+                fixed.write("  ${TFLITE_SOURCE_DIR}/profiling/telemetry/telemetry.cc\n")
+                patched_1 = True
+            else:
+                fixed.write(line)
 
+    if patched_1:
+        with open(cmakelists_txt, 'w') as dst:
+            dst.truncate(0)
+            dst.write(fixed.getvalue())
+
+
+patches = [patch_fix_RoundToNearest, patch_compiling_telemetry_cc]
 
 if __name__ == '__main__':
     tf_version = None
