@@ -16,12 +16,13 @@ jobs:
     runs-on: macos-11
     env:
       TFLITE_BEAM_PREFER_PRECOMPILED: "false"
+      elixir_version: "1.15.2"
     name: macOS ${{ matrix.pair.arch }} - OTP ${{ matrix.otp }}
 
     strategy:
       fail-fast: false
       matrix:
-        otp: ["erlang@25", "erlang@26"]
+        otp: ["25.3.2.3", "26.0.2"]
         include:
           - pair:
               arch: x86_64
@@ -35,7 +36,15 @@ jobs:
 
       - name: Install Erlang and Elixir
         run: |
-          brew install elixir ${{ matrix.otp }} autoconf automake
+          brew install autoconf coreutils curl git openssl asdf
+          asdf plugin add erlang https://github.com/asdf-vm/asdf-erlang.git
+          asdf plugin-add elixir https://github.com/asdf-vm/asdf-elixir.git
+          export KERL_CONFIGURE_OPTIONS="--disable-debug --without-javac"
+          asdf install erlang ${{ matrix.otp }}
+          asdf install elixir ${{ env.elixir_version }}
+          asdf global erlang ${{ matrix.otp }}
+          asdf global elixir ${{ env.elixir_version }}
+          source $(brew --prefix asdf)/libexec/asdf.sh
           mix local.hex --force
           mix local.rebar --force
           wget https://s3.amazonaws.com/rebar3/rebar3 && chmod +x rebar3
@@ -43,6 +52,7 @@ jobs:
 
       - name: Create precompiled library
         run: |
+          source $(brew --prefix asdf)/libexec/asdf.sh
           export PATH="~/.cache/rebar3/bin:$PATH"
 
           export NIF_VERSION="$(erl -noshell -eval "io:format('~ts', [erlang:system_info(nif_version)])." -s erlang halt)"
