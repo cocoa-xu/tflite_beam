@@ -16,14 +16,14 @@ jobs:
     runs-on: ubuntu-20.04
     env:
       TFLITE_BEAM_PREFER_PRECOMPILED: NO
-    name: Linux ${{ matrix.pair.target_arch }}-${{ matrix.pair.target_os }}-${{ matrix.pair.target_abi }} - OTP ${{ matrix.otp }}
+    name: Linux ${{ matrix.pair.target_arch }}-${{ matrix.pair.target_os }}-${{ matrix.pair.target_abi }} - OTP ${{ matrix.pair.otp }}
 
     strategy:
       fail-fast: false
       matrix:
-        otp: ["25.x", "26.x"]
         include:
           - pair:
+              otp: "25.x"
               arch_name: x86_64
               cmake_toolchain_file: ""
               c_compiler: gcc
@@ -33,6 +33,7 @@ jobs:
               target_os: "linux"
               target_abi: "gnu"
           - pair:
+              otp: "25.x"
               arch_name: aarch64
               cmake_toolchain_file: cc_toolchain/aarch64-linux-gnu.cmake
               c_compiler: gcc-aarch64-linux-gnu
@@ -44,6 +45,7 @@ jobs:
               cc: "/usr/bin/aarch64-linux-gnu-gcc"
               cxx: "/usr/bin/aarch64-linux-gnu-g++"
           - pair:
+              otp: "25.x"
               arch_name: armv7l
               cmake_toolchain_file: cc_toolchain/armv7l-linux-gnueabihf.cmake
               c_compiler: gcc-arm-linux-gnueabihf
@@ -55,6 +57,53 @@ jobs:
               cc: "/usr/bin/arm-linux-gnueabihf-gcc"
               cxx: "/usr/bin/arm-linux-gnueabihf-g++"
           - pair:
+              otp: "25.x"
+              arch_name: riscv64
+              cmake_toolchain_file: cc_toolchain/riscv64-linux-gnu.cmake
+              c_compiler: gcc-riscv64-linux-gnu
+              cpp_compiler: g++-riscv64-linux-gnu
+              libedgetpu_library: "riscv64"
+              target_arch: "riscv64"
+              target_os: "linux"
+              target_abi: "gnu"
+              cc: "/usr/bin/riscv64-linux-gnu-gcc"
+              cxx: "/usr/bin/riscv64-linux-gnu-g++"
+          - pair:
+              otp: "26.x"
+              arch_name: x86_64
+              cmake_toolchain_file: ""
+              c_compiler: gcc
+              cpp_compiler: g++
+              libedgetpu_library: "x86_64"
+              target_arch: "x86_64"
+              target_os: "linux"
+              target_abi: "gnu"
+          - pair:
+              otp: "26.x"
+              arch_name: aarch64
+              cmake_toolchain_file: cc_toolchain/aarch64-linux-gnu.cmake
+              c_compiler: gcc-aarch64-linux-gnu
+              cpp_compiler: g++-aarch64-linux-gnu
+              libedgetpu_library: "aarch64"
+              target_arch: "aarch64"
+              target_os: "linux"
+              target_abi: "gnu"
+              cc: "/usr/bin/aarch64-linux-gnu-gcc"
+              cxx: "/usr/bin/aarch64-linux-gnu-g++"
+          - pair:
+              otp: "26.x"
+              arch_name: armv7l
+              cmake_toolchain_file: cc_toolchain/armv7l-linux-gnueabihf.cmake
+              c_compiler: gcc-arm-linux-gnueabihf
+              cpp_compiler: g++-arm-linux-gnueabihf
+              libedgetpu_library: "armv7l"
+              target_arch: "armv7l"
+              target_os: "linux"
+              target_abi: "gnueabihf"
+              cc: "/usr/bin/arm-linux-gnueabihf-gcc"
+              cxx: "/usr/bin/arm-linux-gnueabihf-g++"
+          - pair:
+              otp: "26.x"
               arch_name: riscv64
               cmake_toolchain_file: cc_toolchain/riscv64-linux-gnu.cmake
               c_compiler: gcc-riscv64-linux-gnu
@@ -71,7 +120,7 @@ jobs:
 
       - uses: erlef/setup-beam@v1
         with:
-          otp-version: ${{ matrix.otp }}
+          otp-version: ${{ matrix.pair.otp }}
 
       - name: Install system dependecies
         run: |

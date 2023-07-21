@@ -17,17 +17,26 @@ jobs:
     env:
       TFLITE_BEAM_PREFER_PRECOMPILED: "false"
       elixir_version: "1.15.2"
-    name: macOS ${{ matrix.pair.arch }} - OTP ${{ matrix.otp }}
+    name: macOS ${{ matrix.pair.arch }} - OTP ${{ matrix.pair.otp }}
 
     strategy:
       fail-fast: false
       matrix:
-        otp: ["25.3.2.3", "26.0.2"]
         include:
           - pair:
+              otp: "25.3.2.3"
               arch: x86_64
               libedgetpu_library: darwin_x86_64
           - pair:
+              otp: "25.3.2.3"
+              arch: aarch64
+              libedgetpu_library: darwin_arm64
+          - pair:
+              otp: "26.0.2"
+              arch: x86_64
+              libedgetpu_library: darwin_x86_64
+          - pair:
+              otp: "26.0.2"
               arch: aarch64
               libedgetpu_library: darwin_arm64
 
