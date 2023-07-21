@@ -1,6 +1,7 @@
 # Changelog
 
-## main
+## v0.3.3 (2022-07-21)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.3.3) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.3.3)
 
 ### Changed
 - [deps] Use libedgetpu v0.1.7.
