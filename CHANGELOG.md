@@ -1,19 +1,19 @@
 # Changelog
 
-## v0.3.3 (2022-07-21)
+## v0.3.3 (2023-07-21)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.3.3) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.3.3)
 
 ### Changed
 - [deps] Use libedgetpu v0.1.7.
 - Use tensorflow v2.13.0.
 
-## v0.3.2 (2022-04-03)
+## v0.3.2 (2023-04-03)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.3.2) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.3.2)
 
 ### Fixed
 - [precompiled-nerves] Guess correct `TARGET_ARCH` from `TARGET_CPU`.
 
-## v0.3.1 (2022-04-03)
+## v0.3.1 (2023-04-03)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.3.1) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.3.1)
 
 ### Fixed
@@ -22,7 +22,7 @@
 ### Changed
 - [examples] Examples moved to [cocoa-xu/tflite_elixir](https://github.com/cocoa-xu/tflite_elixir).
 
-## v0.3.0 (2022-04-02)
+## v0.3.0 (2023-04-02)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.3.0) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.3.0)
 
 ### Breaking Change
@@ -34,7 +34,7 @@
 - Implemented tokenizers for MobileBERT (#57) by @cocoa-xu.
 - [make] Ensure priv dir exist.
 
-## v0.2.1 (2022-04-02)
+## v0.2.1 (2023-04-02)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.2.1) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.2.1)
 
 ### Changed
@@ -46,7 +46,7 @@
 - Implemented tokenizers for MobileBERT (#57) by @cocoa-xu.
 - [make] Ensure priv dir exist.
 
-## v0.2.0 (2022-03-30)
+## v0.2.0 (2023-03-30)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.2.0) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.2.0)
 
 ### Breaking Changes
@@ -88,7 +88,7 @@
   ]
   ```
 
-## v0.1.7 (2022-03-22)
+## v0.1.7 (2023-03-22)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.1.7) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.1.7)
 
 ### Breaking Changes
@@ -165,7 +165,7 @@
   - `TFLiteElixir.Interpreter.set_outputs/2`
 - [example] object detection example (#40) by @mnishiguchi
 
-## v0.1.6 (2022-03-19)
+## v0.1.6 (2023-03-19)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.1.6) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.1.6)
 
 ### Fixed
@@ -174,7 +174,7 @@
 ### Added
 - [example] artistic-style-transfer example (#27) @mnishiguchi
 
-## v0.1.5 (2022-03-18)
+## v0.1.5 (2023-03-18)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.1.5) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.1.5)
 
 ### Breaking Changes
@@ -206,7 +206,7 @@
 - `TFLiteElixir.FlatBufferModel.error_reporter/1`.
 - `TFLiteElixir.FlatBufferModel.verify_and_build_from_file/2`
 
-## v0.1.4 (2022-03-14)
+## v0.1.4 (2023-03-14)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.1.4) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.1.4)
 
 ### Breaking Changes
@@ -229,13 +229,13 @@
 ### Misc
 - Simple workaround for cortex-a53 and cortex-a57, `vcvtaq_s32_f32`.
 
-## v0.1.3 (2022-03-09)
+## v0.1.3 (2023-03-09)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.1.3) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.1.3)
 
 ### Changes
 - Bump TFLite version to [v2.11.0](https://github.com/tensorflow/tensorflow/tree/v2.11.0).
 
-## v0.1.2 (2022-03-08)
+## v0.1.2 (2023-03-08)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.1.2) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.1.2)
 
 First release on hex.pm.
