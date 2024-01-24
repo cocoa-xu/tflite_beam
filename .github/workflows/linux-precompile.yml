@@ -66,8 +66,8 @@ jobs:
               target_arch: "armv6"
               target_os: "linux"
               target_abi: "gnueabihf"
-              cc: "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0/armv6-nerves-linux-gnueabihf/bin/armv6-nerves-linux-gnueabihf-gcc"
-              cxx: "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0/armv6-nerves-linux-gnueabihf/bin/armv6-nerves-linux-gnueabihf-g++"
+              cc: "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0/bin/armv6-nerves-linux-gnueabihf-gcc"
+              cxx: "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0/bin/armv6-nerves-linux-gnueabihf-g++"
           - pair:
               otp: "25.x"
               arch_name: riscv64
@@ -124,8 +124,8 @@ jobs:
               target_arch: "armv6"
               target_os: "linux"
               target_abi: "gnueabihf"
-              cc: "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0/armv6-nerves-linux-gnueabihf/bin/armv6-nerves-linux-gnueabihf-gcc"
-              cxx: "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0/armv6-nerves-linux-gnueabihf/bin/armv6-nerves-linux-gnueabihf-g++"
+              cc: "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0/bin/armv6-nerves-linux-gnueabihf-gcc"
+              cxx: "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0/bin/armv6-nerves-linux-gnueabihf-g++"
           - pair:
               otp: "26.x"
               arch_name: riscv64
