@@ -117,7 +117,7 @@ jobs:
           - pair:
               otp: "26.x"
               arch_name: armv6
-              cmake_toolchain_file: cc_toolchain/armv6-nerves-linux-gnueabihf.cmake
+              cmake_toolchain_file: cc_toolchain/armv6-nerves-linux-guneabihf.cmake
               c_compiler: armv6-nerves-linux-gnueabihf-gcc
               cpp_compiler: armv6-nerves-linux-gnueabihf-g++
               libedgetpu_library: "armv6"
