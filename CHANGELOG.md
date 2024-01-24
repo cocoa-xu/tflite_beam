@@ -6,6 +6,7 @@
 ### Changed
 - Precompiled version for armv6 devices.
 - Removed `TFBEAM_XNNPACK_ENABLE_ARM_I8MM` option as it should work as long as a newer C compiler is used.
+- Updated metadata_schema to 1.5.0
 
 ## v0.3.4 (2024-01-23)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.3.4) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.3.4)
