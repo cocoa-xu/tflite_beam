@@ -1,0 +1,59 @@
+name: auto-update
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * *"
+
+jobs:
+  auto-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.AUTO_UPDATE_TOKEN }}
+
+      - name: Get latest version
+        id: metadata-schema
+        run: |
+          curl -fSL "https://raw.githubusercontent.com/tensorflow/tflite-support/master/tensorflow_lite_support/metadata/metadata_schema.fbs" -o metadata_schema.fbs
+          LATEST_SHA256=$(sha256sum metadata_schema.fbs | awk '{print $1}')
+          CURRENT_SHA256=$(sha256sum c_src/metadata_schema.fbs | awk '{print $1}')
+          if [ "$LATEST_SHA256" != "$CURRENT_SHA256" ]; then
+            PR_VERSION="$(echo $LATEST_SHA256 | cut -c 1-8)"
+            PR_BRANCH="autoupdate/metadata_schema-$PR_VERSION"
+            if [ `git rev-parse --verify ${PR_BRANCH} 2>/dev/null` ]; then
+              echo "PR for newer version of metadata_schema.fbs already exists"
+              echo "updates='false'" >> $GITHUB_OUTPUT
+            else
+              echo "metadata_schema.fbs has updates"
+              echo "updates='true'" >> $GITHUB_OUTPUT
+              echo "branch=${PR_BRANCH}" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Create PR if metadata has updates
+        if: steps.metadata-schema.outputs.updates == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.AUTO_UPDATE_TOKEN }}
+        run: |
+          sudo apt-get install -y flatbuffers-compile
+          
+          flatc -c metadata_schema.fbs
+          START_LINE=$(grep -n "static_assert(FLATBUFFERS_VERSION" metadata_schema_generated.h | awk -F: '{print $1}')
+          END_LINE=$(grep -n "Non-compatible flatbuffers version" metadata_schema_generated.h | awk -F: '{print $1+1}')
+          if [ -n "$START_LINE" ] && [ -n "$END_LINE" ]; then
+            head -n "$(($START_LINE-1))" metadata_schema_generated.h > metadata_schema_generated.h.tmp
+            tail -n "+${END_LINE}" metadata_schema_generated.h >> metadata_schema_generated.h.tmp
+            mv metadata_schema_generated.h.tmp metadata_schema_generated.h
+          fi
+         
+          mv metadata_schema.fbs c_src/metadata_schema.fbs
+          mv metadata_schema_generated.h c_src/metadata_schema_generated.h
+
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git checkout -b "${{ steps.metadata-schema.outputs.branch }}"
+          git push origin "${{ steps.metadata-schema.outputs.branch }}"
+          gh pr create --title "Update metadata_schema.fbs" --base master --head "${{ steps.metadata-schema.outputs.branch }}"
