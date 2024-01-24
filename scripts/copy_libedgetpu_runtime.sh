@@ -40,7 +40,7 @@ get_libedgetpu_triplet() {
       UNAME_M="${TARGET_ARCH}"
       if [ "${TARGET_ARCH}" = "arm" ]; then
         case "${TARGET_CPU}" in
-          arm1176jzf_s*)
+          arm1176* | arm1156* | arm1136*)
             UNAME_M="armv6"
           ;;
           cortex*)

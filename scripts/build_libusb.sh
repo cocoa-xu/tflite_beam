@@ -52,7 +52,11 @@ if [ -n "${TARGET_ARCH}" ] && [ -n "${TARGET_OS}" ] && [ -n "${TARGET_ABI}" ]; t
       esac
     ;;
     linux*)
-      ./configure CFLAGS="-fPIC" --host="${TARGET_ARCH}-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/
+      if [ -n "${TARGET_GCC_FLAGS}" ]; then
+        ./configure CFLAGS="${TARGET_GCC_FLAGS}" --host="${TARGET_ARCH}-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/
+      else
+        ./configure CFLAGS="-fPIC" --host="${TARGET_ARCH}-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/  
+      fi
     ;;
     *)
       echo "unsupported system: ${TARGET_OS}" ;
