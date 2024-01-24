@@ -53,9 +53,17 @@ if [ -n "${TARGET_ARCH}" ] && [ -n "${TARGET_OS}" ] && [ -n "${TARGET_ABI}" ]; t
     ;;
     linux*)
       if [ -n "${TARGET_GCC_FLAGS}" ]; then
-        ./configure CFLAGS="${TARGET_GCC_FLAGS}" --host="${TARGET_ARCH}-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/
+        if [ "${TARGET_ARCH}" = "armv6" ]; then
+          ./configure CFLAGS="${TARGET_GCC_FLAGS}" --host="arm-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/
+        else
+          ./configure CFLAGS="${TARGET_GCC_FLAGS}" --host="${TARGET_ARCH}-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/
+        fi
       else
-        ./configure CFLAGS="-fPIC" --host="${TARGET_ARCH}-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/  
+        if [ "${TARGET_ARCH}" = "armv6" ]; then
+          ./configure CFLAGS="-fPIC" --host="arm-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/
+        else
+          ./configure CFLAGS="-fPIC" --host="${TARGET_ARCH}-${TARGET_OS}-${TARGET_ABI}" --enable-shared --disable-static --disable-udev --prefix=/
+        fi
       fi
     ;;
     *)
