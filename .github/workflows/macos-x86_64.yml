@@ -32,22 +32,32 @@ jobs:
     env:
       TFLITE_BEAM_CORAL_SUPPORT: "true"
       TFLITE_BEAM_PREFER_PRECOMPILED: "false"
+      OTP_VERSION: "26.2.1"
+      ELIXIR_VERSION: "1.16.0"
 
     steps:
-      - uses: actions/checkout@v3
-      
+      - uses: actions/checkout@v4
+
       - name: Install Erlang and Elixir
         run: |
-          brew install erlang
-          brew install elixir
+          export HOMEBREW_NO_AUTO_UPDATE=1
+          brew install autoconf automake coreutils curl git openssl asdf
+          asdf plugin add erlang https://github.com/asdf-vm/asdf-erlang.git
+          asdf plugin-add elixir https://github.com/asdf-vm/asdf-elixir.git
+          export KERL_CONFIGURE_OPTIONS="--disable-debug --without-javac"
+          asdf install erlang "${OTP_VERSION}"
+          asdf install elixir "${ELIXIR_VERSION}"
+          asdf global erlang "${OTP_VERSION}"
+          asdf global elixir "${ELIXIR_VERSION}"
+          source $(brew --prefix asdf)/libexec/asdf.sh
           mix local.hex --force
           mix local.rebar --force
           wget https://s3.amazonaws.com/rebar3/rebar3 && chmod +x rebar3
           ./rebar3 local install
-          brew install autoconf automake
 
       - name: Compile
         run: |
+          source $(brew --prefix asdf)/libexec/asdf.sh
           export PATH="~/.cache/rebar3/bin:$PATH"
           rebar3 deps
           rebar3 compile

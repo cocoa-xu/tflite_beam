@@ -16,8 +16,8 @@ jobs:
     runs-on: macos-11
     env:
       TFLITE_BEAM_PREFER_PRECOMPILED: "false"
-      elixir_version: "1.15.2"
-    name: macOS ${{ matrix.pair.arch }} - OTP ${{ matrix.pair.otp }}
+      elixir_version: "1.16.0"
+    name: ${{ matrix.pair.arch }}-apple-darwin - OTP ${{ matrix.pair.otp }}
 
     strategy:
       fail-fast: false
@@ -41,7 +41,7 @@ jobs:
               libedgetpu_library: darwin_arm64
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install Erlang and Elixir
         run: |

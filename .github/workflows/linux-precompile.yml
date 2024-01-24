@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-20.04
     env:
       TFLITE_BEAM_PREFER_PRECOMPILED: "false"
-    name: Linux ${{ matrix.pair.target_arch }}-${{ matrix.pair.target_os }}-${{ matrix.pair.target_abi }} - OTP ${{ matrix.pair.otp }}
+    name: ${{ matrix.pair.target_arch }}-${{ matrix.pair.target_os }}-${{ matrix.pair.target_abi }} - OTP ${{ matrix.pair.otp }}
 
     strategy:
       fail-fast: false
@@ -175,6 +175,10 @@ jobs:
             export TFLITE_BEAM_CORAL_LIBEDGETPU_LIBRARIES="${{ matrix.pair.libedgetpu_library }}"
           fi
 
+          if [ "${{ matrix.pair.arch_name }}" = "armv6" ]; then
+            export TARGET_GCC_FLAGS="-mabi=aapcs-linux -mfpu=vfp -marm -fstack-protector-strong -mfloat-abi=hard -mcpu=arm1176jzf-s -fPIE -pie -Wl,-z,now -Wl,-z,relro"
+          fi
+
           echo "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}"
           echo "TFLITE_BEAM_CORAL_LIBEDGETPU_LIBRARIES: ${TFLITE_BEAM_CORAL_LIBEDGETPU_LIBRARIES}"
           echo "TFLITE_BEAM_PREFER_PRECOMPILED: ${TFLITE_BEAM_PREFER_PRECOMPILED}"
@@ -183,6 +187,7 @@ jobs:
           echo "TARGET_ARCH: ${TARGET_ARCH}"
           echo "TARGET_OS: ${TARGET_OS}"
           echo "TARGET_ABI: ${TARGET_ABI}"
+          echo "TARGET_GCC_FLAGS: ${TARGET_GCC_FLAGS}"
 
           rebar3 deps
           rebar3 compile
