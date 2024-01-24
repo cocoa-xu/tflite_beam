@@ -62,6 +62,9 @@ struct TensorGroupBuilder;
 struct TensorMetadata;
 struct TensorMetadataBuilder;
 
+struct CustomMetadata;
+struct CustomMetadataBuilder;
+
 struct SubGraphMetadata;
 struct SubGraphMetadataBuilder;
 
@@ -108,7 +111,7 @@ inline const char * const *EnumNamesAssociatedFileType() {
 }
 
 inline const char *EnumNameAssociatedFileType(AssociatedFileType e) {
-  if (flatbuffers::IsOutRange(e, AssociatedFileType_UNKNOWN, AssociatedFileType_SCANN_INDEX_FILE)) return "";
+  if (::flatbuffers::IsOutRange(e, AssociatedFileType_UNKNOWN, AssociatedFileType_SCANN_INDEX_FILE)) return "";
   const size_t index = static_cast<size_t>(e);
   return EnumNamesAssociatedFileType()[index];
 }
@@ -141,7 +144,7 @@ inline const char * const *EnumNamesColorSpaceType() {
 }
 
 inline const char *EnumNameColorSpaceType(ColorSpaceType e) {
-  if (flatbuffers::IsOutRange(e, ColorSpaceType_UNKNOWN, ColorSpaceType_GRAYSCALE)) return "";
+  if (::flatbuffers::IsOutRange(e, ColorSpaceType_UNKNOWN, ColorSpaceType_GRAYSCALE)) return "";
   const size_t index = static_cast<size_t>(e);
   return EnumNamesColorSpaceType()[index];
 }
@@ -177,7 +180,7 @@ inline const char * const *EnumNamesBoundingBoxType() {
 }
 
 inline const char *EnumNameBoundingBoxType(BoundingBoxType e) {
-  if (flatbuffers::IsOutRange(e, BoundingBoxType_UNKNOWN, BoundingBoxType_CENTER)) return "";
+  if (::flatbuffers::IsOutRange(e, BoundingBoxType_UNKNOWN, BoundingBoxType_CENTER)) return "";
   const size_t index = static_cast<size_t>(e);
   return EnumNamesBoundingBoxType()[index];
 }
@@ -207,7 +210,7 @@ inline const char * const *EnumNamesCoordinateType() {
 }
 
 inline const char *EnumNameCoordinateType(CoordinateType e) {
-  if (flatbuffers::IsOutRange(e, CoordinateType_RATIO, CoordinateType_PIXEL)) return "";
+  if (::flatbuffers::IsOutRange(e, CoordinateType_RATIO, CoordinateType_PIXEL)) return "";
   const size_t index = static_cast<size_t>(e);
   return EnumNamesCoordinateType()[index];
 }
@@ -246,7 +249,7 @@ inline const char * const *EnumNamesContentProperties() {
 }
 
 inline const char *EnumNameContentProperties(ContentProperties e) {
-  if (flatbuffers::IsOutRange(e, ContentProperties_NONE, ContentProperties_AudioProperties)) return "";
+  if (::flatbuffers::IsOutRange(e, ContentProperties_NONE, ContentProperties_AudioProperties)) return "";
   const size_t index = static_cast<size_t>(e);
   return EnumNamesContentProperties()[index];
 }
@@ -271,8 +274,8 @@ template<> struct ContentPropertiesTraits<tflite::AudioProperties> {
   static const ContentProperties enum_value = ContentProperties_AudioProperties;
 };
 
-bool VerifyContentProperties(flatbuffers::Verifier &verifier, const void *obj, ContentProperties type);
-bool VerifyContentPropertiesVector(flatbuffers::Verifier &verifier, const flatbuffers::Vector<flatbuffers::Offset<void>> *values, const flatbuffers::Vector<uint8_t> *types);
+bool VerifyContentProperties(::flatbuffers::Verifier &verifier, const void *obj, ContentProperties type);
+bool VerifyContentPropertiesVector(::flatbuffers::Verifier &verifier, const ::flatbuffers::Vector<::flatbuffers::Offset<void>> *values, const ::flatbuffers::Vector<uint8_t> *types);
 
 enum ScoreTransformationType : int8_t {
   ScoreTransformationType_IDENTITY = 0,
@@ -302,7 +305,7 @@ inline const char * const *EnumNamesScoreTransformationType() {
 }
 
 inline const char *EnumNameScoreTransformationType(ScoreTransformationType e) {
-  if (flatbuffers::IsOutRange(e, ScoreTransformationType_IDENTITY, ScoreTransformationType_INVERSE_LOGISTIC)) return "";
+  if (::flatbuffers::IsOutRange(e, ScoreTransformationType_IDENTITY, ScoreTransformationType_INVERSE_LOGISTIC)) return "";
   const size_t index = static_cast<size_t>(e);
   return EnumNamesScoreTransformationType()[index];
 }
@@ -347,7 +350,7 @@ inline const char * const *EnumNamesProcessUnitOptions() {
 }
 
 inline const char *EnumNameProcessUnitOptions(ProcessUnitOptions e) {
-  if (flatbuffers::IsOutRange(e, ProcessUnitOptions_NONE, ProcessUnitOptions_RegexTokenizerOptions)) return "";
+  if (::flatbuffers::IsOutRange(e, ProcessUnitOptions_NONE, ProcessUnitOptions_RegexTokenizerOptions)) return "";
   const size_t index = static_cast<size_t>(e);
   return EnumNamesProcessUnitOptions()[index];
 }
@@ -380,10 +383,10 @@ template<> struct ProcessUnitOptionsTraits<tflite::RegexTokenizerOptions> {
   static const ProcessUnitOptions enum_value = ProcessUnitOptions_RegexTokenizerOptions;
 };
 
-bool VerifyProcessUnitOptions(flatbuffers::Verifier &verifier, const void *obj, ProcessUnitOptions type);
-bool VerifyProcessUnitOptionsVector(flatbuffers::Verifier &verifier, const flatbuffers::Vector<flatbuffers::Offset<void>> *values, const flatbuffers::Vector<uint8_t> *types);
+bool VerifyProcessUnitOptions(::flatbuffers::Verifier &verifier, const void *obj, ProcessUnitOptions type);
+bool VerifyProcessUnitOptionsVector(::flatbuffers::Verifier &verifier, const ::flatbuffers::Vector<::flatbuffers::Offset<void>> *values, const ::flatbuffers::Vector<uint8_t> *types);
 
-struct AssociatedFile FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+struct AssociatedFile FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef AssociatedFileBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_NAME = 4,
@@ -392,22 +395,22 @@ struct AssociatedFile FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
     VT_LOCALE = 10,
     VT_VERSION = 12
   };
-  const flatbuffers::String *name() const {
-    return GetPointer<const flatbuffers::String *>(VT_NAME);
+  const ::flatbuffers::String *name() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_NAME);
   }
-  const flatbuffers::String *description() const {
-    return GetPointer<const flatbuffers::String *>(VT_DESCRIPTION);
+  const ::flatbuffers::String *description() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_DESCRIPTION);
   }
   tflite::AssociatedFileType type() const {
     return static_cast<tflite::AssociatedFileType>(GetField<int8_t>(VT_TYPE, 0));
   }
-  const flatbuffers::String *locale() const {
-    return GetPointer<const flatbuffers::String *>(VT_LOCALE);
+  const ::flatbuffers::String *locale() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_LOCALE);
   }
-  const flatbuffers::String *version() const {
-    return GetPointer<const flatbuffers::String *>(VT_VERSION);
+  const ::flatbuffers::String *version() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_VERSION);
   }
-  bool Verify(flatbuffers::Verifier &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_NAME) &&
            verifier.VerifyString(name()) &&
@@ -424,41 +427,41 @@ struct AssociatedFile FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 
 struct AssociatedFileBuilder {
   typedef AssociatedFile Table;
-  flatbuffers::FlatBufferBuilder &fbb_;
-  flatbuffers::uoffset_t start_;
-  void add_name(flatbuffers::Offset<flatbuffers::String> name) {
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_name(::flatbuffers::Offset<::flatbuffers::String> name) {
     fbb_.AddOffset(AssociatedFile::VT_NAME, name);
   }
-  void add_description(flatbuffers::Offset<flatbuffers::String> description) {
+  void add_description(::flatbuffers::Offset<::flatbuffers::String> description) {
     fbb_.AddOffset(AssociatedFile::VT_DESCRIPTION, description);
   }
   void add_type(tflite::AssociatedFileType type) {
     fbb_.AddElement<int8_t>(AssociatedFile::VT_TYPE, static_cast<int8_t>(type), 0);
   }
-  void add_locale(flatbuffers::Offset<flatbuffers::String> locale) {
+  void add_locale(::flatbuffers::Offset<::flatbuffers::String> locale) {
     fbb_.AddOffset(AssociatedFile::VT_LOCALE, locale);
   }
-  void add_version(flatbuffers::Offset<flatbuffers::String> version) {
+  void add_version(::flatbuffers::Offset<::flatbuffers::String> version) {
     fbb_.AddOffset(AssociatedFile::VT_VERSION, version);
   }
-  explicit AssociatedFileBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+  explicit AssociatedFileBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
   }
-  flatbuffers::Offset<AssociatedFile> Finish() {
+  ::flatbuffers::Offset<AssociatedFile> Finish() {
     const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<AssociatedFile>(end);
+    auto o = ::flatbuffers::Offset<AssociatedFile>(end);
     return o;
   }
 };
 
-inline flatbuffers::Offset<AssociatedFile> CreateAssociatedFile(
-    flatbuffers::FlatBufferBuilder &_fbb,
-    flatbuffers::Offset<flatbuffers::String> name = 0,
-    flatbuffers::Offset<flatbuffers::String> description = 0,
+inline ::flatbuffers::Offset<AssociatedFile> CreateAssociatedFile(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    ::flatbuffers::Offset<::flatbuffers::String> name = 0,
+    ::flatbuffers::Offset<::flatbuffers::String> description = 0,
     tflite::AssociatedFileType type = tflite::AssociatedFileType_UNKNOWN,
-    flatbuffers::Offset<flatbuffers::String> locale = 0,
-    flatbuffers::Offset<flatbuffers::String> version = 0) {
+    ::flatbuffers::Offset<::flatbuffers::String> locale = 0,
+    ::flatbuffers::Offset<::flatbuffers::String> version = 0) {
   AssociatedFileBuilder builder_(_fbb);
   builder_.add_version(version);
   builder_.add_locale(locale);
@@ -468,8 +471,8 @@ inline flatbuffers::Offset<AssociatedFile> CreateAssociatedFile(
   return builder_.Finish();
 }
 
-inline flatbuffers::Offset<AssociatedFile> CreateAssociatedFileDirect(
-    flatbuffers::FlatBufferBuilder &_fbb,
+inline ::flatbuffers::Offset<AssociatedFile> CreateAssociatedFileDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
     const char *name = nullptr,
     const char *description = nullptr,
     tflite::AssociatedFileType type = tflite::AssociatedFileType_UNKNOWN,
@@ -488,9 +491,9 @@ inline flatbuffers::Offset<AssociatedFile> CreateAssociatedFileDirect(
       version__);
 }
 
-struct FeatureProperties FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+struct FeatureProperties FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef FeaturePropertiesBuilder Builder;
-  bool Verify(flatbuffers::Verifier &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            verifier.EndTable();
   }
@@ -498,26 +501,26 @@ struct FeatureProperties FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 
 struct FeaturePropertiesBuilder {
   typedef FeatureProperties Table;
-  flatbuffers::FlatBufferBuilder &fbb_;
-  flatbuffers::uoffset_t start_;
-  explicit FeaturePropertiesBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  explicit FeaturePropertiesBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
   }
-  flatbuffers::Offset<FeatureProperties> Finish() {
+  ::flatbuffers::Offset<FeatureProperties> Finish() {
     const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<FeatureProperties>(end);
+    auto o = ::flatbuffers::Offset<FeatureProperties>(end);
     return o;
   }
 };
 
-inline flatbuffers::Offset<FeatureProperties> CreateFeatureProperties(
-    flatbuffers::FlatBufferBuilder &_fbb) {
+inline ::flatbuffers::Offset<FeatureProperties> CreateFeatureProperties(
+    ::flatbuffers::FlatBufferBuilder &_fbb) {
   FeaturePropertiesBuilder builder_(_fbb);
   return builder_.Finish();
 }
 
-struct ImageSize FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+struct ImageSize FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef ImageSizeBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_WIDTH = 4,
@@ -529,7 +532,7 @@ struct ImageSize FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   uint32_t height() const {
     return GetField<uint32_t>(VT_HEIGHT, 0);
   }
-  bool Verify(flatbuffers::Verifier &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<uint32_t>(verifier, VT_WIDTH, 4) &&
            VerifyField<uint32_t>(verifier, VT_HEIGHT, 4) &&
@@ -539,27 +542,27 @@ struct ImageSize FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 
 struct ImageSizeBuilder {
   typedef ImageSize Table;
-  flatbuffers::FlatBufferBuilder &fbb_;
-  flatbuffers::uoffset_t start_;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
   void add_width(uint32_t width) {
     fbb_.AddElement<uint32_t>(ImageSize::VT_WIDTH, width, 0);
   }
   void add_height(uint32_t height) {
     fbb_.AddElement<uint32_t>(ImageSize::VT_HEIGHT, height, 0);
   }
-  explicit ImageSizeBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+  explicit ImageSizeBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
   }
-  flatbuffers::Offset<ImageSize> Finish() {
+  ::flatbuffers::Offset<ImageSize> Finish() {
     const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<ImageSize>(end);
+    auto o = ::flatbuffers::Offset<ImageSize>(end);
     return o;
   }
 };
 
-inline flatbuffers::Offset<ImageSize> CreateImageSize(
-    flatbuffers::FlatBufferBuilder &_fbb,
+inline ::flatbuffers::Offset<ImageSize> CreateImageSize(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
     uint32_t width = 0,
     uint32_t height = 0) {
   ImageSizeBuilder builder_(_fbb);
@@ -568,7 +571,7 @@ inline flatbuffers::Offset<ImageSize> CreateImageSize(
   return builder_.Finish();
 }
 
-struct ImageProperties FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+struct ImageProperties FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef ImagePropertiesBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_COLOR_SPACE = 4,
@@ -580,7 +583,7 @@ struct ImageProperties FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   const tflite::ImageSize *default_size() const {
     return GetPointer<const tflite::ImageSize *>(VT_DEFAULT_SIZE);
   }
-  bool Verify(flatbuffers::Verifier &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<int8_t>(verifier, VT_COLOR_SPACE, 1) &&
            VerifyOffset(verifier, VT_DEFAULT_SIZE) &&
@@ -591,36 +594,36 @@ struct ImageProperties FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 
 struct ImagePropertiesBuilder {
   typedef ImageProperties Table;
-  flatbuffers::FlatBufferBuilder &fbb_;
-  flatbuffers::uoffset_t start_;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
   void add_color_space(tflite::ColorSpaceType color_space) {
     fbb_.AddElement<int8_t>(ImageProperties::VT_COLOR_SPACE, static_cast<int8_t>(color_space), 0);
   }
-  void add_default_size(flatbuffers::Offset<tflite::ImageSize> default_size) {
+  void add_default_size(::flatbuffers::Offset<tflite::ImageSize> default_size) {
     fbb_.AddOffset(ImageProperties::VT_DEFAULT_SIZE, default_size);
   }
-  explicit ImagePropertiesBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+  explicit ImagePropertiesBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
   }
-  flatbuffers::Offset<ImageProperties> Finish() {
+  ::flatbuffers::Offset<ImageProperties> Finish() {
     const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<ImageProperties>(end);
+    auto o = ::flatbuffers::Offset<ImageProperties>(end);
     return o;
   }
 };
 
-inline flatbuffers::Offset<ImageProperties> CreateImageProperties(
-    flatbuffers::FlatBufferBuilder &_fbb,
+inline ::flatbuffers::Offset<ImageProperties> CreateImageProperties(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
     tflite::ColorSpaceType color_space = tflite::ColorSpaceType_UNKNOWN,
-    flatbuffers::Offset<tflite::ImageSize> default_size = 0) {
+    ::flatbuffers::Offset<tflite::ImageSize> default_size = 0) {
   ImagePropertiesBuilder builder_(_fbb);
   builder_.add_default_size(default_size);
   builder_.add_color_space(color_space);
   return builder_.Finish();
 }
 
-struct AudioProperties FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+struct AudioProperties FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef AudioPropertiesBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_SAMPLE_RATE = 4,
@@ -632,7 +635,7 @@ struct AudioProperties FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   uint32_t channels() const {
     return GetField<uint32_t>(VT_CHANNELS, 0);
   }
-  bool Verify(flatbuffers::Verifier &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<uint32_t>(verifier, VT_SAMPLE_RATE, 4) &&
            VerifyField<uint32_t>(verifier, VT_CHANNELS, 4) &&
@@ -642,27 +645,27 @@ struct AudioProperties FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 
 struct AudioPropertiesBuilder {
   typedef AudioProperties Table;
-  flatbuffers::FlatBufferBuilder &fbb_;
-  flatbuffers::uoffset_t start_;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
   void add_sample_rate(uint32_t sample_rate) {
     fbb_.AddElement<uint32_t>(AudioProperties::VT_SAMPLE_RATE, sample_rate, 0);
   }
   void add_channels(uint32_t channels) {
     fbb_.AddElement<uint32_t>(AudioProperties::VT_CHANNELS, channels, 0);
   }
-  explicit AudioPropertiesBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+  explicit AudioPropertiesBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
   }
-  flatbuffers::Offset<AudioProperties> Finish() {
+  ::flatbuffers::Offset<AudioProperties> Finish() {
     const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<AudioProperties>(end);
+    auto o = ::flatbuffers::Offset<AudioProperties>(end);
     return o;
   }
 };
 
-inline flatbuffers::Offset<AudioProperties> CreateAudioProperties(
-    flatbuffers::FlatBufferBuilder &_fbb,
+inline ::flatbuffers::Offset<AudioProperties> CreateAudioProperties(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
     uint32_t sample_rate = 0,
     uint32_t channels = 0) {
   AudioPropertiesBuilder builder_(_fbb);
@@ -671,15 +674,15 @@ inline flatbuffers::Offset<AudioProperties> CreateAudioProperties(
   return builder_.Finish();
 }
 
-struct BoundingBoxProperties FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+struct BoundingBoxProperties FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef BoundingBoxPropertiesBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_INDEX = 4,
     VT_TYPE = 6,
     VT_COORDINATE_TYPE = 8
   };
-  const flatbuffers::Vector<uint32_t> *index() const {
-    return GetPointer<const flatbuffers::Vector<uint32_t> *>(VT_INDEX);
+  const ::flatbuffers::Vector<uint32_t> *index() const {
+    return GetPointer<const ::flatbuffers::Vector<uint32_t> *>(VT_INDEX);
   }
   tflite::BoundingBoxType type() const {
     return static_cast<tflite::BoundingBoxType>(GetField<int8_t>(VT_TYPE, 0));
@@ -687,7 +690,7 @@ struct BoundingBoxProperties FLATBUFFERS_FINAL_CLASS : private flatbuffers::Tabl
   tflite::CoordinateType coordinate_type() const {
     return static_cast<tflite::CoordinateType>(GetField<int8_t>(VT_COORDINATE_TYPE, 0));
   }
-  bool Verify(flatbuffers::Verifier &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_INDEX) &&
            verifier.VerifyVector(index()) &&
@@ -699,9 +702,9 @@ struct BoundingBoxProperties FLATBUFFERS_FINAL_CLASS : private flatbuffers::Tabl
 
 struct BoundingBoxPropertiesBuilder {
   typedef BoundingBoxProperties Table;
-  flatbuffers::FlatBufferBuilder &fbb_;
-  flatbuffers::uoffset_t start_;
-  void add_index(flatbuffers::Offset<flatbuffers::Vector<uint32_t>> index) {
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_index(::flatbuffers::Offset<::flatbuffers::Vector<uint32_t>> index) {
     fbb_.AddOffset(BoundingBoxProperties::VT_INDEX, index);
   }
   void add_type(tflite::BoundingBoxType type) {
@@ -710,20 +713,20 @@ struct BoundingBoxPropertiesBuilder {
   void add_coordinate_type(tflite::CoordinateType coordinate_type) {
     fbb_.AddElement<int8_t>(BoundingBoxProperties::VT_COORDINATE_TYPE, static_cast<int8_t>(coordinate_type), 0);
   }
-  explicit BoundingBoxPropertiesBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+  explicit BoundingBoxPropertiesBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
   }
-  flatbuffers::Offset<BoundingBoxProperties> Finish() {
+  ::flatbuffers::Offset<BoundingBoxProperties> Finish() {
     const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<BoundingBoxProperties>(end);
+    auto o = ::flatbuffers::Offset<BoundingBoxProperties>(end);
     return o;
   }
 };
 
-inline flatbuffers::Offset<BoundingBoxProperties> CreateBoundingBoxProperties(
-    flatbuffers::FlatBufferBuilder &_fbb,
-    flatbuffers::Offset<flatbuffers::Vector<uint32_t>> index = 0,
+inline ::flatbuffers::Offset<BoundingBoxProperties> CreateBoundingBoxProperties(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    ::flatbuffers::Offset<::flatbuffers::Vector<uint32_t>> index = 0,
     tflite::BoundingBoxType type = tflite::BoundingBoxType_UNKNOWN,
     tflite::CoordinateType coordinate_type = tflite::CoordinateType_RATIO) {
   BoundingBoxPropertiesBuilder builder_(_fbb);
@@ -733,8 +736,8 @@ inline flatbuffers::Offset<BoundingBoxProperties> CreateBoundingBoxProperties(
   return builder_.Finish();
 }
 
-inline flatbuffers::Offset<BoundingBoxProperties> CreateBoundingBoxPropertiesDirect(
-    flatbuffers::FlatBufferBuilder &_fbb,
+inline ::flatbuffers::Offset<BoundingBoxProperties> CreateBoundingBoxPropertiesDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
     const std::vector<uint32_t> *index = nullptr,
     tflite::BoundingBoxType type = tflite::BoundingBoxType_UNKNOWN,
     tflite::CoordinateType coordinate_type = tflite::CoordinateType_RATIO) {
@@ -746,7 +749,7 @@ inline flatbuffers::Offset<BoundingBoxProperties> CreateBoundingBoxPropertiesDir
       coordinate_type);
 }
 
-struct ValueRange FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+struct ValueRange FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef ValueRangeBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_MIN = 4,
@@ -758,7 +761,7 @@ struct ValueRange FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   int32_t max() const {
     return GetField<int32_t>(VT_MAX, 0);
   }
-  bool Verify(flatbuffers::Verifier &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<int32_t>(verifier, VT_MIN, 4) &&
            VerifyField<int32_t>(verifier, VT_MAX, 4) &&
@@ -768,27 +771,27 @@ struct ValueRange FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 
 struct ValueRangeBuilder {
   typedef ValueRange Table;
-  flatbuffers::FlatBufferBuilder &fbb_;
-  flatbuffers::uoffset_t start_;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
   void add_min(int32_t min) {
     fbb_.AddElement<int32_t>(ValueRange::VT_MIN, min, 0);
   }
   void add_max(int32_t max) {
     fbb_.AddElement<int32_t>(ValueRange::VT_MAX, max, 0);
   }
-  explicit ValueRangeBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+  explicit ValueRangeBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
   }
-  flatbuffers::Offset<ValueRange> Finish() {
+  ::flatbuffers::Offset<ValueRange> Finish() {
     const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<ValueRange>(end);
+    auto o = ::flatbuffers::Offset<ValueRange>(end);
     return o;
   }
 };
 
-inline flatbuffers::Offset<ValueRange> CreateValueRange(
-    flatbuffers::FlatBufferBuilder &_fbb,
+inline ::flatbuffers::Offset<ValueRange> CreateValueRange(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
     int32_t min = 0,
     int32_t max = 0) {
   ValueRangeBuilder builder_(_fbb);
@@ -797,7 +800,7 @@ inline flatbuffers::Offset<ValueRange> CreateValueRange(
   return builder_.Finish();
 }
 
-struct Content FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+struct Content FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef ContentBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_CONTENT_PROPERTIES_TYPE = 4,
@@ -826,7 +829,7 @@ struct Content FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   const tflite::ValueRange *range() const {
     return GetPointer<const tflite::ValueRange *>(VT_RANGE);
   }
-  bool Verify(flatbuffers::Verifier &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<uint8_t>(verifier, VT_CONTENT_PROPERTIES_TYPE, 1) &&
            VerifyOffset(verifier, VT_CONTENT_PROPERTIES) &&
@@ -855,33 +858,33 @@ template<> inline const tflite::AudioProperties *Content::content_properties_as<
 
 struct ContentBuilder {
   typedef Content Table;
-  flatbuffers::FlatBufferBuilder &fbb_;
-  flatbuffers::uoffset_t start_;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
   void add_content_properties_type(tflite::ContentProperties content_properties_type) {
     fbb_.AddElement<uint8_t>(Content::VT_CONTENT_PROPERTIES_TYPE, static_cast<uint8_t>(content_properties_type), 0);
   }
-  void add_content_properties(flatbuffers::Offset<void> content_properties) {
+  void add_content_properties(::flatbuffers::Offset<void> content_properties) {
     fbb_.AddOffset(Content::VT_CONTENT_PROPERTIES, content_properties);
   }
-  void add_range(flatbuffers::Offset<tflite::ValueRange> range) {
+  void add_range(::flatbuffers::Offset<tflite::ValueRange> range) {
     fbb_.AddOffset(Content::VT_RANGE, range);
   }
-  explicit ContentBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+  explicit ContentBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
   }
-  flatbuffers::Offset<Content> Finish() {
+  ::flatbuffers::Offset<Content> Finish() {
     const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<Content>(end);
+    auto o = ::flatbuffers::Offset<Content>(end);
     return o;
   }
 };
 
-inline flatbuffers::Offset<Content> CreateContent(
-    flatbuffers::FlatBufferBuilder &_fbb,
+inline ::flatbuffers::Offset<Content> CreateContent(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
     tflite::ContentProperties content_properties_type = tflite::ContentProperties_NONE,
-    flatbuffers::Offset<void> content_properties = 0,
-    flatbuffers::Offset<tflite::ValueRange> range = 0) {
+    ::flatbuffers::Offset<void> content_properties = 0,
+    ::flatbuffers::Offset<tflite::ValueRange> range = 0) {
   ContentBuilder builder_(_fbb);
   builder_.add_range(range);
   builder_.add_content_properties(content_properties);
@@ -889,19 +892,19 @@ inline flatbuffers::Offset<Content> CreateContent(
   return builder_.Finish();
 }
 
-struct NormalizationOptions FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+struct NormalizationOptions FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef NormalizationOptionsBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_MEAN = 4,
     VT_STD = 6
   };
-  const flatbuffers::Vector<float> *mean() const {
-    return GetPointer<const flatbuffers::Vector<float> *>(VT_MEAN);
+  const ::flatbuffers::Vector<float> *mean() const {
+    return GetPointer<const ::flatbuffers::Vector<float> *>(VT_MEAN);
   }
-  const flatbuffers::Vector<float> *std() const {
-    return GetPointer<const flatbuffers::Vector<float> *>(VT_STD);
+  const ::flatbuffers::Vector<float> *std() const {
+    return GetPointer<const ::flatbuffers::Vector<float> *>(VT_STD);
   }
-  bool Verify(flatbuffers::Verifier &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_MEAN) &&
            verifier.VerifyVector(mean()) &&
@@ -913,37 +916,37 @@ struct NormalizationOptions FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table
 
 struct NormalizationOptionsBuilder {
   typedef NormalizationOptions Table;
-  flatbuffers::FlatBufferBuilder &fbb_;
-  flatbuffers::uoffset_t start_;
-  void add_mean(flatbuffers::Offset<flatbuffers::Vector<float>> mean) {
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_mean(::flatbuffers::Offset<::flatbuffers::Vector<float>> mean) {
     fbb_.AddOffset(NormalizationOptions::VT_MEAN, mean);
   }
-  void add_std(flatbuffers::Offset<flatbuffers::Vector<float>> std) {
+  void add_std(::flatbuffers::Offset<::flatbuffers::Vector<float>> std) {
     fbb_.AddOffset(NormalizationOptions::VT_STD, std);
   }
-  explicit NormalizationOptionsBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+  explicit NormalizationOptionsBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
   }
-  flatbuffers::Offset<NormalizationOptions> Finish() {
+  ::flatbuffers::Offset<NormalizationOptions> Finish() {
     const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<NormalizationOptions>(end);
+    auto o = ::flatbuffers::Offset<NormalizationOptions>(end);
     return o;
   }
 };
 
-inline flatbuffers::Offset<NormalizationOptions> CreateNormalizationOptions(
-    flatbuffers::FlatBufferBuilder &_fbb,
-    flatbuffers::Offset<flatbuffers::Vector<float>> mean = 0,
-    flatbuffers::Offset<flatbuffers::Vector<float>> std = 0) {
+inline ::flatbuffers::Offset<NormalizationOptions> CreateNormalizationOptions(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    ::flatbuffers::Offset<::flatbuffers::Vector<float>> mean = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<float>> std = 0) {
   NormalizationOptionsBuilder builder_(_fbb);
   builder_.add_std(std);
   builder_.add_mean(mean);
   return builder_.Finish();
 }
 
-inline flatbuffers::Offset<NormalizationOptions> CreateNormalizationOptionsDirect(
-    flatbuffers::FlatBufferBuilder &_fbb,
+inline ::flatbuffers::Offset<NormalizationOptions> CreateNormalizationOptionsDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
     const std::vector<float> *mean = nullptr,
     const std::vector<float> *std = nullptr) {
   auto mean__ = mean ? _fbb.CreateVector<float>(*mean) : 0;
@@ -954,7 +957,7 @@ inline flatbuffers::Offset<NormalizationOptions> CreateNormalizationOptionsDirec
       std__);
 }
 
-struct ScoreCalibrationOptions FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+struct ScoreCalibrationOptions FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef ScoreCalibrationOptionsBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_SCORE_TRANSFORMATION = 4,
@@ -966,7 +969,7 @@ struct ScoreCalibrationOptions FLATBUFFERS_FINAL_CLASS : private flatbuffers::Ta
   float default_score() const {
     return GetField<float>(VT_DEFAULT_SCORE, 0.0f);
   }
-  bool Verify(flatbuffers::Verifier &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<int8_t>(verifier, VT_SCORE_TRANSFORMATION, 1) &&
            VerifyField<float>(verifier, VT_DEFAULT_SCORE, 4) &&
@@ -976,27 +979,27 @@ struct ScoreCalibrationOptions FLATBUFFERS_FINAL_CLASS : private flatbuffers::Ta
 
 struct ScoreCalibrationOptionsBuilder {
   typedef ScoreCalibrationOptions Table;
-  flatbuffers::FlatBufferBuilder &fbb_;
-  flatbuffers::uoffset_t start_;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
   void add_score_transformation(tflite::ScoreTransformationType score_transformation) {
     fbb_.AddElement<int8_t>(ScoreCalibrationOptions::VT_SCORE_TRANSFORMATION, static_cast<int8_t>(score_transformation), 0);
   }
   void add_default_score(float default_score) {
     fbb_.AddElement<float>(ScoreCalibrationOptions::VT_DEFAULT_SCORE, default_score, 0.0f);
   }
-  explicit ScoreCalibrationOptionsBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+  explicit ScoreCalibrationOptionsBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
   }
-  flatbuffers::Offset<ScoreCalibrationOptions> Finish() {
+  ::flatbuffers::Offset<ScoreCalibrationOptions> Finish() {
     const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<ScoreCalibrationOptions>(end);
+    auto o = ::flatbuffers::Offset<ScoreCalibrationOptions>(end);
     return o;
   }
 };
 
-inline flatbuffers::Offset<ScoreCalibrationOptions> CreateScoreCalibrationOptions(
-    flatbuffers::FlatBufferBuilder &_fbb,
+inline ::flatbuffers::Offset<ScoreCalibrationOptions> CreateScoreCalibrationOptions(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
     tflite::ScoreTransformationType score_transformation = tflite::ScoreTransformationType_IDENTITY,
     float default_score = 0.0f) {
   ScoreCalibrationOptionsBuilder builder_(_fbb);
@@ -1005,7 +1008,7 @@ inline flatbuffers::Offset<ScoreCalibrationOptions> CreateScoreCalibrationOption
   return builder_.Finish();
 }
 
-struct ScoreThresholdingOptions FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+struct ScoreThresholdingOptions FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef ScoreThresholdingOptionsBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_GLOBAL_SCORE_THRESHOLD = 4
@@ -1013,7 +1016,7 @@ struct ScoreThresholdingOptions FLATBUFFERS_FINAL_CLASS : private flatbuffers::T
   float global_score_threshold() const {
     return GetField<float>(VT_GLOBAL_SCORE_THRESHOLD, 0.0f);
   }
-  bool Verify(flatbuffers::Verifier &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<float>(verifier, VT_GLOBAL_SCORE_THRESHOLD, 4) &&
            verifier.EndTable();
@@ -1022,39 +1025,39 @@ struct ScoreThresholdingOptions FLATBUFFERS_FINAL_CLASS : private flatbuffers::T
 
 struct ScoreThresholdingOptionsBuilder {
   typedef ScoreThresholdingOptions Table;
-  flatbuffers::FlatBufferBuilder &fbb_;
-  flatbuffers::uoffset_t start_;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
   void add_global_score_threshold(float global_score_threshold) {
     fbb_.AddElement<float>(ScoreThresholdingOptions::VT_GLOBAL_SCORE_THRESHOLD, global_score_threshold, 0.0f);
   }
-  explicit ScoreThresholdingOptionsBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+  explicit ScoreThresholdingOptionsBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
   }
-  flatbuffers::Offset<ScoreThresholdingOptions> Finish() {
+  ::flatbuffers::Offset<ScoreThresholdingOptions> Finish() {
     const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<ScoreThresholdingOptions>(end);
+    auto o = ::flatbuffers::Offset<ScoreThresholdingOptions>(end);
     return o;
   }
 };
 
-inline flatbuffers::Offset<ScoreThresholdingOptions> CreateScoreThresholdingOptions(
-    flatbuffers::FlatBufferBuilder &_fbb,
+inline ::flatbuffers::Offset<ScoreThresholdingOptions> CreateScoreThresholdingOptions(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
     float global_score_threshold = 0.0f) {
   ScoreThresholdingOptionsBuilder builder_(_fbb);
   builder_.add_global_score_threshold(global_score_threshold);
   return builder_.Finish();
 }
 
-struct BertTokenizerOptions FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+struct BertTokenizerOptions FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef BertTokenizerOptionsBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_VOCAB_FILE = 4
   };
-  const flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>> *vocab_file() const {
-    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>> *>(VT_VOCAB_FILE);
+  const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>> *vocab_file() const {
+    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>> *>(VT_VOCAB_FILE);
   }
-  bool Verify(flatbuffers::Verifier &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_VOCAB_FILE) &&
            verifier.VerifyVector(vocab_file()) &&
@@ -1065,52 +1068,52 @@ struct BertTokenizerOptions FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table
 
 struct BertTokenizerOptionsBuilder {
   typedef BertTokenizerOptions Table;
-  flatbuffers::FlatBufferBuilder &fbb_;
-  flatbuffers::uoffset_t start_;
-  void add_vocab_file(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>>> vocab_file) {
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_vocab_file(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>>> vocab_file) {
     fbb_.AddOffset(BertTokenizerOptions::VT_VOCAB_FILE, vocab_file);
   }
-  explicit BertTokenizerOptionsBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+  explicit BertTokenizerOptionsBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
   }
-  flatbuffers::Offset<BertTokenizerOptions> Finish() {
+  ::flatbuffers::Offset<BertTokenizerOptions> Finish() {
     const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<BertTokenizerOptions>(end);
+    auto o = ::flatbuffers::Offset<BertTokenizerOptions>(end);
     return o;
   }
 };
 
-inline flatbuffers::Offset<BertTokenizerOptions> CreateBertTokenizerOptions(
-    flatbuffers::FlatBufferBuilder &_fbb,
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>>> vocab_file = 0) {
+inline ::flatbuffers::Offset<BertTokenizerOptions> CreateBertTokenizerOptions(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>>> vocab_file = 0) {
   BertTokenizerOptionsBuilder builder_(_fbb);
   builder_.add_vocab_file(vocab_file);
   return builder_.Finish();
 }
 
-inline flatbuffers::Offset<BertTokenizerOptions> CreateBertTokenizerOptionsDirect(
-    flatbuffers::FlatBufferBuilder &_fbb,
-    const std::vector<flatbuffers::Offset<tflite::AssociatedFile>> *vocab_file = nullptr) {
-  auto vocab_file__ = vocab_file ? _fbb.CreateVector<flatbuffers::Offset<tflite::AssociatedFile>>(*vocab_file) : 0;
+inline ::flatbuffers::Offset<BertTokenizerOptions> CreateBertTokenizerOptionsDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    const std::vector<::flatbuffers::Offset<tflite::AssociatedFile>> *vocab_file = nullptr) {
+  auto vocab_file__ = vocab_file ? _fbb.CreateVector<::flatbuffers::Offset<tflite::AssociatedFile>>(*vocab_file) : 0;
   return tflite::CreateBertTokenizerOptions(
       _fbb,
       vocab_file__);
 }
 
-struct SentencePieceTokenizerOptions FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+struct SentencePieceTokenizerOptions FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef SentencePieceTokenizerOptionsBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_SENTENCEPIECE_MODEL = 4,
     VT_VOCAB_FILE = 6
   };
-  const flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>> *sentencePiece_model() const {
-    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>> *>(VT_SENTENCEPIECE_MODEL);
+  const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>> *sentencePiece_model() const {
+    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>> *>(VT_SENTENCEPIECE_MODEL);
   }
-  const flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>> *vocab_file() const {
-    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>> *>(VT_VOCAB_FILE);
+  const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>> *vocab_file() const {
+    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>> *>(VT_VOCAB_FILE);
   }
-  bool Verify(flatbuffers::Verifier &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_SENTENCEPIECE_MODEL) &&
            verifier.VerifyVector(sentencePiece_model()) &&
@@ -1124,60 +1127,60 @@ struct SentencePieceTokenizerOptions FLATBUFFERS_FINAL_CLASS : private flatbuffe
 
 struct SentencePieceTokenizerOptionsBuilder {
   typedef SentencePieceTokenizerOptions Table;
-  flatbuffers::FlatBufferBuilder &fbb_;
-  flatbuffers::uoffset_t start_;
-  void add_sentencePiece_model(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>>> sentencePiece_model) {
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_sentencePiece_model(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>>> sentencePiece_model) {
     fbb_.AddOffset(SentencePieceTokenizerOptions::VT_SENTENCEPIECE_MODEL, sentencePiece_model);
   }
-  void add_vocab_file(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>>> vocab_file) {
+  void add_vocab_file(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>>> vocab_file) {
     fbb_.AddOffset(SentencePieceTokenizerOptions::VT_VOCAB_FILE, vocab_file);
   }
-  explicit SentencePieceTokenizerOptionsBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+  explicit SentencePieceTokenizerOptionsBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
   }
-  flatbuffers::Offset<SentencePieceTokenizerOptions> Finish() {
+  ::flatbuffers::Offset<SentencePieceTokenizerOptions> Finish() {
     const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<SentencePieceTokenizerOptions>(end);
+    auto o = ::flatbuffers::Offset<SentencePieceTokenizerOptions>(end);
     return o;
   }
 };
 
-inline flatbuffers::Offset<SentencePieceTokenizerOptions> CreateSentencePieceTokenizerOptions(
-    flatbuffers::FlatBufferBuilder &_fbb,
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>>> sentencePiece_model = 0,
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>>> vocab_file = 0) {
+inline ::flatbuffers::Offset<SentencePieceTokenizerOptions> CreateSentencePieceTokenizerOptions(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>>> sentencePiece_model = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>>> vocab_file = 0) {
   SentencePieceTokenizerOptionsBuilder builder_(_fbb);
   builder_.add_vocab_file(vocab_file);
   builder_.add_sentencePiece_model(sentencePiece_model);
   return builder_.Finish();
 }
 
-inline flatbuffers::Offset<SentencePieceTokenizerOptions> CreateSentencePieceTokenizerOptionsDirect(
-    flatbuffers::FlatBufferBuilder &_fbb,
-    const std::vector<flatbuffers::Offset<tflite::AssociatedFile>> *sentencePiece_model = nullptr,
-    const std::vector<flatbuffers::Offset<tflite::AssociatedFile>> *vocab_file = nullptr) {
-  auto sentencePiece_model__ = sentencePiece_model ? _fbb.CreateVector<flatbuffers::Offset<tflite::AssociatedFile>>(*sentencePiece_model) : 0;
-  auto vocab_file__ = vocab_file ? _fbb.CreateVector<flatbuffers::Offset<tflite::AssociatedFile>>(*vocab_file) : 0;
+inline ::flatbuffers::Offset<SentencePieceTokenizerOptions> CreateSentencePieceTokenizerOptionsDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    const std::vector<::flatbuffers::Offset<tflite::AssociatedFile>> *sentencePiece_model = nullptr,
+    const std::vector<::flatbuffers::Offset<tflite::AssociatedFile>> *vocab_file = nullptr) {
+  auto sentencePiece_model__ = sentencePiece_model ? _fbb.CreateVector<::flatbuffers::Offset<tflite::AssociatedFile>>(*sentencePiece_model) : 0;
+  auto vocab_file__ = vocab_file ? _fbb.CreateVector<::flatbuffers::Offset<tflite::AssociatedFile>>(*vocab_file) : 0;
   return tflite::CreateSentencePieceTokenizerOptions(
       _fbb,
       sentencePiece_model__,
       vocab_file__);
 }
 
-struct RegexTokenizerOptions FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+struct RegexTokenizerOptions FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef RegexTokenizerOptionsBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_DELIM_REGEX_PATTERN = 4,
     VT_VOCAB_FILE = 6
   };
-  const flatbuffers::String *delim_regex_pattern() const {
-    return GetPointer<const flatbuffers::String *>(VT_DELIM_REGEX_PATTERN);
+  const ::flatbuffers::String *delim_regex_pattern() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_DELIM_REGEX_PATTERN);
   }
-  const flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>> *vocab_file() const {
-    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>> *>(VT_VOCAB_FILE);
+  const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>> *vocab_file() const {
+    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>> *>(VT_VOCAB_FILE);
   }
-  bool Verify(flatbuffers::Verifier &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_DELIM_REGEX_PATTERN) &&
            verifier.VerifyString(delim_regex_pattern()) &&
@@ -1190,48 +1193,48 @@ struct RegexTokenizerOptions FLATBUFFERS_FINAL_CLASS : private flatbuffers::Tabl
 
 struct RegexTokenizerOptionsBuilder {
   typedef RegexTokenizerOptions Table;
-  flatbuffers::FlatBufferBuilder &fbb_;
-  flatbuffers::uoffset_t start_;
-  void add_delim_regex_pattern(flatbuffers::Offset<flatbuffers::String> delim_regex_pattern) {
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_delim_regex_pattern(::flatbuffers::Offset<::flatbuffers::String> delim_regex_pattern) {
     fbb_.AddOffset(RegexTokenizerOptions::VT_DELIM_REGEX_PATTERN, delim_regex_pattern);
   }
-  void add_vocab_file(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>>> vocab_file) {
+  void add_vocab_file(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>>> vocab_file) {
     fbb_.AddOffset(RegexTokenizerOptions::VT_VOCAB_FILE, vocab_file);
   }
-  explicit RegexTokenizerOptionsBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+  explicit RegexTokenizerOptionsBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
   }
-  flatbuffers::Offset<RegexTokenizerOptions> Finish() {
+  ::flatbuffers::Offset<RegexTokenizerOptions> Finish() {
     const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<RegexTokenizerOptions>(end);
+    auto o = ::flatbuffers::Offset<RegexTokenizerOptions>(end);
     return o;
   }
 };
 
-inline flatbuffers::Offset<RegexTokenizerOptions> CreateRegexTokenizerOptions(
-    flatbuffers::FlatBufferBuilder &_fbb,
-    flatbuffers::Offset<flatbuffers::String> delim_regex_pattern = 0,
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>>> vocab_file = 0) {
+inline ::flatbuffers::Offset<RegexTokenizerOptions> CreateRegexTokenizerOptions(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    ::flatbuffers::Offset<::flatbuffers::String> delim_regex_pattern = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>>> vocab_file = 0) {
   RegexTokenizerOptionsBuilder builder_(_fbb);
   builder_.add_vocab_file(vocab_file);
   builder_.add_delim_regex_pattern(delim_regex_pattern);
   return builder_.Finish();
 }
 
-inline flatbuffers::Offset<RegexTokenizerOptions> CreateRegexTokenizerOptionsDirect(
-    flatbuffers::FlatBufferBuilder &_fbb,
+inline ::flatbuffers::Offset<RegexTokenizerOptions> CreateRegexTokenizerOptionsDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
     const char *delim_regex_pattern = nullptr,
-    const std::vector<flatbuffers::Offset<tflite::AssociatedFile>> *vocab_file = nullptr) {
+    const std::vector<::flatbuffers::Offset<tflite::AssociatedFile>> *vocab_file = nullptr) {
   auto delim_regex_pattern__ = delim_regex_pattern ? _fbb.CreateString(delim_regex_pattern) : 0;
-  auto vocab_file__ = vocab_file ? _fbb.CreateVector<flatbuffers::Offset<tflite::AssociatedFile>>(*vocab_file) : 0;
+  auto vocab_file__ = vocab_file ? _fbb.CreateVector<::flatbuffers::Offset<tflite::AssociatedFile>>(*vocab_file) : 0;
   return tflite::CreateRegexTokenizerOptions(
       _fbb,
       delim_regex_pattern__,
       vocab_file__);
 }
 
-struct ProcessUnit FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+struct ProcessUnit FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef ProcessUnitBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_OPTIONS_TYPE = 4,
@@ -1262,7 +1265,7 @@ struct ProcessUnit FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   const tflite::RegexTokenizerOptions *options_as_RegexTokenizerOptions() const {
     return options_type() == tflite::ProcessUnitOptions_RegexTokenizerOptions ? static_cast<const tflite::RegexTokenizerOptions *>(options()) : nullptr;
   }
-  bool Verify(flatbuffers::Verifier &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyField<uint8_t>(verifier, VT_OPTIONS_TYPE, 1) &&
            VerifyOffset(verifier, VT_OPTIONS) &&
@@ -1297,48 +1300,48 @@ template<> inline const tflite::RegexTokenizerOptions *ProcessUnit::options_as<t
 
 struct ProcessUnitBuilder {
   typedef ProcessUnit Table;
-  flatbuffers::FlatBufferBuilder &fbb_;
-  flatbuffers::uoffset_t start_;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
   void add_options_type(tflite::ProcessUnitOptions options_type) {
     fbb_.AddElement<uint8_t>(ProcessUnit::VT_OPTIONS_TYPE, static_cast<uint8_t>(options_type), 0);
   }
-  void add_options(flatbuffers::Offset<void> options) {
+  void add_options(::flatbuffers::Offset<void> options) {
     fbb_.AddOffset(ProcessUnit::VT_OPTIONS, options);
   }
-  explicit ProcessUnitBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+  explicit ProcessUnitBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
   }
-  flatbuffers::Offset<ProcessUnit> Finish() {
+  ::flatbuffers::Offset<ProcessUnit> Finish() {
     const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<ProcessUnit>(end);
+    auto o = ::flatbuffers::Offset<ProcessUnit>(end);
     return o;
   }
 };
 
-inline flatbuffers::Offset<ProcessUnit> CreateProcessUnit(
-    flatbuffers::FlatBufferBuilder &_fbb,
+inline ::flatbuffers::Offset<ProcessUnit> CreateProcessUnit(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
     tflite::ProcessUnitOptions options_type = tflite::ProcessUnitOptions_NONE,
-    flatbuffers::Offset<void> options = 0) {
+    ::flatbuffers::Offset<void> options = 0) {
   ProcessUnitBuilder builder_(_fbb);
   builder_.add_options(options);
   builder_.add_options_type(options_type);
   return builder_.Finish();
 }
 
-struct Stats FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+struct Stats FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef StatsBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_MAX = 4,
     VT_MIN = 6
   };
-  const flatbuffers::Vector<float> *max() const {
-    return GetPointer<const flatbuffers::Vector<float> *>(VT_MAX);
+  const ::flatbuffers::Vector<float> *max() const {
+    return GetPointer<const ::flatbuffers::Vector<float> *>(VT_MAX);
   }
-  const flatbuffers::Vector<float> *min() const {
-    return GetPointer<const flatbuffers::Vector<float> *>(VT_MIN);
+  const ::flatbuffers::Vector<float> *min() const {
+    return GetPointer<const ::flatbuffers::Vector<float> *>(VT_MIN);
   }
-  bool Verify(flatbuffers::Verifier &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_MAX) &&
            verifier.VerifyVector(max()) &&
@@ -1350,37 +1353,37 @@ struct Stats FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 
 struct StatsBuilder {
   typedef Stats Table;
-  flatbuffers::FlatBufferBuilder &fbb_;
-  flatbuffers::uoffset_t start_;
-  void add_max(flatbuffers::Offset<flatbuffers::Vector<float>> max) {
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_max(::flatbuffers::Offset<::flatbuffers::Vector<float>> max) {
     fbb_.AddOffset(Stats::VT_MAX, max);
   }
-  void add_min(flatbuffers::Offset<flatbuffers::Vector<float>> min) {
+  void add_min(::flatbuffers::Offset<::flatbuffers::Vector<float>> min) {
     fbb_.AddOffset(Stats::VT_MIN, min);
   }
-  explicit StatsBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+  explicit StatsBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
   }
-  flatbuffers::Offset<Stats> Finish() {
+  ::flatbuffers::Offset<Stats> Finish() {
     const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<Stats>(end);
+    auto o = ::flatbuffers::Offset<Stats>(end);
     return o;
   }
 };
 
-inline flatbuffers::Offset<Stats> CreateStats(
-    flatbuffers::FlatBufferBuilder &_fbb,
-    flatbuffers::Offset<flatbuffers::Vector<float>> max = 0,
-    flatbuffers::Offset<flatbuffers::Vector<float>> min = 0) {
+inline ::flatbuffers::Offset<Stats> CreateStats(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    ::flatbuffers::Offset<::flatbuffers::Vector<float>> max = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<float>> min = 0) {
   StatsBuilder builder_(_fbb);
   builder_.add_min(min);
   builder_.add_max(max);
   return builder_.Finish();
 }
 
-inline flatbuffers::Offset<Stats> CreateStatsDirect(
-    flatbuffers::FlatBufferBuilder &_fbb,
+inline ::flatbuffers::Offset<Stats> CreateStatsDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
     const std::vector<float> *max = nullptr,
     const std::vector<float> *min = nullptr) {
   auto max__ = max ? _fbb.CreateVector<float>(*max) : 0;
@@ -1391,19 +1394,19 @@ inline flatbuffers::Offset<Stats> CreateStatsDirect(
       min__);
 }
 
-struct TensorGroup FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+struct TensorGroup FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef TensorGroupBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_NAME = 4,
     VT_TENSOR_NAMES = 6
   };
-  const flatbuffers::String *name() const {
-    return GetPointer<const flatbuffers::String *>(VT_NAME);
+  const ::flatbuffers::String *name() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_NAME);
   }
-  const flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>> *tensor_names() const {
-    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>> *>(VT_TENSOR_NAMES);
+  const ::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>> *tensor_names() const {
+    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>> *>(VT_TENSOR_NAMES);
   }
-  bool Verify(flatbuffers::Verifier &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_NAME) &&
            verifier.VerifyString(name()) &&
@@ -1416,48 +1419,48 @@ struct TensorGroup FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 
 struct TensorGroupBuilder {
   typedef TensorGroup Table;
-  flatbuffers::FlatBufferBuilder &fbb_;
-  flatbuffers::uoffset_t start_;
-  void add_name(flatbuffers::Offset<flatbuffers::String> name) {
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_name(::flatbuffers::Offset<::flatbuffers::String> name) {
     fbb_.AddOffset(TensorGroup::VT_NAME, name);
   }
-  void add_tensor_names(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>>> tensor_names) {
+  void add_tensor_names(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>>> tensor_names) {
     fbb_.AddOffset(TensorGroup::VT_TENSOR_NAMES, tensor_names);
   }
-  explicit TensorGroupBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+  explicit TensorGroupBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
   }
-  flatbuffers::Offset<TensorGroup> Finish() {
+  ::flatbuffers::Offset<TensorGroup> Finish() {
     const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<TensorGroup>(end);
+    auto o = ::flatbuffers::Offset<TensorGroup>(end);
     return o;
   }
 };
 
-inline flatbuffers::Offset<TensorGroup> CreateTensorGroup(
-    flatbuffers::FlatBufferBuilder &_fbb,
-    flatbuffers::Offset<flatbuffers::String> name = 0,
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>>> tensor_names = 0) {
+inline ::flatbuffers::Offset<TensorGroup> CreateTensorGroup(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    ::flatbuffers::Offset<::flatbuffers::String> name = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>>> tensor_names = 0) {
   TensorGroupBuilder builder_(_fbb);
   builder_.add_tensor_names(tensor_names);
   builder_.add_name(name);
   return builder_.Finish();
 }
 
-inline flatbuffers::Offset<TensorGroup> CreateTensorGroupDirect(
-    flatbuffers::FlatBufferBuilder &_fbb,
+inline ::flatbuffers::Offset<TensorGroup> CreateTensorGroupDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
     const char *name = nullptr,
-    const std::vector<flatbuffers::Offset<flatbuffers::String>> *tensor_names = nullptr) {
+    const std::vector<::flatbuffers::Offset<::flatbuffers::String>> *tensor_names = nullptr) {
   auto name__ = name ? _fbb.CreateString(name) : 0;
-  auto tensor_names__ = tensor_names ? _fbb.CreateVector<flatbuffers::Offset<flatbuffers::String>>(*tensor_names) : 0;
+  auto tensor_names__ = tensor_names ? _fbb.CreateVector<::flatbuffers::Offset<::flatbuffers::String>>(*tensor_names) : 0;
   return tflite::CreateTensorGroup(
       _fbb,
       name__,
       tensor_names__);
 }
 
-struct TensorMetadata FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+struct TensorMetadata FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef TensorMetadataBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_NAME = 4,
@@ -1468,28 +1471,28 @@ struct TensorMetadata FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
     VT_STATS = 14,
     VT_ASSOCIATED_FILES = 16
   };
-  const flatbuffers::String *name() const {
-    return GetPointer<const flatbuffers::String *>(VT_NAME);
+  const ::flatbuffers::String *name() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_NAME);
   }
-  const flatbuffers::String *description() const {
-    return GetPointer<const flatbuffers::String *>(VT_DESCRIPTION);
+  const ::flatbuffers::String *description() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_DESCRIPTION);
   }
-  const flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>> *dimension_names() const {
-    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>> *>(VT_DIMENSION_NAMES);
+  const ::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>> *dimension_names() const {
+    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>> *>(VT_DIMENSION_NAMES);
   }
   const tflite::Content *content() const {
     return GetPointer<const tflite::Content *>(VT_CONTENT);
   }
-  const flatbuffers::Vector<flatbuffers::Offset<tflite::ProcessUnit>> *process_units() const {
-    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<tflite::ProcessUnit>> *>(VT_PROCESS_UNITS);
+  const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::ProcessUnit>> *process_units() const {
+    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::ProcessUnit>> *>(VT_PROCESS_UNITS);
   }
   const tflite::Stats *stats() const {
     return GetPointer<const tflite::Stats *>(VT_STATS);
   }
-  const flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>> *associated_files() const {
-    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>> *>(VT_ASSOCIATED_FILES);
+  const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>> *associated_files() const {
+    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>> *>(VT_ASSOCIATED_FILES);
   }
-  bool Verify(flatbuffers::Verifier &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_NAME) &&
            verifier.VerifyString(name()) &&
@@ -1514,49 +1517,49 @@ struct TensorMetadata FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 
 struct TensorMetadataBuilder {
   typedef TensorMetadata Table;
-  flatbuffers::FlatBufferBuilder &fbb_;
-  flatbuffers::uoffset_t start_;
-  void add_name(flatbuffers::Offset<flatbuffers::String> name) {
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_name(::flatbuffers::Offset<::flatbuffers::String> name) {
     fbb_.AddOffset(TensorMetadata::VT_NAME, name);
   }
-  void add_description(flatbuffers::Offset<flatbuffers::String> description) {
+  void add_description(::flatbuffers::Offset<::flatbuffers::String> description) {
     fbb_.AddOffset(TensorMetadata::VT_DESCRIPTION, description);
   }
-  void add_dimension_names(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>>> dimension_names) {
+  void add_dimension_names(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>>> dimension_names) {
     fbb_.AddOffset(TensorMetadata::VT_DIMENSION_NAMES, dimension_names);
   }
-  void add_content(flatbuffers::Offset<tflite::Content> content) {
+  void add_content(::flatbuffers::Offset<tflite::Content> content) {
     fbb_.AddOffset(TensorMetadata::VT_CONTENT, content);
   }
-  void add_process_units(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::ProcessUnit>>> process_units) {
+  void add_process_units(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::ProcessUnit>>> process_units) {
     fbb_.AddOffset(TensorMetadata::VT_PROCESS_UNITS, process_units);
   }
-  void add_stats(flatbuffers::Offset<tflite::Stats> stats) {
+  void add_stats(::flatbuffers::Offset<tflite::Stats> stats) {
     fbb_.AddOffset(TensorMetadata::VT_STATS, stats);
   }
-  void add_associated_files(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>>> associated_files) {
+  void add_associated_files(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>>> associated_files) {
     fbb_.AddOffset(TensorMetadata::VT_ASSOCIATED_FILES, associated_files);
   }
-  explicit TensorMetadataBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+  explicit TensorMetadataBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
   }
-  flatbuffers::Offset<TensorMetadata> Finish() {
+  ::flatbuffers::Offset<TensorMetadata> Finish() {
     const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<TensorMetadata>(end);
+    auto o = ::flatbuffers::Offset<TensorMetadata>(end);
     return o;
   }
 };
 
-inline flatbuffers::Offset<TensorMetadata> CreateTensorMetadata(
-    flatbuffers::FlatBufferBuilder &_fbb,
-    flatbuffers::Offset<flatbuffers::String> name = 0,
-    flatbuffers::Offset<flatbuffers::String> description = 0,
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>>> dimension_names = 0,
-    flatbuffers::Offset<tflite::Content> content = 0,
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::ProcessUnit>>> process_units = 0,
-    flatbuffers::Offset<tflite::Stats> stats = 0,
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>>> associated_files = 0) {
+inline ::flatbuffers::Offset<TensorMetadata> CreateTensorMetadata(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    ::flatbuffers::Offset<::flatbuffers::String> name = 0,
+    ::flatbuffers::Offset<::flatbuffers::String> description = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<::flatbuffers::String>>> dimension_names = 0,
+    ::flatbuffers::Offset<tflite::Content> content = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::ProcessUnit>>> process_units = 0,
+    ::flatbuffers::Offset<tflite::Stats> stats = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>>> associated_files = 0) {
   TensorMetadataBuilder builder_(_fbb);
   builder_.add_associated_files(associated_files);
   builder_.add_stats(stats);
@@ -1568,20 +1571,20 @@ inline flatbuffers::Offset<TensorMetadata> CreateTensorMetadata(
   return builder_.Finish();
 }
 
-inline flatbuffers::Offset<TensorMetadata> CreateTensorMetadataDirect(
-    flatbuffers::FlatBufferBuilder &_fbb,
+inline ::flatbuffers::Offset<TensorMetadata> CreateTensorMetadataDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
     const char *name = nullptr,
     const char *description = nullptr,
-    const std::vector<flatbuffers::Offset<flatbuffers::String>> *dimension_names = nullptr,
-    flatbuffers::Offset<tflite::Content> content = 0,
-    const std::vector<flatbuffers::Offset<tflite::ProcessUnit>> *process_units = nullptr,
-    flatbuffers::Offset<tflite::Stats> stats = 0,
-    const std::vector<flatbuffers::Offset<tflite::AssociatedFile>> *associated_files = nullptr) {
+    const std::vector<::flatbuffers::Offset<::flatbuffers::String>> *dimension_names = nullptr,
+    ::flatbuffers::Offset<tflite::Content> content = 0,
+    const std::vector<::flatbuffers::Offset<tflite::ProcessUnit>> *process_units = nullptr,
+    ::flatbuffers::Offset<tflite::Stats> stats = 0,
+    const std::vector<::flatbuffers::Offset<tflite::AssociatedFile>> *associated_files = nullptr) {
   auto name__ = name ? _fbb.CreateString(name) : 0;
   auto description__ = description ? _fbb.CreateString(description) : 0;
-  auto dimension_names__ = dimension_names ? _fbb.CreateVector<flatbuffers::Offset<flatbuffers::String>>(*dimension_names) : 0;
-  auto process_units__ = process_units ? _fbb.CreateVector<flatbuffers::Offset<tflite::ProcessUnit>>(*process_units) : 0;
-  auto associated_files__ = associated_files ? _fbb.CreateVector<flatbuffers::Offset<tflite::AssociatedFile>>(*associated_files) : 0;
+  auto dimension_names__ = dimension_names ? _fbb.CreateVector<::flatbuffers::Offset<::flatbuffers::String>>(*dimension_names) : 0;
+  auto process_units__ = process_units ? _fbb.CreateVector<::flatbuffers::Offset<tflite::ProcessUnit>>(*process_units) : 0;
+  auto associated_files__ = associated_files ? _fbb.CreateVector<::flatbuffers::Offset<tflite::AssociatedFile>>(*associated_files) : 0;
   return tflite::CreateTensorMetadata(
       _fbb,
       name__,
@@ -1593,7 +1596,73 @@ inline flatbuffers::Offset<TensorMetadata> CreateTensorMetadataDirect(
       associated_files__);
 }
 
-struct SubGraphMetadata FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+struct CustomMetadata FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
+  typedef CustomMetadataBuilder Builder;
+  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
+    VT_NAME = 4,
+    VT_DATA = 6
+  };
+  const ::flatbuffers::String *name() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_NAME);
+  }
+  const ::flatbuffers::Vector<uint8_t> *data() const {
+    return GetPointer<const ::flatbuffers::Vector<uint8_t> *>(VT_DATA);
+  }
+  bool Verify(::flatbuffers::Verifier &verifier) const {
+    return VerifyTableStart(verifier) &&
+           VerifyOffset(verifier, VT_NAME) &&
+           verifier.VerifyString(name()) &&
+           VerifyOffset(verifier, VT_DATA) &&
+           verifier.VerifyVector(data()) &&
+           verifier.EndTable();
+  }
+};
+
+struct CustomMetadataBuilder {
+  typedef CustomMetadata Table;
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_name(::flatbuffers::Offset<::flatbuffers::String> name) {
+    fbb_.AddOffset(CustomMetadata::VT_NAME, name);
+  }
+  void add_data(::flatbuffers::Offset<::flatbuffers::Vector<uint8_t>> data) {
+    fbb_.AddOffset(CustomMetadata::VT_DATA, data);
+  }
+  explicit CustomMetadataBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
+        : fbb_(_fbb) {
+    start_ = fbb_.StartTable();
+  }
+  ::flatbuffers::Offset<CustomMetadata> Finish() {
+    const auto end = fbb_.EndTable(start_);
+    auto o = ::flatbuffers::Offset<CustomMetadata>(end);
+    return o;
+  }
+};
+
+inline ::flatbuffers::Offset<CustomMetadata> CreateCustomMetadata(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    ::flatbuffers::Offset<::flatbuffers::String> name = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<uint8_t>> data = 0) {
+  CustomMetadataBuilder builder_(_fbb);
+  builder_.add_data(data);
+  builder_.add_name(name);
+  return builder_.Finish();
+}
+
+inline ::flatbuffers::Offset<CustomMetadata> CreateCustomMetadataDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    const char *name = nullptr,
+    const std::vector<uint8_t> *data = nullptr) {
+  auto name__ = name ? _fbb.CreateString(name) : 0;
+  if (data) { _fbb.ForceVectorAlignment(data->size(), sizeof(uint8_t), 16); }
+  auto data__ = data ? _fbb.CreateVector<uint8_t>(*data) : 0;
+  return tflite::CreateCustomMetadata(
+      _fbb,
+      name__,
+      data__);
+}
+
+struct SubGraphMetadata FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef SubGraphMetadataBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_NAME = 4,
@@ -1604,36 +1673,40 @@ struct SubGraphMetadata FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
     VT_INPUT_PROCESS_UNITS = 14,
     VT_OUTPUT_PROCESS_UNITS = 16,
     VT_INPUT_TENSOR_GROUPS = 18,
-    VT_OUTPUT_TENSOR_GROUPS = 20
+    VT_OUTPUT_TENSOR_GROUPS = 20,
+    VT_CUSTOM_METADATA = 22
   };
-  const flatbuffers::String *name() const {
-    return GetPointer<const flatbuffers::String *>(VT_NAME);
+  const ::flatbuffers::String *name() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_NAME);
   }
-  const flatbuffers::String *description() const {
-    return GetPointer<const flatbuffers::String *>(VT_DESCRIPTION);
+  const ::flatbuffers::String *description() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_DESCRIPTION);
   }
-  const flatbuffers::Vector<flatbuffers::Offset<tflite::TensorMetadata>> *input_tensor_metadata() const {
-    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<tflite::TensorMetadata>> *>(VT_INPUT_TENSOR_METADATA);
+  const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::TensorMetadata>> *input_tensor_metadata() const {
+    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::TensorMetadata>> *>(VT_INPUT_TENSOR_METADATA);
   }
-  const flatbuffers::Vector<flatbuffers::Offset<tflite::TensorMetadata>> *output_tensor_metadata() const {
-    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<tflite::TensorMetadata>> *>(VT_OUTPUT_TENSOR_METADATA);
+  const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::TensorMetadata>> *output_tensor_metadata() const {
+    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::TensorMetadata>> *>(VT_OUTPUT_TENSOR_METADATA);
   }
-  const flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>> *associated_files() const {
-    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>> *>(VT_ASSOCIATED_FILES);
+  const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>> *associated_files() const {
+    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>> *>(VT_ASSOCIATED_FILES);
   }
-  const flatbuffers::Vector<flatbuffers::Offset<tflite::ProcessUnit>> *input_process_units() const {
-    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<tflite::ProcessUnit>> *>(VT_INPUT_PROCESS_UNITS);
+  const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::ProcessUnit>> *input_process_units() const {
+    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::ProcessUnit>> *>(VT_INPUT_PROCESS_UNITS);
   }
-  const flatbuffers::Vector<flatbuffers::Offset<tflite::ProcessUnit>> *output_process_units() const {
-    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<tflite::ProcessUnit>> *>(VT_OUTPUT_PROCESS_UNITS);
+  const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::ProcessUnit>> *output_process_units() const {
+    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::ProcessUnit>> *>(VT_OUTPUT_PROCESS_UNITS);
   }
-  const flatbuffers::Vector<flatbuffers::Offset<tflite::TensorGroup>> *input_tensor_groups() const {
-    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<tflite::TensorGroup>> *>(VT_INPUT_TENSOR_GROUPS);
+  const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::TensorGroup>> *input_tensor_groups() const {
+    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::TensorGroup>> *>(VT_INPUT_TENSOR_GROUPS);
   }
-  const flatbuffers::Vector<flatbuffers::Offset<tflite::TensorGroup>> *output_tensor_groups() const {
-    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<tflite::TensorGroup>> *>(VT_OUTPUT_TENSOR_GROUPS);
+  const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::TensorGroup>> *output_tensor_groups() const {
+    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::TensorGroup>> *>(VT_OUTPUT_TENSOR_GROUPS);
   }
-  bool Verify(flatbuffers::Verifier &verifier) const {
+  const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::CustomMetadata>> *custom_metadata() const {
+    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::CustomMetadata>> *>(VT_CUSTOM_METADATA);
+  }
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_NAME) &&
            verifier.VerifyString(name()) &&
@@ -1660,64 +1733,72 @@ struct SubGraphMetadata FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
            VerifyOffset(verifier, VT_OUTPUT_TENSOR_GROUPS) &&
            verifier.VerifyVector(output_tensor_groups()) &&
            verifier.VerifyVectorOfTables(output_tensor_groups()) &&
+           VerifyOffset(verifier, VT_CUSTOM_METADATA) &&
+           verifier.VerifyVector(custom_metadata()) &&
+           verifier.VerifyVectorOfTables(custom_metadata()) &&
            verifier.EndTable();
   }
 };
 
 struct SubGraphMetadataBuilder {
   typedef SubGraphMetadata Table;
-  flatbuffers::FlatBufferBuilder &fbb_;
-  flatbuffers::uoffset_t start_;
-  void add_name(flatbuffers::Offset<flatbuffers::String> name) {
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_name(::flatbuffers::Offset<::flatbuffers::String> name) {
     fbb_.AddOffset(SubGraphMetadata::VT_NAME, name);
   }
-  void add_description(flatbuffers::Offset<flatbuffers::String> description) {
+  void add_description(::flatbuffers::Offset<::flatbuffers::String> description) {
     fbb_.AddOffset(SubGraphMetadata::VT_DESCRIPTION, description);
   }
-  void add_input_tensor_metadata(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::TensorMetadata>>> input_tensor_metadata) {
+  void add_input_tensor_metadata(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::TensorMetadata>>> input_tensor_metadata) {
     fbb_.AddOffset(SubGraphMetadata::VT_INPUT_TENSOR_METADATA, input_tensor_metadata);
   }
-  void add_output_tensor_metadata(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::TensorMetadata>>> output_tensor_metadata) {
+  void add_output_tensor_metadata(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::TensorMetadata>>> output_tensor_metadata) {
     fbb_.AddOffset(SubGraphMetadata::VT_OUTPUT_TENSOR_METADATA, output_tensor_metadata);
   }
-  void add_associated_files(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>>> associated_files) {
+  void add_associated_files(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>>> associated_files) {
     fbb_.AddOffset(SubGraphMetadata::VT_ASSOCIATED_FILES, associated_files);
   }
-  void add_input_process_units(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::ProcessUnit>>> input_process_units) {
+  void add_input_process_units(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::ProcessUnit>>> input_process_units) {
     fbb_.AddOffset(SubGraphMetadata::VT_INPUT_PROCESS_UNITS, input_process_units);
   }
-  void add_output_process_units(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::ProcessUnit>>> output_process_units) {
+  void add_output_process_units(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::ProcessUnit>>> output_process_units) {
     fbb_.AddOffset(SubGraphMetadata::VT_OUTPUT_PROCESS_UNITS, output_process_units);
   }
-  void add_input_tensor_groups(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::TensorGroup>>> input_tensor_groups) {
+  void add_input_tensor_groups(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::TensorGroup>>> input_tensor_groups) {
     fbb_.AddOffset(SubGraphMetadata::VT_INPUT_TENSOR_GROUPS, input_tensor_groups);
   }
-  void add_output_tensor_groups(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::TensorGroup>>> output_tensor_groups) {
+  void add_output_tensor_groups(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::TensorGroup>>> output_tensor_groups) {
     fbb_.AddOffset(SubGraphMetadata::VT_OUTPUT_TENSOR_GROUPS, output_tensor_groups);
   }
-  explicit SubGraphMetadataBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+  void add_custom_metadata(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::CustomMetadata>>> custom_metadata) {
+    fbb_.AddOffset(SubGraphMetadata::VT_CUSTOM_METADATA, custom_metadata);
+  }
+  explicit SubGraphMetadataBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
   }
-  flatbuffers::Offset<SubGraphMetadata> Finish() {
+  ::flatbuffers::Offset<SubGraphMetadata> Finish() {
     const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<SubGraphMetadata>(end);
+    auto o = ::flatbuffers::Offset<SubGraphMetadata>(end);
     return o;
   }
 };
 
-inline flatbuffers::Offset<SubGraphMetadata> CreateSubGraphMetadata(
-    flatbuffers::FlatBufferBuilder &_fbb,
-    flatbuffers::Offset<flatbuffers::String> name = 0,
-    flatbuffers::Offset<flatbuffers::String> description = 0,
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::TensorMetadata>>> input_tensor_metadata = 0,
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::TensorMetadata>>> output_tensor_metadata = 0,
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>>> associated_files = 0,
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::ProcessUnit>>> input_process_units = 0,
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::ProcessUnit>>> output_process_units = 0,
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::TensorGroup>>> input_tensor_groups = 0,
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::TensorGroup>>> output_tensor_groups = 0) {
+inline ::flatbuffers::Offset<SubGraphMetadata> CreateSubGraphMetadata(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    ::flatbuffers::Offset<::flatbuffers::String> name = 0,
+    ::flatbuffers::Offset<::flatbuffers::String> description = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::TensorMetadata>>> input_tensor_metadata = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::TensorMetadata>>> output_tensor_metadata = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>>> associated_files = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::ProcessUnit>>> input_process_units = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::ProcessUnit>>> output_process_units = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::TensorGroup>>> input_tensor_groups = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::TensorGroup>>> output_tensor_groups = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::CustomMetadata>>> custom_metadata = 0) {
   SubGraphMetadataBuilder builder_(_fbb);
+  builder_.add_custom_metadata(custom_metadata);
   builder_.add_output_tensor_groups(output_tensor_groups);
   builder_.add_input_tensor_groups(input_tensor_groups);
   builder_.add_output_process_units(output_process_units);
@@ -1730,26 +1811,28 @@ inline flatbuffers::Offset<SubGraphMetadata> CreateSubGraphMetadata(
   return builder_.Finish();
 }
 
-inline flatbuffers::Offset<SubGraphMetadata> CreateSubGraphMetadataDirect(
-    flatbuffers::FlatBufferBuilder &_fbb,
+inline ::flatbuffers::Offset<SubGraphMetadata> CreateSubGraphMetadataDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
     const char *name = nullptr,
     const char *description = nullptr,
-    const std::vector<flatbuffers::Offset<tflite::TensorMetadata>> *input_tensor_metadata = nullptr,
-    const std::vector<flatbuffers::Offset<tflite::TensorMetadata>> *output_tensor_metadata = nullptr,
-    const std::vector<flatbuffers::Offset<tflite::AssociatedFile>> *associated_files = nullptr,
-    const std::vector<flatbuffers::Offset<tflite::ProcessUnit>> *input_process_units = nullptr,
-    const std::vector<flatbuffers::Offset<tflite::ProcessUnit>> *output_process_units = nullptr,
-    const std::vector<flatbuffers::Offset<tflite::TensorGroup>> *input_tensor_groups = nullptr,
-    const std::vector<flatbuffers::Offset<tflite::TensorGroup>> *output_tensor_groups = nullptr) {
+    const std::vector<::flatbuffers::Offset<tflite::TensorMetadata>> *input_tensor_metadata = nullptr,
+    const std::vector<::flatbuffers::Offset<tflite::TensorMetadata>> *output_tensor_metadata = nullptr,
+    const std::vector<::flatbuffers::Offset<tflite::AssociatedFile>> *associated_files = nullptr,
+    const std::vector<::flatbuffers::Offset<tflite::ProcessUnit>> *input_process_units = nullptr,
+    const std::vector<::flatbuffers::Offset<tflite::ProcessUnit>> *output_process_units = nullptr,
+    const std::vector<::flatbuffers::Offset<tflite::TensorGroup>> *input_tensor_groups = nullptr,
+    const std::vector<::flatbuffers::Offset<tflite::TensorGroup>> *output_tensor_groups = nullptr,
+    const std::vector<::flatbuffers::Offset<tflite::CustomMetadata>> *custom_metadata = nullptr) {
   auto name__ = name ? _fbb.CreateString(name) : 0;
   auto description__ = description ? _fbb.CreateString(description) : 0;
-  auto input_tensor_metadata__ = input_tensor_metadata ? _fbb.CreateVector<flatbuffers::Offset<tflite::TensorMetadata>>(*input_tensor_metadata) : 0;
-  auto output_tensor_metadata__ = output_tensor_metadata ? _fbb.CreateVector<flatbuffers::Offset<tflite::TensorMetadata>>(*output_tensor_metadata) : 0;
-  auto associated_files__ = associated_files ? _fbb.CreateVector<flatbuffers::Offset<tflite::AssociatedFile>>(*associated_files) : 0;
-  auto input_process_units__ = input_process_units ? _fbb.CreateVector<flatbuffers::Offset<tflite::ProcessUnit>>(*input_process_units) : 0;
-  auto output_process_units__ = output_process_units ? _fbb.CreateVector<flatbuffers::Offset<tflite::ProcessUnit>>(*output_process_units) : 0;
-  auto input_tensor_groups__ = input_tensor_groups ? _fbb.CreateVector<flatbuffers::Offset<tflite::TensorGroup>>(*input_tensor_groups) : 0;
-  auto output_tensor_groups__ = output_tensor_groups ? _fbb.CreateVector<flatbuffers::Offset<tflite::TensorGroup>>(*output_tensor_groups) : 0;
+  auto input_tensor_metadata__ = input_tensor_metadata ? _fbb.CreateVector<::flatbuffers::Offset<tflite::TensorMetadata>>(*input_tensor_metadata) : 0;
+  auto output_tensor_metadata__ = output_tensor_metadata ? _fbb.CreateVector<::flatbuffers::Offset<tflite::TensorMetadata>>(*output_tensor_metadata) : 0;
+  auto associated_files__ = associated_files ? _fbb.CreateVector<::flatbuffers::Offset<tflite::AssociatedFile>>(*associated_files) : 0;
+  auto input_process_units__ = input_process_units ? _fbb.CreateVector<::flatbuffers::Offset<tflite::ProcessUnit>>(*input_process_units) : 0;
+  auto output_process_units__ = output_process_units ? _fbb.CreateVector<::flatbuffers::Offset<tflite::ProcessUnit>>(*output_process_units) : 0;
+  auto input_tensor_groups__ = input_tensor_groups ? _fbb.CreateVector<::flatbuffers::Offset<tflite::TensorGroup>>(*input_tensor_groups) : 0;
+  auto output_tensor_groups__ = output_tensor_groups ? _fbb.CreateVector<::flatbuffers::Offset<tflite::TensorGroup>>(*output_tensor_groups) : 0;
+  auto custom_metadata__ = custom_metadata ? _fbb.CreateVector<::flatbuffers::Offset<tflite::CustomMetadata>>(*custom_metadata) : 0;
   return tflite::CreateSubGraphMetadata(
       _fbb,
       name__,
@@ -1760,10 +1843,11 @@ inline flatbuffers::Offset<SubGraphMetadata> CreateSubGraphMetadataDirect(
       input_process_units__,
       output_process_units__,
       input_tensor_groups__,
-      output_tensor_groups__);
+      output_tensor_groups__,
+      custom_metadata__);
 }
 
-struct ModelMetadata FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+struct ModelMetadata FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef ModelMetadataBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_NAME = 4,
@@ -1775,31 +1859,31 @@ struct ModelMetadata FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
     VT_ASSOCIATED_FILES = 16,
     VT_MIN_PARSER_VERSION = 18
   };
-  const flatbuffers::String *name() const {
-    return GetPointer<const flatbuffers::String *>(VT_NAME);
+  const ::flatbuffers::String *name() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_NAME);
   }
-  const flatbuffers::String *description() const {
-    return GetPointer<const flatbuffers::String *>(VT_DESCRIPTION);
+  const ::flatbuffers::String *description() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_DESCRIPTION);
   }
-  const flatbuffers::String *version() const {
-    return GetPointer<const flatbuffers::String *>(VT_VERSION);
+  const ::flatbuffers::String *version() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_VERSION);
   }
-  const flatbuffers::Vector<flatbuffers::Offset<tflite::SubGraphMetadata>> *subgraph_metadata() const {
-    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<tflite::SubGraphMetadata>> *>(VT_SUBGRAPH_METADATA);
+  const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::SubGraphMetadata>> *subgraph_metadata() const {
+    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::SubGraphMetadata>> *>(VT_SUBGRAPH_METADATA);
   }
-  const flatbuffers::String *author() const {
-    return GetPointer<const flatbuffers::String *>(VT_AUTHOR);
+  const ::flatbuffers::String *author() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_AUTHOR);
   }
-  const flatbuffers::String *license() const {
-    return GetPointer<const flatbuffers::String *>(VT_LICENSE);
+  const ::flatbuffers::String *license() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_LICENSE);
   }
-  const flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>> *associated_files() const {
-    return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>> *>(VT_ASSOCIATED_FILES);
+  const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>> *associated_files() const {
+    return GetPointer<const ::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>> *>(VT_ASSOCIATED_FILES);
   }
-  const flatbuffers::String *min_parser_version() const {
-    return GetPointer<const flatbuffers::String *>(VT_MIN_PARSER_VERSION);
+  const ::flatbuffers::String *min_parser_version() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_MIN_PARSER_VERSION);
   }
-  bool Verify(flatbuffers::Verifier &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_NAME) &&
            verifier.VerifyString(name()) &&
@@ -1825,53 +1909,53 @@ struct ModelMetadata FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
 
 struct ModelMetadataBuilder {
   typedef ModelMetadata Table;
-  flatbuffers::FlatBufferBuilder &fbb_;
-  flatbuffers::uoffset_t start_;
-  void add_name(flatbuffers::Offset<flatbuffers::String> name) {
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_name(::flatbuffers::Offset<::flatbuffers::String> name) {
     fbb_.AddOffset(ModelMetadata::VT_NAME, name);
   }
-  void add_description(flatbuffers::Offset<flatbuffers::String> description) {
+  void add_description(::flatbuffers::Offset<::flatbuffers::String> description) {
     fbb_.AddOffset(ModelMetadata::VT_DESCRIPTION, description);
   }
-  void add_version(flatbuffers::Offset<flatbuffers::String> version) {
+  void add_version(::flatbuffers::Offset<::flatbuffers::String> version) {
     fbb_.AddOffset(ModelMetadata::VT_VERSION, version);
   }
-  void add_subgraph_metadata(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::SubGraphMetadata>>> subgraph_metadata) {
+  void add_subgraph_metadata(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::SubGraphMetadata>>> subgraph_metadata) {
     fbb_.AddOffset(ModelMetadata::VT_SUBGRAPH_METADATA, subgraph_metadata);
   }
-  void add_author(flatbuffers::Offset<flatbuffers::String> author) {
+  void add_author(::flatbuffers::Offset<::flatbuffers::String> author) {
     fbb_.AddOffset(ModelMetadata::VT_AUTHOR, author);
   }
-  void add_license(flatbuffers::Offset<flatbuffers::String> license) {
+  void add_license(::flatbuffers::Offset<::flatbuffers::String> license) {
     fbb_.AddOffset(ModelMetadata::VT_LICENSE, license);
   }
-  void add_associated_files(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>>> associated_files) {
+  void add_associated_files(::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>>> associated_files) {
     fbb_.AddOffset(ModelMetadata::VT_ASSOCIATED_FILES, associated_files);
   }
-  void add_min_parser_version(flatbuffers::Offset<flatbuffers::String> min_parser_version) {
+  void add_min_parser_version(::flatbuffers::Offset<::flatbuffers::String> min_parser_version) {
     fbb_.AddOffset(ModelMetadata::VT_MIN_PARSER_VERSION, min_parser_version);
   }
-  explicit ModelMetadataBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+  explicit ModelMetadataBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
   }
-  flatbuffers::Offset<ModelMetadata> Finish() {
+  ::flatbuffers::Offset<ModelMetadata> Finish() {
     const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<ModelMetadata>(end);
+    auto o = ::flatbuffers::Offset<ModelMetadata>(end);
     return o;
   }
 };
 
-inline flatbuffers::Offset<ModelMetadata> CreateModelMetadata(
-    flatbuffers::FlatBufferBuilder &_fbb,
-    flatbuffers::Offset<flatbuffers::String> name = 0,
-    flatbuffers::Offset<flatbuffers::String> description = 0,
-    flatbuffers::Offset<flatbuffers::String> version = 0,
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::SubGraphMetadata>>> subgraph_metadata = 0,
-    flatbuffers::Offset<flatbuffers::String> author = 0,
-    flatbuffers::Offset<flatbuffers::String> license = 0,
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<tflite::AssociatedFile>>> associated_files = 0,
-    flatbuffers::Offset<flatbuffers::String> min_parser_version = 0) {
+inline ::flatbuffers::Offset<ModelMetadata> CreateModelMetadata(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    ::flatbuffers::Offset<::flatbuffers::String> name = 0,
+    ::flatbuffers::Offset<::flatbuffers::String> description = 0,
+    ::flatbuffers::Offset<::flatbuffers::String> version = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::SubGraphMetadata>>> subgraph_metadata = 0,
+    ::flatbuffers::Offset<::flatbuffers::String> author = 0,
+    ::flatbuffers::Offset<::flatbuffers::String> license = 0,
+    ::flatbuffers::Offset<::flatbuffers::Vector<::flatbuffers::Offset<tflite::AssociatedFile>>> associated_files = 0,
+    ::flatbuffers::Offset<::flatbuffers::String> min_parser_version = 0) {
   ModelMetadataBuilder builder_(_fbb);
   builder_.add_min_parser_version(min_parser_version);
   builder_.add_associated_files(associated_files);
@@ -1884,23 +1968,23 @@ inline flatbuffers::Offset<ModelMetadata> CreateModelMetadata(
   return builder_.Finish();
 }
 
-inline flatbuffers::Offset<ModelMetadata> CreateModelMetadataDirect(
-    flatbuffers::FlatBufferBuilder &_fbb,
+inline ::flatbuffers::Offset<ModelMetadata> CreateModelMetadataDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
     const char *name = nullptr,
     const char *description = nullptr,
     const char *version = nullptr,
-    const std::vector<flatbuffers::Offset<tflite::SubGraphMetadata>> *subgraph_metadata = nullptr,
+    const std::vector<::flatbuffers::Offset<tflite::SubGraphMetadata>> *subgraph_metadata = nullptr,
     const char *author = nullptr,
     const char *license = nullptr,
-    const std::vector<flatbuffers::Offset<tflite::AssociatedFile>> *associated_files = nullptr,
+    const std::vector<::flatbuffers::Offset<tflite::AssociatedFile>> *associated_files = nullptr,
     const char *min_parser_version = nullptr) {
   auto name__ = name ? _fbb.CreateString(name) : 0;
   auto description__ = description ? _fbb.CreateString(description) : 0;
   auto version__ = version ? _fbb.CreateString(version) : 0;
-  auto subgraph_metadata__ = subgraph_metadata ? _fbb.CreateVector<flatbuffers::Offset<tflite::SubGraphMetadata>>(*subgraph_metadata) : 0;
+  auto subgraph_metadata__ = subgraph_metadata ? _fbb.CreateVector<::flatbuffers::Offset<tflite::SubGraphMetadata>>(*subgraph_metadata) : 0;
   auto author__ = author ? _fbb.CreateString(author) : 0;
   auto license__ = license ? _fbb.CreateString(license) : 0;
-  auto associated_files__ = associated_files ? _fbb.CreateVector<flatbuffers::Offset<tflite::AssociatedFile>>(*associated_files) : 0;
+  auto associated_files__ = associated_files ? _fbb.CreateVector<::flatbuffers::Offset<tflite::AssociatedFile>>(*associated_files) : 0;
   auto min_parser_version__ = min_parser_version ? _fbb.CreateString(min_parser_version) : 0;
   return tflite::CreateModelMetadata(
       _fbb,
@@ -1914,7 +1998,7 @@ inline flatbuffers::Offset<ModelMetadata> CreateModelMetadataDirect(
       min_parser_version__);
 }
 
-inline bool VerifyContentProperties(flatbuffers::Verifier &verifier, const void *obj, ContentProperties type) {
+inline bool VerifyContentProperties(::flatbuffers::Verifier &verifier, const void *obj, ContentProperties type) {
   switch (type) {
     case ContentProperties_NONE: {
       return true;
@@ -1939,10 +2023,10 @@ inline bool VerifyContentProperties(flatbuffers::Verifier &verifier, const void 
   }
 }
 
-inline bool VerifyContentPropertiesVector(flatbuffers::Verifier &verifier, const flatbuffers::Vector<flatbuffers::Offset<void>> *values, const flatbuffers::Vector<uint8_t> *types) {
+inline bool VerifyContentPropertiesVector(::flatbuffers::Verifier &verifier, const ::flatbuffers::Vector<::flatbuffers::Offset<void>> *values, const ::flatbuffers::Vector<uint8_t> *types) {
   if (!values || !types) return !values && !types;
   if (values->size() != types->size()) return false;
-  for (flatbuffers::uoffset_t i = 0; i < values->size(); ++i) {
+  for (::flatbuffers::uoffset_t i = 0; i < values->size(); ++i) {
     if (!VerifyContentProperties(
         verifier,  values->Get(i), types->GetEnum<ContentProperties>(i))) {
       return false;
@@ -1951,7 +2035,7 @@ inline bool VerifyContentPropertiesVector(flatbuffers::Verifier &verifier, const
   return true;
 }
 
-inline bool VerifyProcessUnitOptions(flatbuffers::Verifier &verifier, const void *obj, ProcessUnitOptions type) {
+inline bool VerifyProcessUnitOptions(::flatbuffers::Verifier &verifier, const void *obj, ProcessUnitOptions type) {
   switch (type) {
     case ProcessUnitOptions_NONE: {
       return true;
@@ -1984,10 +2068,10 @@ inline bool VerifyProcessUnitOptions(flatbuffers::Verifier &verifier, const void
   }
 }
 
-inline bool VerifyProcessUnitOptionsVector(flatbuffers::Verifier &verifier, const flatbuffers::Vector<flatbuffers::Offset<void>> *values, const flatbuffers::Vector<uint8_t> *types) {
+inline bool VerifyProcessUnitOptionsVector(::flatbuffers::Verifier &verifier, const ::flatbuffers::Vector<::flatbuffers::Offset<void>> *values, const ::flatbuffers::Vector<uint8_t> *types) {
   if (!values || !types) return !values && !types;
   if (values->size() != types->size()) return false;
-  for (flatbuffers::uoffset_t i = 0; i < values->size(); ++i) {
+  for (::flatbuffers::uoffset_t i = 0; i < values->size(); ++i) {
     if (!VerifyProcessUnitOptions(
         verifier,  values->Get(i), types->GetEnum<ProcessUnitOptions>(i))) {
       return false;
@@ -1997,11 +2081,11 @@ inline bool VerifyProcessUnitOptionsVector(flatbuffers::Verifier &verifier, cons
 }
 
 inline const tflite::ModelMetadata *GetModelMetadata(const void *buf) {
-  return flatbuffers::GetRoot<tflite::ModelMetadata>(buf);
+  return ::flatbuffers::GetRoot<tflite::ModelMetadata>(buf);
 }
 
 inline const tflite::ModelMetadata *GetSizePrefixedModelMetadata(const void *buf) {
-  return flatbuffers::GetSizePrefixedRoot<tflite::ModelMetadata>(buf);
+  return ::flatbuffers::GetSizePrefixedRoot<tflite::ModelMetadata>(buf);
 }
 
 inline const char *ModelMetadataIdentifier() {
@@ -2009,22 +2093,22 @@ inline const char *ModelMetadataIdentifier() {
 }
 
 inline bool ModelMetadataBufferHasIdentifier(const void *buf) {
-  return flatbuffers::BufferHasIdentifier(
+  return ::flatbuffers::BufferHasIdentifier(
       buf, ModelMetadataIdentifier());
 }
 
 inline bool SizePrefixedModelMetadataBufferHasIdentifier(const void *buf) {
-  return flatbuffers::BufferHasIdentifier(
+  return ::flatbuffers::BufferHasIdentifier(
       buf, ModelMetadataIdentifier(), true);
 }
 
 inline bool VerifyModelMetadataBuffer(
-    flatbuffers::Verifier &verifier) {
+    ::flatbuffers::Verifier &verifier) {
   return verifier.VerifyBuffer<tflite::ModelMetadata>(ModelMetadataIdentifier());
 }
 
 inline bool VerifySizePrefixedModelMetadataBuffer(
-    flatbuffers::Verifier &verifier) {
+    ::flatbuffers::Verifier &verifier) {
   return verifier.VerifySizePrefixedBuffer<tflite::ModelMetadata>(ModelMetadataIdentifier());
 }
 
@@ -2033,14 +2117,14 @@ inline const char *ModelMetadataExtension() {
 }
 
 inline void FinishModelMetadataBuffer(
-    flatbuffers::FlatBufferBuilder &fbb,
-    flatbuffers::Offset<tflite::ModelMetadata> root) {
+    ::flatbuffers::FlatBufferBuilder &fbb,
+    ::flatbuffers::Offset<tflite::ModelMetadata> root) {
   fbb.Finish(root, ModelMetadataIdentifier());
 }
 
 inline void FinishSizePrefixedModelMetadataBuffer(
-    flatbuffers::FlatBufferBuilder &fbb,
-    flatbuffers::Offset<tflite::ModelMetadata> root) {
+    ::flatbuffers::FlatBufferBuilder &fbb,
+    ::flatbuffers::Offset<tflite::ModelMetadata> root) {
   fbb.FinishSizePrefixed(root, ModelMetadataIdentifier());
 }
 
