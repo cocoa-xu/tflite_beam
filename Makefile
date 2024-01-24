@@ -46,7 +46,6 @@ LIBUSB_SOURCE_ARCHIVE = $(TFLITE_BEAM_CACHE_DIR)/libusb-$(LIBUSB_VERSION).tar.bz
 LIBUSB_SOURCE_DIR = $(THIRD_PARTY_DIR)/libusb-$(LIBUSB_VERSION)
 LIBUSB_INSTALL_DIR = $(MIX_APP_PATH)/libusb
 LIBUSB_SHARED_LIBRARY = $(PRIV_DIR)/libedgetpu/libusb-1.0.0.dylib
-LIBUSB_CONFIGURE_AC = $(shell pwd)/patches/libusb-configure.ac
 
 UNAME_S := $(shell uname -s)
 ifneq ($(UNAME_S),Darwin)
@@ -122,7 +121,7 @@ libusb: create_cache_dir
 	@ if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true" ]; then \
 		if [ "$(TFLITE_BEAM_CORAL_SUPPORT)" = "true" ]; then \
 			if [ ! -e "$(LIBUSB_SHARED_LIBRARY)" ]; then \
-				bash scripts/build_libusb.sh "$(LIBUSB_SOURCE_URL)" "$(LIBUSB_SOURCE_ARCHIVE)" "$(THIRD_PARTY_DIR)" "$(LIBUSB_SOURCE_DIR)" "$(LIBUSB_INSTALL_DIR)" "$(PRIV_DIR)" "$(LIBUSB_CONFIGURE_AC)" ; \
+				bash scripts/build_libusb.sh "$(LIBUSB_SOURCE_URL)" "$(LIBUSB_SOURCE_ARCHIVE)" "$(THIRD_PARTY_DIR)" "$(LIBUSB_SOURCE_DIR)" "$(LIBUSB_INSTALL_DIR)" "$(PRIV_DIR)" ; \
 			fi && \
 			rm -rf "$(LIBUSB_INSTALL_DIR)" ; \
 		fi \
