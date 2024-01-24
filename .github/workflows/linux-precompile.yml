@@ -128,7 +128,7 @@ jobs:
           sudo apt-get install -y build-essential automake autoconf pkg-config bc m4 unzip zip curl git libssl-dev gzip libncurses5-dev ca-certificates
           sudo sed -i 's/focal/noble/g' /etc/apt/sources.list
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y ${{ matrix.pair.c_compiler }} ${{ matrix.pair.cpp_compiler }}
+          sudo apt-get install -y ${{ matrix.pair.c_compiler }} ${{ matrix.pair.cpp_compiler }}
 
       - name: Create precompiled library
         run: |
