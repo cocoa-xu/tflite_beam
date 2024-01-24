@@ -36,12 +36,6 @@ bash "3rd_party/cache/${TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME}/edgetpu_runtime/in
 
   Defaults to `true`.
 
-- `TFBEAM_XNNPACK_ENABLE_ARM_I8MM`
-  
-  Set to 'ON' so that XNNPACK can use 8-bit Integer Matrix Multiply instructions. This also enables Advanced SIMD and floating-point instructions. Note that this only available on armv8.2-a and later. 
-
-  Defaults to `OFF`.
-
 - `TFLITE_BEAM_CORAL_SUPPORT`
 
   Enable Coral Support.

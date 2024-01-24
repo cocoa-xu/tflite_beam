@@ -16,7 +16,6 @@ jobs:
     runs-on: ubuntu-20.04
     env:
       TFLITE_BEAM_PREFER_PRECOMPILED: NO
-      TFBEAM_XNNPACK_ENABLE_ARM_I8MM: "OFF"
     name: Linux ${{ matrix.pair.target_arch }}-${{ matrix.pair.target_os }}-${{ matrix.pair.target_abi }} - OTP ${{ matrix.pair.otp }}
 
     strategy:
@@ -126,7 +125,10 @@ jobs:
       - name: Install system dependecies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential automake autoconf pkg-config bc m4 unzip zip curl git libssl-dev gzip libncurses5-dev ca-certificates ${{ matrix.pair.c_compiler }} ${{ matrix.pair.cpp_compiler }}
+          sudo apt-get install -y build-essential automake autoconf pkg-config bc m4 unzip zip curl git libssl-dev gzip libncurses5-dev ca-certificates
+          sudo sed -i 's/focal/noble/g' /etc/apt/sources.list
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y ${{ matrix.pair.c_compiler }} ${{ matrix.pair.cpp_compiler }}
 
       - name: Create precompiled library
         run: |
