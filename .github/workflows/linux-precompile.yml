@@ -126,8 +126,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential automake autoconf pkg-config bc m4 unzip zip curl git libssl-dev gzip libncurses5-dev ca-certificates
-          sudo sed -i 's/focal/noble/g' /etc/apt/sources.list
-          sudo apt-get update
+          if [ "${{ matrix.pair.arch_name }}" = "aarch64" ]; then
+            sudo sed -i 's/focal/jammy/g' /etc/apt/sources.list
+            sudo apt-get update
+          fi
           sudo apt-get install -y ${{ matrix.pair.c_compiler }} ${{ matrix.pair.cpp_compiler }}
 
       - name: Create precompiled library
