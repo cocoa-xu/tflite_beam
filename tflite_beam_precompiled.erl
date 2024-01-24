@@ -93,17 +93,18 @@ get_target() ->
     FinalARCH = 
         case ARCH of
             "arm" ->
-                case CPU of 
-                    "arm1176jzf_s" ->
+                CheckString = string:substr(CPU, 1, 7),
+                case CheckString of 
+                    "cortex_" ->
+                        "armv7l";
+                    "arm1176" ->
+                        "armv6";
+                    "arm1156" ->
+                        "armv6";
+                    "arm1136" ->
                         "armv6";
                     _ ->
-                        IsCortex = string:substr(CPU, 1, 7) =:= "cortex_",
-                        if 
-                            IsCortex ->
-                                "armv7l";
-                            true ->
-                                ARCH
-                        end
+                        ARCH
                 end;
             _ ->
                 ARCH
