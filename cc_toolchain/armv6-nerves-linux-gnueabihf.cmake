@@ -8,8 +8,8 @@
 set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_SYSTEM_PROCESSOR armv6)
 
-set(CMAKE_C_COMPILER "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0/armv6-nerves-linux-gnueabihf/bin/armv6-nerves-linux-gnueabihf-gcc")
-set(CMAKE_CXX_COMPILER "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0/armv6-nerves-linux-gnueabihf/bin/armv6-nerves-linux-gnueabihf-g++")
+set(CMAKE_C_COMPILER "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0/bin/armv6-nerves-linux-gnueabihf-gcc")
+set(CMAKE_CXX_COMPILER "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0/bin/armv6-nerves-linux-gnueabihf-g++")
 
 set(CMAKE_FIND_ROOT_PATH /usr/arm-linux-gnueabihf)
 
