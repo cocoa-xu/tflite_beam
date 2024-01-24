@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -x
+
 LIBUSB_SOURCE_URL="$1"
 LIBUSB_SOURCE_ARCHIVE="$2"
 THIRD_PARTY_DIR="$3"
@@ -34,7 +36,7 @@ download_libusb && unarchive_libusb
 cd "${LIBUSB_SRC}"
 mkdir -p "${DESTDIR}"
 
-make clean
+make clean || true
 echo "libusb: ${TARGET_ARCH}-${TARGET_OS}-${TARGET_ABI}"
 if [ -n "${TARGET_ARCH}" ] && [ -n "${TARGET_OS}" ] && [ -n "${TARGET_ABI}" ]; then
   case "${TARGET_OS}" in
