@@ -3,7 +3,7 @@
 #
 # curl -fSL https://github.com/nerves-project/toolchains/releases/download/v13.2.0/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0-363664F.tar.xz -o nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0-363664F.tar.xz
 # tar -xf nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0-363664F.tar.xz
-# sudo mv nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0-363664F /usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0
+# sudo mv nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0 /usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0
 #
 set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_SYSTEM_PROCESSOR armv6)
