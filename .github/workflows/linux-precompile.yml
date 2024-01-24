@@ -177,6 +177,7 @@ jobs:
 
           if [ "${{ matrix.pair.arch_name }}" = "armv6" ]; then
             export TARGET_GCC_FLAGS="-mabi=aapcs-linux -mfpu=vfp -marm -fstack-protector-strong -mfloat-abi=hard -mcpu=arm1176jzf-s -fPIE -pie -Wl,-z,now -Wl,-z,relro"
+            export PATH="/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0/bin/:${PATH}"
           fi
 
           echo "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}"
