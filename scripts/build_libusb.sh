@@ -84,13 +84,13 @@ LIBUSB_SO_SYMLINK="libusb-1.0.dylib"
 LIBUSB_SO_SYMLINK2="libusb-1.dylib"
 
 if [ -n "${CROSSCOMPILE}" ] && [ "${TARGET_OS}" != "apple" ]; then
-  export LIBUSB_SO="libusb-1.0.so.0.3.0"
+  export LIBUSB_SO="libusb-1.0.so.0.4.0"
   export LIBUSB_SO_SYMLINK="libusb-1.0.0.so"
   export LIBUSB_SO_SYMLINK2="libusb-1.0.so.0"
 fi
 case "$(uname -s)" in
   Linux*)
-    export LIBUSB_SO="libusb-1.0.so.0.3.0"
+    export LIBUSB_SO="libusb-1.0.so.0.4.0"
     export LIBUSB_SO_SYMLINK="libusb-1.0.0.so"
     export LIBUSB_SO_SYMLINK2="libusb-1.0.so.0"
   ;;

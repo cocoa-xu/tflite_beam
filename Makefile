@@ -49,10 +49,10 @@ LIBUSB_SHARED_LIBRARY = $(PRIV_DIR)/libedgetpu/libusb-1.0.0.dylib
 
 UNAME_S := $(shell uname -s)
 ifneq ($(UNAME_S),Darwin)
-LIBUSB_SHARED_LIBRARY = $(PRIV_DIR)/libedgetpu/libusb-1.0.so.0.3.0
+LIBUSB_SHARED_LIBRARY = $(PRIV_DIR)/libedgetpu/libusb-1.0.so.0.4.0
 endif
 ifeq ($(TARGET_OS),linux)
-LIBUSB_SHARED_LIBRARY = $(PRIV_DIR)/libedgetpu/libusb-1.0.so.0.3.0
+LIBUSB_SHARED_LIBRARY = $(PRIV_DIR)/libedgetpu/libusb-1.0.so.0.4.0
 endif
 
 TFLITE_BEAM_CORAL_USB_THROTTLE ?= true
