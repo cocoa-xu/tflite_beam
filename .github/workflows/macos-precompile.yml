@@ -23,19 +23,11 @@ jobs:
       matrix:
         include:
           - pair:
-              otp: "25.3.2.3"
+              otp: "25.3.2.10"
               arch: x86_64
               libedgetpu_library: darwin_x86_64
           - pair:
-              otp: "25.3.2.3"
-              arch: aarch64
-              libedgetpu_library: darwin_arm64
-          - pair:
-              otp: "26.0.2"
-              arch: x86_64
-              libedgetpu_library: darwin_x86_64
-          - pair:
-              otp: "26.0.2"
+              otp: "25.3.2.10"
               arch: aarch64
               libedgetpu_library: darwin_arm64
 

@@ -117,6 +117,9 @@ get_target() ->
 get_nif_version() ->
     erlang:system_info(nif_version).
 
+get_precompiled_nif_version() ->
+    "2.16".
+
 is_precompiled_binary_available() ->
     case is_dev() of
         {true, _} ->
@@ -124,10 +127,16 @@ is_precompiled_binary_available() ->
         {false, AppVersion} ->
             Target = get_target(),
             NifVersion = get_nif_version(),
-            Name = lists:flatten(io_lib:fwrite(?PRECOMPILED_TARBALL_NAME, [NifVersion, Target, AppVersion])),
-            TarballFilename = lists:flatten(io_lib:fwrite("~s.tar.gz", [Name])),
-            TarballURL = lists:flatten(io_lib:fwrite(?PRECOMPILED_DOWNLOAD_URL, [AppVersion, TarballFilename])),
-            {true, Name, TarballFilename, TarballURL}
+            PrecompiledNifVersion = get_precompiled_nif_version(),
+            case NifVersion < PrecompiledNifVersion of
+                true ->
+                    {false, "NIF version is too low, will fallback to compiling from source code."};
+                false ->
+                    Name = lists:flatten(io_lib:fwrite(?PRECOMPILED_TARBALL_NAME, [PrecompiledNifVersion, Target, AppVersion])),
+                    TarballFilename = lists:flatten(io_lib:fwrite("~s.tar.gz", [Name])),
+                    TarballURL = lists:flatten(io_lib:fwrite(?PRECOMPILED_DOWNLOAD_URL, [AppVersion, TarballFilename])),
+                    {true, Name, TarballFilename, TarballURL}
+            end
     end.
 
 cache_opts() ->
