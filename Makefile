@@ -154,7 +154,7 @@ $(NATIVE_BINDINGS_SO): $(UNICODE_DATA) unarchive_source_code install_libedgetpu_
 			git clone --depth 1 https://github.com/google/glog.git 3rd_party/glog ; \
 		fi && \
 		mkdir -p $(CMAKE_BINDINGS_BUILD_DIR) && \
-		python3 "$(shell pwd)/patches/apply_patch.py" "$(TFLITE_ROOT_DIR)" "$(TFLITE_VER)" && \
+		python3 "$(shell pwd)/patches/apply_patch.py" "$(TENSORFLOW_ROOT_DIR)" "$(TFLITE_VER)" && \
 		cd "$(CMAKE_BINDINGS_BUILD_DIR)" && \
 		cmake -D C_SRC="$(C_SRC)" \
 			-D PRIV_DIR="$(PRIV_DIR)" \

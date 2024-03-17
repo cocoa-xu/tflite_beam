@@ -72,18 +72,18 @@ jobs:
               target_abi: "gnueabihf"
               cc: "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0/bin/armv6-nerves-linux-gnueabihf-gcc"
               cxx: "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0/bin/armv6-nerves-linux-gnueabihf-g++"
-          # - pair:
-          #     otp: "25.x"
-          #     arch_name: riscv64
-          #     cmake_toolchain_file: cc_toolchain/riscv64-nerves-linux-gnu.cmake
-          #     c_compiler: riscv64-nerves-linux-gnu-gcc
-          #     cpp_compiler: riscv64-nerves-linux-gnu-g++
-          #     libedgetpu_library: "riscv64"
-          #     target_arch: "riscv64"
-          #     target_os: "linux"
-          #     target_abi: "gnu"
-          #     cc: "/usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0/bin/riscv64-nerves-linux-gnu-gcc"
-          #     cxx: "/usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0/bin/riscv64-nerves-linux-gnu-g++"
+          - pair:
+              otp: "25.x"
+              arch_name: riscv64
+              cmake_toolchain_file: cc_toolchain/riscv64-nerves-linux-gnu.cmake
+              c_compiler: riscv64-nerves-linux-gnu-gcc
+              cpp_compiler: riscv64-nerves-linux-gnu-g++
+              libedgetpu_library: "riscv64"
+              target_arch: "riscv64"
+              target_os: "linux"
+              target_abi: "gnu"
+              cc: "/usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0/bin/riscv64-nerves-linux-gnu-gcc"
+              cxx: "/usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0/bin/riscv64-nerves-linux-gnu-g++"
 
     steps:
       - name: Checkout
