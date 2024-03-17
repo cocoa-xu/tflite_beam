@@ -37,7 +37,8 @@ jobs:
       TFLITE_BEAM_PREFER_PRECOMPILED: "false"
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - uses: erlef/setup-beam@v1
         with:
