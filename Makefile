@@ -23,7 +23,7 @@ endif
 # Tensorflow
 TFLITE_USE_GIT_HEAD ?= false
 TFLITE_GIT_REPO ?= "https://github.com/tensorflow/tensorflow.git"
-TFLITE_VER ?= 2.15.0
+TFLITE_VER ?= 2.16.1
 TFLITE_VER_V = v$(TFLITE_VER)
 ifneq ($(TFLITE_USE_GIT_HEAD), false)
 	TFLITE_VER_V=$(TFLITE_USE_GIT_BRANCH)
@@ -40,7 +40,7 @@ GLOG_ROOT_DIR = $(THIRD_PARTY_DIR)/glog
 TFLITE_CMAKELISTS_TXT = $(TFLITE_ROOT_DIR)/CMakeLists.txt
 CMAKE_TFLITE_BUILD_DIR = $(MIX_APP_PATH)/cmake_tflite_$(TFLITE_VER)
 
-LIBUSB_VERSION = 1.0.26
+LIBUSB_VERSION = 1.0.27
 LIBUSB_SOURCE_URL = https://github.com/libusb/libusb/releases/download/v$(LIBUSB_VERSION)/libusb-$(LIBUSB_VERSION).tar.bz2
 LIBUSB_SOURCE_ARCHIVE = $(TFLITE_BEAM_CACHE_DIR)/libusb-$(LIBUSB_VERSION).tar.bz2
 LIBUSB_SOURCE_DIR = $(THIRD_PARTY_DIR)/libusb-$(LIBUSB_VERSION)
