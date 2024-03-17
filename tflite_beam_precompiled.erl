@@ -297,9 +297,27 @@ https_opts(Hostname) ->
             ]
     end.
 
+set_proxy_if_exists(ProxyEnvVar, ProxyAtom) ->
+    case os:getenv(ProxyEnvVar) of
+        false ->
+            ok;
+        ProxyUri ->
+            case uri_string:parse(ProxyUri) of
+                #{host := Host, port := Port} ->
+                    httpc:set_options([{ProxyAtom, {{Host, Port}, []}}]),
+                    ok;
+                _ ->
+                    ok
+            end
+    end.
+
 do_download(URL) ->
     application:ensure_started(inets),
     ssl:start(),
+    set_proxy_if_exists("HTTP_PROXY", proxy),
+    set_proxy_if_exists("HTTPS_PROXY", https_proxy),
+    set_proxy_if_exists("http_proxy", proxy),
+    set_proxy_if_exists("https_proxy", https_proxy),
     HttpOtps = https_opts("github.com"),
     Request = {URL, []},
     case httpc:request(get, Request, HttpOtps, [{body_format, binary}]) of
