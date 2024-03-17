@@ -22,6 +22,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # remember to change the `get_precompiled_nif_version/0` function in the `tflite_beam_precompiled` file
+          # if upgrade the Erlang/OTP version to 26.x or later
+          # 2.16 for OTP 24.x and 25.x
+          # 2.17 for OTP 26.x
           - pair:
               otp: "25.x"
               arch_name: x86_64
@@ -68,18 +72,18 @@ jobs:
               target_abi: "gnueabihf"
               cc: "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0/bin/armv6-nerves-linux-gnueabihf-gcc"
               cxx: "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0/bin/armv6-nerves-linux-gnueabihf-g++"
-          - pair:
-              otp: "25.x"
-              arch_name: riscv64
-              cmake_toolchain_file: cc_toolchain/riscv64-nerves-linux-gnu.cmake
-              c_compiler: riscv64-nerves-linux-gnu-gcc
-              cpp_compiler: riscv64-nerves-linux-gnu-g++
-              libedgetpu_library: "riscv64"
-              target_arch: "riscv64"
-              target_os: "linux"
-              target_abi: "gnu"
-              cc: "/usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0/bin/riscv64-nerves-linux-gnu-gcc"
-              cxx: "/usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0/bin/riscv64-nerves-linux-gnu-g++"
+          # - pair:
+          #     otp: "25.x"
+          #     arch_name: riscv64
+          #     cmake_toolchain_file: cc_toolchain/riscv64-nerves-linux-gnu.cmake
+          #     c_compiler: riscv64-nerves-linux-gnu-gcc
+          #     cpp_compiler: riscv64-nerves-linux-gnu-g++
+          #     libedgetpu_library: "riscv64"
+          #     target_arch: "riscv64"
+          #     target_os: "linux"
+          #     target_abi: "gnu"
+          #     cc: "/usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0/bin/riscv64-nerves-linux-gnu-gcc"
+          #     cxx: "/usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0/bin/riscv64-nerves-linux-gnu-g++"
 
     steps:
       - name: Checkout

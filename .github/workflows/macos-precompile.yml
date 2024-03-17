@@ -22,12 +22,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # remember to change the `get_precompiled_nif_version/0` function in the `tflite_beam_precompiled` file
+          # if upgrade the Erlang/OTP version to 26.x or later
+          # 2.16 for OTP 24.x and 25.x
+          # 2.17 for OTP 26.x
           - pair:
-              otp: "25.3.2.10"
+              otp: "25.3.2.9"
               arch: x86_64
               libedgetpu_library: darwin_x86_64
           - pair:
-              otp: "25.3.2.10"
+              otp: "25.3.2.9"
               arch: aarch64
               libedgetpu_library: darwin_arm64
 
