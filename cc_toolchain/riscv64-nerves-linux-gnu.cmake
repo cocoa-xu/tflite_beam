@@ -6,12 +6,12 @@
 # sudo mv nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0 /usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0
 #
 set(CMAKE_SYSTEM_NAME Linux)
-set(CMAKE_SYSTEM_PROCESSOR armv6)
+set(CMAKE_SYSTEM_PROCESSOR riscv64)
 
-set(CMAKE_C_COMPILER "/usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0/bin/riscv64-nerves-linux-gnueabihf-gcc")
-set(CMAKE_CXX_COMPILER "/usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0/bin/riscv64-nerves-linux-gnueabihf-g++")
+set(CMAKE_C_COMPILER "/usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0/bin/riscv64-nerves-linux-gnu-gcc")
+set(CMAKE_CXX_COMPILER "/usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0/bin/riscv64-nerves-linux-gnu-g++")
 
-set(CMAKE_FIND_ROOT_PATH /usr/arm-linux-gnueabihf)
+set(CMAKE_FIND_ROOT_PATH /usr/riscv64-linux-gnu)
 
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
