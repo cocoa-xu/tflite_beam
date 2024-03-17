@@ -71,15 +71,15 @@ jobs:
           - pair:
               otp: "25.x"
               arch_name: riscv64
-              cmake_toolchain_file: cc_toolchain/riscv64-linux-gnu.cmake
-              c_compiler: gcc-riscv64-linux-gnu
-              cpp_compiler: g++-riscv64-linux-gnu
+              cmake_toolchain_file: cc_toolchain/riscv64-nerves-linux-gnu.cmake
+              c_compiler: riscv64-nerves-linux-gnu-gcc
+              cpp_compiler: riscv64-nerves-linux-gnu-g++
               libedgetpu_library: "riscv64"
               target_arch: "riscv64"
               target_os: "linux"
               target_abi: "gnu"
-              cc: "/usr/bin/riscv64-linux-gnu-gcc"
-              cxx: "/usr/bin/riscv64-linux-gnu-g++"
+              cc: "/usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0/bin/riscv64-nerves-linux-gnu-gcc"
+              cxx: "/usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0/bin/riscv64-nerves-linux-gnu-g++"
 
     steps:
       - name: Checkout
@@ -101,6 +101,10 @@ jobs:
             curl -fSL https://github.com/nerves-project/toolchains/releases/download/v13.2.0/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0-363664F.tar.xz -o nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0-363664F.tar.xz
             tar -xf nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0-363664F.tar.xz
             sudo mv nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0 /usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0
+          elif [ "${{ matrix.pair.arch_name }}" = "riscv64" ]; then
+            curl -fSL https://github.com/nerves-project/toolchains/releases/download/v13.2.0/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0-DB80D1B.tar.xz -o nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0-DB80D1B.tar.xz
+            tar -xf nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0-DB80D1B.tar.xz
+            sudo mv nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0 /usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0
           else
             sudo apt-get install -y ${{ matrix.pair.c_compiler }} ${{ matrix.pair.cpp_compiler }}
           fi
@@ -121,6 +125,8 @@ jobs:
           if [ "${{ matrix.pair.arch_name }}" = "armv6" ]; then
             export TARGET_GCC_FLAGS="-mabi=aapcs-linux -mfpu=vfp -marm -fstack-protector-strong -mfloat-abi=hard -mcpu=arm1176jzf-s -fPIE -pie -Wl,-z,now -Wl,-z,relro"
             export PATH="/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0/bin/:${PATH}"
+          elif [ "${{ matrix.pair.arch_name }}" = "riscv64" ]; then
+            export PATH="/usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0/bin/:${PATH}"
           fi
 
           echo "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}"
