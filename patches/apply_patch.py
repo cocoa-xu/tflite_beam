@@ -79,7 +79,7 @@ def patch_cpuinfo_riscv64_sys_hwprobe(tf_version: str, tf_src_root: str):
     with open(cpuinfo_cmake, 'r') as source:
         for line in source:
             line_strip = line.strip()
-            if not patched_1 and line_strip == '# Sync with tensorflow/third_party/cpuinfo/workspace.bzl':
+            if not patched_1 and line_strip == '# Sync with tensorflow/workspace2.bzl':
                 fixed.write(f"  {line_strip} # fixed\n")
                 fixed.write("  GIT_TAG 6543fec09b2f04ac4a666882998b534afc9c1349\n")
                 patched_1 = True
