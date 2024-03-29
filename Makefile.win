@@ -82,52 +82,51 @@ CMAKE_OPTIONS = $(CMAKE_OPTIONS) $(CMAKE_TFLITE_OPTIONS) $(CMAKE_CONFIGURE_FLAGS
 build: $(NATIVE_BINDINGS_SO)
 
 $(PRIV_DIR):
-    @ if not exist "$(PRIV_DIR)" mkdir "$(PRIV_DIR)"
+	@ if not exist "$(PRIV_DIR)" mkdir "$(PRIV_DIR)"
 
 create_cache_dir:
 !IF "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true"
-    @ if not exist "$(PRIV_DIR)" mkdir "$(PRIV_DIR)"
+	@ if not exist "$(PRIV_DIR)" mkdir "$(PRIV_DIR)"
 !ENDIF
 
 $(TFLITE_SOURCE_ZIP): create_cache_dir
 !IF "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true"
-    @ if not exist "$(TFLITE_SOURCE_ZIP)" ( \
-        powershell -command "(New-Object Net.WebClient).DownloadFile('$(TFLITE_SOURCE_URL)','$(TFLITE_SOURCE_ZIP)')" \
-    )
+	@ if not exist "$(TFLITE_SOURCE_ZIP)" ( \
+		powershell -command "(New-Object Net.WebClient).DownloadFile('$(TFLITE_SOURCE_URL)','$(TFLITE_SOURCE_ZIP)')" \
+	)
 !ENDIF
 
 unarchive_source_code: $(TFLITE_SOURCE_ZIP)
 !IF "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true"
-    @ if not exist "$(TENSORFLOW_ROOT_DIR)" ( \
-        powershell -command Remove-Item "$(TENSORFLOW_ROOT_DIR)" -Recurse -Force -erroraction silentlycontinue && \
-        powershell -command New-Item -Path "$(UNZIP_TARGET_DIR)" -ItemType Container -Force && \
-        powershell -command Expand-Archive -Path "$(TFLITE_SOURCE_ZIP)" -DestinationPath "$(UNZIP_TARGET_DIR)" \
-    )
+	@ if not exist "$(TENSORFLOW_ROOT_DIR)" ( \
+		powershell -command Remove-Item "$(TENSORFLOW_ROOT_DIR)" -Recurse -Force -erroraction silentlycontinue && \
+		powershell -command Expand-Archive -Path "$(TFLITE_SOURCE_ZIP)" -DestinationPath "$(UNZIP_TARGET_DIR)" \
+	)
 !ENDIF
 
 install_libedgetpu_runtime:
 !IF "$(TFLITE_BEAM_CORAL_SUPPORT)" == "true"
-    @ echo "coral is not supported yet"
+	@ echo "coral is not supported yet"
 !ENDIF
 
 libusb:
 !IF "$(TFLITE_BEAM_CORAL_SUPPORT)" == "true"
-    @ echo "coral is not supported yet"
+	@ echo "coral is not supported yet"
 !ENDIF
 
 $(UNICODE_DATA): $(PRIV_DIR)
-    @ if not exist "$(UNICODE_DATA)" copy "$(UNICODEDATA)\unicode_data.txt" "$(UNICODE_DATA)"
+	@ if not exist "$(UNICODE_DATA)" copy "$(UNICODEDATA)\unicode_data.txt" "$(UNICODE_DATA)"
 
 $(NATIVE_BINDINGS_SO): $(UNICODE_DATA) unarchive_source_code install_libedgetpu_runtime libusb
 !IF "$(TFLITE_BEAM_PREFER_PRECOMPILED)" == "true"
-    @ echo "ok"
+	@ echo "ok"
 !ELSE
-    @ if not exist "$(CMAKE_BINDINGS_BUILD_DIR)" mkdir $(CMAKE_BINDINGS_BUILD_DIR) 
-    @ if not exist "$(NATIVE_BINDINGS_SO)" ( \
-        python3 "patches/apply_patch.py" "$(TENSORFLOW_ROOT_DIR)" "$(TFLITE_VER)" && \
+	@ if not exist "$(CMAKE_BINDINGS_BUILD_DIR)" mkdir $(CMAKE_BINDINGS_BUILD_DIR) 
+	@ if not exist "$(NATIVE_BINDINGS_SO)" ( \
+		python3 "patches/apply_patch.py" "$(TENSORFLOW_ROOT_DIR)" "$(TFLITE_VER)" && \
 		cd "$(CMAKE_BINDINGS_BUILD_DIR)" && \
 		cmake -G "$(CMAKE_GENERATOR_TYPE)" \
-            -D C_SRC="$(C_SRC)" \
+			-D C_SRC="$(C_SRC)" \
 			-D PRIV_DIR="$(PRIV_DIR)" \
 			-D TFLITE_ROOT_DIR="$(TFLITE_ROOT_DIR)" \
 			-D GFLAGS_ROOT_DIR="$(GFLAGS_ROOT_DIR)" \
