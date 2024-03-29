@@ -157,7 +157,6 @@ $(NATIVE_BINDINGS_SO): $(UNICODE_DATA) unarchive_source_code install_libedgetpu_
 		cd "$(CMAKE_BINDINGS_BUILD_DIR)" && \
 		cmake -D C_SRC="$(C_SRC)" \
 			-D PRIV_DIR="$(PRIV_DIR)" \
-			-D ERTS_INCLUDE_DIR="$(ERTS_INCLUDE_DIR)" \
 			-D TFLITE_ROOT_DIR="$(TFLITE_ROOT_DIR)" \
 			-D GFLAGS_ROOT_DIR="$(GFLAGS_ROOT_DIR)" \
 			-D GLOG_ROOT_DIR="$(GLOG_ROOT_DIR)" \
