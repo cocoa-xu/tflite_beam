@@ -1,0 +1,141 @@
+!IFNDEF MIX_APP_PATH
+MIX_APP_PATH=$(MAKEDIR)
+!ENDIF
+
+PRIV_DIR = $(MIX_APP_PATH)/priv
+NATIVE_BINDINGS_SO = $(PRIV_DIR)/tflite_beam.dll
+LIBEDGETPU_RUNTIME_PRIV = $(PRIV_DIR)/libedgetpu
+TFLITE_BEAM_CORAL_SUPPORT=false
+SCRIPTS_DIR = $(MAKEDIR)\scripts
+C_SRC = $(MAKEDIR)\c_src
+LIB_SRC = $(MAKEDIR)\lib
+LIBCORAL_SRC = $(MAKEDIR)\c_src\libcoral
+PRECOMPILED_ERL_HELPER = $(MAKEDIR)\tflite_beam_precompiled.erl
+UNICODEDATA = $(MAKEDIR)\unicodedata
+UNICODE_DATA = $(PRIV_DIR)\unicode_data.txt
+!IFDEF CMAKE_TOOLCHAIN_FILE
+CMAKE_CONFIGURE_FLAGS=-D CMAKE_TOOLCHAIN_FILE="$(CMAKE_TOOLCHAIN_FILE)"
+!ENDIF
+
+# Tensorflow
+TFLITE_GIT_REPO = https://github.com/tensorflow/tensorflow.git
+TFLITE_VER = 2.16.1
+TFLITE_VER_V = v$(TFLITE_VER)
+THIRD_PARTY_DIR = $(MAKEDIR)\3rd_party
+TFLITE_BEAM_CACHE_DIR = $(THIRD_PARTY_DIR)\cache
+TFLITE_SOURCE_URL = "https://github.com/tensorflow/tensorflow/archive/refs/tags/$(TFLITE_VER_V).zip"
+TFLITE_SOURCE_ZIP = $(TFLITE_BEAM_CACHE_DIR)\tensorflow-$(TFLITE_VER_V).zip
+UNZIP_TARGET_DIR = $(THIRD_PARTY_DIR)\tensorflow
+TENSORFLOW_ROOT_DIR = $(UNZIP_TARGET_DIR)\tensorflow-$(TFLITE_VER)
+TFLITE_ROOT_DIR = $(TENSORFLOW_ROOT_DIR)\tensorflow\lite
+GFLAGS_ROOT_DIR = $(THIRD_PARTY_DIR)\gflags
+GLOG_ROOT_DIR = $(THIRD_PARTY_DIR)\glog
+TFLITE_CMAKELISTS_TXT = $(TFLITE_ROOT_DIR)\CMakeLists.txt
+CMAKE_TFLITE_BUILD_DIR = $(MIX_APP_PATH)\cmake_tflite_$(TFLITE_VER)
+
+!IFNDEF CMAKE_GENERATOR_TYPE
+!IFNDEF MSBUILD_PLATFORM
+
+!IF "$(HAVE_NINJA)" == "true"
+CMAKE_GENERATOR_TYPE=Ninja
+!ELSE
+CMAKE_GENERATOR_TYPE=NMake Makefiles
+!ENDIF
+
+!ENDIF
+!ENDIF
+
+!IFNDEF CMAKE_BUILD_TYPE
+CMAKE_BUILD_TYPE = Release
+!ENDIF
+
+LIBUSB_VERSION = 1.0.27
+LIBUSB_SOURCE_URL = https://github.com/libusb/libusb/releases/download/v$(LIBUSB_VERSION)/libusb-$(LIBUSB_VERSION).tar.bz2
+LIBUSB_SOURCE_ARCHIVE = $(TFLITE_BEAM_CACHE_DIR)\libusb-$(LIBUSB_VERSION).tar.bz2
+LIBUSB_SOURCE_DIR = $(THIRD_PARTY_DIR)\libusb-$(LIBUSB_VERSION)
+LIBUSB_INSTALL_DIR = $(MIX_APP_PATH)\libusb
+LIBUSB_SHARED_LIBRARY = $(PRIV_DIR)\libedgetpu\libusb-1.0.0.dll
+
+!IFNDEF TFLITE_BEAM_CORAL_USB_THROTTLE
+TFLITE_BEAM_CORAL_USB_THROTTLE=true
+!ENDIF
+!IFNDEF TFLITE_BEAM_CORAL_LIBEDGETPU_TRIPLET
+TFLITE_BEAM_CORAL_LIBEDGETPU_TRIPLET=native
+!ENDIF
+TFLITE_BEAM_CORAL_LIBEDGETPU_UNZIPPED_DIR = $(TFLITE_BEAM_CACHE_DIR)\$(TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME)
+
+!IFNDEF TFLITE_BEAM_PREFER_PRECOMPILED
+TFLITE_BEAM_PREFER_PRECOMPILED=true
+!ENDIF
+
+CMAKE_BINDINGS_BUILD_DIR = $(MIX_APP_PATH)\cmake_tflite_beam
+
+!IFNDEF CMAKE_TFLITE_OPTIONS
+CMAKE_TFLITE_OPTIONS = ""
+!ENDIF
+!IFNDEF CMAKE_OPTIONS
+CMAKE_OPTIONS = $(CMAKE_TFLITE_OPTIONS) $(CMAKE_CONFIGURE_FLAGS)
+!ELSE
+CMAKE_OPTIONS = $(CMAKE_OPTIONS) $(CMAKE_TFLITE_OPTIONS) $(CMAKE_CONFIGURE_FLAGS)
+!ENDIF
+
+build: $(NATIVE_BINDINGS_SO)
+
+$(PRIV_DIR):
+    @ if not exist "$(PRIV_DIR)" mkdir "$(PRIV_DIR)"
+
+create_cache_dir:
+!IF "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true"
+    @ if not exist "$(PRIV_DIR)" mkdir "$(PRIV_DIR)"
+!ENDIF
+
+$(TFLITE_SOURCE_ZIP): create_cache_dir
+!IF "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true"
+    @ if not exist "$(TFLITE_SOURCE_ZIP)" ( \
+        powershell -command "(New-Object Net.WebClient).DownloadFile('$(TFLITE_SOURCE_URL)','$(TFLITE_SOURCE_ZIP)')" \
+    )
+!ENDIF
+
+unarchive_source_code: $(TFLITE_SOURCE_ZIP)
+!IF "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true"
+    @ if not exist "$(TENSORFLOW_ROOT_DIR)" ( \
+        powershell -command Remove-Item "$(TENSORFLOW_ROOT_DIR)" -Recurse -Force -erroraction silentlycontinue && \
+        powershell -command New-Item -Path "$(UNZIP_TARGET_DIR)" -ItemType Container -Force && \
+        powershell -command Expand-Archive -Path "$(TFLITE_SOURCE_ZIP)" -DestinationPath "$(UNZIP_TARGET_DIR)" \
+    )
+!ENDIF
+
+install_libedgetpu_runtime:
+!IF "$(TFLITE_BEAM_CORAL_SUPPORT)" == "true"
+    @ echo "coral is not supported yet"
+!ENDIF
+
+libusb:
+!IF "$(TFLITE_BEAM_CORAL_SUPPORT)" == "true"
+    @ echo "coral is not supported yet"
+!ENDIF
+
+$(UNICODE_DATA): $(PRIV_DIR)
+    @ if not exist "$(UNICODE_DATA)" copy "$(UNICODEDATA)\unicode_data.txt" "$(UNICODE_DATA)"
+
+$(NATIVE_BINDINGS_SO): $(UNICODE_DATA) unarchive_source_code install_libedgetpu_runtime libusb
+!IF "$(TFLITE_BEAM_PREFER_PRECOMPILED)" == "true"
+    @ echo "ok"
+!ELSE
+    @ if not exist "$(CMAKE_BINDINGS_BUILD_DIR)" mkdir $(CMAKE_BINDINGS_BUILD_DIR) 
+    @ if not exist "$(NATIVE_BINDINGS_SO)" ( \
+        python3 "patches/apply_patch.py" "$(TENSORFLOW_ROOT_DIR)" "$(TFLITE_VER)" && \
+		cd "$(CMAKE_BINDINGS_BUILD_DIR)" && \
+		cmake -G "$(CMAKE_GENERATOR_TYPE)" \
+            -D C_SRC="$(C_SRC)" \
+			-D PRIV_DIR="$(PRIV_DIR)" \
+			-D TFLITE_ROOT_DIR="$(TFLITE_ROOT_DIR)" \
+			-D GFLAGS_ROOT_DIR="$(GFLAGS_ROOT_DIR)" \
+			-D GLOG_ROOT_DIR="$(GLOG_ROOT_DIR)" \
+			-D TFLITE_BEAM_CORAL_SUPPORT="$(TFLITE_BEAM_CORAL_SUPPORT)" \
+			-D MIX_APP_PATH="$(MIX_APP_PATH)" \
+			"$(MAKEDIR)" && \
+		cmake --build . $(CMAKE_BUILD_PARAMETER) && \
+		cmake --install . --config "$(CMAKE_BUILD_TYPE)" \
+    )
+!ENDIF

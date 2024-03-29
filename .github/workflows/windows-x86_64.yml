@@ -1,0 +1,58 @@
+name: windows-x86_64
+
+on:
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'examples/**/*.livemd'
+      - 'examples/*.livemd'
+  push:
+    branches:
+      - main
+      - feature-*
+      - experimental-*
+      - test-*
+      - windows-*
+      - fix-*
+    paths-ignore:
+      - '**/*.md'
+      - 'examples/**/*.livemd'
+      - 'examples/*.livemd'
+      - 'nerves/**'
+      - '.github/FUNDING.yml'
+      - '.github/workflows/nerves-*'
+      - '.github/workflows/macos-*'
+      - '.github/workflows/linux-precompiled.yml'
+      - '.github/workflows/test-*.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rebar3_compile:
+    runs-on: windows-2022
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TFLITE_BEAM_CORAL_SUPPORT: "false"
+      TFLITE_BEAM_PREFER_PRECOMPILED: "false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "26"
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Compile and Test
+        run: |
+          nmake /F Makefile.win TFLITE_BEAM_PREFER_PRECOMPILED=false
+      
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
