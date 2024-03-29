@@ -99,7 +99,6 @@ $(TFLITE_SOURCE_ZIP): create_cache_dir
 unarchive_source_code: $(TFLITE_SOURCE_ZIP)
 !IF "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true"
 	@ if not exist "$(TENSORFLOW_ROOT_DIR)" ( \
-		powershell -command Remove-Item "$(TENSORFLOW_ROOT_DIR)" -Recurse -Force -erroraction silentlycontinue && \
 		powershell -command Expand-Archive -Path "$(TFLITE_SOURCE_ZIP)" -DestinationPath "$(UNZIP_TARGET_DIR)" \
 	)
 !ENDIF
