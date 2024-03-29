@@ -64,7 +64,6 @@ CMAKE_OPTIONS ?= $(CMAKE_TFLITE_OPTIONS)
 CMAKE_OPTIONS += $(CMAKE_CONFIGURE_FLAGS)
 
 # bindings
-TFLITE_BEAM_COMPILE_WITH_REBAR ?= false
 CMAKE_BINDINGS_BUILD_DIR = $(MIX_APP_PATH)/cmake_tflite_beam
 MAKE_BUILD_FLAGS ?= auto
 
@@ -107,7 +106,7 @@ unarchive_source_code: $(TFLITE_SOURCE_ZIP)
 
 install_libedgetpu_runtime:
 	@ if [ "$(TFLITE_BEAM_CORAL_SUPPORT)" = "true" ]; then \
-		bash scripts/copy_libedgetpu_runtime.sh "$(LIBEDGETPU_RUNTIME_PRIV)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_UNZIPPED_DIR)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_TRIPLET)" "$(TFLITE_BEAM_CORAL_USB_THROTTLE)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_URL)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME)" "$(TFLITE_BEAM_CACHE_DIR)" "$(TFLITE_BEAM_COMPILE_WITH_REBAR)" && \
+		bash scripts/copy_libedgetpu_runtime.sh "$(LIBEDGETPU_RUNTIME_PRIV)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_UNZIPPED_DIR)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_TRIPLET)" "$(TFLITE_BEAM_CORAL_USB_THROTTLE)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_URL)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME)" "$(TFLITE_BEAM_CACHE_DIR)" && \
 		if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true" ]; then \
 			if [ ! -e "$(LIBCORAL_SRC)/Makefile" ]; then \
 				rm -rf "$(LIBCORAL_SRC)" && \
@@ -133,13 +132,13 @@ $(UNICODE_DATA): $(PRIV_DIR)
 	fi
 
 $(NATIVE_BINDINGS_SO): $(UNICODE_DATA) unarchive_source_code install_libedgetpu_runtime libusb
-	@ if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" = "true" ] && [ "$(TFLITE_BEAM_COMPILE_WITH_REBAR)" = "true" ]; then \
+	@ if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" = "true" ]; then \
 		{ \
 			cd "$(shell pwd)" && \
 			erlc "$(PRECOMPILED_ERL_HELPER)" && \
 			erl -noshell -s tflite_beam_precompiled install_precompiled_binary_if_available -s init stop ; } || \
 		{ \
-			$(TFLITE_BEAM_MAKE) TFLITE_BEAM_PREFER_PRECOMPILED=false TFLITE_BEAM_COMPILE_WITH_REBAR=true ; } ; \
+			$(TFLITE_BEAM_MAKE) TFLITE_BEAM_PREFER_PRECOMPILED=false ; } ; \
 	fi && \
 	if [ ! -e "$(NATIVE_BINDINGS_SO)" ]; then \
 		echo "CORAL SUPPORT: $(TFLITE_BEAM_CORAL_SUPPORT)" ; \

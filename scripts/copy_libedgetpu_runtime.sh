@@ -7,31 +7,28 @@ TFLITE_BEAM_CORAL_USB_THROTTLE="$4"
 TFLITE_BEAM_CORAL_LIBEDGETPU_URL="$5"
 TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME="$6"
 TFLITE_BEAM_CACHE_DIR="$7"
-TFLITE_BEAM_COMPILE_WITH_REBAR="$8"
 
 LIBEDGETPU_VERSION="0.1.9"
 LIBEDGETPU_BASE_URL="https://github.com/cocoa-xu/libedgetpu/releases/download/v${LIBEDGETPU_VERSION}"
 
 get_libedgetpu_triplet() {
   if [ "${TFLITE_BEAM_CORAL_LIBEDGETPU_TRIPLET}" = "native" ]; then
-    if [ "${TFLITE_BEAM_COMPILE_WITH_REBAR}" = "true" ]; then
-      if [[ -n "${TARGET_ARCH}" && -n "${TARGET_OS}" && -n "${TARGET_ABI}" ]]; then
-        if [ "${TARGET_ARCH}" = "arm" ]; then
-          case "${TARGET_CPU}" in
-            arm1176jzf_s*)
-              echo "armv6-${TARGET_OS}-${TARGET_ABI}"
-            ;;
-            cortex*)
-              echo "armv7l-${TARGET_OS}-${TARGET_ABI}"
-            ;;
-            *)
-              echo "Unknown TARGET_CPU: ${TARGET_CPU}"
-              exit 1
-            ;;
-          esac
-        else
-          echo "${TARGET_ARCH}-${TARGET_OS}-${TARGET_ABI}"
-        fi
+    if [[ -n "${TARGET_ARCH}" && -n "${TARGET_OS}" && -n "${TARGET_ABI}" ]]; then
+      if [ "${TARGET_ARCH}" = "arm" ]; then
+        case "${TARGET_CPU}" in
+          arm1176jzf_s*)
+            echo "armv6-${TARGET_OS}-${TARGET_ABI}"
+          ;;
+          cortex*)
+            echo "armv7l-${TARGET_OS}-${TARGET_ABI}"
+          ;;
+          *)
+            echo "Unknown TARGET_CPU: ${TARGET_CPU}"
+            exit 1
+          ;;
+        esac
+      else
+        echo "${TARGET_ARCH}-${TARGET_OS}-${TARGET_ABI}"
       fi
     fi
 
