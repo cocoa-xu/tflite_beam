@@ -1,8 +1,10 @@
 ifndef MIX_APP_PATH
-	MIX_APP_PATH=$(shell pwd)
+	MIX_APP_PATH=$(shell pwd)/_build/default/lib/tflite_beam
 	PRIV_DIR=$(shell pwd)/priv
+	LIBUSB_INSTALL_DIR=$(shell pwd)/libusb
 else
 	PRIV_DIR = $(MIX_APP_PATH)/priv
+	LIBUSB_INSTALL_DIR = $(MIX_APP_PATH)/libusb
 endif
 
 NATIVE_BINDINGS_SO = $(PRIV_DIR)/tflite_beam.so
@@ -46,7 +48,6 @@ LIBUSB_VERSION = 1.0.27
 LIBUSB_SOURCE_URL = https://github.com/libusb/libusb/releases/download/v$(LIBUSB_VERSION)/libusb-$(LIBUSB_VERSION).tar.bz2
 LIBUSB_SOURCE_ARCHIVE = $(TFLITE_BEAM_CACHE_DIR)/libusb-$(LIBUSB_VERSION).tar.bz2
 LIBUSB_SOURCE_DIR = $(THIRD_PARTY_DIR)/libusb-$(LIBUSB_VERSION)
-LIBUSB_INSTALL_DIR = $(MIX_APP_PATH)/libusb
 LIBUSB_SHARED_LIBRARY = $(PRIV_DIR)/libedgetpu/libusb-1.0.0.dylib
 
 UNAME_S := $(shell uname -s)
@@ -125,9 +126,9 @@ libusb: create_cache_dir
 	@ if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true" ]; then \
 		if [ "$(TFLITE_BEAM_CORAL_SUPPORT)" = "true" ]; then \
 			if [ ! -e "$(LIBUSB_SHARED_LIBRARY)" ]; then \
+				mkdir -p "$(LIBUSB_INSTALL_DIR)" ; \
 				bash scripts/build_libusb.sh "$(LIBUSB_SOURCE_URL)" "$(LIBUSB_SOURCE_ARCHIVE)" "$(THIRD_PARTY_DIR)" "$(LIBUSB_SOURCE_DIR)" "$(LIBUSB_INSTALL_DIR)" "$(PRIV_DIR)" ; \
-			fi && \
-			rm -rf "$(LIBUSB_INSTALL_DIR)" ; \
+			fi \
 		fi \
 	fi
 
