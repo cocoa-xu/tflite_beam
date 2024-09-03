@@ -1,10 +1,10 @@
-MIX_APP_ENV := $(if $(MIX_ENV),$(MIX_ENV),$(if $(REBAR_PROFILE),$(REBAR_PROFILE),default))
-
 ifndef MIX_APP_PATH
-	MIX_APP_PATH=_build/$(MIX_APP_ENV)/lib/tflite_beam
+	MIX_APP_PATH=_build/default/lib/tflite_beam
+	PRIV_DIR=$(shell pwd)/priv
+else
+	PRIV_DIR = $(MIX_APP_PATH)/priv
 endif
 
-PRIV_DIR = $(MIX_APP_PATH)/priv
 NATIVE_BINDINGS_SO = $(PRIV_DIR)/tflite_beam.so
 LIBEDGETPU_RUNTIME_PRIV = $(PRIV_DIR)/libedgetpu
 TFLITE_BEAM_CORAL_SUPPORT ?= "true"
@@ -132,7 +132,6 @@ libusb: create_cache_dir
 	fi
 
 $(UNICODE_DATA): $(PRIV_DIR)
-	echo "MIX_APP_PATH: $(MIX_APP_PATH)"
 	@ if [ ! -e "$(UNICODE_DATA)" ]; then \
 		cp -f "$(UNICODEDATA)/unicode_data.txt" "$(UNICODE_DATA)" ; \
 	fi
