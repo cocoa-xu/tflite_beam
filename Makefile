@@ -1,5 +1,5 @@
 ifndef MIX_APP_PATH
-	MIX_APP_PATH=$(shell pwd)
+	MIX_APP_PATH=_build/${MIX_ENV:-default}/lib/tflite_beam
 endif
 
 PRIV_DIR = $(MIX_APP_PATH)/priv
