@@ -53,6 +53,11 @@ jobs:
           wget https://s3.amazonaws.com/rebar3/rebar3 && chmod +x rebar3
           ./rebar3 local install
 
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.16.x'
+
       - name: Create precompiled library
         run: |
           export PATH="$(pwd)/cache/otp/usr/local/bin:~/.cache/rebar3/bin:${PATH}"
