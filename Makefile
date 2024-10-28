@@ -27,7 +27,7 @@ endif
 # Tensorflow
 TFLITE_USE_GIT_HEAD ?= false
 TFLITE_GIT_REPO ?= "https://github.com/tensorflow/tensorflow.git"
-TFLITE_VER ?= 2.16.1
+TFLITE_VER ?= 2.18.0
 TFLITE_VER_V = v$(TFLITE_VER)
 ifneq ($(TFLITE_USE_GIT_HEAD), false)
 	TFLITE_VER_V=$(TFLITE_USE_GIT_BRANCH)
@@ -125,6 +125,7 @@ install_libedgetpu_runtime:
 libusb: create_cache_dir
 	@ if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true" ]; then \
 		if [ "$(TFLITE_BEAM_CORAL_SUPPORT)" = "true" ]; then \
+			echo "LIBUSB_SHARED_LIBRARY: $(LIBUSB_SHARED_LIBRARY)" ; \
 			if [ ! -e "$(LIBUSB_SHARED_LIBRARY)" ]; then \
 				mkdir -p "$(LIBUSB_INSTALL_DIR)" ; \
 				bash scripts/build_libusb.sh "$(LIBUSB_SOURCE_URL)" "$(LIBUSB_SOURCE_ARCHIVE)" "$(THIRD_PARTY_DIR)" "$(LIBUSB_SOURCE_DIR)" "$(LIBUSB_INSTALL_DIR)" "$(PRIV_DIR)" ; \
