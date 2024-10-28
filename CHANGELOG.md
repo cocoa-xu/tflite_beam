@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.3.8 (2024-10-28)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.3.8) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.3.8)
+
+### Changed
+- Use tensorflow v2.18.0.
+
 ## v0.3.7 (2024-09-03)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.3.7) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.3.7)
 
