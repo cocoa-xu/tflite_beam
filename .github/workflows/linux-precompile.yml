@@ -120,6 +120,12 @@ jobs:
             sudo apt-get install -y ${{ matrix.pair.c_compiler }} ${{ matrix.pair.cpp_compiler }}
           fi
 
+          git clone https://github.com/google/flatbuffers.git
+          cd flatbuffers/
+          cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
+          make
+          sudo make install
+
       - name: Create precompiled library
         run: |
           export NIF_VERSION="$(erl -noshell -eval "io:format('~ts', [erlang:system_info(nif_version)])." -s erlang halt)"

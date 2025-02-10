@@ -33,3 +33,4 @@ tflite_beam-*.tar
 priv/
 cmake_tflite_beam/
 tflite_beam_precompiled.beam
+libusb/
