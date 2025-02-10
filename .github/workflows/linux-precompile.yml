@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   precompile:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
       TFLITE_BEAM_PREFER_PRECOMPILED: "false"
       ARMV6_TOOLCHAIN_NAME: "nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64"
@@ -103,7 +103,7 @@ jobs:
       - name: Install system dependecies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential automake autoconf pkg-config bc m4 unzip zip curl git libssl-dev gzip libncurses5-dev ca-certificates
+          sudo apt-get install -y build-essential automake autoconf pkg-config bc m4 unzip zip curl git libssl-dev gzip libncurses5-dev ca-certificates flatbuffers-compile
           if [ "${{ matrix.pair.arch_name }}" = "aarch64" ]; then
             sudo sed -i 's/focal/jammy/g' /etc/apt/sources.list
             sudo apt-get update
@@ -119,12 +119,6 @@ jobs:
           else
             sudo apt-get install -y ${{ matrix.pair.c_compiler }} ${{ matrix.pair.cpp_compiler }}
           fi
-
-          git clone https://github.com/google/flatbuffers.git
-          cd flatbuffers/
-          cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
-          make
-          sudo make install
 
       - name: Create precompiled library
         run: |
