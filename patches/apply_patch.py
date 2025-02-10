@@ -3,13 +3,14 @@
 
 import sys
 from pathlib import Path
+import shutil
 if sys.version_info[0] >= 3:
     from io import StringIO
 else:
     from cStringIO import StringIO
 
 
-def patch_fix_RoundToNearest(tf_version: str, tf_src_root: str):
+def patch_fix_RoundToNearest(tf_version: str, tf_src_root: str, third_party_dir: str):
     if tf_version not in ['2.11.0', '2.11.1', '2.12.0']:
         print(f"warning: skip applying `patch_fix_RoundToNearest` to tf version `{tf_version}`")
         return
@@ -39,7 +40,7 @@ def patch_fix_RoundToNearest(tf_version: str, tf_src_root: str):
             dst.truncate(0)
             dst.write(fixed.getvalue())
 
-def patch_compiling_telemetry_cc(tf_version: str, tf_src_root: str):
+def patch_compiling_telemetry_cc(tf_version: str, tf_src_root: str, third_party_dir: str):
     if tf_version not in ['2.12.0']:
         print(f"warning: skip applying `patch_compiling_telemetry_cc` to tf version `{tf_version}`")
         return
@@ -64,7 +65,7 @@ def patch_compiling_telemetry_cc(tf_version: str, tf_src_root: str):
             dst.write(fixed.getvalue())
 
 
-def patch_cpuinfo_riscv64_sys_hwprobe(tf_version: str, tf_src_root: str):
+def patch_cpuinfo_riscv64_sys_hwprobe(tf_version: str, tf_src_root: str, third_party_dir: str):
     if tf_version not in ['2.16.0', '2.16.1']:
         print(f"warning: skip applying `patch_cpuinfo_riscv64_sys_hwprobe` to tf version `{tf_version}`")
         return
@@ -120,16 +121,29 @@ def patch_cpuinfo_riscv64_sys_hwprobe(tf_version: str, tf_src_root: str):
             dst.write(fixed.getvalue())
 
 
+def patch_neon_2_sse(tf_version: str, tf_src_root: str, third_party_dir: str):
+    if tf_version not in ['2.18.0']:
+        return
 
-patches = [patch_fix_RoundToNearest, patch_compiling_telemetry_cc, patch_cpuinfo_riscv64_sys_hwprobe]
+    neon_2_sse_header = Path(tf_src_root) / 'tensorflow' / 'lite' / 'kernels' / 'internal' / 'optimized' / 'NEON_2_SSE.h'
+    if neon_2_sse_header.exists():
+        return
+    
+    original_neon_2_sse_header = Path(third_party_dir) / 'NEON_2_SSE.h'
+
+    shutil.copyfile(original_neon_2_sse_header, neon_2_sse_header)
+
+
+patches = [patch_fix_RoundToNearest, patch_compiling_telemetry_cc, patch_cpuinfo_riscv64_sys_hwprobe, patch_neon_2_sse]
 
 if __name__ == '__main__':
     tf_version = None
     tf_src_root = None
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 4:
         sys.exit(1)
     tf_src_root = sys.argv[1]
     tf_version = sys.argv[2]
+    third_party_dir = sys.argv[3]
     print(f"[+] applying patches to Tensorflow {tf_version} at {tf_src_root}")
     for p in patches:
-        p(tf_version, tf_src_root)
+        p(tf_version, tf_src_root, third_party_dir)
