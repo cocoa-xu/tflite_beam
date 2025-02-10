@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   precompile:
-    runs-on: macos-13
+    runs-on: ${{ matrix.pair.runs_on }}
     env:
       TFLITE_BEAM_PREFER_PRECOMPILED: "false"
       OTP_VERSION: ${{ matrix.pair.otp }}
@@ -25,17 +25,19 @@ jobs:
       matrix:
         include:
           # remember to change the `get_precompiled_nif_version/0` function in the `tflite_beam_precompiled` file
-          # if upgrade the Erlang/OTP version to 26.x or later
+          # if upgrade the Erlang/OTP version to 26.x or later _kai_run_matmul_clamp_f32_qai8dxp1x8_qsi4cxp8x8_1x8x32_neon_dotprod
           # 2.16 for OTP 24.x and 25.x
           # 2.17 for OTP 26.x
           - pair:
               otp: "25.3.2.9"
               arch: x86_64
               libedgetpu_library: darwin_x86_64
+              runs_on: macos-13
           - pair:
               otp: "25.3.2.9"
               arch: aarch64
               libedgetpu_library: darwin_arm64
+              runs_on: macos-14
 
     steps:
       - name: Checkout
@@ -60,21 +62,7 @@ jobs:
         run: |
           export PATH=$HOME/.elixir-install/installs/otp/${OTP_VERSION}/bin:$PATH
           export PATH=$HOME/.cache/rebar3/bin:$PATH
-
           export NIF_VERSION="$(erl -noshell -eval "io:format('~ts', [erlang:system_info(nif_version)])." -s erlang halt)"
-          if [ "${{ matrix.pair.arch }}" = "aarch64" ]; then
-            export TARGET_ARCH="${{ matrix.pair.arch }}"
-            export TARGET_OS="apple"
-            export TARGET_ABI="darwin"
-            export CPPFLAGS="-arch arm64"
-            export CMAKE_TFLITE_OPTIONS="-DCMAKE_OSX_ARCHITECTURES=arm64"
-            export TFLITE_BEAM_CORAL_LIBEDGETPU_LIBRARIES="aarch64"
-          fi
-
-          echo "TFLITE_BEAM_PREFER_PRECOMPILED: ${TFLITE_BEAM_PREFER_PRECOMPILED}"
-          echo "TARGET_ARCH: ${TARGET_ARCH}"
-          echo "TARGET_OS: ${TARGET_OS}"
-          echo "TARGET_ABI: ${TARGET_ABI}"
 
           rebar3 deps
           rebar3 compile
