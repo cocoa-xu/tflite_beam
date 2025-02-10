@@ -5,7 +5,7 @@
 -define(PRECOMPILED_DOWNLOAD_URL, "https://github.com/cocoa-xu/tflite_beam/releases/download/v~s/~s").
 -define(TFLITE_BEAM_SO_FILE, "priv/tflite_beam.so").
 -define(TFLITE_BEAM_DLL_FILE, "priv/tflite_beam.dll").
--define(LIBEDGETPU_RUNTIME_VERSION, "0.1.9").
+-define(LIBEDGETPU_RUNTIME_VERSION, "0.1.10").
 
 -include_lib("kernel/include/file.hrl").
 
