@@ -103,7 +103,7 @@ jobs:
       - name: Install system dependecies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential automake autoconf pkg-config bc m4 unzip zip curl git libssl-dev gzip libncurses5-dev ca-certificates flatbuffers-compile
+          sudo apt-get install -y build-essential automake autoconf pkg-config bc m4 unzip zip curl git libssl-dev gzip libncurses5-dev ca-certificates
           if [ "${{ matrix.pair.arch_name }}" = "aarch64" ]; then
             sudo sed -i 's/focal/jammy/g' /etc/apt/sources.list
             sudo apt-get update
