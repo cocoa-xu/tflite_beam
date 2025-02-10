@@ -101,7 +101,7 @@ all_models() ->
         #{repo => "qualcomm/Unet-Segmentation", files => ["Unet-Segmentation.tflite"], task => image_segmentation},
         #{repo => "qualcomm/Yolo-v7", files => ["Yolo-v7.tflite"], task => image_segmentation},
         #{repo => "qualcomm/Yolo-v8-Segmentation", files => ["Yolo-v8-Segmentation.tflite"], task => image_segmentation},
-        #{repo => "qualcomm/YOLOv8-Segmentation", files => ["Yolo-v8-Segmentation.tflite"], task => image_segmentation}
+        #{repo => "qualcomm/YOLOv8-Segmentation", files => ["Yolo-v8-Segmentation.tflite"], task => image_segmentation},
     
         #{repo => "qualcomm/HuggingFace-WavLM-Base-Plus", files => ["HuggingFace-WavLM-Base-Plus.tflite"], task => audio_speech_recognition},
         #{repo => "qualcomm/Whisper-Small-En", files => ["WhisperDecoder.tflite", "WhisperEncoder.tflite"], task => audio_speech_recognition},
