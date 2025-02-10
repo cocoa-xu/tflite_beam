@@ -28,33 +28,27 @@ concurrency:
 
 jobs:
   rebar3_compile:
-    runs-on: macos-12
+    runs-on: macos-13
     env:
       TFLITE_BEAM_CORAL_SUPPORT: "true"
       TFLITE_BEAM_PREFER_PRECOMPILED: "false"
       OTP_VERSION: "26.2.1"
-      ELIXIR_VERSION: "1.16.0"
+      ELIXIR_VERSION: "1.16.3"
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Install Erlang and Elixir
+      - name: Install OTP and rebar3
         run: |
-          export HOMEBREW_NO_AUTO_UPDATE=1
-          brew install autoconf automake coreutils curl git openssl asdf
-          asdf plugin add erlang https://github.com/asdf-vm/asdf-erlang.git
-          asdf plugin-add elixir https://github.com/asdf-vm/asdf-elixir.git
-          export KERL_CONFIGURE_OPTIONS="--disable-debug --without-javac"
-          asdf install erlang "${OTP_VERSION}"
-          asdf install elixir "${ELIXIR_VERSION}"
-          asdf global erlang "${OTP_VERSION}"
-          asdf global elixir "${ELIXIR_VERSION}"
-          source $(brew --prefix asdf)/libexec/asdf.sh
-          mix local.hex --force
-          mix local.rebar --force
+          curl -fsSO https://elixir-lang.org/install.sh
+          sh install.sh "elixir@${ELIXIR_VERSION}" "otp@${OTP_VERSION}"
+
+          export PATH=$HOME/.elixir-install/installs/otp/${OTP_VERSION}/bin:$PATH
+
           wget https://s3.amazonaws.com/rebar3/rebar3 && chmod +x rebar3
           ./rebar3 local install
-      
+
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v2
         with:
@@ -62,7 +56,10 @@ jobs:
 
       - name: Compile
         run: |
-          source $(brew --prefix asdf)/libexec/asdf.sh
+          export OTP_MAIN_VER="${OTP_VERSION%%.*}"
+          export PATH=$HOME/.elixir-install/installs/otp/${OTP_VERSION}/bin:$PATH
+          export PATH=$HOME/.elixir-install/installs/elixir/${ELIXIR_VERSION}-otp-${OTP_MAIN_VER}/bin:$PATH
           export PATH="~/.cache/rebar3/bin:$PATH"
+
           rebar3 deps
           rebar3 compile

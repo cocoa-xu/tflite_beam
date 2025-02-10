@@ -13,9 +13,11 @@ concurrency:
 
 jobs:
   precompile:
-    runs-on: macos-12
+    runs-on: macos-13
     env:
       TFLITE_BEAM_PREFER_PRECOMPILED: "false"
+      OTP_VERSION: ${{ matrix.pair.otp }}
+      ELIXIR_VERSION: "1.16.3"
     name: ${{ matrix.pair.arch }}-apple-darwin - OTP ${{ matrix.pair.otp }}
 
     strategy:
@@ -39,16 +41,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Erlang and Elixir
+      - name: Install OTP and rebar3
         run: |
-          TRIPLET=x86_64-apple-darwin
-          export PATH=$(pwd)/cache/otp/usr/local/bin:${PATH}
-          export ERL_ROOTDIR=$(pwd)/cache/otp/usr/local/lib/erlang
+          curl -fsSO https://elixir-lang.org/install.sh
+          sh install.sh "elixir@${ELIXIR_VERSION}" "otp@${OTP_VERSION}"
 
-          mkdir -p ./cache/otp
-          curl -fSL https://github.com/cocoa-xu/otp-build/releases/download/v${{ matrix.pair.otp }}/otp-${TRIPLET}.tar.gz -o ./cache/otp/otp-v${{ matrix.pair.otp }}-${TRIPLET}.tar.gz
-          cd ./cache/otp
-          tar -xzf otp-v${{ matrix.pair.otp }}-${TRIPLET}.tar.gz
+          export PATH=$HOME/.elixir-install/installs/otp/${OTP_VERSION}/bin:$PATH
 
           wget https://s3.amazonaws.com/rebar3/rebar3 && chmod +x rebar3
           ./rebar3 local install
@@ -60,8 +58,7 @@ jobs:
 
       - name: Create precompiled library
         run: |
-          export PATH="$(pwd)/cache/otp/usr/local/bin:~/.cache/rebar3/bin:${PATH}"
-          export ERL_ROOTDIR=$(pwd)/cache/otp/usr/local/lib/erlang
+          export PATH=$HOME/.elixir-install/installs/otp/${OTP_VERSION}/bin:$PATH
 
           export NIF_VERSION="$(erl -noshell -eval "io:format('~ts', [erlang:system_info(nif_version)])." -s erlang halt)"
           if [ "${{ matrix.pair.arch }}" = "aarch64" ]; then
