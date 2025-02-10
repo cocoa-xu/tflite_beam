@@ -20,6 +20,8 @@ LIBCORAL_SRC = $(shell pwd)/c_src/libcoral
 PRECOMPILED_ERL_HELPER = $(shell pwd)/tflite_beam_precompiled.erl
 UNICODEDATA = $(shell pwd)/unicodedata
 UNICODE_DATA = $(PRIV_DIR)/unicode_data.txt
+FLATC_PATH ?= $(shell which flatc)
+TFLITE_HOST_TOOLS_DIR = $(shell dirname $(FLATC_PATH))
 ifdef CMAKE_TOOLCHAIN_FILE
 	CMAKE_CONFIGURE_FLAGS=-D CMAKE_TOOLCHAIN_FILE="$(CMAKE_TOOLCHAIN_FILE)"
 endif
@@ -169,6 +171,7 @@ $(NATIVE_BINDINGS_SO): $(UNICODE_DATA) unarchive_source_code install_libedgetpu_
 			-D GFLAGS_ROOT_DIR="$(GFLAGS_ROOT_DIR)" \
 			-D GLOG_ROOT_DIR="$(GLOG_ROOT_DIR)" \
 			-D TFLITE_BEAM_CORAL_SUPPORT="$(TFLITE_BEAM_CORAL_SUPPORT)" \
+			-D TFLITE_HOST_TOOLS_DIR="$(TFLITE_HOST_TOOLS_DIR)" \
 			-D LIBUSB_INSTALL_DIR="$(LIBUSB_INSTALL_DIR)" \
 			-D MIX_APP_PATH="$(MIX_APP_PATH)" \
 			$(CMAKE_OPTIONS) \
