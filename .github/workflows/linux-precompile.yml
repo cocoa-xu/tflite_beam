@@ -16,6 +16,13 @@ jobs:
     runs-on: ubuntu-20.04
     env:
       TFLITE_BEAM_PREFER_PRECOMPILED: "false"
+      ARMV6_TOOLCHAIN_NAME: "nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64"
+      ARMV6_TOOLCHAIN_VERSION: "14.2.0"
+      ARMV6_TOOLCHAIN_HASH: "11156D8"
+      RISCV64_TOOLCHAIN_NAME: "nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64"
+      RISCV64_TOOLCHAIN_VERSION: "14.2.0"
+      RISCV64_TOOLCHAIN_HASH: "D43CCBE"
+
     name: ${{ matrix.pair.target_arch }}-${{ matrix.pair.target_os }}-${{ matrix.pair.target_abi }} - OTP ${{ matrix.pair.otp }}
 
     strategy:
@@ -70,8 +77,8 @@ jobs:
               target_arch: "armv6"
               target_os: "linux"
               target_abi: "gnueabihf"
-              cc: "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0/bin/armv6-nerves-linux-gnueabihf-gcc"
-              cxx: "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0/bin/armv6-nerves-linux-gnueabihf-g++"
+              cc: "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-14.2.0/bin/armv6-nerves-linux-gnueabihf-gcc"
+              cxx: "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-14.2.0/bin/armv6-nerves-linux-gnueabihf-g++"
           - pair:
               otp: "25.x"
               arch_name: riscv64
@@ -82,8 +89,8 @@ jobs:
               target_arch: "riscv64"
               target_os: "linux"
               target_abi: "gnu"
-              cc: "/usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0/bin/riscv64-nerves-linux-gnu-gcc"
-              cxx: "/usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0/bin/riscv64-nerves-linux-gnu-g++"
+              cc: "/usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-14.2.0/bin/riscv64-nerves-linux-gnu-gcc"
+              cxx: "/usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-14.2.0/bin/riscv64-nerves-linux-gnu-g++"
 
     steps:
       - name: Checkout
@@ -102,22 +109,16 @@ jobs:
             sudo apt-get update
           fi
           if [ "${{ matrix.pair.arch_name }}" = "armv6" ]; then
-            curl -fSL https://github.com/nerves-project/toolchains/releases/download/v13.2.0/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0-363664F.tar.xz -o nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0-363664F.tar.xz
-            tar -xf nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0-363664F.tar.xz
-            sudo mv nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0 /usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0
+            curl -fSL https://github.com/nerves-project/toolchains/releases/download/v${ARMV6_TOOLCHAIN_VERSION}/${ARMV6_TOOLCHAIN_NAME}-${ARMV6_TOOLCHAIN_VERSION}-11156D8.tar.xz -o ${ARMV6_TOOLCHAIN_NAME}-${ARMV6_TOOLCHAIN_VERSION}-${ARMV6_TOOLCHAIN_HASH}.tar.xz
+            tar -xf ${ARMV6_TOOLCHAIN_NAME}-${ARMV6_TOOLCHAIN_VERSION}-${ARMV6_TOOLCHAIN_HASH}.tar.xz
+            sudo mv ${ARMV6_TOOLCHAIN_NAME}-${ARMV6_TOOLCHAIN_VERSION} /usr/local/bin/${ARMV6_TOOLCHAIN_NAME}-${ARMV6_TOOLCHAIN_VERSION}
           elif [ "${{ matrix.pair.arch_name }}" = "riscv64" ]; then
-            curl -fSL https://github.com/nerves-project/toolchains/releases/download/v13.2.0/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0-DB80D1B.tar.xz -o nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0-DB80D1B.tar.xz
-            tar -xf nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0-DB80D1B.tar.xz
-            sudo mv nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0 /usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0
+            curl -fSL https://github.com/nerves-project/toolchains/releases/download/v14.2.0/${RISCV64_TOOLCHAIN_NAME}-${RISCV64_TOOLCHAIN_VERSION}-${RISCV64_TOOLCHAIN_HASH}.tar.xz -o ${RISCV64_TOOLCHAIN_NAME}-${RISCV64_TOOLCHAIN_VERSION}-${RISCV64_TOOLCHAIN_HASH}.tar.xz
+            tar -xf ${RISCV64_TOOLCHAIN_NAME}-${RISCV64_TOOLCHAIN_VERSION}-${RISCV64_TOOLCHAIN_HASH}.tar.xz
+            sudo mv ${RISCV64_TOOLCHAIN_NAME}-${RISCV64_TOOLCHAIN_VERSION} /usr/local/bin/${RISCV64_TOOLCHAIN_NAME}-${RISCV64_TOOLCHAIN_VERSION}
           else
             sudo apt-get install -y ${{ matrix.pair.c_compiler }} ${{ matrix.pair.cpp_compiler }}
           fi
-
-          git clone https://github.com/google/flatbuffers.git
-          cd flatbuffers/
-          cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
-          make
-          sudo make install
 
       - name: Create precompiled library
         run: |
@@ -134,9 +135,9 @@ jobs:
 
           if [ "${{ matrix.pair.arch_name }}" = "armv6" ]; then
             export TARGET_GCC_FLAGS="-mabi=aapcs-linux -mfpu=vfp -marm -fstack-protector-strong -mfloat-abi=hard -mcpu=arm1176jzf-s -fPIE -pie -Wl,-z,now -Wl,-z,relro"
-            export PATH="/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-13.2.0/bin/:${PATH}"
+            export PATH="/usr/local/bin/${ARMV6_TOOLCHAIN_NAME}-${ARMV6_TOOLCHAIN_VERSION}/bin/:${PATH}"
           elif [ "${{ matrix.pair.arch_name }}" = "riscv64" ]; then
-            export PATH="/usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-13.2.0/bin/:${PATH}"
+            export PATH="/usr/local/bin/${RISCV64_TOOLCHAIN_NAME}-${RISCV64_TOOLCHAIN_VERSION}/bin/:${PATH}"
           fi
 
           echo "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}"
