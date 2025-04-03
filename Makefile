@@ -29,7 +29,7 @@ endif
 # Tensorflow
 TFLITE_USE_GIT_HEAD ?= false
 TFLITE_GIT_REPO ?= "https://github.com/tensorflow/tensorflow.git"
-TFLITE_VER ?= 2.18.0
+TFLITE_VER ?= 2.19.0
 TFLITE_VER_V = v$(TFLITE_VER)
 ifneq ($(TFLITE_USE_GIT_HEAD), false)
 	TFLITE_VER_V=$(TFLITE_USE_GIT_BRANCH)
