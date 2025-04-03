@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.3.9 (2025-04-03)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.3.9) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.3.9)
+
+### Changed
+- [deps] Use libedgetpu v0.1.12.
+- Use tensorflow v2.19.0.
+
 ## v0.3.8 (2025-02-10)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.3.8) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.3.8)
 
