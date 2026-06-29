@@ -13,8 +13,14 @@ concurrency:
 
 jobs:
   precompile:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
+      ImageOS: ubuntu20
+      LANG: en_US.UTF-8
+      LANGUAGE: en_US:en
+      LC_ALL: en_US.UTF-8
+      DEBIAN_FRONTEND: noninteractive
+      MIX_ENV: prod
       TFLITE_BEAM_PREFER_PRECOMPILED: "false"
       ARMV6_TOOLCHAIN_NAME: "nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64"
       ARMV6_TOOLCHAIN_VERSION: "14.2.0"
@@ -22,6 +28,7 @@ jobs:
       RISCV64_TOOLCHAIN_NAME: "nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64"
       RISCV64_TOOLCHAIN_VERSION: "14.2.0"
       RISCV64_TOOLCHAIN_HASH: "D43CCBE"
+    container: ubuntu:20.04
 
     name: ${{ matrix.pair.target_arch }}-${{ matrix.pair.target_os }}-${{ matrix.pair.target_abi }} - OTP ${{ matrix.pair.otp }}
 

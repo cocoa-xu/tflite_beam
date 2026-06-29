@@ -28,7 +28,7 @@ concurrency:
 
 jobs:
   rebar3_compile:
-    runs-on: macos-13
+    runs-on: macos-14
     env:
       TFLITE_BEAM_CORAL_SUPPORT: "true"
       TFLITE_BEAM_PREFER_PRECOMPILED: "false"

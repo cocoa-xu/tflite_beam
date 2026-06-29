@@ -32,7 +32,7 @@ jobs:
               otp: "25.3.2.9"
               arch: x86_64
               libedgetpu_library: darwin_x86_64
-              runs_on: macos-13
+              runs_on: macos-15-intel
           - pair:
               otp: "25.3.2.9"
               arch: aarch64
