@@ -102,6 +102,11 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" CACHE STRING "Override CXX FLAGS")
 # reset CLOG_SOURCE_DIR so that cpuinfo won't complain
 unset(CLOG_SOURCE_DIR CACHE)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "NO shared library")
+
+# On arm64 XNNPACK downloads KleidiAI from gitlab.arm.com, which is unreliable in CI.
+# Disable it and fall back to XNNPACK's built-in microkernels.
+set(XNNPACK_ENABLE_KLEIDIAI OFF CACHE BOOL "Disable KleidiAI download in XNNPACK" FORCE)
+
 add_subdirectory(
     "${TFLITE_ROOT_DIR}"
     EXCLUDE_FROM_ALL
