@@ -40,9 +40,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - uses: erlef/setup-beam@v1
+      - name: Install OTP
+        uses: cocoa-xu/otp-build@v1
         with:
-          otp-version: "26"
+          otp_version: '26'
 
       - name: Install system dependecies
         run: |
