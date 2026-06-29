@@ -46,6 +46,20 @@ GLOG_ROOT_DIR = $(THIRD_PARTY_DIR)/glog
 TFLITE_CMAKELISTS_TXT = $(TFLITE_ROOT_DIR)/CMakeLists.txt
 CMAKE_TFLITE_BUILD_DIR = $(MIX_APP_PATH)/cmake_tflite_$(TFLITE_VER)
 
+# KleidiAI is fetched by XNNPACK for arm64 targets, but gitlab.arm.com blocks
+# GitHub runners. Mirror the commit XNNPACK pins (matches this TFLITE_VER) from
+# github.com and hand the local copy to XNNPACK via KLEIDIAI_SOURCE_DIR.
+KLEIDIAI_COMMIT ?= 847ebd19d0192528659b0a0fa2c6057eed674c6a
+KLEIDIAI_SOURCE_URL = https://github.com/ARM-software/kleidiai/archive/$(KLEIDIAI_COMMIT).tar.gz
+KLEIDIAI_SOURCE_ARCHIVE = $(TFLITE_BEAM_CACHE_DIR)/kleidiai-$(KLEIDIAI_COMMIT).tar.gz
+KLEIDIAI_SOURCE_DIR = $(THIRD_PARTY_DIR)/kleidiai-$(KLEIDIAI_COMMIT)
+ifdef TARGET_ARCH
+	KLEIDIAI_TARGET_ARCH = $(TARGET_ARCH)
+else
+	KLEIDIAI_TARGET_ARCH = $(shell uname -m)
+endif
+KLEIDIAI_NEEDED = $(filter arm64 aarch64,$(KLEIDIAI_TARGET_ARCH))
+
 LIBUSB_VERSION = 1.0.27
 LIBUSB_SOURCE_URL = https://github.com/libusb/libusb/releases/download/v$(LIBUSB_VERSION)/libusb-$(LIBUSB_VERSION).tar.bz2
 LIBUSB_SOURCE_ARCHIVE = $(TFLITE_BEAM_CACHE_DIR)/libusb-$(LIBUSB_VERSION).tar.bz2
@@ -67,6 +81,9 @@ TFLITE_BEAM_CORAL_LIBEDGETPU_UNZIPPED_DIR = $(TFLITE_BEAM_CACHE_DIR)/$(TFLITE_BE
 CMAKE_TFLITE_OPTIONS ?= ""
 CMAKE_OPTIONS ?= $(CMAKE_TFLITE_OPTIONS)
 CMAKE_OPTIONS += $(CMAKE_CONFIGURE_FLAGS)
+ifneq ($(KLEIDIAI_NEEDED),)
+	CMAKE_OPTIONS += -D KLEIDIAI_SOURCE_DIR="$(KLEIDIAI_SOURCE_DIR)"
+endif
 
 # bindings
 CMAKE_BINDINGS_BUILD_DIR = $(MIX_APP_PATH)/cmake_tflite_beam
@@ -140,7 +157,7 @@ $(UNICODE_DATA): $(PRIV_DIR)
 		cp -f "$(UNICODEDATA)/unicode_data.txt" "$(UNICODE_DATA)" ; \
 	fi
 
-$(NATIVE_BINDINGS_SO): $(UNICODE_DATA) unarchive_source_code install_libedgetpu_runtime libusb
+$(NATIVE_BINDINGS_SO): $(UNICODE_DATA) unarchive_source_code install_libedgetpu_runtime libusb fetch_kleidiai
 	@ if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" = "true" ]; then \
 		{ \
 			cd "$(shell pwd)" && \
@@ -191,3 +208,14 @@ $(NATIVE_BINDINGS_SO): $(UNICODE_DATA) unarchive_source_code install_libedgetpu_
 
 fix_libusb:
 	@ bash scripts/macos_libusb_rpath.sh "$(NATIVE_BINDINGS_SO)"
+
+fetch_kleidiai: create_cache_dir
+	@ if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true" ] && [ -n "$(KLEIDIAI_NEEDED)" ]; then \
+		if [ ! -e "$(KLEIDIAI_SOURCE_DIR)/CMakeLists.txt" ]; then \
+			echo "Fetching KleidiAI $(KLEIDIAI_COMMIT) from GitHub mirror" ; \
+			rm -rf "$(KLEIDIAI_SOURCE_DIR)" ; \
+			mkdir -p "$(KLEIDIAI_SOURCE_DIR)" ; \
+			curl -fSL "$(KLEIDIAI_SOURCE_URL)" -o "$(KLEIDIAI_SOURCE_ARCHIVE)" && \
+			tar -xzf "$(KLEIDIAI_SOURCE_ARCHIVE)" -C "$(KLEIDIAI_SOURCE_DIR)" --strip-components=1 ; \
+		fi \
+	fi
