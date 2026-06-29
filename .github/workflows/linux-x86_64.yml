@@ -43,7 +43,7 @@ jobs:
       - name: Install OTP
         uses: cocoa-xu/otp-build@v1
         with:
-          otp_version: '26'
+          otp_version: '~> 26'
 
       - name: Install system dependecies
         run: |
