@@ -30,7 +30,7 @@ concurrency:
 
 jobs:
   rebar3_compile:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       TFLITE_BEAM_CORAL_SUPPORT: "true"
