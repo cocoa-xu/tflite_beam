@@ -133,7 +133,7 @@ jobs:
 
           git clone https://github.com/google/flatbuffers.git
           cd flatbuffers/
-          git checkout e6463926479bd6b330cbcf673f7e917803fd5831
+          git checkout v25.9.23
           cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
           make
           make install
