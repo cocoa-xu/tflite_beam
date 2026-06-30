@@ -29,7 +29,7 @@ endif
 # Tensorflow
 TFLITE_USE_GIT_HEAD ?= false
 TFLITE_GIT_REPO ?= "https://github.com/tensorflow/tensorflow.git"
-TFLITE_VER ?= 2.19.0
+TFLITE_VER ?= 2.21.0
 TFLITE_VER_V = v$(TFLITE_VER)
 ifneq ($(TFLITE_USE_GIT_HEAD), false)
 	TFLITE_VER_V=$(TFLITE_USE_GIT_BRANCH)
@@ -49,7 +49,7 @@ CMAKE_TFLITE_BUILD_DIR = $(MIX_APP_PATH)/cmake_tflite_$(TFLITE_VER)
 # KleidiAI is fetched by XNNPACK for arm64 targets, but gitlab.arm.com blocks
 # GitHub runners. Mirror the commit XNNPACK pins (matches this TFLITE_VER) from
 # github.com and hand the local copy to XNNPACK via KLEIDIAI_SOURCE_DIR.
-KLEIDIAI_COMMIT ?= 847ebd19d0192528659b0a0fa2c6057eed674c6a
+KLEIDIAI_COMMIT ?= 63205aa90afa6803d8f58bc3081b69288e9f1906
 KLEIDIAI_SOURCE_URL = https://github.com/ARM-software/kleidiai/archive/$(KLEIDIAI_COMMIT).tar.gz
 KLEIDIAI_SOURCE_ARCHIVE = $(TFLITE_BEAM_CACHE_DIR)/kleidiai-$(KLEIDIAI_COMMIT).tar.gz
 KLEIDIAI_SOURCE_DIR = $(THIRD_PARTY_DIR)/kleidiai-$(KLEIDIAI_COMMIT)
@@ -185,6 +185,7 @@ $(NATIVE_BINDINGS_SO): $(UNICODE_DATA) unarchive_source_code install_libedgetpu_
 			-D PRIV_DIR="$(PRIV_DIR)" \
 			-D ERTS_INCLUDE_DIR="$(ERTS_INCLUDE_DIR)" \
 			-D TFLITE_ROOT_DIR="$(TFLITE_ROOT_DIR)" \
+			-D TENSORFLOW_SOURCE_DIR="$(TENSORFLOW_ROOT_DIR)" \
 			-D GFLAGS_ROOT_DIR="$(GFLAGS_ROOT_DIR)" \
 			-D GLOG_ROOT_DIR="$(GLOG_ROOT_DIR)" \
 			-D TFLITE_BEAM_CORAL_SUPPORT="$(TFLITE_BEAM_CORAL_SUPPORT)" \
