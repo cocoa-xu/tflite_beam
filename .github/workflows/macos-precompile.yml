@@ -50,7 +50,7 @@ jobs:
 
           export PATH=$HOME/.elixir-install/installs/otp/${OTP_VERSION}/bin:$PATH
 
-          wget https://s3.amazonaws.com/rebar3/rebar3 && chmod +x rebar3
+          wget https://github.com/erlang/rebar3/releases/download/3.24.0/rebar3 && chmod +x rebar3
           ./rebar3 local install
 
       - name: Setup cmake
