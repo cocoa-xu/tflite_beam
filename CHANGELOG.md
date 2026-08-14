@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.3.11 (2026-08-14)
+## v0.3.11 (2026-08-15)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.3.11) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.3.11)
 
 ### Fixed
