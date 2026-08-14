@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- Platform-specific binaries now go to the consuming app's `_build/<target>_<env>/lib/tflite_beam/priv`
+  instead of `deps/tflite_beam/priv`, so switching `MIX_TARGET` no longer picks up
+  another target's `tflite_beam.so`. `rm -rf deps/tflite_beam` is no longer needed
+  when cross-compiling ([#73](https://github.com/cocoa-xu/tflite_beam/issues/73)).
+
 ## v0.3.10 (2026-06-30)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.3.10) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.3.10)
 
