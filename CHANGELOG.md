@@ -1,6 +1,7 @@
 # Changelog
 
-## Unreleased
+## v0.3.11 (2026-08-14)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.3.11) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.3.11)
 
 ### Fixed
 - Platform-specific binaries now go to the consuming app's `_build/<target>_<env>/lib/tflite_beam/priv`
