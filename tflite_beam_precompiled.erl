@@ -3,11 +3,24 @@
 
 -define(PRECOMPILED_TARBALL_NAME, "tflite_beam-nif-~s-~s-v~s").
 -define(PRECOMPILED_DOWNLOAD_URL, "https://github.com/cocoa-xu/tflite_beam/releases/download/v~s/~s").
--define(TFLITE_BEAM_SO_FILE, "priv/tflite_beam.so").
--define(TFLITE_BEAM_DLL_FILE, "priv/tflite_beam.dll").
 -define(LIBEDGETPU_RUNTIME_VERSION, "0.1.14").
 
 -include_lib("kernel/include/file.hrl").
+
+%% Set by the Makefile so the tarball lands in the same per-target directory the
+%% rest of the build writes to, instead of always in the source tree.
+priv_dir() ->
+    case os:getenv("TFLITE_BEAM_PRIV_DIR") of
+        false -> "priv";
+        "" -> "priv";
+        Dir -> Dir
+    end.
+
+tflite_beam_so_file() ->
+    filename:join(priv_dir(), "tflite_beam.so").
+
+tflite_beam_dll_file() ->
+    filename:join(priv_dir(), "tflite_beam.dll").
 
 app_version() ->
     {ok, Cwd} = file:get_cwd(),
@@ -332,9 +345,9 @@ do_download(URL) ->
 is_already_installed() ->
     case string:find(get_target(), "windows-msvc") of
         nomatch ->
-            filelib:is_regular(?TFLITE_BEAM_SO_FILE);
+            filelib:is_regular(tflite_beam_so_file());
         _ ->
-            filelib:is_regular(?TFLITE_BEAM_DLL_FILE)
+            filelib:is_regular(tflite_beam_dll_file())
     end.
 
 install_precompiled_binary_if_available() ->
@@ -346,17 +359,22 @@ install_precompiled_binary_if_available() ->
                         {error, _} ->
                             exit(failed);
                         {ok, TarballFileFullPath} ->
-                            file:del_dir_r("tmp_priv"),
-                            Status = 
-                                case erl_tar:extract(TarballFileFullPath, [compressed, {cwd, "tmp_priv"}]) of
+                            PrivDir = priv_dir(),
+                            %% Unarchive next to the destination so the rename below
+                            %% stays within one filesystem.
+                            TmpDir = filename:join(filename:dirname(PrivDir), "tmp_priv"),
+                            filelib:ensure_dir(filename:join(PrivDir, ".keep")),
+                            file:del_dir_r(TmpDir),
+                            Status =
+                                case erl_tar:extract(TarballFileFullPath, [compressed, {cwd, TmpDir}]) of
                                     ok ->
-                                        file:del_dir_r("priv"),
-                                        TmpPriv = filename:join(["tmp_priv", Name, "priv"]),
-                                        
-                                        PrivRenameOk = file:rename(TmpPriv, "priv"),
+                                        file:del_dir_r(PrivDir),
+                                        TmpPriv = filename:join([TmpDir, Name, "priv"]),
+
+                                        PrivRenameOk = file:rename(TmpPriv, PrivDir),
                                         case PrivRenameOk of
                                             {error, PrivError} ->
-                                                io:fwrite("[ERROR] Failed to move priv directory: ~p~n", [PrivError]),
+                                                io:fwrite("[ERROR] Failed to move priv directory to ~ts: ~p~n", [PrivDir, PrivError]),
                                                 failed;
                                             _ ->
                                                 ok
@@ -365,7 +383,7 @@ install_precompiled_binary_if_available() ->
                                         io:fwrite("[ERROR] Failed to unarchive tarball file: ~s, error: ~p~n", [TarballFileFullPath, Error]),
                                         failed
                                 end,
-                            file:del_dir_r("tmp_priv"),
+                            file:del_dir_r(TmpDir),
                             case Status of 
                                 failed ->
                                     exit(failed);

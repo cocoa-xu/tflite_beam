@@ -1,6 +1,18 @@
+SOURCE_PRIV_DIR = $(shell pwd)/priv
+
+# Mix does not export MIX_APP_PATH when it builds a rebar3 dependency, but it does
+# point REBAR_BARE_COMPILER_OUTPUT_DIR at _build/<target>_<env>/lib/tflite_beam.
+# Using it keeps the artifacts of each MIX_TARGET apart, instead of having every
+# target overwrite the same deps/tflite_beam/priv.
+ifndef MIX_APP_PATH
+ifdef REBAR_BARE_COMPILER_OUTPUT_DIR
+	MIX_APP_PATH=$(REBAR_BARE_COMPILER_OUTPUT_DIR)
+endif
+endif
+
 ifndef MIX_APP_PATH
 	MIX_APP_PATH=$(shell pwd)/_build/default/lib/tflite_beam
-	PRIV_DIR=$(shell pwd)/priv
+	PRIV_DIR=$(SOURCE_PRIV_DIR)
 	LIBUSB_INSTALL_DIR=$(shell pwd)/libusb
 else
 	PRIV_DIR = $(MIX_APP_PATH)/priv
@@ -93,11 +105,22 @@ MAKE_BUILD_FLAGS ?= auto
 
 build: $(NATIVE_BINDINGS_SO) fix_libusb
 
-$(PRIV_DIR):
-	@ if [ ! -d "$(PRIV_DIR)" ]; then \
-		rm -rf "$(PRIV_DIR)" ; \
-		mkdir -p "$(PRIV_DIR)" ; \
-	fi
+# Before running us, Mix links a dependency's source priv into the _build target it
+# is compiling for -- as a symlink when that directory is absent, but by copying the
+# contents in when it already exists. Either way the artifacts of one target leak
+# into another, so a source priv means this target's priv cannot be trusted and is
+# rebuilt from scratch. Has to be phony: a symlink makes the directory look like it
+# already exists, so a directory target would never run.
+.PHONY: prepare_priv_dir
+prepare_priv_dir:
+	@ if [ "$(PRIV_DIR)" != "$(SOURCE_PRIV_DIR)" ]; then \
+		if [ -e "$(SOURCE_PRIV_DIR)" ]; then \
+			rm -rf "$(SOURCE_PRIV_DIR)" "$(PRIV_DIR)" ; \
+		elif [ -L "$(PRIV_DIR)" ]; then \
+			rm -f "$(PRIV_DIR)" ; \
+		fi ; \
+	fi ; \
+	mkdir -p "$(PRIV_DIR)"
 
 create_cache_dir:
 	@ mkdir -p "$(TFLITE_BEAM_CACHE_DIR)"
@@ -129,7 +152,7 @@ unarchive_source_code: $(TFLITE_SOURCE_ZIP)
 		fi \
 	fi
 
-install_libedgetpu_runtime:
+install_libedgetpu_runtime: prepare_priv_dir
 	@ if [ "$(TFLITE_BEAM_CORAL_SUPPORT)" = "true" ]; then \
 		bash scripts/copy_libedgetpu_runtime.sh "$(LIBEDGETPU_RUNTIME_PRIV)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_UNZIPPED_DIR)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_TRIPLET)" "$(TFLITE_BEAM_CORAL_USB_THROTTLE)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_URL)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME)" "$(TFLITE_BEAM_CACHE_DIR)" && \
 		if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true" ]; then \
@@ -141,7 +164,7 @@ install_libedgetpu_runtime:
 		fi \
 	fi
 
-libusb: create_cache_dir
+libusb: create_cache_dir prepare_priv_dir
 	@ if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true" ]; then \
 		if [ "$(TFLITE_BEAM_CORAL_SUPPORT)" = "true" ]; then \
 			echo "LIBUSB_SHARED_LIBRARY: $(LIBUSB_SHARED_LIBRARY)" ; \
@@ -152,7 +175,7 @@ libusb: create_cache_dir
 		fi \
 	fi
 
-$(UNICODE_DATA): $(PRIV_DIR)
+$(UNICODE_DATA): prepare_priv_dir
 	@ if [ ! -e "$(UNICODE_DATA)" ]; then \
 		cp -f "$(UNICODEDATA)/unicode_data.txt" "$(UNICODE_DATA)" ; \
 	fi
@@ -161,8 +184,9 @@ $(NATIVE_BINDINGS_SO): $(UNICODE_DATA) unarchive_source_code install_libedgetpu_
 	@ if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" = "true" ]; then \
 		{ \
 			cd "$(shell pwd)" && \
-			erlc "$(PRECOMPILED_ERL_HELPER)" && \
-			erl -noshell -s tflite_beam_precompiled install_precompiled_binary_if_available -s init stop ; } || \
+			mkdir -p "$(MIX_APP_PATH)" && \
+			erlc -o "$(MIX_APP_PATH)" "$(PRECOMPILED_ERL_HELPER)" && \
+			TFLITE_BEAM_PRIV_DIR="$(PRIV_DIR)" erl -noshell -pa "$(MIX_APP_PATH)" -s tflite_beam_precompiled install_precompiled_binary_if_available -s init stop ; } || \
 		{ \
 			$(TFLITE_BEAM_MAKE) TFLITE_BEAM_PREFER_PRECOMPILED=false ; } ; \
 	fi && \
