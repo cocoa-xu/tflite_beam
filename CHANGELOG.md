@@ -7,6 +7,10 @@
   instead of `deps/tflite_beam/priv`, so switching `MIX_TARGET` no longer picks up
   another target's `tflite_beam.so`. `rm -rf deps/tflite_beam` is no longer needed
   when cross-compiling ([#73](https://github.com/cocoa-xu/tflite_beam/issues/73)).
+- Building from source no longer fails on hosts that have gflags installed
+  system-wide (e.g. `brew install gflags`). glog resolved gflags through
+  `find_package`, which picked up the system copy and collided with the targets
+  the bundled gflags had already defined.
 
 ## v0.3.10 (2026-06-30)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.3.10) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.3.10)
