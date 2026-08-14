@@ -127,6 +127,12 @@ if(${TFLITE_BEAM_CORAL_SUPPORT})
         "Directory that contains the glog project"
     )
 
+    # glog looks up gflags with find_package, which can only ever resolve to a
+    # system-wide copy -- never the one added above -- and the two sets of targets
+    # then collide. Build hosts have no system gflags, so this is also the
+    # configuration every released binary is already built with.
+    set(WITH_GFLAGS OFF CACHE BOOL "Use gflags" FORCE)
+
     add_subdirectory(
         "${GLOG_ROOT_DIR}"
         EXCLUDE_FROM_ALL
