@@ -77,6 +77,9 @@ struct NifResInterpreter {
     static NifResInterpreter * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
     static NifResInterpreter * get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error);
     static void destruct_resource(ErlNifEnv *env, void *args);
+    // every cached tensor borrows a TfLiteTensor * from the interpreter, so they all
+    // have to go whenever that interpreter does
+    static void release_tensors(NifResInterpreter * res);
 };
 
 struct NifResSignatureRunner {

@@ -62,8 +62,12 @@ ERL_NIF_TERM interpreter_builder_build(ErlNifEnv *env, int argc, const ERL_NIF_T
         return erlang::nif::error(env, "cannot access NifResInterpreter resource");
     }
 
+    // operator() destroys the interpreter these were taken from, whether it goes on
+    // to succeed or not, so the cache cannot outlive this call
+    NifResInterpreter::release_tensors(interpreter_res);
+
     std::unique_ptr<tflite::Interpreter> pretend(interpreter_res->val);
-    self_res->val->operator()(&pretend);
+    TfLiteStatus status = self_res->val->operator()(&pretend);
 
     interpreter_res->val = pretend.release();
 
@@ -72,7 +76,7 @@ ERL_NIF_TERM interpreter_builder_build(ErlNifEnv *env, int argc, const ERL_NIF_T
     }
     interpreter_res->flatbuffer_model = self_res->flatbuffer_model;
     enif_keep_resource(interpreter_res->flatbuffer_model);
-    return erlang::nif::ok(env);
+    return tflite_status_to_erl_term(env, status);
 }
 
 ERL_NIF_TERM interpreter_builder_set_num_threads(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
