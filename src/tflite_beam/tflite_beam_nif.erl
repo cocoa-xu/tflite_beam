@@ -38,6 +38,9 @@ flatbuffer_model_verify_and_build_from_file(_filename, _error_reporter) ->
 flatbuffer_model_build_from_buffer(_buffer, _error_reporter) ->
     not_loaded(?LINE).
 
+flatbuffer_model_verify_and_build_from_buffer(_buffer, _error_reporter) ->
+    not_loaded(?LINE).
+
 flatbuffer_model_initialized(_self) ->
     not_loaded(?LINE).
 
@@ -75,6 +78,12 @@ interpreter_set_outputs(_self, _outputs) ->
     not_loaded(?LINE).
 
 interpreter_set_variables(_self, _variables) ->
+    not_loaded(?LINE).
+
+interpreter_resize_input_tensor(_self, _tensor_index, _dims) ->
+    not_loaded(?LINE).
+
+interpreter_resize_input_tensor_strict(_self, _tensor_index, _dims) ->
     not_loaded(?LINE).
 
 interpreter_inputs(_self) ->
