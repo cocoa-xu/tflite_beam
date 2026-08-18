@@ -9,6 +9,8 @@
    set_inputs/2,
    set_outputs/2,
    set_variables/2,
+   resize_input_tensor/3,
+   resize_input_tensor_strict/3,
    inputs/1,
    get_input_name/2,
    outputs/1,
@@ -93,6 +95,24 @@ new_from_model(Model) when is_reference(Model) ->
 -spec set_inputs(reference(), list(integer())) -> ok | {error, binary()}.
 set_inputs(Self, Inputs) when is_reference(Self) and is_list(Inputs) ->
     tflite_beam_nif:interpreter_set_inputs(Self, Inputs).
+
+%% @doc
+%% Change the dimensionality of a given input tensor.
+%%
+%% Note that this is only acceptable for tensors that are inputs to the model,
+%% and `allocate_tensors/1' has to be called again afterwards.
+-spec resize_input_tensor(reference(), integer(), list(integer())) -> ok | {error, binary()}.
+resize_input_tensor(Self, TensorIndex, Dims) when is_reference(Self), is_integer(TensorIndex), is_list(Dims) ->
+    tflite_beam_nif:interpreter_resize_input_tensor(Self, TensorIndex, Dims).
+
+%% @doc
+%% Change the dimensionality of a given input tensor, keeping the rank fixed.
+%%
+%% Unlike `resize_input_tensor/3', this only accepts dimensions that the model
+%% left unknown, so a tensor whose shape is fully fixed cannot be resized.
+-spec resize_input_tensor_strict(reference(), integer(), list(integer())) -> ok | {error, binary()}.
+resize_input_tensor_strict(Self, TensorIndex, Dims) when is_reference(Self), is_integer(TensorIndex), is_list(Dims) ->
+    tflite_beam_nif:interpreter_resize_input_tensor_strict(Self, TensorIndex, Dims).
 
 %% @doc
 %% Provide a list of tensor indexes that are outputs to the model.

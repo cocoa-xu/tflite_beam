@@ -17,6 +17,22 @@
   A runner belongs to the interpreter that handed it out and holds a reference to it,
   so it stays usable even after the interpreter's own term is collected. Like the
   interpreter it is not safe to use from several processes at once.
+- `tflite_beam_interpreter:resize_input_tensor/3` and `resize_input_tensor_strict/3`.
+  Input shapes could not be changed at all before, so a model with a variable
+  dimension could only ever be fed whatever shape it was exported with. Call
+  `allocate_tensors/1` again afterwards. The strict variant only touches dimensions
+  the model left unknown.
+- `tflite_beam_flatbuffer_model:verify_and_build_from_buffer/1,2`. A verifying
+  counterpart existed for files but not for buffers, so a model already in memory
+  could only be built unchecked.
+
+### Fixed
+- The `minimum_runtime` field of the `tflite_beam_flatbuffer_model` record held a
+  boolean. Three of the four places that fill the record asked
+  `flatbuffer_model_initialized` for it, so anyone reading the field to decide
+  whether a runtime is new enough was reading `true`.
+- Building a model from a buffer no longer leaks the copy of that buffer when the
+  model turns out not to parse.
 
 ## v0.3.12 (2026-08-19)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.3.12) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.3.12)

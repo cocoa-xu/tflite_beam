@@ -48,6 +48,60 @@ ERL_NIF_TERM interpreter_set_inputs(ErlNifEnv *env, int argc, const ERL_NIF_TERM
     return tflite_status_to_erl_term(env, status);
 }
 
+ERL_NIF_TERM interpreter_resize_input_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 3) return enif_make_badarg(env);
+
+    ERL_NIF_TERM self_nif = argv[0];
+    ERL_NIF_TERM tensor_index_nif = argv[1];
+    ERL_NIF_TERM dims_nif = argv[2];
+    NifResInterpreter * self_res;
+    int tensor_index;
+    std::vector<int> dims;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
+    }
+
+    if (!erlang::nif::get(env, tensor_index_nif, &tensor_index)) {
+        return erlang::nif::error(env, "expecting `tensor_index` to be an integer");
+    }
+
+    if (!erlang::nif::get_list(env, dims_nif, dims)) {
+        return erlang::nif::error(env, "expecting `dims` to be a list of non-negative integers");
+    }
+
+    TfLiteStatus status = self_res->val->ResizeInputTensor(tensor_index, dims);
+    return tflite_status_to_erl_term(env, status);
+}
+
+ERL_NIF_TERM interpreter_resize_input_tensor_strict(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 3) return enif_make_badarg(env);
+
+    ERL_NIF_TERM self_nif = argv[0];
+    ERL_NIF_TERM tensor_index_nif = argv[1];
+    ERL_NIF_TERM dims_nif = argv[2];
+    NifResInterpreter * self_res;
+    int tensor_index;
+    std::vector<int> dims;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
+        return ret;
+    }
+
+    if (!erlang::nif::get(env, tensor_index_nif, &tensor_index)) {
+        return erlang::nif::error(env, "expecting `tensor_index` to be an integer");
+    }
+
+    if (!erlang::nif::get_list(env, dims_nif, dims)) {
+        return erlang::nif::error(env, "expecting `dims` to be a list of non-negative integers");
+    }
+
+    TfLiteStatus status = self_res->val->ResizeInputTensorStrict(tensor_index, dims);
+    return tflite_status_to_erl_term(env, status);
+}
+
 ERL_NIF_TERM interpreter_set_outputs(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 2) return enif_make_badarg(env);
 

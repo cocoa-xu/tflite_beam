@@ -7,6 +7,7 @@
     build_from_file/1, build_from_file/2, 
     verify_and_build_from_file/1, verify_and_build_from_file/2,
     build_from_buffer/1, build_from_buffer/2,
+    verify_and_build_from_buffer/1, verify_and_build_from_buffer/2,
     initialized/1,
     error_reporter/1,
     get_minimum_runtime/1,
@@ -55,7 +56,7 @@ build_from_file(Filename, Opts) when is_binary(Filename), is_list(Opts) ->
     case tflite_beam_nif:flatbuffer_model_build_from_file(Filename, ErrorReporter) of
         {ok, Model} ->
             Initialized = tflite_beam_nif:flatbuffer_model_initialized(Model),
-            MinimumRuntime = tflite_beam_nif:flatbuffer_model_initialized(Model),
+            MinimumRuntime = tflite_beam_nif:flatbuffer_model_get_minimum_runtime(Model),
             #tflite_beam_flatbuffer_model{initialized = Initialized, minimum_runtime = MinimumRuntime, ref = Model};
         {error, Reason} ->
             {error, Reason}
@@ -99,7 +100,47 @@ verify_and_build_from_file(Filename, Opts) when is_binary(Filename), is_list(Opt
     case tflite_beam_nif:flatbuffer_model_verify_and_build_from_file(Filename, ErrorReporter) of
         {ok, Model} ->
             Initialized = tflite_beam_nif:flatbuffer_model_initialized(Model),
-            MinimumRuntime = tflite_beam_nif:flatbuffer_model_initialized(Model),
+            MinimumRuntime = tflite_beam_nif:flatbuffer_model_get_minimum_runtime(Model),
+            #tflite_beam_flatbuffer_model{initialized = Initialized, minimum_runtime = MinimumRuntime, ref = Model};
+        invalid ->
+            invalid;
+        {error, Reason} ->
+            {error, Reason}
+    end.
+
+%% @doc Verifies whether the buffer is legit, then builds a model from it
+%%
+%% ==== Positional Parameters ====
+%% @param Buffer The content of a .tflite file.
+%%
+%% @return `invalid' in case of failure.
+-spec verify_and_build_from_buffer(binary()) -> #tflite_beam_flatbuffer_model{} | invalid | {error, binary()}.
+verify_and_build_from_buffer(Buffer) ->
+    verify_and_build_from_buffer(Buffer, []).
+
+%% @doc Verifies whether the buffer is legit, then builds a model from it
+%%
+%% ==== Positional Parameters ====
+%% @param Buffer The content of a .tflite file.
+%%
+%% ==== Keyword Parameters ====
+%% @param error_reporter Error reporter.
+%%
+%% @return `invalid' in case of failure.
+-spec verify_and_build_from_buffer(binary(), list()) -> #tflite_beam_flatbuffer_model{} | invalid | {error, binary()}.
+verify_and_build_from_buffer(Buffer, Opts) when is_binary(Buffer), is_list(Opts) ->
+    ErrorReporter = case proplists:get_value(error_reporter, Opts, nil) of
+        #tflite_beam_error_reporter{ref = ErrorReporterRef} ->
+            ErrorReporterRef;
+        ErrorReporter_ when is_reference(ErrorReporter_) ->
+            ErrorReporter_;
+        nil ->
+            nil
+        end,
+    case tflite_beam_nif:flatbuffer_model_verify_and_build_from_buffer(Buffer, ErrorReporter) of
+        {ok, Model} ->
+            Initialized = tflite_beam_nif:flatbuffer_model_initialized(Model),
+            MinimumRuntime = tflite_beam_nif:flatbuffer_model_get_minimum_runtime(Model),
             #tflite_beam_flatbuffer_model{initialized = Initialized, minimum_runtime = MinimumRuntime, ref = Model};
         invalid ->
             invalid;
@@ -126,7 +167,7 @@ build_from_buffer(Buffer, Opts) ->
     case tflite_beam_nif:flatbuffer_model_build_from_buffer(Buffer, ErrorReporter) of
         {ok, Model} ->
             Initialized = tflite_beam_nif:flatbuffer_model_initialized(Model),
-            MinimumRuntime = tflite_beam_nif:flatbuffer_model_initialized(Model),
+            MinimumRuntime = tflite_beam_nif:flatbuffer_model_get_minimum_runtime(Model),
             #tflite_beam_flatbuffer_model{initialized = Initialized, minimum_runtime = MinimumRuntime, ref = Model};
         {error, Reason} ->
             {error, Reason}

@@ -84,6 +84,41 @@ ERL_NIF_TERM flatbuffer_model_verify_and_build_from_file(ErlNifEnv *env, int arg
 
 #endif
 
+ERL_NIF_TERM flatbuffer_model_verify_and_build_from_buffer(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 2) return enif_make_badarg(env);
+
+    ErlNifBinary data;
+    NifResErrorReporter * error_reporter_res = nullptr;
+
+    ERL_NIF_TERM data_term = argv[0];
+    ERL_NIF_TERM error_reporter_term = argv[1];
+
+    ERL_NIF_TERM ret;
+
+    if (!enif_inspect_binary(env, data_term, &data)) {
+        return erlang::nif::error(env, "cannot get input data");
+    }
+
+    tflite::TfLiteVerifier * verifier = nullptr;
+    tflite::ErrorReporter * error_reporter = nullptr;
+    if (!_get_error_reporter(env, error_reporter_term, error_reporter_res, error_reporter, ret)) {
+        return ret;
+    }
+
+    char * copied_buffer = (char *)enif_alloc(sizeof(char) * data.size);
+    memcpy((void *)copied_buffer, data.data, data.size);
+
+    auto m = tflite::FlatBufferModel::VerifyAndBuildFromBuffer(copied_buffer, data.size, verifier, error_reporter);
+    if (m.get() == nullptr) {
+        enif_free(copied_buffer);
+        return erlang::nif::atom(env, "invalid");
+    }
+
+    _make_flatbuffer_model_resource(env, m, ret, copied_buffer);
+
+    return ret;
+}
+
 ERL_NIF_TERM flatbuffer_model_build_from_buffer(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 2) return enif_make_badarg(env);
 
@@ -234,11 +269,13 @@ ERL_NIF_TERM flatbuffer_model_read_all_metadata(ErlNifEnv *env, int argc, const 
 NifResFlatBufferModel * _make_flatbuffer_model_resource(ErlNifEnv *env, std::unique_ptr<tflite::FlatBufferModel>& m, ERL_NIF_TERM &out, void * copied_buffer) {
     NifResFlatBufferModel * res = nullptr;
     if (m.get() == nullptr) {
+        if (copied_buffer) enif_free(copied_buffer);
         out = erlang::nif::error(env, "cannot get flatbuffer model");
         return res;
     }
 
     if (!(res = NifResFlatBufferModel::allocate_resource(env, out))) {
+        if (copied_buffer) enif_free(copied_buffer);
         m.reset(nullptr);
         return res;
     } 
