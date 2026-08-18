@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.3.12 (2026-08-18)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.3.12) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.3.12)
+
+### Fixed
+- Interpreters, interpreter builders and the resources they borrow (the op resolver
+  and the flatbuffer model) now hold real references to each other. Previously only a
+  hand-rolled counter recorded the link, so the VM was free to collect a resource that
+  was still in use, and the destructor's decrement landed in whatever resource had been
+  given that memory next. On arm64 this brought down the emulator with SIGBUS.
+- Resources are no longer read uninitialised. `enif_alloc_resource` hands back raw
+  memory, so fields that looked initialised in the struct definition were not, and
+  `NifResTfLiteTensor` could reach `delete` on a wild pointer.
+- Every `tflite::FlatBufferModel` and every `tflite::Interpreter` was leaked; both are
+  now released with the resource that owns them.
+- Creating an Edge TPU interpreter no longer leaks its resource when the interpreter
+  cannot be built or its tensors cannot be allocated.
+- Tensor resources are no longer leaked. Each one was created with a reference that
+  nobody ever gave back, on top of the one the interpreter's cache holds, so none of
+  them could be freed. Failing partway through reading a tensor leaked one as well.
+- Edge TPU context resources are no longer leaked, for the same reason: the reference
+  from `enif_alloc_resource` was never released.
+
 ## v0.3.11 (2026-08-15)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.3.11) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.3.11)
 
