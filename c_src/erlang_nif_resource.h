@@ -19,10 +19,6 @@
 
 struct NifResBuiltinOpResolver {
     tflite::ops::builtin::BuiltinOpResolver * val;
-    // OpResolver must live as long as its InterpreterBuilder
-    std::atomic_int64_t reference_count{0};
-    std::atomic_bool dropped_in_erlang{false};
-    std::atomic_bool deleted{false};
 
     static ErlNifResourceType * type;
     static NifResBuiltinOpResolver * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
@@ -32,7 +28,7 @@ struct NifResBuiltinOpResolver {
 
 struct NifResErrorReporter {
     tflite::ErrorReporter * val;
-    std::atomic_bool is_default{false};
+    std::atomic_bool is_default;
 
     static ErlNifResourceType * type;
     static NifResErrorReporter * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
@@ -42,13 +38,9 @@ struct NifResErrorReporter {
 
 struct NifResFlatBufferModel {
     tflite::FlatBufferModel * val;
-    // FlatBufferModel must live as long as its Interpreter
-    std::atomic_int64_t reference_count{0};
-    std::atomic_bool dropped_in_erlang{false};
-    std::atomic_bool deleted{false};
 
     // copy the buffer when build from buffer
-    const char * copied_buffer{nullptr};
+    const char * copied_buffer;
 
     static ErlNifResourceType * type;
     static NifResFlatBufferModel * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
@@ -58,6 +50,7 @@ struct NifResFlatBufferModel {
 
 struct NifResInterpreterBuilder {
     tflite::InterpreterBuilder * val;
+    // kept alive with enif_keep_resource for as long as this builder holds them
     NifResBuiltinOpResolver * op_resolver;
     NifResFlatBufferModel * flatbuffer_model;
 
@@ -70,6 +63,7 @@ struct NifResInterpreterBuilder {
 struct NifResTfLiteTensor;
 struct NifResInterpreter {
     tflite::Interpreter * val;
+    // kept alive with enif_keep_resource; the interpreter reads the model's buffer
     NifResFlatBufferModel * flatbuffer_model;
     std::map<int, NifResTfLiteTensor *> * tensors;
 
@@ -81,8 +75,8 @@ struct NifResInterpreter {
 
 struct NifResTfLiteTensor {
     TfLiteTensor * val;
-    std::atomic_bool borrowed{false};
-    std::atomic_bool interpreter_has_gone{false};
+    std::atomic_bool borrowed;
+    std::atomic_bool interpreter_has_gone;
 
     static ErlNifResourceType * type;
     static NifResTfLiteTensor * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);

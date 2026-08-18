@@ -13,9 +13,7 @@ NifResBuiltinOpResolver * NifResBuiltinOpResolver::allocate_resource(ErlNifEnv *
         return res;
     }
 
-    res->reference_count = 0;
-    res->dropped_in_erlang = false;
-    res->deleted = false;
+    res->val = nullptr;
 
     return res;
 }
@@ -30,23 +28,21 @@ NifResBuiltinOpResolver * NifResBuiltinOpResolver::get_resource(ErlNifEnv * env,
 
 void NifResBuiltinOpResolver::destruct_resource(ErlNifEnv *env, void *args) {
     auto res = (NifResBuiltinOpResolver *)args;
-    if (res) {
-        if (res->val) {
-            res->dropped_in_erlang = true;
-            if (!res->deleted && res->reference_count == 0) {
-                delete res->val;
-                res->val = nullptr;
-            }
-        }
+    if (res && res->val) {
+        delete res->val;
+        res->val = nullptr;
     }
 }
 
 NifResErrorReporter * NifResErrorReporter::allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error) {
     NifResErrorReporter * res = (NifResErrorReporter *)enif_alloc_resource(NifResErrorReporter::type, sizeof(NifResErrorReporter));
     if (res == nullptr) {
-        error = erlang::nif::error(env, "cannot allocate NifResFlatBufferModel resource");
+        error = erlang::nif::error(env, "cannot allocate NifResErrorReporter resource");
         return res;
     }
+
+    res->val = nullptr;
+    res->is_default = false;
 
     return res;
 }
@@ -78,9 +74,7 @@ NifResFlatBufferModel * NifResFlatBufferModel::allocate_resource(ErlNifEnv * env
         return res;
     }
     
-    res->reference_count = 0;
-    res->dropped_in_erlang = false;
-    res->deleted = false;
+    res->val = nullptr;
     res->copied_buffer = nullptr;
 
     return res;
@@ -98,15 +92,12 @@ void NifResFlatBufferModel::destruct_resource(ErlNifEnv *env, void *args) {
     auto res = (NifResFlatBufferModel *)args;
     if (res) {
         if (res->val) {
-            res->dropped_in_erlang = true;
-            if (!res->deleted && res->reference_count == 0) {
-                if (res->copied_buffer) {
-                    enif_free((void *)res->copied_buffer);
-                    res->copied_buffer = nullptr;
-                }
-                delete res->val;
-                res->val = nullptr;
-            }
+            delete res->val;
+            res->val = nullptr;
+        }
+        if (res->copied_buffer) {
+            enif_free((void *)res->copied_buffer);
+            res->copied_buffer = nullptr;
         }
     }
 }
@@ -118,6 +109,7 @@ NifResInterpreterBuilder * NifResInterpreterBuilder::allocate_resource(ErlNifEnv
         return res;
     }
 
+    res->val = nullptr;
     res->op_resolver = nullptr;
     res->flatbuffer_model = nullptr;
 
@@ -136,39 +128,18 @@ void NifResInterpreterBuilder::destruct_resource(ErlNifEnv *env, void *args) {
     auto res = (NifResInterpreterBuilder *)args;
     if (res) {
         if (res->val) {
-            if (res->op_resolver) {
-                res->op_resolver->reference_count--;
-
-                if (res->op_resolver->reference_count == 0 && res->op_resolver->dropped_in_erlang) {
-                    if (res->op_resolver->val) {
-                        delete res->op_resolver->val;
-                    }
-                    res->op_resolver->val = nullptr;
-                    res->op_resolver->deleted = true;
-                    res->op_resolver = nullptr;
-                }
-            }
-
-            if (res->flatbuffer_model) {
-                res->flatbuffer_model->reference_count--;
-
-                if (res->flatbuffer_model->reference_count == 0 && res->flatbuffer_model->dropped_in_erlang) {
-                    if (res->flatbuffer_model->val) {
-                        if (res->flatbuffer_model->copied_buffer) {
-                            enif_free((void *)res->flatbuffer_model->copied_buffer);
-                            res->flatbuffer_model->copied_buffer = nullptr;
-                        }
-                        delete res->flatbuffer_model->val;
-                    }
-                    res->flatbuffer_model->val = nullptr;
-                    res->flatbuffer_model->deleted = true;
-                    enif_release_resource(res->flatbuffer_model);
-                    res->flatbuffer_model = nullptr;
-                }
-            }
-
             delete res->val;
             res->val = nullptr;
+        }
+
+        if (res->op_resolver) {
+            enif_release_resource(res->op_resolver);
+            res->op_resolver = nullptr;
+        }
+
+        if (res->flatbuffer_model) {
+            enif_release_resource(res->flatbuffer_model);
+            res->flatbuffer_model = nullptr;
         }
     }
 }
@@ -180,6 +151,7 @@ NifResInterpreter * NifResInterpreter::allocate_resource(ErlNifEnv * env, ERL_NI
         return res;
     }
 
+    res->val = nullptr;
     res->flatbuffer_model = nullptr;
     res->tensors = new std::map<int, NifResTfLiteTensor *>;
 
@@ -197,37 +169,26 @@ NifResInterpreter * NifResInterpreter::get_resource(ErlNifEnv * env, ERL_NIF_TER
 void NifResInterpreter::destruct_resource(ErlNifEnv *env, void *args) {
     auto res = (NifResInterpreter *)args;
     if (res) {
+        if (res->tensors) {
+            for (auto tensor_res_pair : *res->tensors) {
+                auto tensor_res = tensor_res_pair.second;
+                if (tensor_res) {
+                    tensor_res->interpreter_has_gone = true;
+                    enif_release_resource(tensor_res);
+                }
+            }
+            delete res->tensors;
+            res->tensors = nullptr;
+        }
+
         if (res->val) {
-            if (res->flatbuffer_model) {
-                res->flatbuffer_model->reference_count--;
+            delete res->val;
+            res->val = nullptr;
+        }
 
-                if (res->flatbuffer_model->reference_count == 0 && res->flatbuffer_model->dropped_in_erlang) {
-                    if (res->flatbuffer_model->val) {
-                        if (res->flatbuffer_model->copied_buffer) {
-                            enif_free((void *)res->flatbuffer_model->copied_buffer);
-                            res->flatbuffer_model->copied_buffer = nullptr;
-                        }
-                        delete res->flatbuffer_model->val;
-                    }
-                    res->flatbuffer_model->val = nullptr;
-                    res->flatbuffer_model->deleted = true;
-                    enif_release_resource(res->flatbuffer_model);
-                    res->flatbuffer_model = nullptr;
-                }
-            }
-
-            if (res->tensors) {
-                if (res->tensors->size()) {
-                    for (auto tensor_res_pair : *res->tensors) {
-                        auto tensor_res = tensor_res_pair.second;
-                        if (tensor_res) {
-                            tensor_res->interpreter_has_gone = true;
-                            enif_release_resource(tensor_res);
-                        }
-                    }
-                }
-                delete res->tensors;
-            }
+        if (res->flatbuffer_model) {
+            enif_release_resource(res->flatbuffer_model);
+            res->flatbuffer_model = nullptr;
         }
     }
 }
@@ -239,6 +200,8 @@ NifResTfLiteTensor * NifResTfLiteTensor::allocate_resource(ErlNifEnv * env, ERL_
         return res;
     }
 
+    res->val = nullptr;
+    res->borrowed = false;
     res->interpreter_has_gone = false;
 
     return res;
@@ -279,6 +242,8 @@ NifResEdgeTpuContext * NifResEdgeTpuContext::allocate_resource(ErlNifEnv * env, 
         error = erlang::nif::error(env, "cannot allocate NifResEdgeTpuContext resource");
         return res;
     }
+
+    res->val = nullptr;
 
     return res;
 }
