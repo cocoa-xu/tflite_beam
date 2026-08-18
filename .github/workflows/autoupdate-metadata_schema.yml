@@ -23,13 +23,13 @@ jobs:
           if [ "$LATEST_SHA256" != "$CURRENT_SHA256" ]; then
             PR_VERSION="$(echo $LATEST_SHA256 | cut -c 1-8)"
             PR_BRANCH="autoupdate/metadata_schema-$PR_VERSION"
-            if [ `git rev-parse --verify ${PR_BRANCH} 2>/dev/null` ]; then
+            if git ls-remote --exit-code --heads origin "${PR_BRANCH}" >/dev/null 2>&1; then
               echo "PR for newer version of metadata_schema.fbs already exists"
-              echo "updates='false'" >> $GITHUB_OUTPUT
+              echo "updates=false" >> "$GITHUB_OUTPUT"
             else
               echo "metadata_schema.fbs has updates"
-              echo "updates='true'" >> $GITHUB_OUTPUT
-              echo "branch=${PR_BRANCH}" >> $GITHUB_OUTPUT
+              echo "updates=true" >> "$GITHUB_OUTPUT"
+              echo "branch=${PR_BRANCH}" >> "$GITHUB_OUTPUT"
             fi
           fi
 
@@ -38,7 +38,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.AUTO_UPDATE_TOKEN }}
         run: |
-          sudo apt-get install -y flatbuffers-compile
+          sudo apt-get update
+          sudo apt-get install -y flatbuffers-compiler
           
           flatc -c metadata_schema.fbs
           START_LINE=$(grep -n "static_assert(FLATBUFFERS_VERSION" metadata_schema_generated.h | awk -F: '{print $1}')
@@ -55,5 +56,7 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
           git checkout -b "${{ steps.metadata-schema.outputs.branch }}"
+          git add c_src/metadata_schema.fbs c_src/metadata_schema_generated.h
+          git commit -m "chore: update metadata_schema.fbs"
           git push origin "${{ steps.metadata-schema.outputs.branch }}"
-          gh pr create --title "Update metadata_schema.fbs" --base master --head "${{ steps.metadata-schema.outputs.branch }}"
+          gh pr create --title "chore: update metadata_schema.fbs" --body "" --base main --head "${{ steps.metadata-schema.outputs.branch }}"
