@@ -17,6 +17,20 @@
   A runner belongs to the interpreter that handed it out and holds a reference to it,
   so it stays usable even after the interpreter's own term is collected. Like the
   interpreter it is not safe to use from several processes at once.
+- `tflite_beam_interpreter:enable_cancellation/1` and `cancel/1`. An invocation runs on
+  a dirty scheduler and could not be interrupted; `cancel/1` does not block and is safe
+  to call from another process, so a long inference can now be given up on. Without
+  `enable_cancellation/1` beforehand, cancelling is an error.
+- `tflite_beam_interpreter:release_non_persistent_memory/1`, which hands back the memory
+  that is only needed while invoking. Invoking again reallocates it, trading time for
+  memory on devices short of the latter.
+- `tflite_beam_interpreter:reset_variable_tensors/1`, resetting all of a model's
+  variable tensors. Only a single-tensor version existed.
+- `tflite_beam_interpreter:get_allow_fp16_precision_for_fp32/1` and
+  `set_allow_fp16_precision_for_fp32/2`.
+- `tflite_beam_interpreter:signature_inputs/2`, `signature_outputs/2`,
+  `get_subgraph_index_from_signature/2` and `subgraphs_size/1`, which describe a
+  model's signatures and subgraphs without having to build a runner.
 - `tflite_beam_interpreter:resize_input_tensor/3` and `resize_input_tensor_strict/3`.
   Input shapes could not be changed at all before, so a model with a variable
   dimension could only ever be fed whatever shape it was exported with. Call

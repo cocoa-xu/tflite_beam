@@ -77,6 +77,36 @@ interpreter_set_inputs(_self, _inputs) ->
 interpreter_set_outputs(_self, _outputs) ->
     not_loaded(?LINE).
 
+interpreter_enable_cancellation(_self) ->
+    not_loaded(?LINE).
+
+interpreter_cancel(_self) ->
+    not_loaded(?LINE).
+
+interpreter_release_non_persistent_memory(_self) ->
+    not_loaded(?LINE).
+
+interpreter_reset_variable_tensors(_self) ->
+    not_loaded(?LINE).
+
+interpreter_subgraphs_size(_self) ->
+    not_loaded(?LINE).
+
+interpreter_get_allow_fp16_precision_for_fp32(_self) ->
+    not_loaded(?LINE).
+
+interpreter_set_allow_fp16_precision_for_fp32(_self, _arg) ->
+    not_loaded(?LINE).
+
+interpreter_signature_inputs(_self, _arg) ->
+    not_loaded(?LINE).
+
+interpreter_signature_outputs(_self, _arg) ->
+    not_loaded(?LINE).
+
+interpreter_get_subgraph_index_from_signature(_self, _arg) ->
+    not_loaded(?LINE).
+
 interpreter_set_variables(_self, _variables) ->
     not_loaded(?LINE).
 

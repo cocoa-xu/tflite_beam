@@ -1,3 +1,4 @@
+#include <map>
 #include <string>
 
 #include <erl_nif.h>
@@ -100,6 +101,167 @@ ERL_NIF_TERM interpreter_resize_input_tensor_strict(ErlNifEnv *env, int argc, co
 
     TfLiteStatus status = self_res->val->ResizeInputTensorStrict(tensor_index, dims);
     return tflite_status_to_erl_term(env, status);
+}
+
+ERL_NIF_TERM interpreter_enable_cancellation(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+
+    NifResInterpreter * self_res;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, argv[0], ret))) {
+        return ret;
+    }
+
+    return tflite_status_to_erl_term(env, self_res->val->EnableCancellation());
+}
+
+ERL_NIF_TERM interpreter_cancel(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+
+    NifResInterpreter * self_res;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, argv[0], ret))) {
+        return ret;
+    }
+
+    return tflite_status_to_erl_term(env, self_res->val->Cancel());
+}
+
+ERL_NIF_TERM interpreter_release_non_persistent_memory(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+
+    NifResInterpreter * self_res;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, argv[0], ret))) {
+        return ret;
+    }
+
+    return tflite_status_to_erl_term(env, self_res->val->ReleaseNonPersistentMemory());
+}
+
+ERL_NIF_TERM interpreter_reset_variable_tensors(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+
+    NifResInterpreter * self_res;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, argv[0], ret))) {
+        return ret;
+    }
+
+    return tflite_status_to_erl_term(env, self_res->val->ResetVariableTensors());
+}
+
+ERL_NIF_TERM interpreter_subgraphs_size(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+
+    NifResInterpreter * self_res;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, argv[0], ret))) {
+        return ret;
+    }
+
+    return erlang::nif::ok(env, enif_make_uint64(env, self_res->val->subgraphs_size()));
+}
+
+ERL_NIF_TERM interpreter_get_allow_fp16_precision_for_fp32(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+
+    NifResInterpreter * self_res;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, argv[0], ret))) {
+        return ret;
+    }
+
+    return erlang::nif::ok(env, self_res->val->GetAllowFp16PrecisionForFp32() ? erlang::nif::atom(env, "true") : erlang::nif::atom(env, "false"));
+}
+
+ERL_NIF_TERM interpreter_set_allow_fp16_precision_for_fp32(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 2) return enif_make_badarg(env);
+
+    NifResInterpreter * self_res;
+    ERL_NIF_TERM ret;
+    std::string allow;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, argv[0], ret))) {
+        return ret;
+    }
+
+    if (!erlang::nif::get_atom(env, argv[1], allow) || (allow != "true" && allow != "false")) {
+        return erlang::nif::error(env, "expecting `allow` to be a boolean");
+    }
+
+    self_res->val->SetAllowFp16PrecisionForFp32(allow == "true");
+    return erlang::nif::ok(env);
+}
+
+static ERL_NIF_TERM _signature_tensor_map(ErlNifEnv *env, const std::map<std::string, uint32_t>& m) {
+    ERL_NIF_TERM map = enif_make_new_map(env);
+    for (const auto& kv : m) {
+        enif_make_map_put(env, map,
+            erlang::nif::make_binary(env, kv.first.c_str()),
+            enif_make_uint(env, kv.second), &map);
+    }
+    return map;
+}
+
+ERL_NIF_TERM interpreter_signature_inputs(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 2) return enif_make_badarg(env);
+
+    NifResInterpreter * self_res;
+    std::string signature_key;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, argv[0], ret))) {
+        return ret;
+    }
+
+    if (!erlang::nif::get(env, argv[1], signature_key)) {
+        return erlang::nif::error(env, "expecting `signature_key` to be a string");
+    }
+
+    return erlang::nif::ok(env, _signature_tensor_map(env, self_res->val->signature_inputs(signature_key.c_str())));
+}
+
+ERL_NIF_TERM interpreter_signature_outputs(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 2) return enif_make_badarg(env);
+
+    NifResInterpreter * self_res;
+    std::string signature_key;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, argv[0], ret))) {
+        return ret;
+    }
+
+    if (!erlang::nif::get(env, argv[1], signature_key)) {
+        return erlang::nif::error(env, "expecting `signature_key` to be a string");
+    }
+
+    return erlang::nif::ok(env, _signature_tensor_map(env, self_res->val->signature_outputs(signature_key.c_str())));
+}
+
+ERL_NIF_TERM interpreter_get_subgraph_index_from_signature(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 2) return enif_make_badarg(env);
+
+    NifResInterpreter * self_res;
+    std::string signature_key;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreter::get_resource(env, argv[0], ret))) {
+        return ret;
+    }
+
+    if (!erlang::nif::get(env, argv[1], signature_key)) {
+        return erlang::nif::error(env, "expecting `signature_key` to be a string");
+    }
+
+    return erlang::nif::ok(env, enif_make_int(env, self_res->val->GetSubgraphIndexFromSignature(signature_key.c_str())));
 }
 
 ERL_NIF_TERM interpreter_set_outputs(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
