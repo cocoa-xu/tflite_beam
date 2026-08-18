@@ -54,7 +54,7 @@ jobs:
         with:
           cmake-version: '3.22.x'
 
-      - name: Compile
+      - name: Compile and Test
         run: |
           export OTP_MAIN_VER="${OTP_VERSION%%.*}"
           export PATH=$HOME/.elixir-install/installs/otp/${OTP_VERSION}/bin:$PATH
@@ -63,3 +63,4 @@ jobs:
 
           rebar3 deps
           rebar3 compile
+          rebar3 ct

@@ -30,9 +30,10 @@ ERL_NIF_TERM tflite_reset_variable_tensor(ErlNifEnv *env, int argc, const ERL_NI
 
     ERL_NIF_TERM tensor_nif = argv[0];
     NifResTfLiteTensor *self_res = nullptr;
+    ERL_NIF_TERM ret;
 
-    if (!enif_get_resource(env, tensor_nif, NifResTfLiteTensor::type, (void **)&self_res) || self_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access NifResTfLiteTensor resource");
+    if (!(self_res = NifResTfLiteTensor::get_resource(env, tensor_nif, ret))) {
+        return ret;
     }
 
     TfLiteStatus status = tflite::ResetVariableTensor(self_res->val);

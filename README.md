@@ -86,6 +86,15 @@ Add `tflite_beam` to your list of dependencies in `rebar.config`:
 
 Documentation is published on [HexDocs](https://hexdocs.pm/tflite_beam).
 
+## Tests
+
+```shell
+rebar3 ct
+```
+
+The model fixtures live in `test/models/`, so the suite needs no network and runs
+against a precompiled install as well as a build from source.
+
 ## Upstream Dependencies
 
 - [cocoa-xu/libedgetpu](https://github.com/cocoa-xu/libedgetpu)
