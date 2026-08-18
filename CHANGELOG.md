@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## v0.4.0-rc1 (2026-08-19)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.4.0-rc1) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.4.0-rc1)
+
+A release candidate. Everything here is new surface rather than changed behaviour, but
+it is a lot of it at once, so it is worth a look before it becomes 0.4.0. Depend on it
+explicitly -- a pre-release is not picked up by a requirement like `"~> 0.3"`.
 
 ### Added
 - Signature runners. A model's signatures could be listed with
