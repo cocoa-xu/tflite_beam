@@ -21,6 +21,11 @@
   them could be freed. Failing partway through reading a tensor leaked one as well.
 - Edge TPU context resources are no longer leaked, for the same reason: the reference
   from `enif_alloc_resource` was never released.
+- `allocate_tensors` no longer reports `unknown error` for three of the statuses
+  TFLite can return. A model carrying ops the interpreter cannot resolve -- an Edge
+  TPU model given to a plain builtin resolver, say -- now says `UnresolvedOps`
+  instead. The mapping lived in two places, one of which had drifted; there is now
+  only one.
 - The Edge TPU itself is handed back when nothing is using it any more. Contexts were
   parked in a global map that was written to and never read, purely so their
   `shared_ptr` could not run out, which held the device until the VM exited. Each

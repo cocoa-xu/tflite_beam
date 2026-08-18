@@ -464,24 +464,7 @@ ERL_NIF_TERM interpreter_allocate_tensors(ErlNifEnv *env, int argc, const ERL_NI
         return ret;
     }
 
-    switch (self_res->val->AllocateTensors()) {
-        case kTfLiteOk:
-            return erlang::nif::atom(env, "ok");
-        case kTfLiteError:
-            return erlang::nif::error(env, "General runtime error");
-        case kTfLiteDelegateError:
-            return erlang::nif::error(env, "TfLiteDelegate");
-        case kTfLiteApplicationError:
-            return erlang::nif::error(env, "Application");
-        case kTfLiteDelegateDataNotFound:
-            return erlang::nif::error(env, "DelegateDataNotFound");
-        case kTfLiteDelegateDataWriteError:
-            return erlang::nif::error(env, "DelegateDataWriteError");
-        case kTfLiteDelegateDataReadError:
-            return erlang::nif::error(env, "DelegateDataReadError");
-        default:
-            return erlang::nif::error(env, "unknown error");
-    }
+    return tflite_status_to_erl_term(env, self_res->val->AllocateTensors());
 }
 
 ERL_NIF_TERM interpreter_get_signature_defs(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {

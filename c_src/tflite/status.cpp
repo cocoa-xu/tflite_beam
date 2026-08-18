@@ -21,6 +21,12 @@ ERL_NIF_TERM tflite_status_to_erl_term(ErlNifEnv *env, const TfLiteStatus status
             return erlang::nif::error(env, "DelegateDataWriteError");
         case kTfLiteDelegateDataReadError:
             return erlang::nif::error(env, "DelegateDataReadError");
+        case kTfLiteUnresolvedOps:
+            return erlang::nif::error(env, "UnresolvedOps");
+        case kTfLiteCancelled:
+            return erlang::nif::error(env, "Cancelled");
+        case kTfLiteOutputShapeNotKnown:
+            return erlang::nif::error(env, "OutputShapeNotKnown");
         default:
             return erlang::nif::error(env, "unknown error");
     }
