@@ -153,6 +153,7 @@ NifResInterpreter * NifResInterpreter::allocate_resource(ErlNifEnv * env, ERL_NI
 
     res->val = nullptr;
     res->flatbuffer_model = nullptr;
+    res->edgetpu_context = nullptr;
     res->tensors = new std::map<int, NifResTfLiteTensor *>;
 
     return res;
@@ -189,6 +190,11 @@ void NifResInterpreter::destruct_resource(ErlNifEnv *env, void *args) {
         if (res->flatbuffer_model) {
             enif_release_resource(res->flatbuffer_model);
             res->flatbuffer_model = nullptr;
+        }
+
+        if (res->edgetpu_context) {
+            enif_release_resource(res->edgetpu_context);
+            res->edgetpu_context = nullptr;
         }
     }
 }
@@ -244,6 +250,7 @@ NifResEdgeTpuContext * NifResEdgeTpuContext::allocate_resource(ErlNifEnv * env, 
     }
 
     res->val = nullptr;
+    res->context = nullptr;
 
     return res;
 }
@@ -258,7 +265,10 @@ NifResEdgeTpuContext * NifResEdgeTpuContext::get_resource(ErlNifEnv * env, ERL_N
 
 void NifResEdgeTpuContext::destruct_resource(ErlNifEnv *env, void *args) {
     auto res = (NifResEdgeTpuContext *)args;
-    if (res->val) {
+    if (res) {
+        // dropping the last share of the context is what releases the device
+        delete res->context;
+        res->context = nullptr;
         res->val = nullptr;
     }
 }

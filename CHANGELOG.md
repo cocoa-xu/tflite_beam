@@ -21,6 +21,12 @@
   them could be freed. Failing partway through reading a tensor leaked one as well.
 - Edge TPU context resources are no longer leaked, for the same reason: the reference
   from `enif_alloc_resource` was never released.
+- The Edge TPU itself is handed back when nothing is using it any more. Contexts were
+  parked in a global map that was written to and never read, purely so their
+  `shared_ptr` could not run out, which held the device until the VM exited. Each
+  context resource now owns its share directly, and an Edge TPU interpreter holds a
+  reference to the context it delegates to, so the device outlives every interpreter
+  built on it and is released once the last one is gone.
 
 ## v0.3.11 (2026-08-15)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.3.11) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.3.11)

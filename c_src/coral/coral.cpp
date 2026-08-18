@@ -31,15 +31,6 @@ class EdgeTpuContextDirect : public edgetpu::EdgeTpuContext {
 
 #define EDGETPU_DEVICE_NAME_BUFFER_SIZE 64
 
-std::map<std::string, std::shared_ptr<edgetpu::EdgeTpuContext>> managedContext;
-
-void destruct_egdetpu_context(ErlNifEnv *env, void *args) {
-    auto res = (NifResEdgeTpuContext *)args;
-    if (res->val) {
-        res->val = nullptr;
-    }
-}
-
 ERL_NIF_TERM coral_contains_edgetpu_custom_op(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
 
@@ -121,9 +112,10 @@ ERL_NIF_TERM coral_get_edgetpu_context(ErlNifEnv *env, int argc, const ERL_NIF_T
         return ret;
     }
 
+    // hold a share of the context: asking for the same device twice hands back the
+    // same one, and the device is only released once every share is gone
+    res->context = new std::shared_ptr<edgetpu::EdgeTpuContext>(c);
     res->val = c.get();
-    const edgetpu::EdgeTpuManager::DeviceEnumerationRecord& record = c->GetDeviceEnumRecord();
-    managedContext[record.path] = c;
 
     ret = enif_make_resource(env, res);
     enif_release_resource(res);
@@ -171,6 +163,10 @@ ERL_NIF_TERM coral_make_edgetpu_interpreter(ErlNifEnv *env, int argc, const ERL_
     interpreter_res->val = interpreter.release();
     interpreter_res->flatbuffer_model = model_res;
     enif_keep_resource(model_res);
+
+    // the interpreter delegates to this context, so it has to outlive the term it came in as
+    interpreter_res->edgetpu_context = context_res;
+    enif_keep_resource(context_res);
 
     ret = enif_make_resource(env, interpreter_res);
     enif_release_resource(interpreter_res);
