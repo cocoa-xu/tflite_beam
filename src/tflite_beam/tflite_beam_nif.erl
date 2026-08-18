@@ -67,6 +67,12 @@ interpreter_builder_build(_self, _builder) ->
 interpreter_builder_set_num_threads(_self, _num_threads) ->
     not_loaded(?LINE).
 
+interpreter_builder_add_delegate(_self, _delegate, _on_decline) ->
+    not_loaded(?LINE).
+
+delegate_available() ->
+    not_loaded(?LINE).
+
 
 interpreter_new() ->
     not_loaded(?LINE).

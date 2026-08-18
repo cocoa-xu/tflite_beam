@@ -1,5 +1,38 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- `tflite_beam_interpreter_builder:add_delegate/2,3`, and the delegate resource behind
+  it. This is the attachment point rather than a usable feature yet: nothing in this
+  release constructs a delegate, so the constructors arrive with the delegate kinds
+  themselves. A delegate is kept alive by the builder and by every interpreter built
+  from it, for as long as either needs it, which is why there is no way to detach or
+  free one -- an early release is exactly the use-after-free class that 0.4.0-rc2 spent
+  its time removing.
+- `add_delegate/3` takes `#{on_decline => error | fallback}`. TfLite reports a delegate
+  that cannot take the graph, but leaves it runnable, as `kTfLiteApplicationError`, and
+  then discards the whole interpreter -- so without this a delegate that merely does not
+  fit turns `build/2` into an error with no interpreter at all, where a C++ caller would
+  still hold a working CPU one. `error`, the default, keeps that loud. `fallback` builds
+  again without the delegates that were added with it and answers
+  `{ok, delegate_declined}`; nothing else is retried.
+- `tflite_beam_delegate:available/0`, reporting which delegate kinds were compiled into
+  this build. It answers "was it compiled in", not "is a device present" -- those have
+  different answers on the same binary -- and it returns `[]` here.
+
+### Changed
+- `tflite_beam_interpreter_builder:build/2` and `tflite_beam_interpreter:allocate_tensors/1`
+  now run on a dirty CPU scheduler. Every delegate's `Prepare` and all of TfLite's graph
+  partitioning happen inside those two, which is more than a regular scheduler should be
+  asked to hold. `coral_make_edgetpu_interpreter/2`, which does build, delegate and
+  allocate in one call, was already classified this way.
+
+### Documented
+- An interpreter, and any delegate attached to it, belongs to one process at a time.
+  This was already true -- `invoke/1` has run on a dirty scheduler for a long time, and
+  there is no lock anywhere in the bindings -- it was simply never written down.
+
 ## v0.4.0-rc2 (2026-08-19)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.4.0-rc2) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.4.0-rc2)
 

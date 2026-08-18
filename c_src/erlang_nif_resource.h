@@ -6,6 +6,7 @@
 #include <atomic>
 #include <memory>
 #include <string>
+#include <vector>
 #include <erl_nif.h>
 
 #include "tensorflow/lite/c/c_api.h"
@@ -50,11 +51,34 @@ struct NifResFlatBufferModel {
     static void destruct_resource(ErlNifEnv *env, void *args);
 };
 
+struct NifResDelegate {
+    TfLiteDelegate * val;
+    // the C factory's matching destructor; these pointers never go to `delete`
+    void (*deleter)(TfLiteDelegate *);
+
+    static ErlNifResourceType * type;
+    static NifResDelegate * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
+    static NifResDelegate * get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error);
+    static void destruct_resource(ErlNifEnv *env, void *args);
+};
+
+// a delegate attached to a builder, with what to do if it declines the graph
+struct NifResDelegateEntry {
+    NifResDelegate * delegate;
+    bool fallback_on_decline;
+};
+
 struct NifResInterpreterBuilder {
     tflite::InterpreterBuilder * val;
     // kept alive with enif_keep_resource for as long as this builder holds them
     NifResBuiltinOpResolver * op_resolver;
     NifResFlatBufferModel * flatbuffer_model;
+    // AddDelegate takes no ownership, so every delegate here is kept alive by us
+    // until the builder goes. Heap-allocated: enif_alloc_resource runs no
+    // constructor, so a by-value vector member would be undefined behaviour
+    std::vector<NifResDelegateEntry> * delegates;
+    // remembered so a decline can be retried on a builder without the delegates
+    int num_threads;
 
     static ErlNifResourceType * type;
     static NifResInterpreterBuilder * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
@@ -72,6 +96,8 @@ struct NifResInterpreter {
     // nullptr for interpreters that do not run on a TPU
     NifResEdgeTpuContext * edgetpu_context;
     std::map<int, NifResTfLiteTensor *> * tensors;
+    // the delegates behind this interpreter's graph, kept alive for its lifetime
+    std::vector<NifResDelegate *> * delegates;
 
     static ErlNifResourceType * type;
     static NifResInterpreter * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
