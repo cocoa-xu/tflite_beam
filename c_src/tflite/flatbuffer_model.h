@@ -8,6 +8,7 @@
 ERL_NIF_TERM flatbuffer_model_build_from_file(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 ERL_NIF_TERM flatbuffer_model_verify_and_build_from_file(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 ERL_NIF_TERM flatbuffer_model_build_from_buffer(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
+ERL_NIF_TERM flatbuffer_model_verify_and_build_from_buffer(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 ERL_NIF_TERM flatbuffer_model_initialized(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 ERL_NIF_TERM flatbuffer_model_error_reporter(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 ERL_NIF_TERM flatbuffer_model_get_minimum_runtime(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
