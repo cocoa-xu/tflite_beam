@@ -28,6 +28,16 @@
    set_num_threads/2,
    get_signature_defs/1,
    get_signature_runner/2,
+   signature_inputs/2,
+   signature_outputs/2,
+   get_subgraph_index_from_signature/2,
+   enable_cancellation/1,
+   cancel/1,
+   release_non_persistent_memory/1,
+   reset_variable_tensors/1,
+   subgraphs_size/1,
+   get_allow_fp16_precision_for_fp32/1,
+   set_allow_fp16_precision_for_fp32/2,
    predict/2
 ]).
 
@@ -423,3 +433,87 @@ not_ok_to_reason(Results) when is_list(Results) ->
             Reason = lists:foldl(fun(R, Acc) -> <<Acc/binary, <<"; ">>/binary, R/binary>> end, <<"">>, Filtered),
             {error, binary:part(Reason, {2, byte_size(Reason) - 2})}
     end.
+
+%% @doc
+%% The inputs of the named signature, as a map of name to tensor index.
+%%
+%% An empty map is returned for a key the model does not declare.
+-spec signature_inputs(reference(), binary() | list()) -> {ok, map()} | {error, binary()}.
+signature_inputs(Self, SignatureKey) when is_reference(Self), is_list(SignatureKey) ->
+    signature_inputs(Self, unicode:characters_to_binary(SignatureKey));
+signature_inputs(Self, SignatureKey) when is_reference(Self), is_binary(SignatureKey) ->
+    tflite_beam_nif:interpreter_signature_inputs(Self, SignatureKey).
+
+%% @doc
+%% The outputs of the named signature, as a map of name to tensor index.
+%%
+%% An empty map is returned for a key the model does not declare.
+-spec signature_outputs(reference(), binary() | list()) -> {ok, map()} | {error, binary()}.
+signature_outputs(Self, SignatureKey) when is_reference(Self), is_list(SignatureKey) ->
+    signature_outputs(Self, unicode:characters_to_binary(SignatureKey));
+signature_outputs(Self, SignatureKey) when is_reference(Self), is_binary(SignatureKey) ->
+    tflite_beam_nif:interpreter_signature_outputs(Self, SignatureKey).
+
+%% @doc
+%% The subgraph a signature belongs to, or -1 for a key the model does not declare.
+-spec get_subgraph_index_from_signature(reference(), binary() | list()) -> {ok, integer()} | {error, binary()}.
+get_subgraph_index_from_signature(Self, SignatureKey) when is_reference(Self), is_list(SignatureKey) ->
+    get_subgraph_index_from_signature(Self, unicode:characters_to_binary(SignatureKey));
+get_subgraph_index_from_signature(Self, SignatureKey) when is_reference(Self), is_binary(SignatureKey) ->
+    tflite_beam_nif:interpreter_get_subgraph_index_from_signature(Self, SignatureKey).
+
+%% @doc
+%% Allow a running `invoke/1' to be cancelled.
+%%
+%% Has to be called before invoking. Without it `cancel/1' is an error.
+-spec enable_cancellation(reference()) -> ok | {error, binary()}.
+enable_cancellation(Self) when is_reference(Self) ->
+    tflite_beam_nif:interpreter_enable_cancellation(Self).
+
+%% @doc
+%% Ask an in-flight `invoke/1' to stop.
+%%
+%% Does not block and is safe to call from another process, which is the point: an
+%% invocation runs on a dirty scheduler and cannot otherwise be interrupted. Later
+%% invocations are unaffected. Requires `enable_cancellation/1'.
+-spec cancel(reference()) -> ok | {error, binary()}.
+cancel(Self) when is_reference(Self) ->
+    tflite_beam_nif:interpreter_cancel(Self).
+
+%% @doc
+%% Release memory that is not needed between invocations.
+%%
+%% Invoking again reallocates it, so this trades time for memory on devices short of
+%% the latter.
+-spec release_non_persistent_memory(reference()) -> ok | {error, binary()}.
+release_non_persistent_memory(Self) when is_reference(Self) ->
+    tflite_beam_nif:interpreter_release_non_persistent_memory(Self).
+
+%% @doc
+%% Reset all variable tensors to zero.
+%%
+%% `tflite_beam_tflite:reset_variable_tensor/1' resets a single one.
+-spec reset_variable_tensors(reference()) -> ok | {error, binary()}.
+reset_variable_tensors(Self) when is_reference(Self) ->
+    tflite_beam_nif:interpreter_reset_variable_tensors(Self).
+
+%% @doc
+%% How many subgraphs the model has.
+-spec subgraphs_size(reference()) -> {ok, non_neg_integer()} | {error, binary()}.
+subgraphs_size(Self) when is_reference(Self) ->
+    tflite_beam_nif:interpreter_subgraphs_size(Self).
+
+%% @doc
+%% Whether float32 operations may be carried out in float16.
+-spec get_allow_fp16_precision_for_fp32(reference()) -> {ok, boolean()} | {error, binary()}.
+get_allow_fp16_precision_for_fp32(Self) when is_reference(Self) ->
+    tflite_beam_nif:interpreter_get_allow_fp16_precision_for_fp32(Self).
+
+%% @doc
+%% Allow or forbid carrying out float32 operations in float16.
+%%
+%% Only has an effect on backends that can do it, and has to be set before the graph
+%% is prepared.
+-spec set_allow_fp16_precision_for_fp32(reference(), boolean()) -> ok | {error, binary()}.
+set_allow_fp16_precision_for_fp32(Self, Allow) when is_reference(Self), is_boolean(Allow) ->
+    tflite_beam_nif:interpreter_set_allow_fp16_precision_for_fp32(Self, Allow).
