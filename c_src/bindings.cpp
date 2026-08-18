@@ -34,6 +34,7 @@ limitations under the License.
 #include "tflite/ops/builtin/builtin_resolver.h"
 #include "tflite/interpreter_builder.h"
 #include "tflite/interpreter.h"
+#include "tflite/signature_runner.h"
 #include "tflite/status.h"
 #include "tflite/tflite.h"
 #include "tflite/tflitetensor.h"
@@ -43,6 +44,7 @@ ErlNifResourceType * NifResInterpreterBuilder::type = nullptr;
 ErlNifResourceType * NifResFlatBufferModel::type = nullptr;
 ErlNifResourceType * NifResInterpreter::type = nullptr;
 ErlNifResourceType * NifResErrorReporter::type = nullptr;
+ErlNifResourceType * NifResSignatureRunner::type = nullptr;
 ErlNifResourceType * NifResTfLiteTensor::type = nullptr;
 
 #ifdef CORAL_SUPPORT_ENABLED
@@ -76,6 +78,10 @@ on_load(ErlNifEnv* env, void**, ERL_NIF_TERM) {
     rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "Interpreter", NifResInterpreter::destruct_resource, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
     NifResInterpreter::type = rt;
+
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "SignatureRunner", NifResSignatureRunner::destruct_resource, ERL_NIF_RT_CREATE, NULL);
+    if (!rt) return -1;
+    NifResSignatureRunner::type = rt;
 
     rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "TfLiteTensor", NifResTfLiteTensor::destruct_resource, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
@@ -144,6 +150,19 @@ static ErlNifFunc nif_functions[] = {
     F_CPU(interpreter_invoke, 1),
     F(interpreter_set_num_threads, 2),
     F(interpreter_get_signature_defs, 1),
+    F(interpreter_get_signature_runner, 2),
+    F(signature_runner_signature_key, 1),
+    F(signature_runner_input_size, 1),
+    F(signature_runner_output_size, 1),
+    F(signature_runner_input_names, 1),
+    F(signature_runner_output_names, 1),
+    F(signature_runner_resize_input_tensor, 3),
+    F(signature_runner_resize_input_tensor_strict, 3),
+    F(signature_runner_cancel, 1),
+    F_CPU(signature_runner_input_tensor, 3),
+    F_CPU(signature_runner_output_tensor, 2),
+    F_CPU(signature_runner_allocate_tensors, 1),
+    F_CPU(signature_runner_invoke, 1),
 
     F(tflitetensor_type, 1),
     F(tflitetensor_dims, 1),

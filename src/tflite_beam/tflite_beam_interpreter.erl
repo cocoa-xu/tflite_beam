@@ -25,6 +25,7 @@
    invoke/1,
    set_num_threads/2,
    get_signature_defs/1,
+   get_signature_runner/2,
    predict/2
 ]).
 
@@ -277,6 +278,22 @@ set_num_threads(Self, NumThreads) when is_reference(Self) and is_integer(NumThre
 -spec get_signature_defs(reference()) -> {ok, map()} | nil | {error, binary()}.
 get_signature_defs(Self) when is_reference(Self) ->
     tflite_beam_nif:interpreter_get_signature_defs(Self).
+
+%% @doc
+%% Get a runner for one of the model's signatures.
+%%
+%% The runner addresses its tensors by name and belongs to this interpreter: it must
+%% not be used once the interpreter is gone. Passing a key the model does not declare
+%% is an error. Pass `nil' for the primary subgraph: the first signature that points
+%% at it, or a placeholder one when the model declares no signatures at all.
+%% See `tflite_beam_signature_runner'.
+-spec get_signature_runner(reference(), binary() | list() | nil) -> {ok, reference()} | {error, binary()}.
+get_signature_runner(Self, nil) when is_reference(Self) ->
+    tflite_beam_nif:interpreter_get_signature_runner(Self, nil);
+get_signature_runner(Self, SignatureKey) when is_reference(Self), is_list(SignatureKey) ->
+    get_signature_runner(Self, unicode:characters_to_binary(SignatureKey));
+get_signature_runner(Self, SignatureKey) when is_reference(Self), is_binary(SignatureKey) ->
+    tflite_beam_nif:interpreter_get_signature_runner(Self, SignatureKey).
 
 %% @doc
 %% Fill input data to corresponding input tensor of the interpreter,

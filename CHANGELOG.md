@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Signature runners. A model's signatures could be listed with
+  `interpreter:signature_keys/1` and `get_signature_defs/1`, but there was no way to
+  run one, so tensors still had to be addressed by index and the order of a model's
+  outputs guessed at. `tflite_beam_interpreter:get_signature_runner/2` now returns a
+  runner, and `tflite_beam_signature_runner` drives it: names and counts of its inputs
+  and outputs, reading and writing them by name, resizing them, allocating, invoking
+  and cancelling.
+
+  Passing `nil` as the key asks for the primary subgraph, which works on models that
+  declare no signatures at all, so this is usable with older exports too.
+
+  A runner belongs to the interpreter that handed it out and holds a reference to it,
+  so it stays usable even after the interpreter's own term is collected. Like the
+  interpreter it is not safe to use from several processes at once.
+
 ## v0.3.12 (2026-08-19)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.3.12) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.3.12)
 

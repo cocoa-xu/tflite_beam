@@ -148,6 +148,7 @@ set(SOURCE_FILES
     "${C_SRC}/tflite/metadata.cpp"
     "${C_SRC}/tflite/interpreter_builder.cpp"
     "${C_SRC}/tflite/ops/builtin/builtin_resolver.cpp"
+    "${C_SRC}/tflite/signature_runner.cpp"
     "${C_SRC}/tflite/status.cpp"
     "${C_SRC}/tflite/tflitetensor.cpp"
     "${C_SRC}/tflite/tflite.cpp"
