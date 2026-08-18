@@ -249,7 +249,7 @@ NifResFlatBufferModel * _make_flatbuffer_model_resource(ErlNifEnv *env, std::uni
     res->val = model;
     ERL_NIF_TERM ret = enif_make_resource(env, res);
     res->copied_buffer = (const char *)copied_buffer;
-    enif_keep_resource(res);
+    enif_release_resource(res);
     out = erlang::nif::ok(env, ret);
     return res;
 }

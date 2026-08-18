@@ -34,11 +34,13 @@ ERL_NIF_TERM interpreter_builder_new(ErlNifEnv *env, int argc, const ERL_NIF_TER
     }
 
     res->val = new tflite::InterpreterBuilder(*model_res->val, *resolver_res->val);
+
+    // the builder outlives the terms these came in as, so hold real references
     res->op_resolver = resolver_res;
-    resolver_res->reference_count++;
+    enif_keep_resource(resolver_res);
 
     res->flatbuffer_model = model_res;
-    res->flatbuffer_model->reference_count++;
+    enif_keep_resource(model_res);
     ret = enif_make_resource(env, res);
     enif_release_resource(res);
     return erlang::nif::ok(env, ret);
@@ -64,8 +66,12 @@ ERL_NIF_TERM interpreter_builder_build(ErlNifEnv *env, int argc, const ERL_NIF_T
     self_res->val->operator()(&pretend);
 
     interpreter_res->val = pretend.release();
+
+    if (interpreter_res->flatbuffer_model) {
+        enif_release_resource(interpreter_res->flatbuffer_model);
+    }
     interpreter_res->flatbuffer_model = self_res->flatbuffer_model;
-    interpreter_res->flatbuffer_model->reference_count++;
+    enif_keep_resource(interpreter_res->flatbuffer_model);
     return erlang::nif::ok(env);
 }
 

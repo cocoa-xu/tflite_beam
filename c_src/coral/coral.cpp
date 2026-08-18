@@ -126,8 +126,7 @@ ERL_NIF_TERM coral_get_edgetpu_context(ErlNifEnv *env, int argc, const ERL_NIF_T
     managedContext[record.path] = c;
 
     ret = enif_make_resource(env, res);
-    // todo: should we keep it?
-    enif_keep_resource(res);
+    enif_release_resource(res);
     return erlang::nif::ok(env, ret);
 }
 
@@ -160,16 +159,18 @@ ERL_NIF_TERM coral_make_edgetpu_interpreter(ErlNifEnv *env, int argc, const ERL_
     
     auto status = coral::MakeEdgeTpuInterpreter(*model, context, nullptr, nullptr, &interpreter);
     if (status != absl::OkStatus()) {
+        enif_release_resource(interpreter_res);
         return erlang::nif::error(env, "cannot make edgetpu interpreter");
     }
 
     if (interpreter->AllocateTensors() != kTfLiteOk) {
+        enif_release_resource(interpreter_res);
         return erlang::nif::error(env, "failed to allocate tensors");
     }
 
     interpreter_res->val = interpreter.release();
     interpreter_res->flatbuffer_model = model_res;
-    interpreter_res->flatbuffer_model->reference_count++;
+    enif_keep_resource(model_res);
 
     ret = enif_make_resource(env, interpreter_res);
     enif_release_resource(interpreter_res);
