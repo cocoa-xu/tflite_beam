@@ -2,6 +2,7 @@
 
 TensorFlow Lite BEAM bindings with optional EdgeTPU support.
 
+[![Hex.pm](https://img.shields.io/hexpm/v/tflite_beam.svg?style=flat&color=blue)](https://hex.pm/packages/tflite_beam)
 [![Coverage Status](https://coveralls.io/repos/github/cocoa-xu/tflite_beam/badge.svg?branch=main)](https://coveralls.io/github/cocoa-xu/tflite_beam?branch=main)
 
 | OS               | Arch    | ABI       | Build Status | Has Precompiled Library |
@@ -75,18 +76,15 @@ bash "3rd_party/cache/${TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME}/edgetpu_runtime/in
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `tflite_beam` to your list of dependencies in `rebar.config`:
+Add `tflite_beam` to your list of dependencies in `rebar.config`:
 
 ```erlang
 {deps, [
-  {tflite_beam, "0.3.2"}
+  {tflite_beam, "0.3.12"}
 ]}
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/tflite_beam>.
+Documentation is published on [HexDocs](https://hexdocs.pm/tflite_beam).
 
 ## Upstream Dependencies
 
