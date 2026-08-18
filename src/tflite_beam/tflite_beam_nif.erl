@@ -134,6 +134,45 @@ interpreter_set_num_threads(_self, _num_threads) ->
 interpreter_get_signature_defs(_self) ->
     not_loaded(?LINE).
 
+interpreter_get_signature_runner(_self, _signature_key) ->
+    not_loaded(?LINE).
+
+signature_runner_signature_key(_self) ->
+    not_loaded(?LINE).
+
+signature_runner_input_size(_self) ->
+    not_loaded(?LINE).
+
+signature_runner_output_size(_self) ->
+    not_loaded(?LINE).
+
+signature_runner_input_names(_self) ->
+    not_loaded(?LINE).
+
+signature_runner_output_names(_self) ->
+    not_loaded(?LINE).
+
+signature_runner_input_tensor(_self, _input_name, _data) ->
+    not_loaded(?LINE).
+
+signature_runner_output_tensor(_self, _output_name) ->
+    not_loaded(?LINE).
+
+signature_runner_resize_input_tensor(_self, _input_name, _dims) ->
+    not_loaded(?LINE).
+
+signature_runner_resize_input_tensor_strict(_self, _input_name, _dims) ->
+    not_loaded(?LINE).
+
+signature_runner_allocate_tensors(_self) ->
+    not_loaded(?LINE).
+
+signature_runner_invoke(_self) ->
+    not_loaded(?LINE).
+
+signature_runner_cancel(_self) ->
+    not_loaded(?LINE).
+
 
 tflitetensor_type(_self) ->
     not_loaded(?LINE).

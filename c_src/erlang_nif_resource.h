@@ -13,6 +13,7 @@
 #include "tensorflow/lite/core/api/error_reporter.h"
 #include "tensorflow/lite/interpreter_builder.h"
 #include "tensorflow/lite/interpreter.h"
+#include "tensorflow/lite/signature_runner.h"
 #include "tensorflow/lite/kernels/register.h"
 #include "tensorflow/lite/kernels/builtin_op_kernels.h"
 #include "tensorflow/lite/model.h"
@@ -75,6 +76,18 @@ struct NifResInterpreter {
     static ErlNifResourceType * type;
     static NifResInterpreter * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
     static NifResInterpreter * get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error);
+    static void destruct_resource(ErlNifEnv *env, void *args);
+};
+
+struct NifResSignatureRunner {
+    // owned by the interpreter that handed it out, so never deleted here
+    tflite::SignatureRunner * val;
+    // kept alive with enif_keep_resource: the runner dies with its interpreter
+    NifResInterpreter * interpreter;
+
+    static ErlNifResourceType * type;
+    static NifResSignatureRunner * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
+    static NifResSignatureRunner * get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error);
     static void destruct_resource(ErlNifEnv *env, void *args);
 };
 

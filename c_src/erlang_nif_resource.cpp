@@ -199,6 +199,40 @@ void NifResInterpreter::destruct_resource(ErlNifEnv *env, void *args) {
     }
 }
 
+NifResSignatureRunner * NifResSignatureRunner::allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error) {
+    NifResSignatureRunner * res = (NifResSignatureRunner *)enif_alloc_resource(NifResSignatureRunner::type, sizeof(NifResSignatureRunner));
+    if (res == nullptr) {
+        error = erlang::nif::error(env, "cannot allocate NifResSignatureRunner resource");
+        return res;
+    }
+
+    res->val = nullptr;
+    res->interpreter = nullptr;
+
+    return res;
+}
+
+NifResSignatureRunner * NifResSignatureRunner::get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error) {
+    NifResSignatureRunner * self_res = nullptr;
+    if (!enif_get_resource(env, term, NifResSignatureRunner::type, (void **)&self_res) || self_res == nullptr || self_res->val == nullptr) {
+        error = erlang::nif::error(env, "cannot access NifResSignatureRunner resource");
+    }
+    return self_res;
+}
+
+void NifResSignatureRunner::destruct_resource(ErlNifEnv *env, void *args) {
+    auto res = (NifResSignatureRunner *)args;
+    if (res) {
+        // the interpreter owns the runner, so only the pointer is dropped here
+        res->val = nullptr;
+
+        if (res->interpreter) {
+            enif_release_resource(res->interpreter);
+            res->interpreter = nullptr;
+        }
+    }
+}
+
 NifResTfLiteTensor * NifResTfLiteTensor::allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error) {
     NifResTfLiteTensor * res = (NifResTfLiteTensor *)enif_alloc_resource(NifResTfLiteTensor::type, sizeof(NifResTfLiteTensor));
     if (res == nullptr) {
