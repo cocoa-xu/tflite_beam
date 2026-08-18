@@ -4,6 +4,7 @@
 #pragma once
 
 #include <atomic>
+#include <memory>
 #include <string>
 #include <erl_nif.h>
 
@@ -61,10 +62,14 @@ struct NifResInterpreterBuilder {
 };
 
 struct NifResTfLiteTensor;
+struct NifResEdgeTpuContext;
 struct NifResInterpreter {
     tflite::Interpreter * val;
     // kept alive with enif_keep_resource; the interpreter reads the model's buffer
     NifResFlatBufferModel * flatbuffer_model;
+    // kept alive the same way; an Edge TPU interpreter delegates to this context.
+    // nullptr for interpreters that do not run on a TPU
+    NifResEdgeTpuContext * edgetpu_context;
     std::map<int, NifResTfLiteTensor *> * tensors;
 
     static ErlNifResourceType * type;
@@ -90,6 +95,8 @@ struct NifResTfLiteTensor {
 
 struct NifResEdgeTpuContext {
     edgetpu::EdgeTpuContext * val;
+    // owns the context: the device is handed back once every resource sharing it is gone
+    std::shared_ptr<edgetpu::EdgeTpuContext> * context;
 
     static ErlNifResourceType * type;
     static NifResEdgeTpuContext * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);

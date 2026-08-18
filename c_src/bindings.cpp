@@ -86,7 +86,7 @@ on_load(ErlNifEnv* env, void**, ERL_NIF_TERM) {
     NifResErrorReporter::type = rt;
 
 #ifdef CORAL_SUPPORT_ENABLED
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "EdgeTpuContext", destruct_egdetpu_context, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "EdgeTpuContext", NifResEdgeTpuContext::destruct_resource, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
     NifResEdgeTpuContext::type = rt;
 #endif
