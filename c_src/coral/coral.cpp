@@ -126,8 +126,7 @@ ERL_NIF_TERM coral_get_edgetpu_context(ErlNifEnv *env, int argc, const ERL_NIF_T
     managedContext[record.path] = c;
 
     ret = enif_make_resource(env, res);
-    // todo: should we keep it?
-    enif_keep_resource(res);
+    enif_release_resource(res);
     return erlang::nif::ok(env, ret);
 }
 
