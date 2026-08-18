@@ -75,7 +75,12 @@ interpreter_tensor_metadata(_Config) ->
     ?assertMatch(#tflite_beam_tensor{name = <<"a">>, index = 0, type = {f, 32}}, Tensor),
     ?assertEqual([1, 8, 8, 3], tflite_beam_tensor:dims(Tensor#tflite_beam_tensor.ref)),
     ?assertEqual({f, 32}, tflite_beam_tensor:type(Tensor#tflite_beam_tensor.ref)),
-    ?assert(is_binary(tflite_beam_tensor:to_binary(Tensor))).
+    ?assert(is_binary(tflite_beam_tensor:to_binary(Tensor))),
+    %% a handle borrows the interpreter's memory and does not keep it alive, so
+    %% the interpreter has to still be reachable here or the reads above race a
+    %% GC that would invalidate the handle. See
+    %% tflite_beam_build_SUITE:tensor_handle_does_not_outlive_its_interpreter/1
+    ?assertEqual(7, tflite_beam_interpreter:tensors_size(Interpreter)).
 
 interpreter_invoke(_Config) ->
     Interpreter = tflite_beam_test_models:interpreter("multi_add.bin"),

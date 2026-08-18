@@ -219,6 +219,12 @@ execution_plan(Self) when is_reference(Self) ->
 %%
 %% Note that the `tensor_index' here means the id of a tensor. For example,
 %% if `inputs/1' returns `[42, 314]', then `42' should be passed here to get tensor `42'.
+%%
+%% The handle borrows the interpreter's memory and does not keep the interpreter
+%% alive. Reading through one after the interpreter has been collected, or after
+%% `tflite_beam_interpreter_builder:build/2' has been called again, returns
+%% `{error, Reason}'; keep the interpreter reachable for as long as its tensors
+%% are in use.
 -spec tensor(reference(), non_neg_integer()) -> #tflite_beam_tensor{} | {error, binary()}.
 tensor(Self, TensorIndex) when is_reference(Self) and is_integer(TensorIndex) ->
     case tflite_beam_nif:interpreter_tensor(Self, TensorIndex) of

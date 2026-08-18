@@ -36,6 +36,13 @@ three needs anything unusual to reach.
   ever read that mark: all six NIFs taking a tensor checked only that its pointer was
   non-null, which a dangling pointer is.
 
+  This is visible in one more place than the two above: a handle does not keep its
+  interpreter alive, so reading through one whose interpreter has already been
+  collected now returns `{error, Reason}' where it used to return whatever was left in
+  the freed memory. Keep the interpreter reachable for as long as its tensors are in
+  use -- which is what the code doing this correctly already does, or it would have
+  been crashing.
+
 ### Added
 - A test suite, `rebar3 ct`, covering model loading, the builder, interpreters,
   tensors, invocation and signature runners, along with the failure cases above. It
