@@ -145,6 +145,7 @@ static ErlNifFunc nif_functions[] = {
     F(interpreter_builder_state, 1),
 
     F(delegate_available, 0),
+    F_IO(delegate_external_new, 2),
 #ifdef TFLITE_BEAM_XNNPACK_ENABLED
     F(delegate_xnnpack_new, 3),
 #else

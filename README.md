@@ -49,6 +49,26 @@ A delegate must outlive every interpreter built from the builder it was added to
 so there is no way to detach or free one: the builder and each interpreter hold it
 for as long as they need it, and it goes when they do.
 
+### Delegates from a shared library
+
+Anything implementing TfLite's delegate plugin interface --
+`tflite_plugin_create_delegate` and `tflite_plugin_destroy_delegate` -- can be
+loaded at runtime, which covers Edge TPU, a GPU delegate built elsewhere, and
+vendor delegates this library knows nothing about:
+
+```erlang
+{ok, Delegate} = tflite_beam_delegate:external("/opt/lib/libvendor_delegate.so",
+                                               #{device => 0, precision => fp16}),
+ok = tflite_beam_interpreter_builder:add_delegate(Builder, Delegate).
+```
+
+Options are handed to the plugin as strings, which is the whole of that ABI, so
+atoms and integers are converted and at most 256 pairs fit. What the keys mean is
+the plugin's business. The path is resolved to an absolute one before loading,
+because the loader is asked for exactly the file named -- a bare `libfoo.so` would
+otherwise be searched for wherever the system looks, which is rarely where anyone
+means. The library is not unloaded afterwards.
+
 ## Threading
 
 An interpreter, and any delegate attached to it, belongs to one process at a time.
