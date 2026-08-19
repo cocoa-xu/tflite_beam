@@ -79,6 +79,9 @@ delegate_available() ->
 delegate_xnnpack_new(_num_threads, _flags, _weight_cache_file_path) ->
     not_loaded(?LINE).
 
+delegate_external_new(_library_path, _options) ->
+    not_loaded(?LINE).
+
 
 interpreter_new() ->
     not_loaded(?LINE).

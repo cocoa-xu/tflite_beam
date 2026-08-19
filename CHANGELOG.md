@@ -20,13 +20,28 @@
 - `tflite_beam_delegate:available/0`, reporting which delegate kinds were compiled into
   this build. It answers "was it compiled in", not "is a device present" -- those have
   different answers on the same binary. It lists `xnnpack` everywhere except armv6 and
-  armv7l, where XNNPACK is not compiled in at all.
+  armv7l, where XNNPACK is not compiled in at all, and `external` on every target,
+  since loading a plugin needs nothing but the dynamic loader.
 - `tflite_beam_delegate:xnnpack/0,1`, with `num_threads`, `flags` and
   `weight_cache_file_path`. Flags are atoms mapped by name -- `qs8`, `force_fp16`,
   `disable_subgraph_reshaping` and the rest -- and are added to XNNPACK's defaults
   rather than replacing them, because TfLite spells turning a default off as its own
   flag. Nothing positional would be right in any case: one bit in the middle of the
   range is unassigned.
+- `tflite_beam_delegate:external/1,2`, which loads a delegate out of any shared
+  library implementing TfLite's plugin interface -- Edge TPU, a GPU delegate built
+  elsewhere, a vendor delegate this library has never heard of. Options are handed
+  over as strings, since that is the whole of the plugin ABI, so atoms and integers
+  are converted and at most 256 pairs fit.
+
+  It does not go through `TfLiteExternalDelegateCreate`. That function returns a
+  pointer into a wrapper whose delegate it fills in only when the library loaded
+  *and* the plugin returned a delegate, so a missing file, a library that is not a
+  plugin, or a plugin that declines -- no device attached, say -- all hand back a
+  non-null delegate whose `Prepare` is indeterminate. Attaching one of those jumps
+  through a wild function pointer and takes the emulator with it. The plugin is
+  loaded here instead, which has no such gap and gives every failure a name,
+  including the plugin's own explanation of why it refused.
 - `tflite_beam_ops_builtin_builtin_resolver:new/1` takes
   `#{apply_default_delegates => boolean()}`, deciding whether TfLite may apply its own
   delegates lazily inside `allocate_tensors/1`.

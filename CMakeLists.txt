@@ -230,7 +230,22 @@ endif()
 
 target_link_libraries(tflite_beam
     ${TFLITE_BEAM_LINK_LIBRARIES}
+    ${CMAKE_DL_LIBS}
 )
+# A delegate plugin for the external-delegate tests to load. Off by default and
+# never set by any released build; the output goes straight to test/plugin/,
+# which is gitignored.
+option(TFLITE_BEAM_BUILD_TEST_PLUGIN "Build the external-delegate test plugin" OFF)
+if(TFLITE_BEAM_BUILD_TEST_PLUGIN)
+    add_library(tflite_beam_test_delegate SHARED
+        "${CMAKE_CURRENT_SOURCE_DIR}/test/plugin/tflite_beam_test_delegate.c")
+    target_include_directories(tflite_beam_test_delegate PRIVATE "${TENSORFLOW_SOURCE_DIR}")
+    set_target_properties(tflite_beam_test_delegate PROPERTIES
+        PREFIX ""
+        SUFFIX ".so"
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/test/plugin")
+endif()
+
 set_target_properties(tflite_beam PROPERTIES PREFIX "")
 set_target_properties(tflite_beam PROPERTIES SUFFIX ".so")
 set_target_properties(tflite_beam PROPERTIES

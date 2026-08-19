@@ -35,6 +35,8 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       TFLITE_BEAM_CORAL_SUPPORT: "true"
       TFLITE_BEAM_PREFER_PRECOMPILED: "false"
+      # so the external-delegate tests have a plugin to load
+      CMAKE_OPTIONS: "-D TFLITE_BEAM_BUILD_TEST_PLUGIN=ON"
 
     steps:
       - name: Checkout

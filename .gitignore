@@ -34,3 +34,6 @@ priv/
 cmake_tflite_beam/
 tflite_beam_precompiled.beam
 libusb/
+
+# built by TFLITE_BEAM_BUILD_TEST_PLUGIN, for the external-delegate tests
+test/plugin/*.so

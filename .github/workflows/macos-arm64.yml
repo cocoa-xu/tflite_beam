@@ -32,6 +32,8 @@ jobs:
     env:
       TFLITE_BEAM_CORAL_SUPPORT: "true"
       TFLITE_BEAM_PREFER_PRECOMPILED: "false"
+      # so the external-delegate tests have a plugin to load
+      CMAKE_OPTIONS: "-D TFLITE_BEAM_BUILD_TEST_PLUGIN=ON"
       OTP_VERSION: "26.2.1"
       ELIXIR_VERSION: "1.16.3"
 
