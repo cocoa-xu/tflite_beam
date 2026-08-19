@@ -28,6 +28,21 @@
   rather than replacing them, because TfLite spells turning a default off as its own
   flag. Nothing positional would be right in any case: one bit in the middle of the
   range is unassigned.
+- `tflite_beam_coral:edge_tpu_delegate/0,1`, which reaches an Edge TPU the same way
+  as any other delegate. libedgetpu has always been a TfLite delegate plugin -- the
+  bundled runtime exports `tflite_plugin_create_delegate` and
+  `tflite_plugin_destroy_delegate` -- so this is `external/2` pointed at it, plus a
+  default path to the copy in `priv/libedgetpu`. Pass `lib_path` to name a runtime
+  installed elsewhere, which is how a build made without Coral support can still
+  reach a device.
+
+  What it buys over `make_edge_tpu_interpreter/2`, which is unchanged and still
+  works: that function builds its own interpreter internally, so nothing set on a
+  builder ever reaches it -- neither `set_num_threads/2` nor any other delegate.
+  Going through the plugin puts an Edge TPU interpreter on the ordinary builder
+  path. Both routes were checked to produce byte-identical output on a USB Coral
+  accelerator with libedgetpu 0.1.14 on macOS arm64, and asking for a device that is
+  not attached is an ordinary error rather than a crash.
 - `tflite_beam_delegate:external/1,2`, which loads a delegate out of any shared
   library implementing TfLite's plugin interface -- Edge TPU, a GPU delegate built
   elsewhere, a vendor delegate this library has never heard of. Options are handed
