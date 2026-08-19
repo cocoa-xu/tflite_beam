@@ -79,6 +79,26 @@ at once. Delegates are the same: nothing documents a `TfLiteDelegate` as safe to
 two interpreters simultaneously, and XNNPACK's demonstrably is not.
 
 ## Coral Support
+
+libedgetpu is itself a TfLite delegate plugin, so an Edge TPU can be attached like
+any other delegate -- which means it composes with `set_num_threads/2` and with
+whatever else is on the builder:
+
+```erlang
+{ok, Delegate} = tflite_beam_coral:edge_tpu_delegate(),
+ok = tflite_beam_interpreter_builder:add_delegate(Builder, Delegate),
+ok = tflite_beam_interpreter_builder:build(Builder, Interpreter).
+```
+
+`tflite_beam_coral:make_edge_tpu_interpreter/2` still works and is unchanged. It
+builds its own interpreter internally, though, so nothing set on a builder reaches
+it; the delegate above is the composable route. Asking for a device that is not
+there is an ordinary `{error, Reason}` from `edge_tpu_delegate/1`.
+
+Both routes have been checked to produce identical output on a USB Coral
+accelerator, running `mobilenet_v2_1.0_224_inat_bird_quant_edgetpu.tflite` against
+libedgetpu 0.1.14 on macOS arm64.
+
 ### Dependencies
 For macOS
 ```shell

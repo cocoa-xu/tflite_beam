@@ -7,6 +7,8 @@
 -export([
     'contains_edge_tpu_custom_op?'/1,
     edge_tpu_devices/0,
+    edge_tpu_delegate/0, edge_tpu_delegate/1,
+    default_libedgetpu_path/0,
     get_edge_tpu_context/0,
     get_edge_tpu_context/1,
     make_edge_tpu_interpreter/2,
@@ -29,6 +31,80 @@
 -spec edge_tpu_devices() -> [binary()] | {error, binary()}.
 edge_tpu_devices() ->
     tflite_beam_nif:coral_edgetpu_devices().
+
+%% @doc An Edge TPU delegate over the bundled runtime, with its defaults.
+-spec edge_tpu_delegate() -> {ok, reference()} | {error, binary()}.
+edge_tpu_delegate() ->
+    edge_tpu_delegate(#{}).
+
+%% @doc
+%% An Edge TPU delegate, for attaching to an interpreter builder like any other.
+%%
+%% libedgetpu is itself a TfLite delegate plugin, so this is
+%% `tflite_beam_delegate:external/2' pointed at it -- which means an Edge TPU
+%% interpreter can be built through the ordinary builder, composed with
+%% `tflite_beam_interpreter_builder:set_num_threads/2' and with other delegates.
+%% `make_edge_tpu_interpreter/2' builds its own interpreter internally and so
+%% reaches none of that; it keeps working and is unchanged.
+%%
+%% ```
+%% {ok, Delegate} = tflite_beam_coral:edge_tpu_delegate(),
+%% ok = tflite_beam_interpreter_builder:add_delegate(Builder, Delegate),
+%% ok = tflite_beam_interpreter_builder:build(Builder, Interpreter).
+%% '''
+%%
+%% ==== Keyword Parameters ====
+%% @param lib_path Where libedgetpu is. Defaults to the copy bundled in this
+%% library's `priv/libedgetpu', so a build made with
+%% `TFLITE_BEAM_CORAL_SUPPORT=false' can still reach a TPU by naming a runtime
+%% installed elsewhere.
+%%
+%% Everything else is passed to the plugin as-is. The keys libedgetpu documents:
+%%
+%% <ul>
+%%   <li>`device' -- `""', `"usb"', `"pci"', `":N"', `"usb:N"' or `"pci:N"'.
+%%   Defaults to any device.</li>
+%%   <li>`<<"Performance">>' -- `"Low"', `"Medium"', `"High"' or `"Max"'.
+%%   Trades power against clock rate.</li>
+%%   <li>`<<"Usb.AlwaysDfu">>' -- whether to update device firmware after every
+%%   reset, rather than only after a power cycle.</li>
+%%   <li>`<<"Usb.MaxBulkInQueueLength">>' -- `"0"' to `"255"', default `"32"'.
+%%   A longer queue can help throughput from device to host.</li>
+%% </ul>
+-spec edge_tpu_delegate(map()) -> {ok, reference()} | {error, binary()}.
+edge_tpu_delegate(Opts) when is_map(Opts) ->
+    {LibraryPath, PluginOpts} = case maps:take(lib_path, Opts) of
+        {Given, Rest} -> {Given, Rest};
+        error -> {default_libedgetpu_path(), Opts}
+    end,
+    case LibraryPath of
+        {error, Reason} ->
+            {error, Reason};
+        Path ->
+            tflite_beam_delegate:external(Path, PluginOpts)
+    end.
+
+%% @doc
+%% Where the bundled libedgetpu runtime is, if this build has one.
+%%
+%% A build made with `TFLITE_BEAM_CORAL_SUPPORT=false' does not, and this then
+%% says so rather than pointing at a file that is not there.
+-spec default_libedgetpu_path() -> binary() | {error, binary()}.
+default_libedgetpu_path() ->
+    Filename = case os:type() of
+        {unix, darwin} -> "libedgetpu.1.dylib";
+        _ -> "libedgetpu.so.1"
+    end,
+    case code:priv_dir(tflite_beam) of
+        {error, _} ->
+            {error, <<"cannot locate the priv directory of tflite_beam">>};
+        PrivDir ->
+            Path = unicode:characters_to_binary(filename:join([PrivDir, "libedgetpu", Filename])),
+            case filelib:is_regular(Path) of
+                true -> Path;
+                false -> {error, <<"this build bundles no libedgetpu runtime; pass lib_path to name one">>}
+            end
+    end.
 
 %% @doc
 %%
