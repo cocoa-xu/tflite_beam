@@ -25,7 +25,10 @@
     xnnpack_num_threads/1,
     xnnpack_weight_cache_file_path/1,
     delegate_outlives_builder/1,
-    delegate_two_interpreters/1
+    delegate_two_interpreters/1,
+    declining_delegate_is_an_error_by_default/1,
+    declining_delegate_falls_back/1,
+    fallback_is_not_a_blanket_catch/1
 ]).
 
 -define(FILLED(V), binary:copy(<<V:32/float-native>>, 1 * 8 * 8 * 3)).
@@ -49,7 +52,10 @@ all() ->
         xnnpack_num_threads,
         xnnpack_weight_cache_file_path,
         delegate_outlives_builder,
-        delegate_two_interpreters
+        delegate_two_interpreters,
+        declining_delegate_is_an_error_by_default,
+        declining_delegate_falls_back,
+        fallback_is_not_a_blanket_catch
     ].
 
 %% Compile-time facts only, so it answers on every target and loads nothing.
@@ -265,3 +271,49 @@ skip_without_xnnpack(Body) ->
         true -> Body();
         false -> {skip, "XNNPACK is not compiled into this build"}
     end.
+
+%% A delegate that cannot take the graph but leaves it runnable reports
+%% kTfLiteApplicationError, and TfLite discards the interpreter anyway. XNNPACK
+%% does exactly that on a model with dynamic shapes once subgraph reshaping is
+%% turned off -- with it on, which is the default, the same model delegates
+%% fine, so the flag is what causes this and not the model.
+declining_delegate_is_an_error_by_default(_Config) ->
+    skip_without_xnnpack(fun() ->
+        ?assertMatch({ok, ok, 28}, dynamic_shapes([])),
+        {Built, _, Nodes} = dynamic_shapes([disable_subgraph_reshaping]),
+        ?assertMatch({error, _}, Built),
+        ?assertMatch({error, _}, Nodes)
+    end).
+
+%% And with fallback: built again without the delegate that stepped aside, which
+%% leaves the plain CPU graph -- 24 nodes rather than the 28 a delegated one has.
+declining_delegate_falls_back(_Config) ->
+    skip_without_xnnpack(fun() ->
+        ?assertMatch({{ok, delegate_declined}, ok, 24},
+                     dynamic_shapes([disable_subgraph_reshaping], fallback))
+    end).
+
+%% fallback covers a decline and nothing else. A model that cannot be built at
+%% all still fails, with no interpreter left behind.
+fallback_is_not_a_blanket_catch(_Config) ->
+    skip_without_xnnpack(fun() ->
+        {Builder, Interpreter} = tflite_beam_test_models:builder("0_subgraphs.bin"),
+        {ok, Delegate} = tflite_beam_delegate:xnnpack(),
+        ok = tflite_beam_interpreter_builder:add_delegate(Builder, Delegate, #{on_decline => fallback}),
+        ?assertMatch({error, _}, tflite_beam_interpreter_builder:build(Builder, Interpreter)),
+        ?assertMatch({error, _}, tflite_beam_interpreter:nodes_size(Interpreter))
+    end).
+
+dynamic_shapes(Flags) ->
+    dynamic_shapes(Flags, error).
+
+dynamic_shapes(Flags, OnDecline) ->
+    {Builder, Interpreter} = tflite_beam_test_models:builder("dynamic_shapes.bin"),
+    {ok, Delegate} = tflite_beam_delegate:xnnpack(#{flags => Flags}),
+    ok = tflite_beam_interpreter_builder:add_delegate(Builder, Delegate, #{on_decline => OnDecline}),
+    Built = tflite_beam_interpreter_builder:build(Builder, Interpreter),
+    Allocated = case Built of
+        {error, _} -> not_attempted;
+        _ -> tflite_beam_interpreter:allocate_tensors(Interpreter)
+    end,
+    {Built, Allocated, tflite_beam_interpreter:nodes_size(Interpreter)}.
