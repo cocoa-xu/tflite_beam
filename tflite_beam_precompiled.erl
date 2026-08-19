@@ -181,13 +181,88 @@ download_precompiled_binary(URL, CacheTo) ->
 
 download(URL, CacheFilename) ->
     {Exists, CacheTo} = cache_path(CacheFilename),
-    if 
+    Downloaded = if
         Exists ->
             io:fwrite("[INFO] Precompiled binary tarball cached at ~s\r\n", [CacheTo]),
             {ok, CacheTo};
         true ->
             io:fwrite("[INFO] not downloaded, will download!~n"),
             download_precompiled_binary(URL, CacheTo)
+    end,
+    case Downloaded of
+        {ok, Tarball} ->
+            %% the cached branch too: a tarball that was already on disk has no
+            %% more claim to being the right one than a freshly fetched one
+            verify_checksum(CacheFilename, Tarball);
+        Error ->
+            Error
+    end.
+
+%% The manifest is the trust root, so it travels in the package rather than being
+%% fetched alongside the tarball it vouches for. It sits at the root of the
+%% package, next to rebar.config, and the Makefile runs us from there.
+checksum_manifest() ->
+    "checksum.term".
+
+checksums(Manifest) ->
+    case filelib:is_regular(Manifest) of
+        true ->
+            case file:consult(Manifest) of
+                {ok, Entries} -> {ok, Entries};
+                {error, Reason} -> {error, io_lib:fwrite("cannot read ~ts: ~p", [Manifest, Reason])}
+            end;
+        false ->
+            no_manifest
+    end.
+
+verify_checksum(Filename, Tarball) ->
+    verify_checksum(Filename, Tarball, checksum_manifest()).
+
+verify_checksum(Filename, Tarball, Manifest) ->
+    case checksums(Manifest) of
+        no_manifest ->
+            %% A checkout of a tag has no manifest: the tarballs it describes are
+            %% built after the tag exists. A published package always has one.
+            io:fwrite("[WARNING] No checksum.term next to this checkout, so the~n"
+                      "[WARNING] precompiled binary is being used unverified.~n"),
+            {ok, Tarball};
+        {error, Reason} ->
+            io:fwrite("[ERROR] ~ts~n", [Reason]),
+            {error, Tarball};
+        {ok, Entries} ->
+            case lists:keyfind(Filename, 1, Entries) of
+                {_, Expected} ->
+                    compare_checksum(Filename, Tarball, Expected);
+                false ->
+                    io:fwrite("[ERROR] checksum.term has no entry for ~ts, so there is~n"
+                              "[ERROR] nothing to check it against. Set~n"
+                              "[ERROR] TFLITE_BEAM_PREFER_PRECOMPILED=false to build from source.~n",
+                              [Filename]),
+                    {error, Tarball}
+            end
+    end.
+
+compare_checksum(Filename, Tarball, Expected) ->
+    case file:read_file(Tarball) of
+        {ok, Content} ->
+            Actual = string:lowercase(binary:encode_hex(crypto:hash(sha256, Content))),
+            case Actual =:= string:lowercase(iolist_to_binary(Expected)) of
+                true ->
+                    {ok, Tarball};
+                false ->
+                    %% delete it, or every later run finds the bad file cached and
+                    %% fails the same way with no route out
+                    file:delete(Tarball),
+                    io:fwrite("[ERROR] Checksum mismatch for ~ts.~n"
+                              "[ERROR]   expected sha256 ~ts~n"
+                              "[ERROR]   actual   sha256 ~ts~n"
+                              "[ERROR] The downloaded file has been deleted and was not used.~n",
+                              [Filename, Expected, Actual]),
+                    {error, Tarball}
+            end;
+        {error, Reason} ->
+            io:fwrite("[ERROR] Cannot read ~ts to check it: ~p~n", [Tarball, Reason]),
+            {error, Tarball}
     end.
 
 certificate_store() ->

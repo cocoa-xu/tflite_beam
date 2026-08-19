@@ -28,7 +28,8 @@
     "README*",
     "LICENSE*",
     "rebar.config",
-    "tflite_beam_precompiled.erl"
+    "tflite_beam_precompiled.erl",
+    "checksum.term"
   ]},
   {exclude_paths, [
     "priv",
