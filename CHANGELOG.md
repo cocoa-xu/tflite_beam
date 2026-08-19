@@ -1,6 +1,15 @@
 # Changelog
 
-## Unreleased
+## v0.4.0-rc3 (2026-08-19)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.4.0-rc3) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.4.0-rc3)
+
+Delegates. A delegate is now a thing you can hold, configure and attach, rather than
+something TfLite did to your model without telling you -- and any vendor's delegate
+library can be loaded at runtime, the Edge TPU included.
+
+Still a release candidate: the one behaviour change here, XNNPACK moving from TfLite's
+invisible lazy application to an explicit attachment at build time, is worth having in
+the open before it becomes 0.4.0.
 
 ### Added
 - `tflite_beam_interpreter_builder:add_delegate/2,3`, and the delegate resource behind
