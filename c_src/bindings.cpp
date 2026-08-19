@@ -61,6 +61,10 @@ static ERL_NIF_TERM not_compiled(ErlNifEnv *env, int argc, const ERL_NIF_TERM ar
     return erlang::nif::error(env, "Coral support is disabled when compiling this library. Please enable Coral support and recompile this library.");
 }
 
+static ERL_NIF_TERM not_compiled_delegate(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    return erlang::nif::error(env, "this delegate was not compiled into this build. tflite_beam_delegate:available/0 lists the ones that were.");
+}
+
 static int
 on_load(ErlNifEnv* env, void**, ERL_NIF_TERM) {
     ErlNifResourceType *rt;
@@ -116,6 +120,7 @@ static int on_upgrade(ErlNifEnv*, void**, void**, ERL_NIF_TERM) {
 
 #define F(NAME, ARITY) {#NAME, ARITY, NAME, 0}
 #define F_NOT_COMPILED(FAKE_AS, ARITY) {#FAKE_AS, ARITY, not_compiled, 0}
+#define F_NOT_COMPILED_DELEGATE(FAKE_AS, ARITY) {#FAKE_AS, ARITY, not_compiled_delegate, 0}
 #define F_CPU(NAME, ARITY) {#NAME, ARITY, NAME, ERL_NIF_DIRTY_JOB_CPU_BOUND}
 #define F_IO(NAME, ARITY) {#NAME, ARITY, NAME, ERL_NIF_DIRTY_JOB_IO_BOUND}
 
@@ -131,14 +136,20 @@ static ErlNifFunc nif_functions[] = {
     F(flatbuffer_model_get_minimum_runtime, 1),
     F(flatbuffer_model_read_all_metadata, 1),
 
-    F(ops_builtin_builtin_resolver_new, 0),
+    F(ops_builtin_builtin_resolver_new, 1),
 
     F(interpreter_builder_new, 2),
     F_CPU(interpreter_builder_build, 2),
     F(interpreter_builder_set_num_threads, 2),
     F(interpreter_builder_add_delegate, 3),
+    F(interpreter_builder_state, 1),
 
     F(delegate_available, 0),
+#ifdef TFLITE_BEAM_XNNPACK_ENABLED
+    F(delegate_xnnpack_new, 3),
+#else
+    F_NOT_COMPILED_DELEGATE(delegate_xnnpack_new, 3),
+#endif
 
     F(interpreter_new, 0),
     F(interpreter_set_inputs, 2),

@@ -22,6 +22,9 @@
 
 struct NifResBuiltinOpResolver {
     tflite::ops::builtin::BuiltinOpResolver * val;
+    // whether this resolver hands the interpreter TfLite's own lazily-applied
+    // delegates. The builder reads it to decide whether to attach one itself.
+    bool apply_default_delegates;
 
     static ErlNifResourceType * type;
     static NifResBuiltinOpResolver * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
@@ -55,6 +58,9 @@ struct NifResDelegate {
     TfLiteDelegate * val;
     // the C factory's matching destructor; these pointers never go to `delete`
     void (*deleter)(TfLiteDelegate *);
+    // a factory may keep the string pointer it was handed rather than copying
+    // it, so the resource owns any such buffer for as long as the delegate lives
+    char * owned_path;
 
     static ErlNifResourceType * type;
     static NifResDelegate * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);

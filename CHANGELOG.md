@@ -19,9 +19,32 @@
   `{ok, delegate_declined}`; nothing else is retried.
 - `tflite_beam_delegate:available/0`, reporting which delegate kinds were compiled into
   this build. It answers "was it compiled in", not "is a device present" -- those have
-  different answers on the same binary -- and it returns `[]` here.
+  different answers on the same binary. It lists `xnnpack` everywhere except armv6 and
+  armv7l, where XNNPACK is not compiled in at all.
+- `tflite_beam_delegate:xnnpack/0,1`, with `num_threads`, `flags` and
+  `weight_cache_file_path`. Flags are atoms mapped by name -- `qs8`, `force_fp16`,
+  `disable_subgraph_reshaping` and the rest -- and are added to XNNPACK's defaults
+  rather than replacing them, because TfLite spells turning a default off as its own
+  flag. Nothing positional would be right in any case: one bit in the middle of the
+  range is unassigned.
+- `tflite_beam_ops_builtin_builtin_resolver:new/1` takes
+  `#{apply_default_delegates => boolean()}`, deciding whether TfLite may apply its own
+  delegates lazily inside `allocate_tensors/1`.
 
 ### Changed
+- **XNNPACK is now attached explicitly, by `tflite_beam_interpreter_builder:build/2`,
+  instead of being applied invisibly by TfLite inside `allocate_tensors/1`.** The
+  acceleration is the same and so is the output; what changes is that the delegation is
+  visible in the execution plan as soon as `build/2` returns rather than only after
+  allocation, and that it can be configured or declined at all. `set_num_threads/2`
+  still reaches XNNPACK: the delegate is built with the builder's thread count, or with
+  one thread when it was never set, which is what TfLite's own default has always been.
+
+  Attach your own delegate and the default is not added. Ask the resolver for
+  `#{apply_default_delegates => true}` and TfLite goes back to delegating by itself. On
+  armv6 and armv7l, where XNNPACK is not compiled in, nothing is attached and nothing
+  errors.
+
 - `tflite_beam_interpreter_builder:build/2` and `tflite_beam_interpreter:allocate_tensors/1`
   now run on a dirty CPU scheduler. Every delegate's `Prepare` and all of TfLite's graph
   partitioning happen inside those two, which is more than a regular scheduler should be
