@@ -60,3 +60,5 @@ jobs:
           rebar3 deps
           rebar3 compile
           rebar3 ct
+          # armv6/armv7l build with XNNPACK off and nothing else covers that shape
+          python3 scripts/check_preprocessor_combinations.py

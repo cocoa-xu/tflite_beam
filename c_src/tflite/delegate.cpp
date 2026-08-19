@@ -35,20 +35,6 @@ ERL_NIF_TERM delegate_available(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
     return enif_make_list_from_array(env, available.data(), (unsigned)available.size());
 }
 
-#ifdef TFLITE_BEAM_XNNPACK_ENABLED
-
-static bool get_atom_list(ErlNifEnv *env, ERL_NIF_TERM list, std::vector<std::string> &out) {
-    if (!enif_is_list(env, list)) return false;
-
-    ERL_NIF_TERM head, tail = list;
-    while (enif_get_list_cell(env, tail, &head, &tail)) {
-        std::string name;
-        if (!erlang::nif::get_atom(env, head, name)) return false;
-        out.push_back(name);
-    }
-    return true;
-}
-
 static bool get_string_pairs(ErlNifEnv *env, ERL_NIF_TERM list,
                              std::vector<std::string> &keys,
                              std::vector<std::string> &values) {
@@ -65,6 +51,20 @@ static bool get_string_pairs(ErlNifEnv *env, ERL_NIF_TERM list,
         if (!erlang::nif::get(env, pair[1], value)) return false;
         keys.push_back(key);
         values.push_back(value);
+    }
+    return true;
+}
+
+#ifdef TFLITE_BEAM_XNNPACK_ENABLED
+
+static bool get_atom_list(ErlNifEnv *env, ERL_NIF_TERM list, std::vector<std::string> &out) {
+    if (!enif_is_list(env, list)) return false;
+
+    ERL_NIF_TERM head, tail = list;
+    while (enif_get_list_cell(env, tail, &head, &tail)) {
+        std::string name;
+        if (!erlang::nif::get_atom(env, head, name)) return false;
+        out.push_back(name);
     }
     return true;
 }
