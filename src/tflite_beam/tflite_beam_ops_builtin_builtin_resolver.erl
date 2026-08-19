@@ -4,7 +4,7 @@
 
 -module(tflite_beam_ops_builtin_builtin_resolver).
 -export([
-    new/0
+    new/0, new/1
 ]).
 
 %% @doc
@@ -173,4 +173,33 @@
 %% `TFLite_Detection_PostProcess'
 -spec new() -> {ok, reference()} | {error, binary()}.
 new() ->
-    tflite_beam_nif:ops_builtin_builtin_resolver_new().
+    new(#{}).
+
+%% @doc
+%% New built-in op resolver, choosing whether TfLite may apply its own delegates.
+%%
+%% ==== Keyword Parameters ====
+%% @param apply_default_delegates Whether the interpreter is handed the delegates
+%% TfLite applies by itself -- XNNPACK, in practice -- which it does lazily,
+%% inside `tflite_beam_interpreter:allocate_tensors/1'.
+%%
+%% Defaults to `false', and `tflite_beam_interpreter_builder:build/2' then
+%% attaches an XNNPACK delegate explicitly instead, so the same acceleration
+%% happens where it can be seen and configured. Passing `true' restores the
+%% older arrangement: TfLite delegates invisibly at allocate time and the builder
+%% adds nothing of its own.
+-spec new(map()) -> {ok, reference()} | {error, binary()}.
+new(Opts) when is_map(Opts) ->
+    case maps:keys(Opts) -- [apply_default_delegates] of
+        [] ->
+            case maps:get(apply_default_delegates, Opts, false) of
+                Apply when is_boolean(Apply) ->
+                    tflite_beam_nif:ops_builtin_builtin_resolver_new(Apply);
+                Other ->
+                    {error, unicode:characters_to_binary(
+                        io_lib:format("expecting apply_default_delegates to be a boolean, got ~p", [Other]))}
+            end;
+        Unknown ->
+            {error, unicode:characters_to_binary(
+                io_lib:format("unknown resolver option(s): ~p", [Unknown]))}
+    end.

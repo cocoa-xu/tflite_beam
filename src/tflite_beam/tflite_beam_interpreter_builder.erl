@@ -30,7 +30,49 @@ new(Model, Resolver) when is_reference(Model) and is_reference(Resolver) ->
 %% built without it. See `add_delegate/3'.
 -spec build(reference(), reference()) -> ok | {ok, delegate_declined} | {error, binary()}.
 build(Builder, Interpreter) when is_reference(Builder) and is_reference(Interpreter) ->
-    tflite_beam_nif:interpreter_builder_build(Builder, Interpreter).
+    case ensure_default_delegate(Builder) of
+        ok ->
+            tflite_beam_nif:interpreter_builder_build(Builder, Interpreter);
+        {error, Reason} ->
+            {error, Reason}
+    end.
+
+%% Left to itself TfLite applies XNNPACK lazily, inside allocate_tensors/1, with
+%% a thread count nothing can reach and no way to say no. A resolver that
+%% declines that -- which is the default -- gets an XNNPACK delegate attached
+%% here instead, so the same acceleration happens somewhere it can be seen.
+%%
+%% Not attached when the caller has added a delegate of their own, and not where
+%% XNNPACK was never compiled in, which is armv6 and armv7l.
+ensure_default_delegate(Builder) ->
+    case tflite_beam_nif:interpreter_builder_state(Builder) of
+        {ok, {0, NumThreads, false}} ->
+            attach_default_delegate(Builder, NumThreads);
+        {ok, _} ->
+            ok;
+        {error, Reason} ->
+            {error, Reason}
+    end.
+
+attach_default_delegate(Builder, NumThreads) ->
+    case lists:member(xnnpack, tflite_beam_delegate:available()) of
+        false ->
+            ok;
+        true ->
+            %% set_num_threads/2 has to keep reaching XNNPACK, and an unset
+            %% builder means one thread -- TfLite's kDefaultNumThreadpoolThreads,
+            %% which is what the lazy delegate has been getting all along
+            Threads = case NumThreads of
+                -1 -> 1;
+                N -> N
+            end,
+            case tflite_beam_delegate:xnnpack(#{num_threads => Threads}) of
+                {ok, Delegate} ->
+                    add_delegate(Builder, Delegate);
+                {error, Reason} ->
+                    {error, Reason}
+            end
+    end.
 
 %% @doc Attach a delegate to the builder, with the default decline policy.
 %%

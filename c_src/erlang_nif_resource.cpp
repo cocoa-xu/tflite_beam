@@ -14,6 +14,7 @@ NifResBuiltinOpResolver * NifResBuiltinOpResolver::allocate_resource(ErlNifEnv *
     }
 
     res->val = nullptr;
+    res->apply_default_delegates = true;
 
     return res;
 }
@@ -114,6 +115,7 @@ NifResDelegate * NifResDelegate::allocate_resource(ErlNifEnv * env, ERL_NIF_TERM
 
     res->val = nullptr;
     res->deleter = nullptr;
+    res->owned_path = nullptr;
 
     return res;
 }
@@ -138,6 +140,11 @@ void NifResDelegate::destruct_resource(ErlNifEnv *env, void *args) {
         }
         res->val = nullptr;
         res->deleter = nullptr;
+
+        if (res->owned_path) {
+            enif_free(res->owned_path);
+            res->owned_path = nullptr;
+        }
     }
 }
 

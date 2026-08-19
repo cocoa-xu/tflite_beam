@@ -251,6 +251,13 @@ if(${TFLITE_BEAM_CORAL_SUPPORT})
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -L${PRIV_DIR}/libedgetpu")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DCORAL_SUPPORT_ENABLED=1")
 endif()
+# The resolved cache value, read after TFLite has been added: the armv6/armv7l
+# branches above turn XNNPACK off before that, and TFLite's own
+# TFLITE_BUILD_WITH_XNNPACK_DELEGATE does not reach us through the
+# plain-signature target_link_libraries.
+if(TFLITE_ENABLE_XNNPACK)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTFLITE_BEAM_XNNPACK_ENABLED=1")
+endif()
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g3")
 else()

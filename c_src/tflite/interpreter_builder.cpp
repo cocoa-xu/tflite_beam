@@ -81,6 +81,29 @@ ERL_NIF_TERM interpreter_builder_add_delegate(ErlNifEnv *env, int argc, const ER
     return erlang::nif::ok(env);
 }
 
+// Facts, so that the decision about a default delegate can be taken in Erlang
+// where it is visible, rather than here where it would not be.
+ERL_NIF_TERM interpreter_builder_state(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+
+    NifResInterpreterBuilder * self_res;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreterBuilder::get_resource(env, argv[0], ret))) {
+        return ret;
+    }
+
+    const bool applies_default_delegates =
+        self_res->op_resolver == nullptr || self_res->op_resolver->apply_default_delegates;
+
+    return erlang::nif::ok(env, enif_make_tuple3(
+        env,
+        enif_make_uint64(env, (ErlNifUInt64)self_res->delegates->size()),
+        enif_make_int(env, self_res->num_threads),
+        applies_default_delegates ? erlang::nif::atom(env, "true") : erlang::nif::atom(env, "false")
+    ));
+}
+
 static bool any_delegate_steps_aside(NifResInterpreterBuilder * self_res) {
     for (auto & entry : *self_res->delegates) {
         if (entry.fallback_on_decline) return true;

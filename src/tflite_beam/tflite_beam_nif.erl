@@ -54,7 +54,7 @@ flatbuffer_model_read_all_metadata(_self) ->
     not_loaded(?LINE).
 
 
-ops_builtin_builtin_resolver_new() ->
+ops_builtin_builtin_resolver_new(_apply_default_delegates) ->
     not_loaded(?LINE).
 
 
@@ -70,7 +70,13 @@ interpreter_builder_set_num_threads(_self, _num_threads) ->
 interpreter_builder_add_delegate(_self, _delegate, _on_decline) ->
     not_loaded(?LINE).
 
+interpreter_builder_state(_self) ->
+    not_loaded(?LINE).
+
 delegate_available() ->
+    not_loaded(?LINE).
+
+delegate_xnnpack_new(_num_threads, _flags, _weight_cache_file_path) ->
     not_loaded(?LINE).
 
 

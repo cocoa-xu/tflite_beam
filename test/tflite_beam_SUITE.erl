@@ -120,8 +120,13 @@ signature_runner_invoke(_Config) ->
 %% how every later delegate change proves a delegate actually ran, so it is
 %% pinned here. Measure it on an interpreter that has touched no signature
 %% runner: `get_signature_runner/2' applies the lazy providers too.
+%%
+%% This is the lazy path specifically -- TfLite applying XNNPACK by itself inside
+%% allocate_tensors/1 -- so it asks for the resolver that still does that. The
+%% default resolver no longer does; the builder attaches XNNPACK explicitly
+%% instead, and the plan has already collapsed by the time build/2 returns.
 execution_plan_baseline(_Config) ->
-    {Builder, Interpreter} = tflite_beam_test_models:builder("multi_add.bin"),
+    {Builder, Interpreter} = tflite_beam_test_models:lazy_builder("multi_add.bin"),
     ok = tflite_beam_interpreter_builder:build(Builder, Interpreter),
     ?assertEqual([0, 1, 2], tflite_beam_interpreter:execution_plan(Interpreter)),
     ?assertEqual(3, tflite_beam_interpreter:nodes_size(Interpreter)),
@@ -139,7 +144,7 @@ execution_plan_baseline(_Config) ->
 %% The control: XNNPACK is compiled in here too, and claims nothing. Delegation
 %% is per op pattern, so a plan that does not move is not evidence of anything.
 quantized_model_is_not_delegated(_Config) ->
-    {Builder, Interpreter} = tflite_beam_test_models:builder("add_quantized_int8.bin"),
+    {Builder, Interpreter} = tflite_beam_test_models:lazy_builder("add_quantized_int8.bin"),
     ok = tflite_beam_interpreter_builder:build(Builder, Interpreter),
     ?assertEqual([0, 1], tflite_beam_interpreter:execution_plan(Interpreter)),
     ok = tflite_beam_interpreter:allocate_tensors(Interpreter),

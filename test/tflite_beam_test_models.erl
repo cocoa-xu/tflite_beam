@@ -1,7 +1,7 @@
 %% @doc Locating and loading the model fixtures the suites share.
 -module(tflite_beam_test_models).
 
--export([path/1, builder/1, interpreter/1]).
+-export([path/1, builder/1, lazy_builder/1, interpreter/1]).
 
 -include("../src/tflite_beam/tflite_beam_records.hrl").
 
@@ -10,7 +10,14 @@ path(Name) ->
 
 %% @doc A builder over Name, and a fresh interpreter for it to build into.
 builder(Name) ->
-    {ok, Resolver} = tflite_beam_ops_builtin_builtin_resolver:new(),
+    builder(Name, #{}).
+
+%% @doc The same, over a resolver that still lets TfLite delegate by itself.
+lazy_builder(Name) ->
+    builder(Name, #{apply_default_delegates => true}).
+
+builder(Name, ResolverOpts) ->
+    {ok, Resolver} = tflite_beam_ops_builtin_builtin_resolver:new(ResolverOpts),
     #tflite_beam_flatbuffer_model{ref = Model} =
         tflite_beam_flatbuffer_model:build_from_file(path(Name)),
     {ok, Builder} = tflite_beam_interpreter_builder:new(Model, Resolver),
