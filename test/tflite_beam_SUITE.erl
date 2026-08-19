@@ -133,7 +133,7 @@ execution_plan_baseline(_Config) ->
     ok = tflite_beam_interpreter:allocate_tensors(Interpreter),
     case xnnpack_compiled_in() of
         false ->
-            {skip, "XNNPACK is compiled out on " ++ erlang:system_info(system_architecture)};
+            {skip, "XNNPACK is not compiled into this build"};
         true ->
             ?assertEqual(1, length(tflite_beam_interpreter:execution_plan(Interpreter))),
             %% the delegate node is appended rather than substituted, so the two
@@ -152,5 +152,4 @@ quantized_model_is_not_delegated(_Config) ->
     ?assertEqual(2, tflite_beam_interpreter:nodes_size(Interpreter)).
 
 xnnpack_compiled_in() ->
-    Arch = erlang:system_info(system_architecture),
-    match =:= re:run(Arch, "^(x86_64|amd64|aarch64|arm64)", [{capture, none}]).
+    lists:member(xnnpack, tflite_beam_delegate:available()).
