@@ -8,5 +8,6 @@
 ERL_NIF_TERM interpreter_builder_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 ERL_NIF_TERM interpreter_builder_build(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 ERL_NIF_TERM interpreter_builder_set_num_threads(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
+ERL_NIF_TERM interpreter_builder_add_delegate(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 
 #endif // TFLITE_INTERPRETER_BUILDER_BINDINGS_H

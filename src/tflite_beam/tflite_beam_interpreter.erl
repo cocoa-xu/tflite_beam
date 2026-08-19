@@ -78,7 +78,7 @@ new_from_model(Model) when is_reference(Model) ->
                     case tflite_beam_interpreter:new() of
                         {ok, Interpreter} ->
                             case tflite_beam_interpreter_builder:build(Builder, Interpreter) of
-                                ok ->
+                                Built when Built =:= ok; Built =:= {ok, delegate_declined} ->
                                     case tflite_beam_interpreter:allocate_tensors(Interpreter) of
                                         ok ->
                                             {ok, Interpreter};

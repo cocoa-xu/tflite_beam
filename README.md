@@ -16,6 +16,15 @@ TensorFlow Lite BEAM bindings with optional EdgeTPU support.
 | macOS 14 Sonoma  | arm64   | darwin    | [![CI](https://github.com/cocoa-xu/tflite_beam/actions/workflows/macos-precompile.yml/badge.svg)](https://github.com/cocoa-xu/tflite_beam/actions/workflows/macos-precompile.yml) | Yes |
 
 
+## Threading
+
+An interpreter, and any delegate attached to it, belongs to one process at a time.
+TfLite documents `tflite::Interpreter` as not thread-safe and leaves serialising access
+to the caller, and nothing here adds a lock of its own -- `invoke/1` runs on a dirty
+scheduler, so two processes sharing one interpreter really do run it on two OS threads
+at once. Delegates are the same: nothing documents a `TfLiteDelegate` as safe to back
+two interpreters simultaneously, and XNNPACK's demonstrably is not.
+
 ## Coral Support
 ### Dependencies
 For macOS

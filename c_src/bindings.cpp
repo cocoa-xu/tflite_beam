@@ -32,6 +32,7 @@ limitations under the License.
 #include "tflite/error_reporter.h"
 #include "tflite/flatbuffer_model.h"
 #include "tflite/ops/builtin/builtin_resolver.h"
+#include "tflite/delegate.h"
 #include "tflite/interpreter_builder.h"
 #include "tflite/interpreter.h"
 #include "tflite/signature_runner.h"
@@ -46,6 +47,7 @@ ErlNifResourceType * NifResInterpreter::type = nullptr;
 ErlNifResourceType * NifResErrorReporter::type = nullptr;
 ErlNifResourceType * NifResSignatureRunner::type = nullptr;
 ErlNifResourceType * NifResTfLiteTensor::type = nullptr;
+ErlNifResourceType * NifResDelegate::type = nullptr;
 
 #ifdef CORAL_SUPPORT_ENABLED
 
@@ -91,6 +93,10 @@ on_load(ErlNifEnv* env, void**, ERL_NIF_TERM) {
     if (!rt) return -1;
     NifResErrorReporter::type = rt;
 
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "Delegate", NifResDelegate::destruct_resource, ERL_NIF_RT_CREATE, NULL);
+    if (!rt) return -1;
+    NifResDelegate::type = rt;
+
 #ifdef CORAL_SUPPORT_ENABLED
     rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "EdgeTpuContext", NifResEdgeTpuContext::destruct_resource, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
@@ -128,8 +134,11 @@ static ErlNifFunc nif_functions[] = {
     F(ops_builtin_builtin_resolver_new, 0),
 
     F(interpreter_builder_new, 2),
-    F(interpreter_builder_build, 2),
+    F_CPU(interpreter_builder_build, 2),
     F(interpreter_builder_set_num_threads, 2),
+    F(interpreter_builder_add_delegate, 3),
+
+    F(delegate_available, 0),
 
     F(interpreter_new, 0),
     F(interpreter_set_inputs, 2),
@@ -159,7 +168,7 @@ static ErlNifFunc nif_functions[] = {
     F(interpreter_signature_keys, 1),
     F_CPU(interpreter_input_tensor, 3),
     F_CPU(interpreter_output_tensor, 2),
-    F(interpreter_allocate_tensors, 1),
+    F_CPU(interpreter_allocate_tensors, 1),
     F_CPU(interpreter_invoke, 1),
     F(interpreter_set_num_threads, 2),
     F(interpreter_get_signature_defs, 1),

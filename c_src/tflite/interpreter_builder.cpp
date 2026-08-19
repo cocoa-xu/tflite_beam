@@ -1,3 +1,6 @@
+#include <string>
+#include <vector>
+
 #include <erl_nif.h>
 #include "../nif_utils.hpp"
 #include "../erlang_nif_resource.h"
@@ -9,6 +12,7 @@
 #include "tensorflow/lite/core/interpreter.h"
 
 #include "interpreter_builder.h"
+#include "delegate.h"
 #include "status.h"
 
 ERL_NIF_TERM interpreter_builder_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
@@ -46,6 +50,72 @@ ERL_NIF_TERM interpreter_builder_new(ErlNifEnv *env, int argc, const ERL_NIF_TER
     return erlang::nif::ok(env, ret);
 }
 
+ERL_NIF_TERM interpreter_builder_add_delegate(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 3) return enif_make_badarg(env);
+
+    NifResInterpreterBuilder * self_res;
+    NifResDelegate * delegate_res;
+    ERL_NIF_TERM ret;
+
+    if (!(self_res = NifResInterpreterBuilder::get_resource(env, argv[0], ret))) {
+        return ret;
+    }
+
+    if (!(delegate_res = NifResDelegate::get_resource(env, argv[1], ret))) {
+        return ret;
+    }
+
+    std::string on_decline;
+    if (!erlang::nif::get_atom(env, argv[2], on_decline) ||
+        (on_decline != "error" && on_decline != "fallback")) {
+        return erlang::nif::error(env, "expecting on_decline to be either error or fallback");
+    }
+
+    // AddDelegate takes no ownership, and the delegate has to outlive every
+    // interpreter this builder goes on to produce, so the reference is ours to
+    // hold until the builder itself is collected
+    self_res->val->AddDelegate(delegate_res->val);
+    enif_keep_resource(delegate_res);
+    self_res->delegates->push_back({delegate_res, on_decline == "fallback"});
+
+    return erlang::nif::ok(env);
+}
+
+static bool any_delegate_steps_aside(NifResInterpreterBuilder * self_res) {
+    for (auto & entry : *self_res->delegates) {
+        if (entry.fallback_on_decline) return true;
+    }
+    return false;
+}
+
+// A delegate that cannot take the graph, but leaves it runnable, reports
+// kTfLiteApplicationError rather than kTfLiteError -- and operator() discards
+// the interpreter either way. Building again without the delegates that said
+// they would step aside is what turns that back into a working CPU interpreter.
+//
+// It needs a builder of its own: AddDelegate only appends and the list it
+// appends to is private. The model, the op resolver and the thread count are
+// the whole of the original builder's state that this binding ever sets.
+static TfLiteStatus build_without_delegates_that_step_aside(
+        NifResInterpreterBuilder * self_res,
+        std::unique_ptr<tflite::Interpreter> * interpreter,
+        std::vector<NifResDelegate *> & applied) {
+    tflite::InterpreterBuilder retry(*self_res->flatbuffer_model->val, *self_res->op_resolver->val);
+    if (self_res->num_threads != -1) {
+        retry.SetNumThreads(self_res->num_threads);
+    }
+
+    applied.clear();
+    for (auto & entry : *self_res->delegates) {
+        if (!entry.fallback_on_decline) {
+            retry.AddDelegate(entry.delegate->val);
+            applied.push_back(entry.delegate);
+        }
+    }
+
+    return retry(interpreter);
+}
+
 ERL_NIF_TERM interpreter_builder_build(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 2) return enif_make_badarg(env);
 
@@ -63,19 +133,57 @@ ERL_NIF_TERM interpreter_builder_build(ErlNifEnv *env, int argc, const ERL_NIF_T
     }
 
     // operator() destroys the interpreter these were taken from, whether it goes on
-    // to succeed or not, so the cache cannot outlive this call
+    // to succeed or not, so the cache cannot outlive this call. Once, before the
+    // first attempt: the retry below resets an interpreter that is already gone.
     NifResInterpreter::release_tensors(interpreter_res);
+
+    std::vector<NifResDelegate *> applied;
+    for (auto & entry : *self_res->delegates) {
+        applied.push_back(entry.delegate);
+    }
 
     std::unique_ptr<tflite::Interpreter> pretend(interpreter_res->val);
     TfLiteStatus status = self_res->val->operator()(&pretend);
 
+    // the retry builds from the model and resolver this builder was made with, so
+    // it is only on the table while both are still there
+    const bool can_rebuild = self_res->flatbuffer_model && self_res->flatbuffer_model->val &&
+                             self_res->op_resolver && self_res->op_resolver->val;
+
+    bool declined = false;
+    if (status == kTfLiteApplicationError && can_rebuild && any_delegate_steps_aside(self_res)) {
+        status = build_without_delegates_that_step_aside(self_res, &pretend, applied);
+        declined = (status == kTfLiteOk);
+    }
+
     interpreter_res->val = pretend.release();
+
+    if (interpreter_res->val == nullptr) {
+        applied.clear();
+    }
+
+    // keep before release, so a delegate on both lists cannot transiently reach
+    // refcount zero. Safe to release the old ones here and not earlier: the
+    // interpreter they backed was destroyed inside operator().
+    if (interpreter_res->delegates) {
+        for (auto delegate_res : applied) {
+            enif_keep_resource(delegate_res);
+        }
+        for (auto delegate_res : *interpreter_res->delegates) {
+            enif_release_resource(delegate_res);
+        }
+        *interpreter_res->delegates = applied;
+    }
 
     if (interpreter_res->flatbuffer_model) {
         enif_release_resource(interpreter_res->flatbuffer_model);
     }
     interpreter_res->flatbuffer_model = self_res->flatbuffer_model;
     enif_keep_resource(interpreter_res->flatbuffer_model);
+
+    if (declined) {
+        return erlang::nif::ok(env, erlang::nif::atom(env, "delegate_declined"));
+    }
     return tflite_status_to_erl_term(env, status);
 }
 
@@ -96,5 +204,8 @@ ERL_NIF_TERM interpreter_builder_set_num_threads(ErlNifEnv *env, int argc, const
     }
 
     auto status = self_res->val->SetNumThreads(num_threads);
+    if (status == kTfLiteOk) {
+        self_res->num_threads = num_threads;
+    }
     return tflite_status_to_erl_term(env, status);
 }

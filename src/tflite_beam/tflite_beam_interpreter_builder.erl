@@ -5,7 +5,8 @@
 -export([
     new/2,
     build/2,
-    set_num_threads/2
+    set_num_threads/2,
+    add_delegate/2, add_delegate/3
 ]).
 
 -include("tflite_beam_records.hrl").
@@ -23,9 +24,66 @@ new(Model, Resolver) when is_reference(Model) and is_reference(Resolver) ->
 %% Note: all Interpreters should be built with the InterpreterBuilder,
 %% which allocates memory for the Interpreter and does various set up
 %% tasks so that the Interpreter can read the provided model.
--spec build(reference(), reference()) -> ok | {error, binary}.
+%%
+%% Returns `{ok, delegate_declined}' when a delegate added with
+%% `on_decline => fallback' could not take the graph and the interpreter was
+%% built without it. See `add_delegate/3'.
+-spec build(reference(), reference()) -> ok | {ok, delegate_declined} | {error, binary()}.
 build(Builder, Interpreter) when is_reference(Builder) and is_reference(Interpreter) ->
     tflite_beam_nif:interpreter_builder_build(Builder, Interpreter).
+
+%% @doc Attach a delegate to the builder, with the default decline policy.
+%%
+%% Equivalent to `add_delegate(Builder, Delegate, #{})'.
+-spec add_delegate(reference(), reference()) -> ok | {error, binary()}.
+add_delegate(Builder, Delegate) when is_reference(Builder) and is_reference(Delegate) ->
+    add_delegate(Builder, Delegate, #{}).
+
+%% @doc
+%% Attach a delegate to every interpreter this builder goes on to build.
+%%
+%% The delegate is applied in the order delegates were added, and it has to
+%% outlive every interpreter built from this builder -- which is why there is no
+%% way to detach or delete one. Holding the reference is not required: the
+%% builder and each interpreter keep the delegate alive for as long as they need
+%% it.
+%%
+%% ==== Keyword Parameters ====
+%% @param on_decline What to do when a delegate reports that it cannot take the
+%% graph, but leaves the graph runnable -- a static-shape delegate meeting a
+%% dynamic tensor, say. TfLite discards the whole interpreter in that case.
+%% <ul>
+%%   <li>`error' (the default) -- the decline surfaces as `{error, Reason}' from
+%%   `build/2'.</li>
+%%   <li>`fallback' -- `build/2' builds again without the delegates that were
+%%   added with this policy, and answers `{ok, delegate_declined}'. Only a
+%%   decline is retried; every other failure still fails.</li>
+%% </ul>
+%%
+%% Note that an interpreter, and any delegate attached to it, belongs to one
+%% process at a time. Nothing here is serialised for you.
+-spec add_delegate(reference(), reference(), map()) -> ok | {error, binary()}.
+add_delegate(Builder, Delegate, Opts) when is_reference(Builder), is_reference(Delegate), is_map(Opts) ->
+    case validate_delegate_opts(Opts) of
+        {ok, OnDecline} ->
+            tflite_beam_nif:interpreter_builder_add_delegate(Builder, Delegate, OnDecline);
+        {error, Reason} ->
+            {error, Reason}
+    end.
+
+validate_delegate_opts(Opts) ->
+    case maps:keys(Opts) -- [on_decline] of
+        [] ->
+            case maps:get(on_decline, Opts, error) of
+                error -> {ok, error};
+                fallback -> {ok, fallback};
+                Other -> {error, unicode:characters_to_binary(
+                    io_lib:format("expecting on_decline to be either error or fallback, got ~p", [Other]))}
+            end;
+        Unknown ->
+            {error, unicode:characters_to_binary(
+                io_lib:format("unknown delegate option(s): ~p", [Unknown]))}
+    end.
 
 %% @doc
 %% Sets the number of CPU threads to use for the interpreter.

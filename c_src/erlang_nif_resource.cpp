@@ -105,6 +105,42 @@ void NifResFlatBufferModel::destruct_resource(ErlNifEnv *env, void *args) {
     }
 }
 
+NifResDelegate * NifResDelegate::allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error) {
+    NifResDelegate * res = (NifResDelegate *)enif_alloc_resource(NifResDelegate::type, sizeof(NifResDelegate));
+    if (res == nullptr) {
+        error = erlang::nif::error(env, "cannot allocate NifResDelegate resource");
+        return res;
+    }
+
+    res->val = nullptr;
+    res->deleter = nullptr;
+
+    return res;
+}
+
+NifResDelegate * NifResDelegate::get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error) {
+    NifResDelegate * self_res = nullptr;
+    if (!enif_get_resource(env, term, NifResDelegate::type, (void **)&self_res) || self_res == nullptr || self_res->val == nullptr) {
+        error = erlang::nif::error(env, "cannot access NifResDelegate resource");
+        return nullptr;
+    }
+    return self_res;
+}
+
+void NifResDelegate::destruct_resource(ErlNifEnv *env, void *args) {
+    auto res = (NifResDelegate *)args;
+    if (res) {
+        // a delegate comes from a C factory and has to go back through the
+        // matching C destructor. Several of those dereference their argument,
+        // so a delegate that was never constructed is simply dropped.
+        if (res->val && res->deleter) {
+            res->deleter(res->val);
+        }
+        res->val = nullptr;
+        res->deleter = nullptr;
+    }
+}
+
 NifResInterpreterBuilder * NifResInterpreterBuilder::allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error) {
     NifResInterpreterBuilder * res = (NifResInterpreterBuilder *)enif_alloc_resource(NifResInterpreterBuilder::type, sizeof(NifResInterpreterBuilder));
     if (res == nullptr) {
@@ -115,6 +151,8 @@ NifResInterpreterBuilder * NifResInterpreterBuilder::allocate_resource(ErlNifEnv
     res->val = nullptr;
     res->op_resolver = nullptr;
     res->flatbuffer_model = nullptr;
+    res->delegates = new std::vector<NifResDelegateEntry>;
+    res->num_threads = -1;
 
     return res;
 }
@@ -145,6 +183,14 @@ void NifResInterpreterBuilder::destruct_resource(ErlNifEnv *env, void *args) {
             enif_release_resource(res->flatbuffer_model);
             res->flatbuffer_model = nullptr;
         }
+
+        if (res->delegates) {
+            for (auto & entry : *res->delegates) {
+                if (entry.delegate) enif_release_resource(entry.delegate);
+            }
+            delete res->delegates;
+            res->delegates = nullptr;
+        }
     }
 }
 
@@ -159,6 +205,7 @@ NifResInterpreter * NifResInterpreter::allocate_resource(ErlNifEnv * env, ERL_NI
     res->flatbuffer_model = nullptr;
     res->edgetpu_context = nullptr;
     res->tensors = new std::map<int, NifResTfLiteTensor *>;
+    res->delegates = new std::vector<NifResDelegate *>;
 
     return res;
 }
@@ -207,6 +254,16 @@ void NifResInterpreter::destruct_resource(ErlNifEnv *env, void *args) {
         if (res->edgetpu_context) {
             enif_release_resource(res->edgetpu_context);
             res->edgetpu_context = nullptr;
+        }
+
+        // after the interpreter itself: a delegate has to outlive the graph it
+        // was applied to
+        if (res->delegates) {
+            for (auto delegate_res : *res->delegates) {
+                if (delegate_res) enif_release_resource(delegate_res);
+            }
+            delete res->delegates;
+            res->delegates = nullptr;
         }
     }
 }
