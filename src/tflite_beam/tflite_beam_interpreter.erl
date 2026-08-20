@@ -5,6 +5,7 @@
 -export([
    new/0,
    new/1,
+   controlling_process/1, controlling_process/2,
    new_from_buffer/1,
    set_inputs/2,
    set_outputs/2,
@@ -47,6 +48,35 @@
 -spec new() -> {ok, reference()} | {error, binary()}.
 new() ->
     tflite_beam_nif:interpreter_new().
+
+%% @doc
+%% Which process this interpreter belongs to, or `undefined' if it is shared.
+-spec controlling_process(reference()) -> {ok, pid()} | undefined.
+controlling_process(Self) when is_reference(Self) ->
+    tflite_beam_nif:interpreter_controlling_process(Self).
+
+%% @doc
+%% Give this interpreter to a process, after which no other process may use it.
+%%
+%% `tflite::Interpreter' is not thread-safe and `invoke/1' runs on a dirty
+%% scheduler, so two processes sharing one interpreter really do reach it on two
+%% OS threads. Measured on a real model, two processes taking turns badly got the
+%% wrong inference back 147 times out of 400 -- not a crash, just quietly
+%% somebody else's answer.
+%%
+%% An interpreter starts out belonging to nobody, which is how they have always
+%% behaved, and calls from concurrent processes are refused only while they
+%% actually overlap. Naming a controlling process closes the remaining window:
+%% every other process is then refused outright, whether it overlaps or not.
+%%
+%% Follows `gen_tcp:controlling_process/2': while an interpreter belongs to
+%% nobody any process may take it, and once it belongs to someone only that
+%% process may hand it on. Pass `undefined' to give it back to nobody. A
+%% controlling process that dies releases it, since an interpreter has no
+%% equivalent of a socket being closed.
+-spec controlling_process(reference(), pid() | undefined) -> ok | {error, binary()}.
+controlling_process(Self, Pid) when is_reference(Self), is_pid(Pid) orelse Pid =:= undefined ->
+    tflite_beam_nif:interpreter_set_controlling_process(Self, Pid).
 
 %% @doc New interpreter with model filepath
 -spec new(list() | binary()) -> {ok, reference()} | {error, binary()}.

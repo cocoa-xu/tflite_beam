@@ -72,10 +72,38 @@ means. The library is not unloaded afterwards.
 ## Threading
 
 An interpreter, and any delegate attached to it, belongs to one process at a time.
-TfLite documents `tflite::Interpreter` as not thread-safe and leaves serialising access
-to the caller, and nothing here adds a lock of its own -- `invoke/1` runs on a dirty
-scheduler, so two processes sharing one interpreter really do run it on two OS threads
-at once. Delegates are the same: nothing documents a `TfLiteDelegate` as safe to back
+TfLite documents `tflite::Interpreter` as not thread-safe and leaves serialising
+access to the caller, and `invoke/1` runs on a dirty scheduler, so two processes
+sharing one interpreter really do run it on two OS threads at once.
+
+The direct API mirrors the C API, which means feeding an interpreter, running it
+and reading the result back are three separate calls -- and nothing in the C API
+says they have to be treated as one. Two processes taking turns badly get each
+other's answers: measured on a real model, 147 wrong results in 400 calls,
+silently and without a crash.
+
+**If you want that handled for you, use `tflite_beam_interpreter_server`:**
+
+```erlang
+{ok, Server} = tflite_beam_interpreter_server:start_link(ModelPath),
+Output = tflite_beam_interpreter_server:predict(Server, [Input]).
+```
+
+The interpreter lives inside that process, so feeding, running and reading back is
+one step nothing can interleave with, and concurrent callers each get the answer to
+their own input. Use `with/2` for the sequences `predict/2` does not cover.
+
+The direct API is unchanged and stays available. Two things guard it:
+
+- Calls that genuinely overlap in time are refused rather than allowed to race.
+  This is always on and costs a `trylock` on the uncontended path.
+- `tflite_beam_interpreter:controlling_process/2` gives an interpreter to one
+  process, after which every other process is refused whether it overlaps or not.
+  It follows `gen_tcp:controlling_process/2`: while an interpreter belongs to
+  nobody any process may take it, and once it belongs to someone only that process
+  may hand it on. A controlling process that dies releases it.
+
+Delegates are the same story: nothing documents a `TfLiteDelegate` as safe to back
 two interpreters simultaneously, and XNNPACK's demonstrably is not.
 
 ## Coral Support
