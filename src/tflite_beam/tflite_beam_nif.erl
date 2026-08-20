@@ -86,6 +86,12 @@ delegate_external_new(_library_path, _options) ->
 interpreter_new() ->
     not_loaded(?LINE).
 
+interpreter_controlling_process(_self) ->
+    not_loaded(?LINE).
+
+interpreter_set_controlling_process(_self, _pid) ->
+    not_loaded(?LINE).
+
 interpreter_set_inputs(_self, _inputs) ->
     not_loaded(?LINE).
 

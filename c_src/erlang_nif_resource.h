@@ -104,6 +104,16 @@ struct NifResInterpreter {
     std::map<int, NifResTfLiteTensor *> * tensors;
     // the delegates behind this interpreter's graph, kept alive for its lifetime
     std::vector<NifResDelegate *> * delegates;
+    // held while a NIF is inside this interpreter, so a second thread arriving
+    // during that window can be told rather than left to race. A pointer, like
+    // every other non-POD member here: enif_alloc_resource hands back raw memory
+    // and runs no constructor on it.
+    ErlNifMutex * in_use;
+    // opt-in: once a process takes control, everyone else is refused. Unset by
+    // default, because an interpreter is born shared and making it otherwise
+    // would break every caller that builds in one process and runs in another.
+    std::atomic_bool is_controlled;
+    ErlNifPid controlling_process;
 
     static ErlNifResourceType * type;
     static NifResInterpreter * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
@@ -112,6 +122,37 @@ struct NifResInterpreter {
     // every cached tensor borrows a TfLiteTensor * from the interpreter, so they all
     // have to go whenever that interpreter does
     static void release_tensors(NifResInterpreter * res);
+};
+
+// tflite::Interpreter is documented as not thread-safe, and invoke runs on a
+// dirty scheduler, so two processes sharing one interpreter really do reach it
+// on two OS threads. This makes that arrival visible instead of silent: whoever
+// gets there second is told, rather than quietly reading half of someone else's
+// inference.
+// Declared here so signature runners can ask the same question about the
+// interpreter they belong to.
+bool caller_may_use(ErlNifEnv * env, NifResInterpreter * res);
+
+class InterpreterInUse {
+public:
+    explicit InterpreterInUse(NifResInterpreter * res) : res_(res) {
+        // try, never wait: the point is to report the collision, not to
+        // serialise around it on a dirty scheduler
+        acquired_ = res_->in_use != nullptr && enif_mutex_trylock(res_->in_use) == 0;
+    }
+
+    ~InterpreterInUse() {
+        if (acquired_) enif_mutex_unlock(res_->in_use);
+    }
+
+    InterpreterInUse(const InterpreterInUse &) = delete;
+    InterpreterInUse & operator=(const InterpreterInUse &) = delete;
+
+    bool acquired() const { return acquired_; }
+
+private:
+    NifResInterpreter * res_;
+    bool acquired_;
 };
 
 struct NifResSignatureRunner {

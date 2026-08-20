@@ -28,6 +28,68 @@ ERL_NIF_TERM interpreter_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]
     return erlang::nif::ok(env, ret);
 }
 
+// Asking who controls an interpreter touches none of its state, and a process
+// that has just handed one away still has a reason to ask. So this one does not
+// go through get_resource, which would refuse everybody but the controller --
+// ets:info(Table, owner) answers anyone too.
+ERL_NIF_TERM interpreter_controlling_process(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+
+    NifResInterpreter * self_res;
+
+    if (!enif_get_resource(env, argv[0], NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
+        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    }
+
+    if (!self_res->is_controlled) {
+        return erlang::nif::atom(env, "undefined");
+    }
+    return erlang::nif::ok(env, enif_make_pid(env, &self_res->controlling_process));
+}
+
+// Not routed through get_resource: that refuses anyone but the controlling
+// process, and handing control on is precisely a call the controlling process
+// makes about somebody else.
+ERL_NIF_TERM interpreter_set_controlling_process(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 2) return enif_make_badarg(env);
+
+    NifResInterpreter * self_res;
+    if (!enif_get_resource(env, argv[0], NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
+        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    }
+
+    ErlNifPid caller;
+    if (enif_self(env, &caller) == nullptr) {
+        return erlang::nif::error(env, "cannot identify the calling process");
+    }
+
+    // gen_tcp's rule: with no controlling process anyone may take it, and with
+    // one only that process may hand it on
+    if (self_res->is_controlled &&
+        enif_compare_pids(&caller, &self_res->controlling_process) != 0 &&
+        enif_is_process_alive(env, &self_res->controlling_process)) {
+        return erlang::nif::error(env, "interpreter belongs to another process");
+    }
+
+    ErlNifPid target;
+    if (enif_get_local_pid(env, argv[1], &target)) {
+        if (!enif_is_process_alive(env, &target)) {
+            return erlang::nif::error(env, "the given process is not alive");
+        }
+        self_res->controlling_process = target;
+        self_res->is_controlled = true;
+        return erlang::nif::ok(env);
+    }
+
+    std::string undefined;
+    if (erlang::nif::get_atom(env, argv[1], undefined) && undefined == "undefined") {
+        self_res->is_controlled = false;
+        return erlang::nif::ok(env);
+    }
+
+    return erlang::nif::error(env, "expecting a local pid or undefined");
+}
+
 ERL_NIF_TERM interpreter_set_inputs(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 2) return enif_make_badarg(env);
 
@@ -610,6 +672,11 @@ ERL_NIF_TERM interpreter_input_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TE
         return ret;
     }
 
+    InterpreterInUse in_use(self_res);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
+    }
+
     if (!enif_get_int(env, index_nif, &index)) {
         return erlang::nif::error(env, "expecting index to be an integer");
     }
@@ -649,6 +716,11 @@ ERL_NIF_TERM interpreter_output_tensor(ErlNifEnv *env, int argc, const ERL_NIF_T
         return ret;
     }
 
+    InterpreterInUse in_use(self_res);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
+    }
+
     if (!enif_get_int(env, index_nif, &index)) {
         return erlang::nif::error(env, "expecting index to be an integer");
     }
@@ -678,6 +750,11 @@ ERL_NIF_TERM interpreter_allocate_tensors(ErlNifEnv *env, int argc, const ERL_NI
 
     if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
         return ret;
+    }
+
+    InterpreterInUse in_use(self_res);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
     }
 
     return tflite_status_to_erl_term(env, self_res->val->AllocateTensors());
@@ -806,6 +883,11 @@ ERL_NIF_TERM interpreter_invoke(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
 
     if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
         return ret;
+    }
+
+    InterpreterInUse in_use(self_res);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
     }
 
     return tflite_status_to_erl_term(env, self_res->val->Invoke());

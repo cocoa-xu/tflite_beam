@@ -153,6 +153,8 @@ static ErlNifFunc nif_functions[] = {
 #endif
 
     F(interpreter_new, 0),
+    F(interpreter_controlling_process, 1),
+    F(interpreter_set_controlling_process, 2),
     F(interpreter_set_inputs, 2),
     F(interpreter_set_outputs, 2),
     F(interpreter_enable_cancellation, 1),

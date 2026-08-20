@@ -213,8 +213,28 @@ NifResInterpreter * NifResInterpreter::allocate_resource(ErlNifEnv * env, ERL_NI
     res->edgetpu_context = nullptr;
     res->tensors = new std::map<int, NifResTfLiteTensor *>;
     res->delegates = new std::vector<NifResDelegate *>;
+    res->in_use = enif_mutex_create((char *)"tflite_beam_interpreter");
+    res->is_controlled = false;
 
     return res;
+}
+
+// Whether the calling process is allowed near this interpreter at all. An
+// interpreter nobody has claimed is open to everyone, which is how they have
+// always behaved and what keeps this opt-in.
+bool caller_may_use(ErlNifEnv * env, NifResInterpreter * res) {
+    if (res == nullptr || !res->is_controlled) return true;
+
+    ErlNifPid caller;
+    if (enif_self(env, &caller) == nullptr) return false;
+    if (enif_compare_pids(&caller, &res->controlling_process) == 0) return true;
+
+    // a controlling process that has died leaves the interpreter to whoever
+    // wants it: there is no equivalent here of closing a socket
+    if (enif_is_process_alive(env, &res->controlling_process)) return false;
+
+    res->is_controlled = false;
+    return true;
 }
 
 NifResInterpreter * NifResInterpreter::get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error) {
@@ -223,6 +243,14 @@ NifResInterpreter * NifResInterpreter::get_resource(ErlNifEnv * env, ERL_NIF_TER
         error = erlang::nif::error(env, "cannot access NifResInterpreter resource");
         return nullptr;
     }
+
+    // one check for all thirty-three call sites, rather than thirty-three
+    // chances to forget one
+    if (!caller_may_use(env, self_res)) {
+        error = erlang::nif::error(env, "interpreter belongs to another process");
+        return nullptr;
+    }
+
     return self_res;
 }
 
@@ -263,6 +291,11 @@ void NifResInterpreter::destruct_resource(ErlNifEnv *env, void *args) {
             res->edgetpu_context = nullptr;
         }
 
+        if (res->in_use) {
+            enif_mutex_destroy(res->in_use);
+            res->in_use = nullptr;
+        }
+
         // after the interpreter itself: a delegate has to outlive the graph it
         // was applied to
         if (res->delegates) {
@@ -294,6 +327,14 @@ NifResSignatureRunner * NifResSignatureRunner::get_resource(ErlNifEnv * env, ERL
         error = erlang::nif::error(env, "cannot access NifResSignatureRunner resource");
         return nullptr;
     }
+
+    // a runner is a view onto its interpreter and runs on its subgraph, so it
+    // answers to whichever process controls that interpreter
+    if (!caller_may_use(env, self_res->interpreter)) {
+        error = erlang::nif::error(env, "interpreter belongs to another process");
+        return nullptr;
+    }
+
     return self_res;
 }
 

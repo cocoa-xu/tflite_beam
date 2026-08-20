@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+### Added
+- `tflite_beam_interpreter_server`, an interpreter that lives inside a process so that
+  feeding it, running it and reading the result back is one step nothing can
+  interleave with. Concurrent callers are serialised by the process and each gets the
+  answer to its own input.
+
+  The direct API mirrors TfLite's C API faithfully, and that is the problem it is
+  answering: nothing in the C API says those three calls have to be treated as one
+  operation. Two processes taking turns badly get each other's results -- measured on
+  a real model, 147 wrong answers in 400 calls, silently and without a crash. The
+  direct API is unchanged for callers who would rather serialise access themselves.
+- `tflite_beam_interpreter:controlling_process/1,2`, following
+  `gen_tcp:controlling_process/2`: while an interpreter belongs to nobody any process
+  may take it, and once it belongs to someone only that process may hand it on. Every
+  other process is then refused. A controlling process that dies releases it, since an
+  interpreter has no equivalent of a socket being closed. Interpreters start out
+  belonging to nobody, which is how they have always behaved.
+
+### Changed
+- Calls into one interpreter that genuinely overlap in time are now refused instead of
+  being allowed to race. Two processes sharing an interpreter used to reach TfLite on
+  two OS threads at once with nothing in the way; the second one is now told. This is
+  the only change here that alters existing behaviour, and only for code that was
+  already racing.
+
 ### Security
 - Precompiled tarballs are checked against a sha256 manifest before being unpacked.
   They were written to disk and extracted unverified, while every comparable BEAM
