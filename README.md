@@ -177,6 +177,22 @@ rebar3 ct
 The model fixtures live in `test/models/`, so the suite needs no network and runs
 against a precompiled install as well as a build from source.
 
+## Releasing
+
+The precompiled tarballs only exist once the `v*` tag has been pushed and the
+precompile matrix has finished, and the manifest that verifies them has to be
+inside the published package -- so it is generated in between:
+
+```shell
+git tag -a vX.Y.Z -m "vX.Y.Z" && git push origin vX.Y.Z   # matrix builds the 7 targets
+scripts/generate_checksums.sh X.Y.Z                        # writes checksum.term
+git add checksum.term && git commit && git push
+rebar3 hex publish
+```
+
+Skipping the middle step publishes a package that cannot check what it downloads,
+which it will say out loud on install rather than doing quietly.
+
 ## Upstream Dependencies
 
 - [cocoa-xu/libedgetpu](https://github.com/cocoa-xu/libedgetpu)

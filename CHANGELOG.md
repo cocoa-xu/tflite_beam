@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Security
+- Precompiled tarballs are checked against a sha256 manifest before being unpacked.
+  They were written to disk and extracted unverified, while every comparable BEAM
+  package -- evision, xla, emlx -- verifies. The manifest, `checksum.term`, ships
+  inside the package, because a checksum fetched alongside the thing it vouches for
+  vouches for nothing.
+
+  A tarball that does not match is deleted and the build fails, rather than being
+  left in the cache to fail identically forever. The cached path is checked too: a
+  tarball that was already on disk has no more claim to being the right one than a
+  freshly fetched one. A checkout with no manifest -- a git tag, whose tarballs are
+  built after it exists -- says so loudly and carries on, since the manifest is the
+  trust root rather than something to fetch.
+
 ## v0.4.0-rc3 (2026-08-19)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.4.0-rc3) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.4.0-rc3)
 
