@@ -17,8 +17,7 @@
     live_interpreter_still_accessible/1,
     build_twice_invalidates_tensors/1,
     build_twice_yields_working_tensors/1,
-    failed_build_after_tensor_fetch/1,
-    tensor_handle_does_not_outlive_its_interpreter/1
+    failed_build_after_tensor_fetch/1
 ]).
 
 -define(FILLED(V), binary:copy(<<V:32/float-native>>, 1 * 8 * 8 * 3)).
@@ -31,8 +30,7 @@ all() ->
         live_interpreter_still_accessible,
         build_twice_invalidates_tensors,
         build_twice_yields_working_tensors,
-        failed_build_after_tensor_fetch,
-        tensor_handle_does_not_outlive_its_interpreter
+        failed_build_after_tensor_fetch
     ].
 
 %% 0_subgraphs.bin loads as a model and then fails to build, which is the whole
@@ -117,29 +115,3 @@ failed_build_after_tensor_fetch(_Config) ->
     ?assertMatch({error, _}, tflite_beam_tensor:to_binary(Tensor)),
     ?assertMatch({error, _}, tflite_beam_interpreter:nodes_size(Interpreter)).
 
-%% The same guard reached by the other route: nothing keeps an interpreter alive
-%% on a tensor handle's behalf -- the cache points the other way -- so a handle
-%% whose interpreter has been collected has to say so rather than read the memory
-%% it used to point at.
-tensor_handle_does_not_outlive_its_interpreter(_Config) ->
-    {error, Reason} = read_until_dropped(orphaned_tensor(), 50),
-    ?assertNotEqual(nomatch, binary:match(Reason, <<"has been dropped">>)).
-
-orphaned_tensor() ->
-    Interpreter = tflite_beam_test_models:interpreter("multi_add.bin"),
-    tflite_beam_interpreter:tensor(Interpreter, 0).
-
-%% Collection is not synchronous with the last reference going away, so the read
-%% is retried rather than assumed. Reading early is safe: the interpreter is
-%% still there until it is not.
-read_until_dropped(_Tensor, 0) ->
-    {error, <<"still readable after 50 collections">>};
-read_until_dropped(Tensor, Attempts) ->
-    erlang:garbage_collect(),
-    case tflite_beam_tensor:to_binary(Tensor) of
-        {error, Reason} ->
-            {error, Reason};
-        Binary when is_binary(Binary) ->
-            timer:sleep(20),
-            read_until_dropped(Tensor, Attempts - 1)
-    end.

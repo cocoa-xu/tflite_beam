@@ -153,21 +153,22 @@ struct NifResInterpreter {
     // kept alive the same way; an Edge TPU interpreter delegates to this context.
     // nullptr for interpreters that do not run on a TPU
     NifResEdgeTpuContext * edgetpu_context;
-    // Owning. interpreter_tensor hands the reference from allocate_resource to
-    // this map, and release_tensors gives it back. A handle therefore lives as
-    // long as the cache does, whatever Erlang is still holding.
-    std::map<int, NifResTfLiteTensor *> * tensors;
-    // Non-owning, which is the opposite of the map above and deliberately so.
-    // Runners are created and handed straight to Erlang, so taking a reference
-    // here would keep every runner ever asked for alive until the interpreter
-    // went away. Each removes itself in its destructor. Both containers exist
-    // for the same reason, to reach the borrowers when the interpreter is
-    // replaced, and they get there by opposite routes.
+    // Both registries are non-owning, and both exist for one reason: to reach
+    // the handles that borrow from this interpreter when what they borrow stops
+    // being theirs. A tensor holds a TfLiteTensor * out of the arena, a runner
+    // holds a SignatureRunner *, and neither pointer survives an AllocateTensors,
+    // a reshape, or a rebuild.
+    //
+    // Non-owning both ways round, because the borrower is what keeps this
+    // interpreter alive, not the other way about. Taking a reference here as
+    // well would close the loop and neither end would ever be collected.
+    std::vector<NifResTfLiteTensor *> * tensors;
     std::vector<NifResSignatureRunner *> * signature_runners;
-    // Guards signature_runners alone, not the interpreter. Insertion happens on a
-    // normal scheduler, removal in a destructor that can run on any thread, and
-    // the clear on a dirty one, so the vector needs its own lock even where the
-    // caller already holds in_use.
+    // One lock each, guarding the registry alone and not the interpreter.
+    // Insertion happens on a normal scheduler, removal in a destructor that can
+    // run on any thread, and the clear on a dirty one, so they need their own
+    // locks even where the caller already holds in_use.
+    ErlNifMutex * tensors_lock;
     ErlNifMutex * signature_runners_lock;
     // the delegates behind this interpreter's graph, kept alive for its lifetime
     std::vector<NifResDelegate *> * delegates;
@@ -243,6 +244,16 @@ struct NifResSignatureRunner {
 struct NifResTfLiteTensor {
     TfLiteTensor * val;
     std::atomic_bool borrowed;
+    // kept alive with enif_keep_resource. val points into the interpreter's
+    // arena, so a handle that outlives its interpreter is a handle into freed
+    // memory, and Erlang gives no warning before that happens: the compiler
+    // stops counting a variable as live at its last mention, so an interpreter
+    // fetched from, then never named again, is collectable while the tensor
+    // taken out of it is still in use.
+    NifResInterpreter * interpreter;
+    // and keeping the interpreter alive is not enough on its own, because
+    // AllocateTensors and a reshape both move the arena out from under val
+    // while the interpreter itself stays exactly where it was
     std::atomic_bool interpreter_has_gone;
 
     static ErlNifResourceType * type;

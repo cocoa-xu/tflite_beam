@@ -16,6 +16,8 @@
     tensor_handle_retired_by_allocate/1,
     tensor_handle_retired_by_resize/1,
     tensor_handle_usable_before_retirement/1,
+    tensor_handle_keeps_its_interpreter_alive/1,
+    tensor_registry_does_not_grow/1,
     signature_runner_retired_by_rebuild/1,
     signature_runner_usable_before_rebuild/1,
     signature_runner_registry_does_not_grow/1,
@@ -35,6 +37,8 @@ all() ->
         tensor_handle_retired_by_allocate,
         tensor_handle_retired_by_resize,
         tensor_handle_usable_before_retirement,
+        tensor_handle_keeps_its_interpreter_alive,
+        tensor_registry_does_not_grow,
         signature_runner_retired_by_rebuild,
         signature_runner_usable_before_rebuild,
         signature_runner_registry_does_not_grow,
@@ -93,6 +97,46 @@ tensor_handle_usable_before_retirement(_Config) ->
     Bytes = 2 * 2 * 3 * 4,
     ok = tflite_beam_tensor:set_data(Tensor, binary:copy(<<7>>, Bytes)),
     ?assertEqual(binary:copy(<<7>>, Bytes), tflite_beam_tensor:to_binary(Tensor)).
+
+%% A handle borrows a pointer into its interpreter's arena, so it has to keep
+%% that interpreter alive. Nothing in Erlang says when it stops doing so on its
+%% own: the compiler stops counting a variable as live at its last mention, so an
+%% interpreter someone fetched a tensor from and then never named again is
+%% collectable while the tensor taken out of it is still in use. Reading through
+%% the handle then reads a freed arena. It took a dirty scheduler to make this
+%% show up reliably, because the hop onto one is where the collection fits.
+tensor_handle_keeps_its_interpreter_alive(_Config) ->
+    Tensor = fetch_and_forget("add.bin"),
+    erlang:garbage_collect(),
+    timer:sleep(50),
+    erlang:garbage_collect(),
+    ?assert(is_binary(tflite_beam_tensor:to_binary(Tensor))).
+
+%% The interpreter is named for the last time inside here, which is the whole
+%% point: on return there is no reference to it left anywhere except the one the
+%% handle is supposed to be holding.
+fetch_and_forget(Name) ->
+    Interpreter = tflite_beam_test_models:interpreter(Name),
+    {ok, [Index | _]} = tflite_beam_interpreter:inputs(Interpreter),
+    tflite_beam_interpreter:tensor(Interpreter, Index).
+
+%% The registry that makes retirement possible must not hold the handles it
+%% tracks, for the same reason the runner one must not: a handle that keeps its
+%% interpreter alive and an interpreter that keeps its handles alive is a loop
+%% neither end escapes. Like the runner case this guards the fix rather than the
+%% defect, and cannot fail against a build that has no registry.
+tensor_registry_does_not_grow(_Config) ->
+    {Interpreter, Index} = ready("add.bin"),
+    Fetch = fun(N) ->
+        [tflite_beam_interpreter:tensor(Interpreter, Index) || _ <- lists:seq(1, N)],
+        erlang:garbage_collect(),
+        erlang:memory(binary) + erlang:memory(system)
+    end,
+    _Warmup = Fetch(2000),
+    Before = Fetch(2000),
+    After = Fetch(20000),
+    ?assert(After - Before < 1024 * 1024,
+            lists:flatten(io_lib:format("registry grew by ~p bytes", [After - Before]))).
 
 %% Building into an interpreter destroys the one a runner borrows from. The
 %% runner resource survives, so nothing tells it, and it used to read freed

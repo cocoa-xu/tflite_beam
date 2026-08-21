@@ -234,6 +234,7 @@ NifResInterpreter * NifResInterpreter::allocate_resource(ErlNifEnv * env, ERL_NI
     res->edgetpu_context = nullptr;
     res->tensors = nullptr;
     res->signature_runners = nullptr;
+    res->tensors_lock = nullptr;
     res->signature_runners_lock = nullptr;
     res->delegates = nullptr;
     res->in_use = nullptr;
@@ -245,7 +246,7 @@ NifResInterpreter * NifResInterpreter::allocate_resource(ErlNifEnv * env, ERL_NI
     // collision. Better to fail the allocation and say so.
     try {
         erlang::nif::fault_point(erlang::nif::kFaultInterpreterContainers);
-        res->tensors = new std::map<int, NifResTfLiteTensor *>;
+        res->tensors = new std::vector<NifResTfLiteTensor *>;
         res->signature_runners = new std::vector<NifResSignatureRunner *>;
         res->delegates = new std::vector<NifResDelegate *>;
     } catch (const std::bad_alloc &) {
@@ -254,9 +255,10 @@ NifResInterpreter * NifResInterpreter::allocate_resource(ErlNifEnv * env, ERL_NI
         return nullptr;
     }
 
+    res->tensors_lock = enif_mutex_create((char *)"tflite_beam_tensors");
     res->signature_runners_lock = enif_mutex_create((char *)"tflite_beam_signature_runners");
     res->in_use = enif_mutex_create((char *)"tflite_beam_interpreter");
-    if (res->signature_runners_lock == nullptr || res->in_use == nullptr) {
+    if (res->tensors_lock == nullptr || res->signature_runners_lock == nullptr || res->in_use == nullptr) {
         enif_release_resource(res);
         error = erlang::nif::error(env, "cannot allocate NifResInterpreter resource");
         return nullptr;
@@ -303,11 +305,13 @@ NifResInterpreter * NifResInterpreter::get_resource(ErlNifEnv * env, ERL_NIF_TER
 void NifResInterpreter::release_tensors(NifResInterpreter * res) {
     if (res == nullptr || res->tensors == nullptr) return;
 
-    for (auto tensor_res_pair : *res->tensors) {
-        auto tensor_res = tensor_res_pair.second;
+    // Flag only: the registry never took a reference, so there is none to give
+    // back. Whoever holds the handle in Erlang still holds it, and now finds out
+    // that what it borrows from has moved.
+    MutexLock registry(res->tensors_lock);
+    for (auto tensor_res : *res->tensors) {
         if (tensor_res) {
             tensor_res->interpreter_has_gone = true;
-            enif_release_resource(tensor_res);
         }
     }
     res->tensors->clear();
@@ -342,6 +346,11 @@ void NifResInterpreter::destruct_resource(ErlNifEnv *env, void *args) {
             delete res->signature_runners;
             res->signature_runners = nullptr;
         }
+        if (res->tensors_lock) {
+            enif_mutex_destroy(res->tensors_lock);
+            res->tensors_lock = nullptr;
+        }
+
         if (res->signature_runners_lock) {
             enif_mutex_destroy(res->signature_runners_lock);
             res->signature_runners_lock = nullptr;
@@ -452,6 +461,7 @@ NifResTfLiteTensor * NifResTfLiteTensor::allocate_resource(ErlNifEnv * env, ERL_
 
     res->val = nullptr;
     res->borrowed = false;
+    res->interpreter = nullptr;
     res->interpreter_has_gone = false;
 
     return res;
@@ -478,8 +488,28 @@ void NifResTfLiteTensor::destruct_resource(ErlNifEnv *env, void *args) {
         if (res->val) {
             if (!res->borrowed) {
                 delete res->val;
-                res->val = nullptr;
             }
+            res->val = nullptr;
+        }
+
+        // Out of the registry before the interpreter reference goes, or the
+        // registry would be left holding an address that has just been freed.
+        // This runs on whichever thread dropped the last reference, so it takes
+        // the registry lock like every other writer.
+        if (res->interpreter && res->interpreter->tensors) {
+            MutexLock registry(res->interpreter->tensors_lock);
+            auto & list = *res->interpreter->tensors;
+            for (auto it = list.begin(); it != list.end(); ++it) {
+                if (*it == res) {
+                    list.erase(it);
+                    break;
+                }
+            }
+        }
+
+        if (res->interpreter) {
+            enif_release_resource(res->interpreter);
+            res->interpreter = nullptr;
         }
     }
 }

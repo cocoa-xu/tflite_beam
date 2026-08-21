@@ -640,22 +640,13 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
     }
 
     NifResTfLiteTensor * tensor_res = nullptr;
-    auto cached_tensor_res = self_res->tensors->find(index);
-    bool freshly_allocated = cached_tensor_res == self_res->tensors->end();
-    if (!freshly_allocated) {
-        tensor_res = cached_tensor_res->second;
-    } else {
-        if (!(tensor_res = NifResTfLiteTensor::allocate_resource(env, ret))) {
-            return ret;
-        }
-
-        tensor_res->val = self_res->val->tensor(index);
-        tensor_res->borrowed = true;
+    if (!(tensor_res = NifResTfLiteTensor::allocate_resource(env, ret))) {
+        return ret;
     }
+    ResourceRef<NifResTfLiteTensor> hold(tensor_res);
 
-    // Only what allocate_resource gave us. A cached one belongs to the map and
-    // is not ours to hand back.
-    ResourceRef<NifResTfLiteTensor> hold(freshly_allocated ? tensor_res : nullptr);
+    tensor_res->val = self_res->val->tensor(index);
+    tensor_res->borrowed = true;
 
     ERL_NIF_TERM tensor_type;
     if (!_tflitetensor_type(env, tensor_res->val, tensor_type)) {
@@ -687,14 +678,22 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
         return erlang::nif::error(env, "cannot allocate memory for tensor sparsity params");
     }
 
-    ERL_NIF_TERM tensor_reference = enif_make_resource(env, tensor_res);
+    // The handle is what keeps the interpreter alive. Erlang stops counting a
+    // variable as live at its last mention, so an interpreter that a caller
+    // fetched a tensor from and then never named again is collectable, and
+    // without this the tensor would be left pointing into a freed arena.
+    tensor_res->interpreter = self_res;
+    enif_keep_resource(self_res);
 
-    if (freshly_allocated) {
-        // the cache takes over the reference from allocate_resource; the interpreter
-        // releases it when it tears the cache down
-        (*self_res->tensors)[index] = tensor_res;
-        hold.release();
+    // Registered so that allocate_tensors, a reshape, or a rebuild can retire
+    // this handle. The registry holds a bare pointer and takes no reference; the
+    // handle removes itself in its destructor.
+    if (self_res->tensors) {
+        MutexLock registry(self_res->tensors_lock);
+        self_res->tensors->push_back(tensor_res);
     }
+
+    ERL_NIF_TERM tensor_reference = enif_make_resource(env, tensor_res);
 
     return erlang::nif::ok(env, enif_make_tuple8(
         env,
