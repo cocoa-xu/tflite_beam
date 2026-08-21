@@ -108,8 +108,8 @@ bool _fb_var_to_erl(ErlNifEnv *env, const flatbuffers::Vector<flatbuffers::Offse
         auto fb_var = fb_vars->Get(i);
         if (fb_var) {
             if (!_fb_var_to_erl(env, fb_var, erl_terms[valid])) {
-                enif_free(erl_terms);
                 out = erl_terms[valid];
+                enif_free(erl_terms);
                 return false;
             }
             valid++;
@@ -143,8 +143,8 @@ bool _fb_var_to_erl(ErlNifEnv *env, const flatbuffers::Vector<flatbuffers::Offse
                 _tflite_metadata_set_key_value(associated_file_, "description", associated_file->description());
                 _tflite_metadata_set_key_value(associated_file_, "locale", associated_file->locale());
                 _tflite_metadata_set_key_value(associated_file_, "version", associated_file->version());
+                associated_file_["type"] = EnumNameAssociatedFileType(associated_file->type());
             }
-            associated_file_["type"] = EnumNameAssociatedFileType(associated_file->type());
             associated_files_.emplace_back(associated_file_);
         }
     }

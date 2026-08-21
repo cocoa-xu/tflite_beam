@@ -691,6 +691,9 @@ ERL_NIF_TERM interpreter_input_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TE
     }
 
     auto input_tensor = self_res->val->input_tensor(index);
+    if (input_tensor == nullptr) {
+        return erlang::nif::error(env, "cannot get the input tensor at the given index");
+    }
     if (input_tensor->data.data == nullptr) {
         return erlang::nif::error(env, "tensor is not allocated yet? Please call TFLiteBEAM.Interpreter.allocate_tensors first");
     }
@@ -731,6 +734,13 @@ ERL_NIF_TERM interpreter_output_tensor(ErlNifEnv *env, int argc, const ERL_NIF_T
     }
 
     auto t = self_res->val->output_tensor(index);
+    if (t == nullptr) {
+        return erlang::nif::error(env, "cannot get the output tensor at the given index");
+    }
+    if (t->data.data == nullptr) {
+        return erlang::nif::error(env, "tensor is not allocated yet? Please call TFLiteBEAM.Interpreter.allocate_tensors first");
+    }
+
     ErlNifBinary tensor_data;
     size_t tensor_size = t->bytes;
     if (!enif_alloc_binary(tensor_size, &tensor_data)) {
@@ -806,7 +816,7 @@ ERL_NIF_TERM interpreter_get_signature_defs(ErlNifEnv *env, int argc, const ERL_
             return erlang::nif::error(env, "out of memory");
         }
         ERL_NIF_TERM * inputs_vals = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * inputs_items);
-        if (inputs_keys == nullptr) {
+        if (inputs_vals == nullptr) {
             enif_free(keys);
             enif_free(vals);
             enif_free(inputs_keys);
@@ -831,7 +841,7 @@ ERL_NIF_TERM interpreter_get_signature_defs(ErlNifEnv *env, int argc, const ERL_
         enif_free(inputs_keys);
         enif_free(inputs_vals);
 
-        size_t outputs_items = signature_def_inputs.size();
+        size_t outputs_items = signature_def_outputs.size();
         ERL_NIF_TERM * outputs_keys = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * outputs_items);
         if (outputs_keys == nullptr) {
             enif_free(keys);
@@ -839,7 +849,7 @@ ERL_NIF_TERM interpreter_get_signature_defs(ErlNifEnv *env, int argc, const ERL_
             return erlang::nif::error(env, "out of memory");
         }
         ERL_NIF_TERM * outputs_vals = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * outputs_items);
-        if (outputs_keys == nullptr) {
+        if (outputs_vals == nullptr) {
             enif_free(keys);
             enif_free(vals);
             enif_free(outputs_keys);

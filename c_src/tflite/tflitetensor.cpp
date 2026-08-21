@@ -258,6 +258,10 @@ ERL_NIF_TERM tflitetensor_to_binary(ErlNifEnv *env, int argc, const ERL_NIF_TERM
         return erlang::nif::error(env, "cannot allocate enough memory for the tensor");
     }
 
+    if (self_res->val->data.data == nullptr) {
+        enif_release_binary(&tensor_data);
+        return erlang::nif::error(env, "tensor is not allocated yet? Please call allocate_tensors first");
+    }
     memcpy(tensor_data.data, self_res->val->data.data, bytes_to_return);
     return erlang::nif::ok(env, enif_make_binary(env, &tensor_data));
 }

@@ -52,6 +52,7 @@ ERL_NIF_TERM coral_edgetpu_devices(ErlNifEnv *env, int argc, const ERL_NIF_TERM 
     struct edgetpu_device * edgetpu_devices = edgetpu_list_devices(&num_devices);
 
     if (num_devices == 0) {
+        edgetpu_free_devices(edgetpu_devices);
         return enif_make_list(env, 0, nullptr);
     }
 
@@ -61,34 +62,28 @@ ERL_NIF_TERM coral_edgetpu_devices(ErlNifEnv *env, int argc, const ERL_NIF_TERM 
         return erlang::nif::error(env, "enif_alloc failed");
     }
 
-    char * device_name = (char *)enif_alloc(sizeof(char) * EDGETPU_DEVICE_NAME_BUFFER_SIZE);
-    if (!device_name) {
-        edgetpu_free_devices(edgetpu_devices);
-        enif_free(arr);
-        return erlang::nif::error(env, "enif_alloc failed");
-    }
-
+    // Copied straight out of device.path. The scratch buffer this used to go
+    // through was sized EDGETPU_DEVICE_NAME_BUFFER_SIZE while the length came
+    // from snprintf, which reports what it would have written rather than what
+    // it did, so a longer path read off the end of the buffer.
     for (size_t i = 0; i < num_devices; ++i) {
-        memset(device_name, 0, EDGETPU_DEVICE_NAME_BUFFER_SIZE);
         const struct edgetpu_device& device = edgetpu_devices[i];
+        const char * path = device.path ? device.path : "";
+        size_t len = strlen(path);
 
-        int len = snprintf(device_name, EDGETPU_DEVICE_NAME_BUFFER_SIZE, "%s", device.path);
-        void * device_name_buf = nullptr;
-        
-        if (!(device_name_buf = enif_make_new_binary(env, len, &arr[i]))) {
+        unsigned char * device_name_buf = enif_make_new_binary(env, len, &arr[i]);
+        if (device_name_buf == nullptr) {
             edgetpu_free_devices(edgetpu_devices);
             enif_free(arr);
-            enif_free(device_name);
             return erlang::nif::error(env, "out of memory");
         }
 
-        memcpy((char *)device_name_buf, device_name, len);
+        memcpy(device_name_buf, path, len);
     }
 
     ERL_NIF_TERM devices = enif_make_list_from_array(env, arr, (unsigned)num_devices);
     edgetpu_free_devices(edgetpu_devices);
     enif_free(arr);
-    enif_free(device_name);
     return devices;
 }
 
