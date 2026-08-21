@@ -135,6 +135,8 @@ ERL_NIF_TERM interpreter_resize_input_tensor(ErlNifEnv *env, int argc, const ERL
     }
 
     TfLiteStatus status = self_res->val->ResizeInputTensor(tensor_index, dims);
+    // Retires outstanding tensor handles; see interpreter_allocate_tensors.
+    NifResInterpreter::release_tensors(self_res);
     return tflite_status_to_erl_term(env, status);
 }
 
@@ -162,6 +164,8 @@ ERL_NIF_TERM interpreter_resize_input_tensor_strict(ErlNifEnv *env, int argc, co
     }
 
     TfLiteStatus status = self_res->val->ResizeInputTensorStrict(tensor_index, dims);
+    // Retires outstanding tensor handles; see interpreter_allocate_tensors.
+    NifResInterpreter::release_tensors(self_res);
     return tflite_status_to_erl_term(env, status);
 }
 
@@ -767,7 +771,13 @@ ERL_NIF_TERM interpreter_allocate_tensors(ErlNifEnv *env, int argc, const ERL_NI
         return erlang::nif::error(env, "interpreter is already in use by another process");
     }
 
-    return tflite_status_to_erl_term(env, self_res->val->AllocateTensors());
+    TfLiteStatus status = self_res->val->AllocateTensors();
+    // Any TfLiteTensor a caller is already holding points into storage this
+    // call can move, so retire those handles here. release_tensors flags them
+    // so a later use reports the interpreter changed underneath rather than
+    // reading or writing the old address, which is what get_resource checks.
+    NifResInterpreter::release_tensors(self_res);
+    return tflite_status_to_erl_term(env, status);
 }
 
 ERL_NIF_TERM interpreter_get_signature_defs(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
