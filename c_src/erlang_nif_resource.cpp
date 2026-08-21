@@ -490,7 +490,6 @@ NifResTfLiteTensor * NifResTfLiteTensor::allocate_resource(ErlNifEnv * env, ERL_
     }
 
     res->val = nullptr;
-    res->borrowed = false;
     res->interpreter = nullptr;
     res->index = -1;
     res->interpreter_has_gone = false;
@@ -516,12 +515,11 @@ NifResTfLiteTensor * NifResTfLiteTensor::get_resource(ErlNifEnv * env, ERL_NIF_T
 void NifResTfLiteTensor::destruct_resource(ErlNifEnv *env, void *args) {
     auto res = (NifResTfLiteTensor *)args;
     if (res) {
-        if (res->val) {
-            if (!res->borrowed) {
-                delete res->val;
-            }
-            res->val = nullptr;
-        }
+        // The pointer is dropped and never deleted: it belongs to the
+        // interpreter's arena. There used to be a flag here saying so, set false
+        // at allocation and true at the one site that allocates, which left a
+        // delete of an arena pointer sitting on a branch nothing could reach.
+        res->val = nullptr;
 
         // Out of the registry before the interpreter reference goes, or the
         // registry would be left holding an address that has just been freed.

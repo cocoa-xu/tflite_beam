@@ -617,7 +617,6 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
     ResourceRef<NifResTfLiteTensor> hold(tensor_res);
 
     tensor_res->val = self_res->val->tensor(index);
-    tensor_res->borrowed = true;
     tensor_res->index = index;
 
     ERL_NIF_TERM tensor_type;

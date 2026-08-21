@@ -308,8 +308,9 @@ struct NifResSignatureRunner {
 };
 
 struct NifResTfLiteTensor {
+    // Borrowed, always. The interpreter owns every TfLiteTensor this can point
+    // at, and interpreter_tensor is the only place one of these is made.
     TfLiteTensor * val;
-    std::atomic_bool borrowed;
     // kept alive with enif_keep_resource. val points into the interpreter's
     // arena, so a handle that outlives its interpreter is a handle into freed
     // memory, and Erlang gives no warning before that happens: the compiler
