@@ -32,8 +32,8 @@ jobs:
     env:
       TFLITE_BEAM_CORAL_SUPPORT: "true"
       TFLITE_BEAM_PREFER_PRECOMPILED: "false"
-      # so the external-delegate tests have a plugin to load
-      CMAKE_OPTIONS: "-D TFLITE_BEAM_BUILD_TEST_PLUGIN=ON"
+      # the plugin is so the external-delegate tests have something to load
+      CMAKE_OPTIONS: "-D TFLITE_BEAM_BUILD_TEST_PLUGIN=ON -D CMAKE_C_COMPILER_LAUNCHER=ccache -D CMAKE_CXX_COMPILER_LAUNCHER=ccache"
       OTP_VERSION: "26.2.1"
       ELIXIR_VERSION: "1.16.3"
 
@@ -56,6 +56,38 @@ jobs:
         with:
           cmake-version: '3.22.x'
 
+
+      # See the note in linux-x86_64.yml: ccache is content-addressed, and
+      # GitHub keeps caches from reaching sibling branches.
+      - name: Install and restore ccache
+        run: brew install ccache
+
+      - name: Restore ccache
+        id: ccache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{ runner.os }}-${{ hashFiles('Makefile') }}-${{ github.run_id }}
+          restore-keys: |
+            ccache-${{ runner.os }}-${{ hashFiles('Makefile') }}-
+            ccache-${{ runner.os }}-
+
+      - name: Configure ccache
+        run: |
+          # Through the environment, not --set-config: that writes a config file
+          # under whichever directory ccache resolves at the time, and CCACHE_DIR
+          # set through GITHUB_ENV only reaches later steps -- so the settings
+          # landed in a file the build never read, and max_size stayed at its 5 GB
+          # default against a 10 GB per-repository budget.
+          #
+          # The directory is pinned rather than inherited too: ccache 3 defaulted
+          # to ~/.ccache and ccache 4 follows XDG into ~/.cache/ccache, and a cache
+          # step aimed at the wrong one saves an empty directory while reporting
+          # nothing wrong.
+          echo "CCACHE_DIR=$HOME/.cache/ccache" >> $GITHUB_ENV
+          echo "CCACHE_MAXSIZE=300M" >> $GITHUB_ENV
+          ccache --zero-stats
+
       - name: Compile and Test
         run: |
           export OTP_MAIN_VER="${OTP_VERSION%%.*}"
@@ -68,3 +100,22 @@ jobs:
           rebar3 ct
           # armv6/armv7l build with XNNPACK off and nothing else covers that shape
           python3 scripts/check_preprocessor_combinations.py
+
+      - name: ccache statistics
+        if: always()
+        run: |
+          ccache --show-stats --verbose
+          # A restored cache that produces no hits means the path or the key is
+          # wrong, and the only symptom is a job that is quietly as slow as a
+          # cold one. Fail instead: it took reading the statistics by hand to
+          # notice the first time.
+          # cache-matched-key, not cache-hit: the key carries the run id so it can
+          # never match exactly, and cache-hit is false whenever restore-keys are
+          # what found the cache -- which is every run.
+          if [ -n "${{ steps.ccache.outputs.cache-matched-key }}" ]; then
+            hits=$(ccache --show-stats | awk '/^  Hits:/{print $2; exit}')
+            if [ "${hits:-0}" -eq 0 ]; then
+              echo "::error::a ccache cache was restored but nothing hit -- check CCACHE_DIR against the cached path"
+              exit 1
+            fi
+          fi

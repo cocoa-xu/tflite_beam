@@ -35,8 +35,8 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       TFLITE_BEAM_CORAL_SUPPORT: "true"
       TFLITE_BEAM_PREFER_PRECOMPILED: "false"
-      # so the external-delegate tests have a plugin to load
-      CMAKE_OPTIONS: "-D TFLITE_BEAM_BUILD_TEST_PLUGIN=ON"
+      # the plugin is so the external-delegate tests have something to load
+      CMAKE_OPTIONS: "-D TFLITE_BEAM_BUILD_TEST_PLUGIN=ON -D CMAKE_C_COMPILER_LAUNCHER=ccache -D CMAKE_CXX_COMPILER_LAUNCHER=ccache"
 
     steps:
       - name: Checkout
@@ -50,10 +50,44 @@ jobs:
       - name: Install system dependecies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential automake autoconf pkg-config bc m4 unzip zip curl git libssl-dev libncurses5-dev libtinfo5 ca-certificates
+          sudo apt-get install -y build-essential automake autoconf pkg-config bc m4 unzip zip curl git libssl-dev libncurses5-dev libtinfo5 ca-certificates ccache
 
           curl -fSL https://s3.amazonaws.com/rebar3/rebar3 -o rebar3 && chmod +x rebar3
           sudo mv rebar3 /usr/local/bin/rebar3
+
+
+      # Most of this job is compiling TensorFlow Lite, which changes only when
+      # TFLITE_VER does. ccache is content-addressed -- its own key is the
+      # preprocessed source plus the compiler and its flags -- so a restored
+      # cache can only hit on a translation unit that is byte-for-byte the same
+      # work. GitHub keeps caches from reaching sibling branches, and a branch
+      # can never write into the default branch's scope, so the only flow is
+      # main -> pull request, which is the one worth having.
+      - name: Restore ccache
+        id: ccache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{ runner.os }}-${{ hashFiles('Makefile') }}-${{ github.run_id }}
+          restore-keys: |
+            ccache-${{ runner.os }}-${{ hashFiles('Makefile') }}-
+            ccache-${{ runner.os }}-
+
+      - name: Configure ccache
+        run: |
+          # Through the environment, not --set-config: that writes a config file
+          # under whichever directory ccache resolves at the time, and CCACHE_DIR
+          # set through GITHUB_ENV only reaches later steps -- so the settings
+          # landed in a file the build never read, and max_size stayed at its 5 GB
+          # default against a 10 GB per-repository budget.
+          #
+          # The directory is pinned rather than inherited too: ccache 3 defaulted
+          # to ~/.ccache and ccache 4 follows XDG into ~/.cache/ccache, and a cache
+          # step aimed at the wrong one saves an empty directory while reporting
+          # nothing wrong.
+          echo "CCACHE_DIR=$HOME/.cache/ccache" >> $GITHUB_ENV
+          echo "CCACHE_MAXSIZE=300M" >> $GITHUB_ENV
+          ccache --zero-stats
 
       - name: Compile and Test
         run: |
@@ -62,3 +96,22 @@ jobs:
           rebar3 ct
           # armv6/armv7l build with XNNPACK off and nothing else covers that shape
           python3 scripts/check_preprocessor_combinations.py
+
+      - name: ccache statistics
+        if: always()
+        run: |
+          ccache --show-stats --verbose
+          # A restored cache that produces no hits means the path or the key is
+          # wrong, and the only symptom is a job that is quietly as slow as a
+          # cold one. Fail instead: it took reading the statistics by hand to
+          # notice the first time.
+          # cache-matched-key, not cache-hit: the key carries the run id so it can
+          # never match exactly, and cache-hit is false whenever restore-keys are
+          # what found the cache -- which is every run.
+          if [ -n "${{ steps.ccache.outputs.cache-matched-key }}" ]; then
+            hits=$(ccache --show-stats | awk '/^  Hits:/{print $2; exit}')
+            if [ "${hits:-0}" -eq 0 ]; then
+              echo "::error::a ccache cache was restored but nothing hit -- check CCACHE_DIR against the cached path"
+              exit 1
+            fi
+          fi
