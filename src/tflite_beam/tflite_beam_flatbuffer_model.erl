@@ -267,7 +267,7 @@ get_associated_file(Buffer, Filename) when is_binary(Buffer) and (is_binary(File
                                 end,
                                 Filename
                             ),
-                            map:from_list(MapItems);
+                            maps:from_list(MapItems);
                         false ->
                             case lists:member(Filename, AssociatedFiles) of
                                 true ->

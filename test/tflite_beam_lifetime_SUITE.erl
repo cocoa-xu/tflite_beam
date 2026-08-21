@@ -180,6 +180,17 @@ signature_runner_registry_does_not_grow(_Config) ->
 
 %% TFLite keeps the reporter pointer for the model's lifetime, so the resource
 %% behind it has to outlive the model regardless of what Erlang still holds.
+%%
+%% Neither of the next two can fail today, and it is worth saying why rather than
+%% leaving them looking stronger than they are. The only reporter this API can
+%% hand out is TFLite's default, which is a function-local static that the
+%% destructor declines to delete, so a premature release of the resource would
+%% not free anything and initialized/1 does not read through the pointer anyway.
+%% What they do establish is the shape the fix has to keep: a model built with a
+%% reporter stays usable after every Erlang handle to that reporter is gone, and
+%% one reporter may back two models. The day a custom reporter can be
+%% constructed, these become real, and they are here so that day does not have
+%% to remember to add them.
 model_outlives_its_error_reporter_handle(_Config) ->
     Reporter = tflite_beam_error_reporter:default_error_reporter(),
     Model = tflite_beam_flatbuffer_model:build_from_file(

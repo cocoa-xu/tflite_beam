@@ -12,6 +12,7 @@
     model_from_buffer/1,
     model_from_missing_file/1,
     model_from_invalid_buffer/1,
+    associated_files_one_and_many/1,
     interpreter_from_builder/1,
     interpreter_tensor_metadata/1,
     tensor_accessors_take_the_record/1,
@@ -32,6 +33,7 @@ all() ->
         model_from_buffer,
         model_from_missing_file,
         model_from_invalid_buffer,
+        associated_files_one_and_many,
         interpreter_from_builder,
         interpreter_tensor_metadata,
         tensor_accessors_take_the_record,
@@ -195,3 +197,16 @@ quantized_model_is_not_delegated(_Config) ->
 
 xnnpack_compiled_in() ->
     lists:member(xnnpack, tflite_beam_delegate:available()).
+
+%% get_associated_file/2 takes one filename or a list of them, and the list
+%% branch called map:from_list. The module is maps, so every caller that passed a
+%% list got undef, which is presumably why only the single-file branch had ever
+%% been used. The model is only ever opened as a zip here, so a zip is all the
+%% fixture needs to be.
+associated_files_one_and_many(_Config) ->
+    Labels = <<"robin\nparrot\n">>,
+    {ok, {_Name, Zip}} = zip:create("model.zip", [{"labels.txt", Labels}], [memory]),
+    ?assertEqual([<<"labels.txt">>], tflite_beam_flatbuffer_model:list_associated_files(Zip)),
+    ?assertEqual(Labels, tflite_beam_flatbuffer_model:get_associated_file(Zip, <<"labels.txt">>)),
+    ?assertEqual(#{<<"labels.txt">> => Labels},
+                 tflite_beam_flatbuffer_model:get_associated_file(Zip, [<<"labels.txt">>])).
