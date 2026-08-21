@@ -10,17 +10,17 @@
 
 // A NIF runs inside the emulator, so an exception that escapes one reaches
 // std::terminate and takes the whole VM down with it. Erlang's own words for
-// this are that "a crash in a NIF brings the emulator down too".
+// this are that "a crash in a NIF brings the emulator down too". This turns a
+// failed allocation into the same {error, Reason} the hand-written enif_alloc
+// checks already return, rather than into a dead node.
 //
-// The only exception this library can produce is std::bad_alloc: the TFLite and
-// flatbuffers headers it links against have no throw on any path it calls, and
-// nothing here parses numbers or indexes containers in a way that could raise
-// something else. So this turns a failed allocation into the same
-// {error, Reason} the hand-written enif_alloc checks already return, rather
-// than into a dead node.
-//
-// Wrap only the entry points that allocate. Guarding one that cannot throw
-// costs nothing at runtime but says something untrue about the function.
+// Every exported entry point gets one. An earlier version wrapped only the ones
+// that were seen to allocate, which meant keeping a claim about the other
+// sixty-four true forever: not just their own bodies but every helper, every
+// std::string built from an argument, every vector grown by a loop, and every
+// upstream header they call into. The claim was already false when it was
+// written. A try block a throw never reaches costs nothing to run, and the cost
+// of getting the list wrong is the whole node.
 namespace erlang {
 namespace nif {
 
