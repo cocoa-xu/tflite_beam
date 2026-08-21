@@ -20,6 +20,7 @@ limitations under the License.
 #include "tensorflow/lite/kernels/register.h"
 #include "tensorflow/lite/model.h"
 #include "nif_utils.hpp"
+#include "nif_guard.hpp"
 #include "helper.h"
 
 #ifdef __GNUC__
@@ -118,6 +119,11 @@ static int on_upgrade(ErlNifEnv*, void**, void**, ERL_NIF_TERM) {
     return 0;
 }
 
+// G/G_CPU/G_IO are F/F_CPU/F_IO with the exception guard in front; see
+// nif_guard.hpp for which entry points need one and why.
+#define G(NAME, ARITY) {#NAME, ARITY, erlang::nif::guarded<NAME>, 0}
+#define G_CPU(NAME, ARITY) {#NAME, ARITY, erlang::nif::guarded<NAME>, ERL_NIF_DIRTY_JOB_CPU_BOUND}
+#define G_IO(NAME, ARITY) {#NAME, ARITY, erlang::nif::guarded<NAME>, ERL_NIF_DIRTY_JOB_IO_BOUND}
 #define F(NAME, ARITY) {#NAME, ARITY, NAME, 0}
 #define F_NOT_COMPILED(FAKE_AS, ARITY) {#FAKE_AS, ARITY, not_compiled, 0}
 #define F_NOT_COMPILED_DELEGATE(FAKE_AS, ARITY) {#FAKE_AS, ARITY, not_compiled_delegate, 0}
@@ -134,29 +140,29 @@ static ErlNifFunc nif_functions[] = {
     F(flatbuffer_model_initialized, 1),
     F(flatbuffer_model_error_reporter, 1),
     F(flatbuffer_model_get_minimum_runtime, 1),
-    F(flatbuffer_model_read_all_metadata, 1),
+    G(flatbuffer_model_read_all_metadata, 1),
 
-    F(ops_builtin_builtin_resolver_new, 1),
+    G(ops_builtin_builtin_resolver_new, 1),
 
-    F(interpreter_builder_new, 2),
-    F_CPU(interpreter_builder_build, 2),
+    G(interpreter_builder_new, 2),
+    G_CPU(interpreter_builder_build, 2),
     F(interpreter_builder_set_num_threads, 2),
     F(interpreter_builder_add_delegate, 3),
     F(interpreter_builder_state, 1),
 
-    F(delegate_available, 0),
-    F_IO(delegate_external_new, 2),
+    G(delegate_available, 0),
+    G_IO(delegate_external_new, 2),
 #ifdef TFLITE_BEAM_XNNPACK_ENABLED
-    F(delegate_xnnpack_new, 3),
+    G(delegate_xnnpack_new, 3),
 #else
     F_NOT_COMPILED_DELEGATE(delegate_xnnpack_new, 3),
 #endif
 
-    F(interpreter_new, 0),
+    G(interpreter_new, 0),
     F(interpreter_controlling_process, 1),
     F(interpreter_set_controlling_process, 2),
-    F(interpreter_set_inputs, 2),
-    F(interpreter_set_outputs, 2),
+    G(interpreter_set_inputs, 2),
+    G(interpreter_set_outputs, 2),
     F(interpreter_enable_cancellation, 1),
     F(interpreter_cancel, 1),
     F(interpreter_release_non_persistent_memory, 1),
@@ -167,25 +173,25 @@ static ErlNifFunc nif_functions[] = {
     F(interpreter_signature_inputs, 2),
     F(interpreter_signature_outputs, 2),
     F(interpreter_get_subgraph_index_from_signature, 2),
-    F(interpreter_resize_input_tensor, 3),
-    F(interpreter_resize_input_tensor_strict, 3),
-    F(interpreter_set_variables, 2),
-    F(interpreter_inputs, 1),
+    G(interpreter_resize_input_tensor, 3),
+    G(interpreter_resize_input_tensor_strict, 3),
+    G(interpreter_set_variables, 2),
+    G(interpreter_inputs, 1),
     F(interpreter_get_input_name, 2),
-    F(interpreter_outputs, 1),
-    F(interpreter_variables, 1),
+    G(interpreter_outputs, 1),
+    G(interpreter_variables, 1),
     F(interpreter_get_output_name, 2),
     F(interpreter_tensors_size, 1),
     F(interpreter_nodes_size, 1),
-    F(interpreter_execution_plan, 1),
+    G(interpreter_execution_plan, 1),
     F(interpreter_tensor, 2),
-    F(interpreter_signature_keys, 1),
+    G(interpreter_signature_keys, 1),
     F_CPU(interpreter_input_tensor, 3),
     F_CPU(interpreter_output_tensor, 2),
     F_CPU(interpreter_allocate_tensors, 1),
     F_CPU(interpreter_invoke, 1),
     F(interpreter_set_num_threads, 2),
-    F(interpreter_get_signature_defs, 1),
+    G(interpreter_get_signature_defs, 1),
     F(interpreter_get_signature_runner, 2),
     F(signature_runner_signature_key, 1),
     F(signature_runner_input_size, 1),
@@ -218,7 +224,7 @@ static ErlNifFunc nif_functions[] = {
 #ifdef CORAL_SUPPORT_ENABLED
     F(coral_contains_edgetpu_custom_op, 1),
     F_IO(coral_edgetpu_devices, 0),
-    F(coral_get_edgetpu_context, 2),
+    G(coral_get_edgetpu_context, 2),
     F_IO(coral_make_edgetpu_interpreter, 2),
     F_CPU(coral_dequantize_tensor, 3)
 #else
