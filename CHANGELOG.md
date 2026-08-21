@@ -1,5 +1,72 @@
 # Changelog
 
+## v0.4.0-rc5 (2026-08-22)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.4.0-rc5) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.4.0-rc5)
+
+A NIF fault takes the emulator with it, and this release is almost entirely about
+the places where one could. Every defect below was found by reading the binding
+against TfLite's own contracts and then proving it with a test that fails without
+the fix, rather than by waiting for a crash report.
+
+### Fixed
+- A tensor handle now keeps its interpreter alive. It holds a pointer into that
+  interpreter's arena and nothing kept the interpreter around on its behalf, so a
+  handle could outlive what it pointed at and read freed memory. Erlang gives no
+  warning before that happens: the compiler stops counting a variable as live at
+  its last mention, so an interpreter someone fetched a tensor from and then never
+  named again is collectable while the tensor is still in use.
+- Handles are retired when what they borrow moves. `allocate_tensors/1`, both
+  resizes and a second `build/2` all relocate tensors, and TfLite says plainly
+  that `Invoke` may too. A handle taken before any of those now reports that it
+  has been retired instead of reading through a stale pointer. Invoke is checked
+  rather than assumed: only handles whose index no longer resolves to the pointer
+  they hold are retired, so the ordinary fetch, set, invoke, read sequence still
+  works.
+- Every entry point that touches an interpreter takes the same guard, not only the
+  ones that write. Sixteen read-only calls held nothing while `build/2` was free to
+  delete the interpreter underneath them. Both handle types also read their
+  liveness before taking that guard and never again, which left a window a rebuild
+  fitted into exactly.
+- Cancelling still works during an invoke, which is the only time it is worth
+  anything, but can no longer run while a rebuild is deleting the interpreter it
+  is about to reach into.
+- Three places took a reference on a resource and then ran an allocating step
+  before anything recorded it. A failure in between stranded the reference, and in
+  one case left a mutex locked so that every later reader of that registry waited
+  forever.
+- Every exported entry point is now behind an exception guard. It had been put on
+  the twenty that were seen to allocate, and that claim was already false for the
+  other sixty-four.
+- `error_reporter_default_error_reporter/0` wrote through a null resource on the
+  one path that already knew it was out of memory.
+- Six smaller ones: a byte written past the end of every error binary, five places
+  the binding could read or write out of bounds, model metadata walked without
+  being verified first, a leak in the signature runner registry, an error reporter
+  a model could outlive, and `get_associated_file/2` calling `map:from_list` when
+  the module is `maps`.
+
+### Changed
+- `tflitetensor_to_binary` and `tflitetensor_set_data` moved to a dirty scheduler.
+  Both copy the whole tensor, so their cost belongs to the model rather than being
+  fixed: a 64 MB tensor takes 3.85 ms to read and 1.57 ms to write, well past what
+  a normal scheduler should be holding. `get_signature_runner` and
+  `read_all_metadata` moved for the same reason.
+- A `checksum.term` that does not name the file being installed now warns and
+  carries on rather than refusing. That is the same position as having no manifest
+  at all, and it means the manifest describes a different release: 0.4.0-rc4 went
+  to hex carrying rc3's and would not install until it was republished. A file the
+  manifest does name and disagrees with is still refused, and still deleted.
+
+### Added
+- `tflite_beam_lifetime_SUITE`, seventeen cases that each stand for a defect that
+  reached the repository. Every one was checked against a build without its fix:
+  four of them abort the node there, one deadlocks, and the rest report the wrong
+  answer or leak between five and seven megabytes.
+- A fault-injection facility for the windows that only open when an allocation
+  fails, which no test can otherwise reach. It refuses to arm unless
+  `TFLITE_BEAM_ENABLE_FAULT_INJECTION` is set in the environment before the node
+  starts, so it is not something an application can reach by accident.
+
 ## v0.4.0-rc4 (2026-08-21)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.4.0-rc4) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.4.0-rc4)
 
