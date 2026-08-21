@@ -42,7 +42,10 @@ ERL_NIF_TERM error(ErlNifEnv *env, const char *msg) {
     unsigned char *ptr;
     size_t len = strlen(msg);
     if ((ptr = enif_make_new_binary(env, len, &reason)) != nullptr) {
-        strcpy((char *) ptr, msg);
+        // memcpy, not strcpy: enif_make_new_binary allocates exactly len bytes
+        // and an Erlang binary carries its own size, so the terminator strcpy
+        // appends lands one byte past the allocation.
+        memcpy(ptr, msg, len);
         return enif_make_tuple2(env, error_atom, reason);
     } else {
         ERL_NIF_TERM msg_term = enif_make_string(env, msg, ERL_NIF_LATIN1);

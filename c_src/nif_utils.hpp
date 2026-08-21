@@ -215,8 +215,13 @@ int make(ErlNifEnv *env, const std::map<Key, Value>& map, ERL_NIF_TERM &out, boo
         return 1;
     }
 
+    // enif_make_map_from_arrays copies what it needs, so both arrays are ours
+    // to release on every path out of here, not just the failing one above.
     ERL_NIF_TERM map_out;
-    if (!enif_make_map_from_arrays(env, keys, values, index, &map_out)) {
+    int ok = enif_make_map_from_arrays(env, keys, values, index, &map_out);
+    enif_free(keys);
+    enif_free(values);
+    if (!ok) {
         return 1;
     }
 
