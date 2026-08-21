@@ -118,19 +118,18 @@ ERL_NIF_TERM delegate_xnnpack_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM a
     if (!(res = NifResDelegate::allocate_resource(env, ret))) {
         return ret;
     }
+    ResourceRef<NifResDelegate> hold(res);
 
     // the resource has to own this: TfLiteXNNPackDelegateCreate keeps the pointer
     // it is handed, and only re-points it at its own copy once the cache is live
     std::string weight_cache_file_path;
     if (!erlang::nif::check_nil(env, argv[2])) {
         if (!erlang::nif::get(env, argv[2], weight_cache_file_path)) {
-            enif_release_resource(res);
             return erlang::nif::error(env, "expecting weight_cache_file_path to be a string or nil");
         }
 
         res->owned_path = (char *)enif_alloc(weight_cache_file_path.size() + 1);
         if (res->owned_path == nullptr) {
-            enif_release_resource(res);
             return erlang::nif::error(env, "cannot allocate memory for weight_cache_file_path");
         }
         memcpy(res->owned_path, weight_cache_file_path.c_str(), weight_cache_file_path.size() + 1);
@@ -139,13 +138,11 @@ ERL_NIF_TERM delegate_xnnpack_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM a
 
     res->val = TfLiteXNNPackDelegateCreate(&options);
     if (res->val == nullptr) {
-        enif_release_resource(res);
         return erlang::nif::error(env, "cannot create XNNPACK delegate");
     }
     res->deleter = TfLiteXNNPackDelegateDelete;
 
     ret = enif_make_resource(env, res);
-    enif_release_resource(res);
     return erlang::nif::ok(env, ret);
 }
 
@@ -227,11 +224,11 @@ ERL_NIF_TERM delegate_external_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM 
         destroy(delegate);
         return ret;
     }
+    ResourceRef<NifResDelegate> hold(res);
 
     res->val = delegate;
     res->deleter = destroy;
 
     ret = enif_make_resource(env, res);
-    enif_release_resource(res);
     return erlang::nif::ok(env, ret);
 }

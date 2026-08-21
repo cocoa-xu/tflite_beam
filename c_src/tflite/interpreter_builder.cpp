@@ -4,6 +4,7 @@
 #include <erl_nif.h>
 #include "../nif_utils.hpp"
 #include "../erlang_nif_resource.h"
+#include "../fault_inject.hpp"
 #include "../helper.h"
 
 #include "tensorflow/lite/model_builder.h"
@@ -36,6 +37,7 @@ ERL_NIF_TERM interpreter_builder_new(ErlNifEnv *env, int argc, const ERL_NIF_TER
     if (!(res = NifResInterpreterBuilder::allocate_resource(env, ret))) {
         return ret;
     }
+    ResourceRef<NifResInterpreterBuilder> hold(res);
 
     res->val = new tflite::InterpreterBuilder(*model_res->val, *resolver_res->val);
 
@@ -46,7 +48,6 @@ ERL_NIF_TERM interpreter_builder_new(ErlNifEnv *env, int argc, const ERL_NIF_TER
     res->flatbuffer_model = model_res;
     enif_keep_resource(model_res);
     ret = enif_make_resource(env, res);
-    enif_release_resource(res);
     return erlang::nif::ok(env, ret);
 }
 
@@ -73,7 +74,15 @@ ERL_NIF_TERM interpreter_builder_add_delegate(ErlNifEnv *env, int argc, const ER
 
     // AddDelegate takes no ownership, and the delegate has to outlive every
     // interpreter this builder goes on to produce, so the reference is ours to
-    // hold until the builder itself is collected
+    // hold until the builder itself is collected.
+    //
+    // Room for the entry before the reference that fills it. reserve leaves the
+    // vector as it found it when it fails, and AddDelegate is a push_back on
+    // TFLite's own vector, which does the same, so a failure in either means
+    // this delegate was never added and no reference was taken. Once both are
+    // through, the keep and the push_back into spare capacity cannot fail.
+    erlang::nif::fault_point(erlang::nif::kFaultAddDelegateRegistry);
+    self_res->delegates->reserve(self_res->delegates->size() + 1);
     self_res->val->AddDelegate(delegate_res->val);
     enif_keep_resource(delegate_res);
     self_res->delegates->push_back({delegate_res, on_decline == "fallback"});
@@ -200,13 +209,19 @@ ERL_NIF_TERM interpreter_builder_build(ErlNifEnv *env, int argc, const ERL_NIF_T
     // refcount zero. Safe to release the old ones here and not earlier: the
     // interpreter they backed was destroyed inside operator().
     if (interpreter_res->delegates) {
-        for (auto delegate_res : applied) {
+        // Copy first, since it is the only step that can fail and it touches
+        // nothing until it succeeds. What follows is a keep, a swap and a
+        // release, none of which can, so there is no moment where a reference
+        // has been taken and the list that would give it back is gone.
+        erlang::nif::fault_point(erlang::nif::kFaultDelegateTransfer);
+        std::vector<NifResDelegate *> displaced(applied);
+        for (auto delegate_res : displaced) {
             enif_keep_resource(delegate_res);
         }
-        for (auto delegate_res : *interpreter_res->delegates) {
+        interpreter_res->delegates->swap(displaced);
+        for (auto delegate_res : displaced) {
             enif_release_resource(delegate_res);
         }
-        *interpreter_res->delegates = applied;
     }
 
     if (interpreter_res->flatbuffer_model) {

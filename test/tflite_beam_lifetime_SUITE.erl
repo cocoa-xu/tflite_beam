@@ -22,7 +22,12 @@
     model_outlives_its_error_reporter_handle/1,
     error_reporter_shared_between_models/1,
     concurrent_runner_fetch_and_rebuild/1,
-    concurrent_resize_and_invoke/1
+    concurrent_resize_and_invoke/1,
+    runner_registry_failure_frees_the_runner_and_the_lock/1,
+    interpreter_allocation_failure_is_reported_not_leaked/1,
+    builder_allocation_failure_is_reported_not_leaked/1,
+    add_delegate_failure_strands_no_delegate/1,
+    delegate_transfer_failure_strands_no_delegate/1
 ]).
 
 all() ->
@@ -36,7 +41,12 @@ all() ->
         model_outlives_its_error_reporter_handle,
         error_reporter_shared_between_models,
         concurrent_runner_fetch_and_rebuild,
-        concurrent_resize_and_invoke
+        concurrent_resize_and_invoke,
+        runner_registry_failure_frees_the_runner_and_the_lock,
+        interpreter_allocation_failure_is_reported_not_leaked,
+        builder_allocation_failure_is_reported_not_leaked,
+        add_delegate_failure_strands_no_delegate,
+        delegate_transfer_failure_strands_no_delegate
     ].
 
 %% An interpreter over Name, built and allocated, plus its first input index.
@@ -191,3 +201,144 @@ concurrent_resize_and_invoke(_Config) ->
     [receive {done, Pid} -> ok after 120000 -> ct:fail({timeout, Pid}) end
      || Pid <- [Invoker | Resizers]],
     ?assert(is_integer(tflite_beam_interpreter:tensors_size(Interpreter))).
+
+%% The rest of this suite reaches its defects by calling the API. The ones below
+%% cannot be: they live between the line that takes a reference and the line that
+%% records it, and the only thing that separates those is an allocation failing.
+%% A test cannot ask a 64 GB machine to run out of memory at one exact line, so
+%% the NIF carries named points that can be armed to fail instead. One shot each;
+%% see c_src/fault_inject.hpp.
+arm(Point) -> ok = tflite_beam_nif:nif_arm_fault(Point).
+disarm() -> ok = tflite_beam_nif:nif_arm_fault(none).
+
+is_oom({error, Reason}) -> Reason =:= <<"out of memory">>;
+is_oom(_) -> false.
+
+grew_by(Fun) ->
+    Fun(), erlang:garbage_collect(),
+    Before = erlang:memory(binary) + erlang:memory(system),
+    Fun(), erlang:garbage_collect(),
+    erlang:memory(binary) + erlang:memory(system) - Before.
+
+%% Failing to grow the registry used to leave three things behind: the registry
+%% mutex locked, so every later reader of it waited forever; the runner resource
+%% itself, which no term named and no destructor would ever reach; and the
+%% reference that runner had taken on its interpreter. The lock is what the
+%% second call proves, and the resource is what the loop proves.
+runner_registry_failure_frees_the_runner_and_the_lock(_Config) ->
+    {_Builder, Interpreter} = rebuildable("add.bin"),
+    arm(runner_registry),
+    ?assert(is_oom(tflite_beam_interpreter:get_signature_runner(Interpreter, nil))),
+    %% The lock came back, so the next caller is served rather than parked.
+    %% Against a build without the fix this line does not return and the run
+    %% stops here rather than failing: the process is inside a NIF waiting on a
+    %% mutex nobody will ever unlock, which no timeout in Erlang can reach, and
+    %% the scheduler thread it was running on cannot deliver one either.
+    ?assertMatch({ok, _}, tflite_beam_interpreter:get_signature_runner(Interpreter, nil)),
+    Fetch = fun() ->
+        [begin
+            arm(runner_registry),
+            catch tflite_beam_interpreter:get_signature_runner(Interpreter, nil)
+         end || _ <- lists:seq(1, 20000)]
+    end,
+    Growth = grew_by(Fetch),
+    disarm(),
+    ?assert(Growth < 1024 * 1024,
+            lists:flatten(io_lib:format("~p bytes left behind by 20000 failures", [Growth]))).
+
+%% An interpreter is a resource plus four containers and two mutexes. Failing
+%% part way used to leave the resource allocated with nothing naming it, which is
+%% not a leak any garbage collector can find: enif_alloc_resource hands back a
+%% reference, and until a term takes it, giving it back is the only way out.
+interpreter_allocation_failure_is_reported_not_leaked(_Config) ->
+    arm(interpreter_containers),
+    ?assertMatch({error, _}, tflite_beam_interpreter:new()),
+    ?assertMatch({ok, _}, tflite_beam_interpreter:new()),
+    Make = fun() ->
+        [begin arm(interpreter_containers), catch tflite_beam_interpreter:new() end
+         || _ <- lists:seq(1, 20000)]
+    end,
+    Growth = grew_by(Make),
+    disarm(),
+    ?assert(Growth < 1024 * 1024,
+            lists:flatten(io_lib:format("~p bytes left behind by 20000 failures", [Growth]))).
+
+builder_allocation_failure_is_reported_not_leaked(_Config) ->
+    Model = tflite_beam_flatbuffer_model:build_from_file(tflite_beam_test_models:path("add.bin")),
+    {ok, Resolver} = tflite_beam_ops_builtin_builtin_resolver:new(),
+    arm(builder_containers),
+    ?assertMatch({error, _}, tflite_beam_interpreter_builder:new(Model, Resolver)),
+    ?assertMatch({ok, _}, tflite_beam_interpreter_builder:new(Model, Resolver)),
+    Make = fun() ->
+        [begin
+            arm(builder_containers),
+            catch tflite_beam_interpreter_builder:new(Model, Resolver)
+         end || _ <- lists:seq(1, 20000)]
+    end,
+    Growth = grew_by(Make),
+    disarm(),
+    ?assert(Growth < 1024 * 1024,
+            lists:flatten(io_lib:format("~p bytes left behind by 20000 failures", [Growth]))).
+
+%% The reference on a delegate used to be taken before the list that records it
+%% had room. A failure in between left a delegate nothing would ever release: the
+%% builder had been told about it, our list had not, so no destructor was ever
+%% going to give that reference back. Nothing crashes, which is why it needed
+%% weighing rather than exercising. What is weighed is the resource struct, a few
+%% hundred bytes each: the delegate's own memory comes from malloc and erlang:memory
+%% cannot see it, so the count has to be high enough for the part it can see.
+add_delegate_failure_strands_no_delegate(_Config) ->
+    skip_without_xnnpack(fun() ->
+        Fail = fun() ->
+            [begin
+                {Builder, _} = tflite_beam_test_models:builder("multi_add.bin"),
+                {ok, Delegate} = tflite_beam_delegate:xnnpack(),
+                arm(add_delegate_registry),
+                true = is_oom(tflite_beam_interpreter_builder:add_delegate(Builder, Delegate))
+             end || _ <- lists:seq(1, 20000)]
+        end,
+        Growth = grew_by(Fail),
+        disarm(),
+        %% and the builder is still one that works, so the fix did not buy this
+        %% by refusing to add delegates at all
+        {Builder, Interpreter} = tflite_beam_test_models:builder("multi_add.bin"),
+        {ok, Delegate} = tflite_beam_delegate:xnnpack(),
+        ok = tflite_beam_interpreter_builder:add_delegate(Builder, Delegate),
+        ok = tflite_beam_interpreter_builder:build(Builder, Interpreter),
+        ok = tflite_beam_interpreter:allocate_tensors(Interpreter),
+        ?assert(Growth < 1024 * 1024,
+                lists:flatten(io_lib:format("~p bytes stranded by 20000 failures", [Growth])))
+    end).
+
+%% Handing the delegates over to a rebuilt interpreter took every new reference,
+%% gave back every old one, and only then copied the list. A failure in the copy
+%% left the new references taken with the list that would give them back in a
+%% state the standard declines to define. Building the list first and swapping
+%% after leaves nothing to define, and nothing stranded.
+delegate_transfer_failure_strands_no_delegate(_Config) ->
+    skip_without_xnnpack(fun() ->
+        Fail = fun() ->
+            [begin
+                {Builder, Interpreter} = tflite_beam_test_models:builder("multi_add.bin"),
+                {ok, Delegate} = tflite_beam_delegate:xnnpack(),
+                ok = tflite_beam_interpreter_builder:add_delegate(Builder, Delegate),
+                arm(delegate_transfer),
+                true = is_oom(tflite_beam_interpreter_builder:build(Builder, Interpreter))
+             end || _ <- lists:seq(1, 20000)]
+        end,
+        Growth = grew_by(Fail),
+        disarm(),
+        {Builder, Interpreter} = tflite_beam_test_models:builder("multi_add.bin"),
+        {ok, Delegate} = tflite_beam_delegate:xnnpack(),
+        ok = tflite_beam_interpreter_builder:add_delegate(Builder, Delegate),
+        ok = tflite_beam_interpreter_builder:build(Builder, Interpreter),
+        ok = tflite_beam_interpreter:allocate_tensors(Interpreter),
+        ?assert(Growth < 1024 * 1024,
+                lists:flatten(io_lib:format("~p bytes stranded by 20000 failures", [Growth])))
+    end).
+
+skip_without_xnnpack(Body) ->
+    case lists:member(xnnpack, tflite_beam_delegate:available()) of
+        true -> Body();
+        false -> {skip, "XNNPACK is not compiled into this build"}
+    end.

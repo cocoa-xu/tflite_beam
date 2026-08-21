@@ -20,6 +20,52 @@
 #include "tensorflow/lite/model.h"
 #include "tensorflow/lite/stderr_reporter.h"
 
+// enif_alloc_resource hands back a resource carrying one reference, and that
+// reference belongs to nobody until enif_make_resource passes it to a term.
+// Everything in between is a chance to lose it: the resource is live, no term
+// names it, and if the function returns another way its destructor will never
+// run. Holding it here means the only way out that keeps it is the one that
+// hands it to a term.
+template <typename T>
+class ResourceRef {
+public:
+    explicit ResourceRef(T * res) : res_(res) {}
+    ~ResourceRef() { if (res_) enif_release_resource(res_); }
+
+    ResourceRef(const ResourceRef &) = delete;
+    ResourceRef & operator=(const ResourceRef &) = delete;
+
+    T * get() const { return res_; }
+    T * operator->() const { return res_; }
+    explicit operator bool() const { return res_ != nullptr; }
+
+    // For the handover that is not enif_make_resource: a container that takes
+    // the allocation reference for itself, rather than a term that takes one of
+    // its own. Call it once the container holds the pointer.
+    T * release() { T * res = res_; res_ = nullptr; return res; }
+
+private:
+    T * res_;
+};
+
+// A lock that survives the way out. enif_mutex_unlock on the line after the one
+// that allocates is not reached when the allocation throws, and a mutex nobody
+// unlocks is worse than the leak that got it there: every later reader of the
+// same structure waits forever.
+class MutexLock {
+public:
+    explicit MutexLock(ErlNifMutex * mutex) : mutex_(mutex) {
+        if (mutex_) enif_mutex_lock(mutex_);
+    }
+    ~MutexLock() { if (mutex_) enif_mutex_unlock(mutex_); }
+
+    MutexLock(const MutexLock &) = delete;
+    MutexLock & operator=(const MutexLock &) = delete;
+
+private:
+    ErlNifMutex * mutex_;
+};
+
 struct NifResBuiltinOpResolver {
     tflite::ops::builtin::BuiltinOpResolver * val;
     // whether this resolver hands the interpreter TfLite's own lazily-applied
@@ -34,7 +80,6 @@ struct NifResBuiltinOpResolver {
 
 struct NifResErrorReporter {
     tflite::ErrorReporter * val;
-    std::atomic_bool is_default;
 
     static ErlNifResourceType * type;
     static NifResErrorReporter * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
@@ -42,7 +87,6 @@ struct NifResErrorReporter {
     static void destruct_resource(ErlNifEnv *env, void *args);
 };
 
-struct NifResErrorReporter;
 struct NifResFlatBufferModel {
     tflite::FlatBufferModel * val;
 

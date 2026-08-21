@@ -4,6 +4,7 @@
 
 #include "../nif_utils.hpp"
 #include "../erlang_nif_resource.h"
+#include "../fault_inject.hpp"
 
 #include "signature_runner.h"
 #include "status.h"
@@ -48,6 +49,7 @@ ERL_NIF_TERM interpreter_get_signature_runner(ErlNifEnv *env, int argc, const ER
     if (!(res = NifResSignatureRunner::allocate_resource(env, ret))) {
         return ret;
     }
+    ResourceRef<NifResSignatureRunner> hold(res);
 
     res->val = runner;
     res->interpreter = self_res;
@@ -61,14 +63,17 @@ ERL_NIF_TERM interpreter_get_signature_runner(ErlNifEnv *env, int argc, const ER
     // keep every runner a caller ever asked for alive until the interpreter went
     // away. The runner removes itself in its destructor instead, which is the
     // only moment the pointer could go stale.
+    // Growing the registry is the one step here that can fail, and it fails by
+    // throwing. Everything it would leave behind is now owned by something that
+    // unwinds: the lock by MutexLock, this runner by hold, and the reference it
+    // took on the interpreter by its own destructor.
     if (self_res->signature_runners) {
-        if (self_res->signature_runners_lock) enif_mutex_lock(self_res->signature_runners_lock);
+        MutexLock registry(self_res->signature_runners_lock);
+        erlang::nif::fault_point(erlang::nif::kFaultRunnerRegistry);
         self_res->signature_runners->push_back(res);
-        if (self_res->signature_runners_lock) enif_mutex_unlock(self_res->signature_runners_lock);
     }
 
     ret = enif_make_resource(env, res);
-    enif_release_resource(res);
     return erlang::nif::ok(env, ret);
 }
 

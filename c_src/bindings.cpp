@@ -23,6 +23,8 @@ limitations under the License.
 #include "nif_guard.hpp"
 #include "helper.h"
 
+extern ERL_NIF_TERM nif_arm_fault(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
+
 #ifdef __GNUC__
 #  pragma GCC diagnostic ignored "-Wunused-parameter"
 #  pragma GCC diagnostic ignored "-Wmissing-field-initializers"
@@ -131,6 +133,9 @@ static int on_upgrade(ErlNifEnv*, void**, void**, ERL_NIF_TERM) {
 #define F_IO(NAME, ARITY) {#NAME, ARITY, NAME, ERL_NIF_DIRTY_JOB_IO_BOUND}
 
 static ErlNifFunc nif_functions[] = {
+    // For the test suite; see fault_inject.hpp.
+    F(nif_arm_fault, 1),
+
     F(error_reporter_default_error_reporter, 0),
 
     F_IO(flatbuffer_model_build_from_file, 2),
@@ -147,7 +152,7 @@ static ErlNifFunc nif_functions[] = {
     G(interpreter_builder_new, 2),
     G_CPU(interpreter_builder_build, 2),
     F(interpreter_builder_set_num_threads, 2),
-    F(interpreter_builder_add_delegate, 3),
+    G(interpreter_builder_add_delegate, 3),
     F(interpreter_builder_state, 1),
 
     G(delegate_available, 0),
@@ -192,7 +197,7 @@ static ErlNifFunc nif_functions[] = {
     F_CPU(interpreter_invoke, 1),
     F(interpreter_set_num_threads, 2),
     G(interpreter_get_signature_defs, 1),
-    F(interpreter_get_signature_runner, 2),
+    G(interpreter_get_signature_runner, 2),
     F(signature_runner_signature_key, 1),
     F(signature_runner_input_size, 1),
     F(signature_runner_output_size, 1),

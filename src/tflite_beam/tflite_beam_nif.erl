@@ -25,6 +25,13 @@ not_loaded(Line) ->
     erlang:nif_error({not_loaded, [{module, ?MODULE}, {line, Line}]}).
 
 
+%% Arms the next call through a named point in the NIF to fail the way an
+%% allocation failure would. For the test suite; see c_src/fault_inject.hpp.
+%% One shot, and `none' disarms.
+nif_arm_fault(_point) ->
+    not_loaded(?LINE).
+
+
 error_reporter_default_error_reporter() ->
     not_loaded(?LINE).
 

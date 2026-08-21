@@ -106,6 +106,7 @@ ERL_NIF_TERM coral_get_edgetpu_context(ErlNifEnv *env, int argc, const ERL_NIF_T
     if (!(res = NifResEdgeTpuContext::allocate_resource(env, ret))) {
         return ret;
     }
+    ResourceRef<NifResEdgeTpuContext> hold(res);
 
     // hold a share of the context: asking for the same device twice hands back the
     // same one, and the device is only released once every share is gone
@@ -113,7 +114,6 @@ ERL_NIF_TERM coral_get_edgetpu_context(ErlNifEnv *env, int argc, const ERL_NIF_T
     res->val = c.get();
 
     ret = enif_make_resource(env, res);
-    enif_release_resource(res);
     return erlang::nif::ok(env, ret);
 }
 
@@ -140,18 +140,18 @@ ERL_NIF_TERM coral_make_edgetpu_interpreter(ErlNifEnv *env, int argc, const ERL_
         return ret;
     }
 
+    ResourceRef<NifResInterpreter> hold(interpreter_res);
+
     tflite::FlatBufferModel * model = model_res->val;
     edgetpu::EdgeTpuContext * context = context_res->val;
     std::unique_ptr<tflite::Interpreter> interpreter;
-    
+
     auto status = coral::MakeEdgeTpuInterpreter(*model, context, nullptr, nullptr, &interpreter);
     if (status != absl::OkStatus()) {
-        enif_release_resource(interpreter_res);
         return erlang::nif::error(env, "cannot make edgetpu interpreter");
     }
 
     if (interpreter->AllocateTensors() != kTfLiteOk) {
-        enif_release_resource(interpreter_res);
         return erlang::nif::error(env, "failed to allocate tensors");
     }
 
@@ -164,7 +164,6 @@ ERL_NIF_TERM coral_make_edgetpu_interpreter(ErlNifEnv *env, int argc, const ERL_
     enif_keep_resource(context_res);
 
     ret = enif_make_resource(env, interpreter_res);
-    enif_release_resource(interpreter_res);
     return erlang::nif::ok(env, ret);
 }
 

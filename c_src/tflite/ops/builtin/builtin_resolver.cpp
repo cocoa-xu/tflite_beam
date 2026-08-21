@@ -22,6 +22,7 @@ ERL_NIF_TERM ops_builtin_builtin_resolver_new(ErlNifEnv *env, int argc, const ER
     if (!(res = NifResBuiltinOpResolver::allocate_resource(env, ret))) {
         return ret;
     }
+    ResourceRef<NifResBuiltinOpResolver> hold(res);
 
     // The subclass adds no data members and clears only the delegate creators,
     // which MutableOpResolver owns, and ~OpResolver is virtual -- so it is safe
@@ -33,6 +34,5 @@ ERL_NIF_TERM ops_builtin_builtin_resolver_new(ErlNifEnv *env, int argc, const ER
     }
     res->apply_default_delegates = apply_default_delegates;
     ret = enif_make_resource(env, res);
-    enif_release_resource(res);
     return erlang::nif::ok(env, ret);
 }

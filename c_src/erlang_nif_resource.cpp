@@ -5,6 +5,7 @@
 #include "tensorflow/lite/c/common.h"
 
 #include "erlang_nif_resource.h"
+#include "fault_inject.hpp"
 
 NifResBuiltinOpResolver * NifResBuiltinOpResolver::allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error) {
     NifResBuiltinOpResolver * res = (NifResBuiltinOpResolver *)enif_alloc_resource(NifResBuiltinOpResolver::type, sizeof(NifResBuiltinOpResolver));
@@ -44,7 +45,6 @@ NifResErrorReporter * NifResErrorReporter::allocate_resource(ErlNifEnv * env, ER
     }
 
     res->val = nullptr;
-    res->is_default = false;
 
     return res;
 }
@@ -61,8 +61,10 @@ NifResErrorReporter * NifResErrorReporter::get_resource(ErlNifEnv * env, ERL_NIF
 void NifResErrorReporter::destruct_resource(ErlNifEnv *env, void *args) {
     auto res = (NifResErrorReporter *)args;
     if (res) {
+        // DefaultErrorReporter is a function-local static, so the pointer is
+        // the whole question: anything else was made here and is ours to delete.
         if (res->val) {
-            if (!res->is_default || res->val != tflite::DefaultErrorReporter()) {
+            if (res->val != tflite::DefaultErrorReporter()) {
                 delete res->val;
             }
             res->val = nullptr;
@@ -164,8 +166,21 @@ NifResInterpreterBuilder * NifResInterpreterBuilder::allocate_resource(ErlNifEnv
     res->val = nullptr;
     res->op_resolver = nullptr;
     res->flatbuffer_model = nullptr;
-    res->delegates = new std::vector<NifResDelegateEntry>;
+    res->delegates = nullptr;
     res->num_threads = -1;
+
+    // The reference enif_alloc_resource just took is given away by the caller,
+    // when it turns this into a term. Until then a failure is a resource nothing
+    // will ever collect, so anything that can fail hands the reference back
+    // before returning, and a builder that exists at all has its containers.
+    try {
+        erlang::nif::fault_point(erlang::nif::kFaultBuilderContainers);
+        res->delegates = new std::vector<NifResDelegateEntry>;
+    } catch (const std::bad_alloc &) {
+        enif_release_resource(res);
+        error = erlang::nif::error(env, "cannot allocate NifResInterpreterBuilder resource");
+        return nullptr;
+    }
 
     return res;
 }
@@ -217,12 +232,35 @@ NifResInterpreter * NifResInterpreter::allocate_resource(ErlNifEnv * env, ERL_NI
     res->val = nullptr;
     res->flatbuffer_model = nullptr;
     res->edgetpu_context = nullptr;
-    res->tensors = new std::map<int, NifResTfLiteTensor *>;
-    res->signature_runners = new std::vector<NifResSignatureRunner *>;
-    res->signature_runners_lock = enif_mutex_create((char *)"tflite_beam_signature_runners");
-    res->delegates = new std::vector<NifResDelegate *>;
-    res->in_use = enif_mutex_create((char *)"tflite_beam_interpreter");
+    res->tensors = nullptr;
+    res->signature_runners = nullptr;
+    res->signature_runners_lock = nullptr;
+    res->delegates = nullptr;
+    res->in_use = nullptr;
     res->is_controlled = false;
+
+    // All or nothing, for the same reason as the builder above and one more: an
+    // interpreter missing its in_use mutex would answer every guarded call with
+    // "already in use by another process", which is a lockout dressed up as a
+    // collision. Better to fail the allocation and say so.
+    try {
+        erlang::nif::fault_point(erlang::nif::kFaultInterpreterContainers);
+        res->tensors = new std::map<int, NifResTfLiteTensor *>;
+        res->signature_runners = new std::vector<NifResSignatureRunner *>;
+        res->delegates = new std::vector<NifResDelegate *>;
+    } catch (const std::bad_alloc &) {
+        enif_release_resource(res);
+        error = erlang::nif::error(env, "cannot allocate NifResInterpreter resource");
+        return nullptr;
+    }
+
+    res->signature_runners_lock = enif_mutex_create((char *)"tflite_beam_signature_runners");
+    res->in_use = enif_mutex_create((char *)"tflite_beam_interpreter");
+    if (res->signature_runners_lock == nullptr || res->in_use == nullptr) {
+        enif_release_resource(res);
+        error = erlang::nif::error(env, "cannot allocate NifResInterpreter resource");
+        return nullptr;
+    }
 
     return res;
 }
@@ -281,14 +319,13 @@ void NifResInterpreter::release_signature_runners(NifResInterpreter * res) {
     // Flag only: the registry never took a reference, so there is none to give
     // back. Whoever holds the runner in Erlang still holds it, and now finds out
     // that what it borrows from is gone.
-    if (res->signature_runners_lock) enif_mutex_lock(res->signature_runners_lock);
+    MutexLock registry(res->signature_runners_lock);
     for (auto runner_res : *res->signature_runners) {
         if (runner_res) {
             runner_res->interpreter_has_gone = true;
         }
     }
     res->signature_runners->clear();
-    if (res->signature_runners_lock) enif_mutex_unlock(res->signature_runners_lock);
 }
 
 void NifResInterpreter::destruct_resource(ErlNifEnv *env, void *args) {
@@ -389,8 +426,7 @@ void NifResSignatureRunner::destruct_resource(ErlNifEnv *env, void *args) {
         // This runs on whichever thread dropped the last reference, so it takes
         // the registry lock like every other writer.
         if (res->interpreter && res->interpreter->signature_runners) {
-            ErlNifMutex * lock = res->interpreter->signature_runners_lock;
-            if (lock) enif_mutex_lock(lock);
+            MutexLock registry(res->interpreter->signature_runners_lock);
             auto & list = *res->interpreter->signature_runners;
             for (auto it = list.begin(); it != list.end(); ++it) {
                 if (*it == res) {
@@ -398,7 +434,6 @@ void NifResSignatureRunner::destruct_resource(ErlNifEnv *env, void *args) {
                     break;
                 }
             }
-            if (lock) enif_mutex_unlock(lock);
         }
 
         if (res->interpreter) {

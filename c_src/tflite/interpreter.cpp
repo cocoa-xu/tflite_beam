@@ -21,10 +21,10 @@ ERL_NIF_TERM interpreter_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]
     if (!(res = NifResInterpreter::allocate_resource(env, ret))) {
         return ret;
     }
+    ResourceRef<NifResInterpreter> hold(res);
 
     res->val = new tflite::Interpreter();
     ret = enif_make_resource(env, res);
-    enif_release_resource(res);
     return erlang::nif::ok(env, ret);
 }
 
@@ -465,23 +465,10 @@ ERL_NIF_TERM interpreter_inputs(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
     }
 
     const std::vector<int>& inputs = self_res->val->inputs();
-    size_t cnt = inputs.size();
-
-    if (cnt > 0) {
-        ERL_NIF_TERM * arr = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * cnt);
-        if (!arr) {
-            return erlang::nif::error(env, "enif_alloc failed");
-        }
-
-        for (size_t i = 0; i < cnt; i++) {
-            arr[i] = enif_make_int(env, inputs[i]);
-        }
-        ret = enif_make_list_from_array(env, arr, (unsigned)cnt);
-        enif_free((void *)arr);
-    } else {
-        // Returns an empty list if cnt is 0.
-        ret = enif_make_list(env, 0, nullptr);
+    if (erlang::nif::make(env, inputs, ret)) {
+        return erlang::nif::error(env, "enif_alloc failed");
     }
+
     return erlang::nif::ok(env, ret);
 }
 
@@ -666,11 +653,9 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
         tensor_res->borrowed = true;
     }
 
-    // every early return from here on has to hand back what allocate_resource gave us
-    auto bail = [&](const char * reason) {
-        if (freshly_allocated) enif_release_resource(tensor_res);
-        return erlang::nif::error(env, reason);
-    };
+    // Only what allocate_resource gave us. A cached one belongs to the map and
+    // is not ours to hand back.
+    ResourceRef<NifResTfLiteTensor> hold(freshly_allocated ? tensor_res : nullptr);
 
     ERL_NIF_TERM tensor_type;
     if (!_tflitetensor_type(env, tensor_res->val, tensor_type)) {
@@ -679,27 +664,27 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
 
     ERL_NIF_TERM tensor_shape;
     if (!_tflitetensor_shape(env, tensor_res->val, tensor_shape)) {
-        return bail("cannot allocate memory for tensor shape");
+        return erlang::nif::error(env, "cannot allocate memory for tensor shape");
     }
 
     ERL_NIF_TERM tensor_shape_signature;
     if (!_tflitetensor_shape_signature(env, tensor_res->val, tensor_shape_signature)) {
-        return bail("cannot allocate memory for tensor shape signature");
+        return erlang::nif::error(env, "cannot allocate memory for tensor shape signature");
     }
 
     ERL_NIF_TERM tensor_name;
     if (!_tflitetensor_name(env, tensor_res->val, tensor_name)) {
-        return bail("cannot allocate memory for tensor name");
+        return erlang::nif::error(env, "cannot allocate memory for tensor name");
     }
 
     ERL_NIF_TERM tensor_quantization_params;
     if (!_tflitetensor_quantization_params(env, tensor_res->val, tensor_quantization_params)) {
-        return bail("cannot allocate memory for tensor quantization params");
+        return erlang::nif::error(env, "cannot allocate memory for tensor quantization params");
     }
 
     ERL_NIF_TERM tensor_sparsity_params;
     if (!_tflitetensor_sparsity_params(env, tensor_res->val, tensor_sparsity_params)) {
-        return bail("cannot allocate memory for tensor sparsity params");
+        return erlang::nif::error(env, "cannot allocate memory for tensor sparsity params");
     }
 
     ERL_NIF_TERM tensor_reference = enif_make_resource(env, tensor_res);
@@ -708,6 +693,7 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
         // the cache takes over the reference from allocate_resource; the interpreter
         // releases it when it tears the cache down
         (*self_res->tensors)[index] = tensor_res;
+        hold.release();
     }
 
     return erlang::nif::ok(env, enif_make_tuple8(
