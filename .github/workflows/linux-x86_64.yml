@@ -6,6 +6,12 @@ on:
       - '**/*.md'
       - 'examples/**/*.livemd'
       - 'examples/*.livemd'
+      - 'nerves/**'
+      - '.github/FUNDING.yml'
+      - '.github/workflows/nerves-*'
+      - '.github/workflows/macos-*'
+      - '.github/workflows/linux-precompile.yml'
+      - '.github/workflows/test-*.yml'
   push:
     branches:
       - main
@@ -21,7 +27,7 @@ on:
       - '.github/FUNDING.yml'
       - '.github/workflows/nerves-*'
       - '.github/workflows/macos-*'
-      - '.github/workflows/linux-precompiled.yml'
+      - '.github/workflows/linux-precompile.yml'
       - '.github/workflows/test-*.yml'
 
 concurrency:
@@ -85,9 +91,18 @@ jobs:
           # to ~/.ccache and ccache 4 follows XDG into ~/.cache/ccache, and a cache
           # step aimed at the wrong one saves an empty directory while reporting
           # nothing wrong.
-          echo "CCACHE_DIR=$HOME/.cache/ccache" >> $GITHUB_ENV
+          D="$HOME/.cache/ccache"
+          echo "CCACHE_DIR=$D" >> $GITHUB_ENV
           echo "CCACHE_MAXSIZE=300M" >> $GITHUB_ENV
-          ccache --zero-stats
+          # Whether the restore step put anything here. actions/cache has no
+          # output that says so: cache-matched-key belongs to actions/cache/restore,
+          # and this key carries the run id so cache-hit is false every time.
+          if [ -d "$D" ] && [ -n "$(ls -A "$D" 2>/dev/null)" ]; then
+            echo "CCACHE_RESTORED=1" >> $GITHUB_ENV
+          fi
+          # $GITHUB_ENV reaches the next step and not this one, so naming the
+          # directory again is what makes these the counters the build will use.
+          CCACHE_DIR="$D" ccache --zero-stats
 
       - name: Compile and Test
         run: |
@@ -105,10 +120,7 @@ jobs:
           # wrong, and the only symptom is a job that is quietly as slow as a
           # cold one. Fail instead: it took reading the statistics by hand to
           # notice the first time.
-          # cache-matched-key, not cache-hit: the key carries the run id so it can
-          # never match exactly, and cache-hit is false whenever restore-keys are
-          # what found the cache -- which is every run.
-          if [ -n "${{ steps.ccache.outputs.cache-matched-key }}" ]; then
+          if [ -n "${CCACHE_RESTORED:-}" ]; then
             hits=$(ccache --show-stats | awk '/^  Hits:/{print $2; exit}')
             if [ "${hits:-0}" -eq 0 ]; then
               echo "::error::a ccache cache was restored but nothing hit -- check CCACHE_DIR against the cached path"
