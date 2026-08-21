@@ -19,4 +19,4 @@
                                 | resource
                                 | variant
                                 | {u, 32}.
--record(tflite_beam_tensor, {name :: binary(), index :: non_neg_integer(), shape :: tuple(), shape_signature :: list(), type :: tflite_beam_tensor_type(), quantization_params :: #tflite_beam_quantization_params{}, sparsity_params, ref :: reference()}).
+-record(tflite_beam_tensor, {name :: binary(), index :: non_neg_integer(), shape :: list(), shape_signature :: list(), type :: tflite_beam_tensor_type(), quantization_params :: #tflite_beam_quantization_params{}, sparsity_params, ref :: reference()}).

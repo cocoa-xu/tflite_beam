@@ -33,7 +33,7 @@ PRECOMPILED_ERL_HELPER = $(shell pwd)/tflite_beam_precompiled.erl
 UNICODEDATA = $(shell pwd)/unicodedata
 UNICODE_DATA = $(PRIV_DIR)/unicode_data.txt
 FLATC_PATH ?= $(shell which flatc)
-TFLITE_HOST_TOOLS_DIR = $(shell dirname $(FLATC_PATH))
+TFLITE_HOST_TOOLS_DIR = $(patsubst %/,%,$(dir $(FLATC_PATH)))
 ifdef CMAKE_TOOLCHAIN_FILE
 	CMAKE_CONFIGURE_FLAGS=-D CMAKE_TOOLCHAIN_FILE="$(CMAKE_TOOLCHAIN_FILE)"
 endif
@@ -79,6 +79,11 @@ LIBUSB_SOURCE_DIR = $(THIRD_PARTY_DIR)/libusb-$(LIBUSB_VERSION)
 LIBUSB_SHARED_LIBRARY = $(PRIV_DIR)/libedgetpu/libusb-1.0.0.dylib
 
 UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+NPROC = $(shell sysctl -n hw.ncpu)
+else
+NPROC = $(shell nproc)
+endif
 ifneq ($(UNAME_S),Darwin)
 LIBUSB_SHARED_LIBRARY = $(PRIV_DIR)/libedgetpu/libusb-1.0.so.0.4.0
 endif
@@ -219,11 +224,7 @@ $(NATIVE_BINDINGS_SO): $(UNICODE_DATA) unarchive_source_code install_libedgetpu_
 			$(CMAKE_OPTIONS) \
 			"$(shell pwd)" && \
 		if [ "$(MAKE_BUILD_FLAGS)" = "auto" ]; then \
-			if [ "$(UNAME_S)" = Darwin ]; then \
-				make "-j$(shell sysctl -n hw.ncpu)" ; \
-			else \
-				make "-j$(shell nproc)" ; \
-			fi; \
+			make "-j$(NPROC)" ; \
 		else \
 			make "$(MAKE_BUILD_FLAGS)" ; \
 		fi && \

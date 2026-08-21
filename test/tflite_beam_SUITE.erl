@@ -14,6 +14,7 @@
     model_from_invalid_buffer/1,
     interpreter_from_builder/1,
     interpreter_tensor_metadata/1,
+    tensor_accessors_take_the_record/1,
     interpreter_invoke/1,
     interpreter_predict/1,
     signature_runner_invoke/1,
@@ -32,6 +33,7 @@ all() ->
         model_from_invalid_buffer,
         interpreter_from_builder,
         interpreter_tensor_metadata,
+        tensor_accessors_take_the_record,
         interpreter_invoke,
         interpreter_predict,
         signature_runner_invoke,
@@ -80,6 +82,20 @@ interpreter_tensor_metadata(_Config) ->
     %% the interpreter has to still be reachable here or the reads above race a
     %% GC that would invalidate the handle. See
     %% tflite_beam_build_SUITE:tensor_handle_does_not_outlive_its_interpreter/1
+    ?assertEqual(7, tflite_beam_interpreter:tensors_size(Interpreter)).
+
+%% dims/1 and shape/1 accept the record as well as the handle. Their record
+%% clauses guarded on is_tuple while the NIF fills the field with a list, so
+%% they raised function_clause for every caller; only the handle path was ever
+%% covered here.
+tensor_accessors_take_the_record(_Config) ->
+    Interpreter = tflite_beam_test_models:interpreter("multi_add.bin"),
+    Tensor = tflite_beam_interpreter:tensor(Interpreter, 0),
+    Ref = Tensor#tflite_beam_tensor.ref,
+    ?assertEqual([1, 8, 8, 3], tflite_beam_tensor:dims(Tensor)),
+    ?assertEqual({1, 8, 8, 3}, tflite_beam_tensor:shape(Tensor)),
+    ?assertEqual(tflite_beam_tensor:dims(Ref), tflite_beam_tensor:dims(Tensor)),
+    ?assertEqual(tflite_beam_tensor:shape(Ref), tflite_beam_tensor:shape(Tensor)),
     ?assertEqual(7, tflite_beam_interpreter:tensors_size(Interpreter)).
 
 interpreter_invoke(_Config) ->
