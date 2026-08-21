@@ -31,12 +31,18 @@ init_per_suite(Config) ->
     {module, Module} = code:load_binary(Module, Source, Binary),
     [{manifest, filename:join(Root, "checksum.term")} | Config].
 
-%% Seven precompiled targets ship; a manifest that lists six would verify six and
-%% silently wave the seventh through.
+%% The manifest is generated between tagging and publishing and is not tracked, so
+%% a checkout usually has none -- and a checkout with none is a documented state,
+%% not a broken one. When there is one, though, seven targets ship, and a manifest
+%% listing six would verify six and wave the seventh through.
 manifest_lists_every_target(Config) ->
-    {ok, Entries} = tflite_beam_precompiled:checksums(?config(manifest, Config)),
-    ?assertEqual(7, length(Entries)),
-    [?assert(is_list(Name) andalso length(Digest) =:= 64) || {Name, Digest} <- Entries].
+    case tflite_beam_precompiled:checksums(?config(manifest, Config)) of
+        no_manifest ->
+            {skip, "no checksum.term here; it is generated at release time"};
+        {ok, Entries} ->
+            ?assertEqual(7, length(Entries)),
+            [?assert(is_list(Name) andalso length(Digest) =:= 64) || {Name, Digest} <- Entries]
+    end.
 
 accepts_a_tarball_that_matches(Config) ->
     {Path, Digest} = a_file_with_known_digest(Config, "matching.tar.gz"),
@@ -53,12 +59,18 @@ rejects_and_deletes_a_tarball_that_does_not(Config) ->
     ?assertNot(filelib:is_regular(Path)).
 
 %% A name the manifest says nothing about is refused rather than accepted for
-%% lack of an opinion.
+%% lack of an opinion. Written against a manifest the test makes itself, so it
+%% holds whether or not this checkout has been through a release.
 rejects_a_file_the_manifest_does_not_list(Config) ->
-    {Path, _} = a_file_with_known_digest(Config, "unlisted.tar.gz"),
+    {Path, Digest} = a_file_with_known_digest(Config, "unlisted.tar.gz"),
+    Manifest = filename:join(?config(priv_dir, Config), "checksum.term"),
+    ok = file:write_file(Manifest,
+                         io_lib:format("{\"something-else.tar.gz\", \"~s\"}.~n", [Digest])),
     ?assertMatch({error, _},
-                 tflite_beam_precompiled:verify_checksum(
-                     "tflite_beam-nif-2.16-not-a-target-v9.9.9.tar.gz", Path, ?config(manifest, Config))).
+                 tflite_beam_precompiled:verify_checksum("unlisted.tar.gz", Path, Manifest)),
+    %% and the same manifest does accept the name it does list
+    ?assertMatch({ok, _},
+                 tflite_beam_precompiled:verify_checksum("something-else.tar.gz", Path, Manifest)).
 
 a_file_with_known_digest(Config, Name) ->
     Path = filename:join(?config(priv_dir, Config), Name),

@@ -214,12 +214,15 @@ inside the published package -- so it is generated in between:
 ```shell
 git tag -a vX.Y.Z -m "vX.Y.Z" && git push origin vX.Y.Z   # matrix builds the 7 targets
 scripts/generate_checksums.sh X.Y.Z                        # writes checksum.term
-git add checksum.term && git commit && git push
 rebar3 hex publish
 ```
 
+`checksum.term` is not tracked in git and does not need to be: it is packaged from
+the working directory, and the tarballs it lists do not exist until the tag has
+been built -- so a tracked copy would always be one release out of date.
+
 Skipping the middle step publishes a package that cannot check what it downloads,
-which it will say out loud on install rather than doing quietly.
+which it says out loud on install rather than doing quietly.
 
 ## Upstream Dependencies
 
