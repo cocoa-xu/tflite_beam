@@ -8,7 +8,7 @@
 -include_lib("common_test/include/ct.hrl").
 -include_lib("stdlib/include/assert.hrl").
 
--export([all/0, init_per_suite/1]).
+-export([all/0, init_per_suite/1, end_per_suite/1]).
 -export([
     manifest_lists_every_target/1,
     accepts_a_tarball_that_matches/1,
@@ -30,6 +30,15 @@ init_per_suite(Config) ->
     {ok, Module, Binary} = compile:file(Source, [binary, export_all, nowarn_export_all]),
     {module, Module} = code:load_binary(Module, Source, Binary),
     [{manifest, filename:join(Root, "checksum.term")} | Config].
+
+%% init_per_suite replaces the loaded tflite_beam_precompiled with one compiled
+%% from source; put the released module back so later suites do not inherit it.
+%% Common Test on OTP 28 calls this whether or not it is exported, so a suite
+%% with init_per_suite and no end_per_suite fails there while passing on 26.
+end_per_suite(Config) ->
+    code:purge(tflite_beam_precompiled),
+    code:delete(tflite_beam_precompiled),
+    Config.
 
 %% The manifest is generated between tagging and publishing and is not tracked, so
 %% a checkout usually has none -- and a checkout with none is a documented state,
