@@ -212,6 +212,7 @@ NifResInterpreter * NifResInterpreter::allocate_resource(ErlNifEnv * env, ERL_NI
     res->flatbuffer_model = nullptr;
     res->edgetpu_context = nullptr;
     res->tensors = new std::map<int, NifResTfLiteTensor *>;
+    res->signature_runners = new std::vector<NifResSignatureRunner *>;
     res->delegates = new std::vector<NifResDelegate *>;
     res->in_use = enif_mutex_create((char *)"tflite_beam_interpreter");
     res->is_controlled = false;
@@ -267,6 +268,18 @@ void NifResInterpreter::release_tensors(NifResInterpreter * res) {
     res->tensors->clear();
 }
 
+void NifResInterpreter::release_signature_runners(NifResInterpreter * res) {
+    if (res == nullptr || res->signature_runners == nullptr) return;
+
+    for (auto runner_res : *res->signature_runners) {
+        if (runner_res) {
+            runner_res->interpreter_has_gone = true;
+            enif_release_resource(runner_res);
+        }
+    }
+    res->signature_runners->clear();
+}
+
 void NifResInterpreter::destruct_resource(ErlNifEnv *env, void *args) {
     auto res = (NifResInterpreter *)args;
     if (res) {
@@ -274,6 +287,12 @@ void NifResInterpreter::destruct_resource(ErlNifEnv *env, void *args) {
         if (res->tensors) {
             delete res->tensors;
             res->tensors = nullptr;
+        }
+
+        NifResInterpreter::release_signature_runners(res);
+        if (res->signature_runners) {
+            delete res->signature_runners;
+            res->signature_runners = nullptr;
         }
 
         if (res->val) {
@@ -317,6 +336,7 @@ NifResSignatureRunner * NifResSignatureRunner::allocate_resource(ErlNifEnv * env
 
     res->val = nullptr;
     res->interpreter = nullptr;
+    res->interpreter_has_gone = false;
 
     return res;
 }
@@ -325,6 +345,11 @@ NifResSignatureRunner * NifResSignatureRunner::get_resource(ErlNifEnv * env, ERL
     NifResSignatureRunner * self_res = nullptr;
     if (!enif_get_resource(env, term, NifResSignatureRunner::type, (void **)&self_res) || self_res == nullptr || self_res->val == nullptr) {
         error = erlang::nif::error(env, "cannot access NifResSignatureRunner resource");
+        return nullptr;
+    }
+
+    if (self_res->interpreter_has_gone) {
+        error = erlang::nif::error(env, "cannot access NifResSignatureRunner resource: the interpreter it came from has been rebuilt");
         return nullptr;
     }
 

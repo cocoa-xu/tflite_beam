@@ -93,6 +93,7 @@ struct NifResInterpreterBuilder {
 };
 
 struct NifResTfLiteTensor;
+struct NifResSignatureRunner;
 struct NifResEdgeTpuContext;
 struct NifResInterpreter {
     tflite::Interpreter * val;
@@ -102,6 +103,10 @@ struct NifResInterpreter {
     // nullptr for interpreters that do not run on a TPU
     NifResEdgeTpuContext * edgetpu_context;
     std::map<int, NifResTfLiteTensor *> * tensors;
+    // signature runners borrow from this interpreter the same way tensors do, so
+    // they are tracked here for the same reason: something has to tell them when
+    // the interpreter they point into is replaced
+    std::vector<NifResSignatureRunner *> * signature_runners;
     // the delegates behind this interpreter's graph, kept alive for its lifetime
     std::vector<NifResDelegate *> * delegates;
     // held while a NIF is inside this interpreter, so a second thread arriving
@@ -122,6 +127,8 @@ struct NifResInterpreter {
     // every cached tensor borrows a TfLiteTensor * from the interpreter, so they all
     // have to go whenever that interpreter does
     static void release_tensors(NifResInterpreter * res);
+    // and so does every signature runner, which borrows a SignatureRunner *
+    static void release_signature_runners(NifResInterpreter * res);
 };
 
 // tflite::Interpreter is documented as not thread-safe, and invoke runs on a
@@ -160,6 +167,10 @@ struct NifResSignatureRunner {
     tflite::SignatureRunner * val;
     // kept alive with enif_keep_resource: the runner dies with its interpreter
     NifResInterpreter * interpreter;
+    // keeping the interpreter alive is not enough: building into it again
+    // destroys the tflite::Interpreter this borrows from and puts a new one in
+    // its place, which leaves val dangling with the resource still valid
+    std::atomic_bool interpreter_has_gone;
 
     static ErlNifResourceType * type;
     static NifResSignatureRunner * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);

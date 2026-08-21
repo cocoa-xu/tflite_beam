@@ -45,6 +45,16 @@ ERL_NIF_TERM interpreter_get_signature_runner(ErlNifEnv *env, int argc, const ER
     res->interpreter = self_res;
     enif_keep_resource(self_res);
 
+    // Registered so that building into this interpreter again can retire the
+    // runner: operator() destroys the tflite::Interpreter this borrows from, and
+    // keeping the resource alive does not keep the borrowed pointer valid. The
+    // keep here is the registry's own reference, released by
+    // release_signature_runners.
+    if (self_res->signature_runners) {
+        enif_keep_resource(res);
+        self_res->signature_runners->push_back(res);
+    }
+
     ret = enif_make_resource(env, res);
     enif_release_resource(res);
     return erlang::nif::ok(env, ret);

@@ -159,6 +159,7 @@ ERL_NIF_TERM interpreter_builder_build(ErlNifEnv *env, int argc, const ERL_NIF_T
     // to succeed or not, so the cache cannot outlive this call. Once, before the
     // first attempt: the retry below resets an interpreter that is already gone.
     NifResInterpreter::release_tensors(interpreter_res);
+    NifResInterpreter::release_signature_runners(interpreter_res);
 
     std::vector<NifResDelegate *> applied;
     for (auto & entry : *self_res->delegates) {
