@@ -152,7 +152,11 @@ jobs:
           fi
 
           if [ "${{ matrix.pair.arch_name }}" = "armv6" ]; then
-            export TARGET_GCC_FLAGS="-mabi=aapcs-linux -mfpu=vfp -marm -fstack-protector-strong -mfloat-abi=hard -mcpu=arm1176jzf-s -fPIE -pie -Wl,-z,now -Wl,-z,relro"
+            # No -fPIE or -pie here: the Nerves flag set they come from builds
+            # executables, and they are what makes armv6 emit local-exec TLS that
+            # a shared object may not contain. CMakeLists strips them anyway, so
+            # this is the honest version of the same thing rather than the guard.
+            export TARGET_GCC_FLAGS="-mabi=aapcs-linux -mfpu=vfp -marm -fstack-protector-strong -mfloat-abi=hard -mcpu=arm1176jzf-s -Wl,-z,now -Wl,-z,relro"
             export PATH="/usr/local/bin/${ARMV6_TOOLCHAIN_NAME}-${ARMV6_TOOLCHAIN_VERSION}/bin/:${PATH}"
           elif [ "${{ matrix.pair.arch_name }}" = "riscv64" ]; then
             export PATH="/usr/local/bin/${RISCV64_TOOLCHAIN_NAME}-${RISCV64_TOOLCHAIN_VERSION}/bin/:${PATH}"

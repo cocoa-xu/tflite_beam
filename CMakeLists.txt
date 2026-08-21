@@ -37,7 +37,23 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wno-comment")
 if(DEFINED ENV{TARGET_GCC_FLAGS})
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{TARGET_GCC_FLAGS}")
+    # These come from the Nerves toolchain conventions, which are written for
+    # building executables. This builds a shared object, and -fPIE says the
+    # opposite of -fPIC: it lets the compiler emit the local-exec TLS model,
+    # whose relocations a shared object is not allowed to contain. On armv6 that
+    # is a link failure rather than a warning, and it surfaces inside abseil
+    # rather than in anything here:
+    #
+    #     R_ARM_TLS_LE32 relocation not permitted in shared object
+    #
+    # It went unnoticed because the line below used to read ${TARGET_GCC_FLAGS},
+    # a CMake variable nothing sets, while the guard above tested the environment
+    # one. None of these flags reached the compiler at all until that was fixed,
+    # and the first build that actually applied them did not link.
+    separate_arguments(TARGET_GCC_FLAGS_LIST NATIVE_COMMAND "$ENV{TARGET_GCC_FLAGS}")
+    list(REMOVE_ITEM TARGET_GCC_FLAGS_LIST -fPIE -fpie -pie)
+    list(JOIN TARGET_GCC_FLAGS_LIST " " TARGET_GCC_FLAGS_STR)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TARGET_GCC_FLAGS_STR}")
     if(DEFINED ENV{TARGET_CPU})
         if("$ENV{TARGET_CPU}" STREQUAL "cortex_a53" OR "$ENV{TARGET_CPU}" STREQUAL "cortex_a57")
             string(REPLACE "neon-vfpv4" "neon-fp-armv8" TARGET_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
@@ -49,6 +65,16 @@ if(DEFINED ENV{TARGET_ARCH})
     if(NOT "$ENV{TARGET_ARCH}" STREQUAL "arm")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTF_HAS_vcvtaq_s32_f32")
     endif()
+endif()
+
+# The one flag this build cannot be right without. Everything above appends, so
+# anything that arrives later can undo it, and the way that fails is a link error
+# thousands of lines into a dependency rather than a word about position
+# independence. Say it here instead.
+if(NOT CMAKE_CXX_FLAGS MATCHES "(^| )-fPIC( |$)")
+    message(FATAL_ERROR
+        "-fPIC is missing from CMAKE_CXX_FLAGS, which cannot build a shared "
+        "object: ${CMAKE_CXX_FLAGS}")
 endif()
 
 message(STATUS "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}")
