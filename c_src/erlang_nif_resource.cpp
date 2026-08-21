@@ -515,16 +515,11 @@ NifResTfLiteTensor * NifResTfLiteTensor::get_resource(ErlNifEnv * env, ERL_NIF_T
 void NifResTfLiteTensor::destruct_resource(ErlNifEnv *env, void *args) {
     auto res = (NifResTfLiteTensor *)args;
     if (res) {
-        // The pointer is dropped and never deleted: it belongs to the
-        // interpreter's arena. There used to be a flag here saying so, set false
-        // at allocation and true at the one site that allocates, which left a
-        // delete of an arena pointer sitting on a branch nothing could reach.
-        res->val = nullptr;
-
-        // Out of the registry before the interpreter reference goes, or the
-        // registry would be left holding an address that has just been freed.
-        // This runs on whichever thread dropped the last reference, so it takes
-        // the registry lock like every other writer.
+        // Out of the registry first, and val cleared while still holding the
+        // registry lock. revalidate_tensors reads val for every entry it walks,
+        // under that same lock, so clearing it beforehand would be one thread
+        // writing what another is reading. The pointer is only ever dropped and
+        // never deleted: it belongs to the interpreter's arena.
         if (res->interpreter && res->interpreter->tensors) {
             MutexLock registry(res->interpreter->tensors_lock);
             auto & list = *res->interpreter->tensors;
@@ -534,6 +529,9 @@ void NifResTfLiteTensor::destruct_resource(ErlNifEnv *env, void *args) {
                     break;
                 }
             }
+            res->val = nullptr;
+        } else {
+            res->val = nullptr;
         }
 
         if (res->interpreter) {

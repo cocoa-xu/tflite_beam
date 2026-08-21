@@ -180,6 +180,10 @@ ERL_NIF_TERM coral_dequantize_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TER
         return erlang::nif::error(env, "cannot access NifResInterpreter resource");
     }
 
+    // reads a tensor out of the interpreter and copies from it, so a rebuild
+    // must not be replacing that interpreter while it does
+    TFLITE_BEAM_INTERPRETER_IN_USE(interpreter_res);
+
     int64_t tensor_index;
     if (!erlang::nif::get(env, tensor_index_term, &tensor_index)) {
         return erlang::nif::error(env, "cannot get value of parameter 'tensor_index' in nif");

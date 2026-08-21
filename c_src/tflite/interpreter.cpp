@@ -206,6 +206,12 @@ ERL_NIF_TERM interpreter_cancel(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
     // the one call that deletes what it is about to dereference.
     TFLITE_BEAM_INTERPRETER_NOT_BEING_REPLACED(self_res);
 
+    // and re-read val after it, for the same reason: get_resource saw it before
+    // the lock, and a rebuild that failed leaves it null
+    if (self_res->val == nullptr) {
+        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    }
+
     return tflite_status_to_erl_term(env, self_res->val->Cancel());
 }
 

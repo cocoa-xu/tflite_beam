@@ -52,6 +52,10 @@ ERL_NIF_TERM tflite_print_interpreter_state(ErlNifEnv *env, int argc, const ERL_
         return erlang::nif::error(env, "cannot access NifResInterpreter resource");
     }
 
+    // walks the whole interpreter, so it cannot do so while a rebuild is
+    // replacing the thing it is walking
+    TFLITE_BEAM_INTERPRETER_IN_USE(interpreter_res);
+
     tflite::PrintInterpreterState(interpreter_res->val);
     return erlang::nif::atom(env, "nil");
 }
@@ -66,6 +70,8 @@ ERL_NIF_TERM tflite_reset_variable_tensor(ErlNifEnv *env, int argc, const ERL_NI
     if (!(self_res = NifResTfLiteTensor::get_resource(env, tensor_nif, ret))) {
         return ret;
     }
+
+    TFLITE_BEAM_BORROWED_IN_USE(self_res, "cannot access NifResTfLiteTensor resource: the handle has been retired, because the interpreter moved its tensors");
 
     TfLiteStatus status = tflite::ResetVariableTensor(self_res->val);
     return tflite_status_to_erl_term(env, status);

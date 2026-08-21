@@ -185,6 +185,23 @@ ERL_NIF_TERM interpreter_builder_build(ErlNifEnv *env, int argc, const ERL_NIF_T
         applied.push_back(entry.delegate);
     }
 
+    // Room for the handover list before anything is destroyed. operator() below
+    // deletes the interpreter these delegates backed, so from that line on
+    // interpreter_res->val is a pointer to something already gone and the only
+    // copy of the new one is inside pretend. An allocation failing after that
+    // point unwinds through pretend, which deletes the new interpreter too, and
+    // leaves the resource holding the old dangling one. Doing the only step
+    // that can fail here means a failure leaves the interpreter exactly as it
+    // was: same graph, same model, same delegates, all still matching.
+    //
+    // Reserving is enough. The retry path can only shrink `applied`, never grow
+    // it, so the assign below cannot reallocate.
+    std::vector<NifResDelegate *> replacement;
+    if (interpreter_res->delegates) {
+        erlang::nif::fault_point(erlang::nif::kFaultDelegateTransfer);
+        replacement.reserve(applied.size());
+    }
+
     std::unique_ptr<tflite::Interpreter> pretend(interpreter_res->val);
     TfLiteStatus status = self_res->val->operator()(&pretend);
 
@@ -209,17 +226,16 @@ ERL_NIF_TERM interpreter_builder_build(ErlNifEnv *env, int argc, const ERL_NIF_T
     // refcount zero. Safe to release the old ones here and not earlier: the
     // interpreter they backed was destroyed inside operator().
     if (interpreter_res->delegates) {
-        // Copy first, since it is the only step that can fail and it touches
-        // nothing until it succeeds. What follows is a keep, a swap and a
-        // release, none of which can, so there is no moment where a reference
-        // has been taken and the list that would give it back is gone.
-        erlang::nif::fault_point(erlang::nif::kFaultDelegateTransfer);
-        std::vector<NifResDelegate *> displaced(applied);
-        for (auto delegate_res : displaced) {
+        // Into the capacity reserved above, so none of this can fail: an assign
+        // that cannot reallocate, then a keep, a swap and a release. There is no
+        // moment where a reference has been taken and the list that would give
+        // it back is gone.
+        replacement.assign(applied.begin(), applied.end());
+        for (auto delegate_res : replacement) {
             enif_keep_resource(delegate_res);
         }
-        interpreter_res->delegates->swap(displaced);
-        for (auto delegate_res : displaced) {
+        interpreter_res->delegates->swap(replacement);
+        for (auto delegate_res : replacement) {
             enif_release_resource(delegate_res);
         }
     }

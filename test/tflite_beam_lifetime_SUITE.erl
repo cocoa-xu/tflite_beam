@@ -11,7 +11,7 @@
 -include_lib("stdlib/include/assert.hrl").
 -include("../src/tflite_beam/tflite_beam_records.hrl").
 
--export([all/0]).
+-export([all/0, init_per_testcase/2]).
 -export([
     tensor_handle_retired_by_allocate/1,
     tensor_handle_retired_by_resize/1,
@@ -52,6 +52,26 @@ all() ->
         add_delegate_failure_strands_no_delegate,
         delegate_transfer_failure_strands_no_delegate
     ].
+
+%% Arming a fault point is a global switch that crosses processes, so the NIF
+%% refuses unless TFLITE_BEAM_ENABLE_FAULT_INJECTION is in the environment.
+%% os:putenv cannot supply it: since OTP 24 the VM keeps its own table rather
+%% than calling setenv, which is not thread-safe, so the C side never sees it. It
+%% has to be there before the VM starts, which is what CI does and what a bare
+%% `rebar3 ct` does not.
+init_per_testcase(Case, Config) when
+        Case =:= runner_registry_failure_frees_the_runner_and_the_lock;
+        Case =:= interpreter_allocation_failure_is_reported_not_leaked;
+        Case =:= builder_allocation_failure_is_reported_not_leaked;
+        Case =:= add_delegate_failure_strands_no_delegate;
+        Case =:= delegate_transfer_failure_strands_no_delegate ->
+    case tflite_beam_nif:nif_arm_fault(none) of
+        ok -> Config;
+        {error, _} ->
+            {skip, "set TFLITE_BEAM_ENABLE_FAULT_INJECTION=1 before starting the VM"}
+    end;
+init_per_testcase(_Case, Config) ->
+    Config.
 
 %% An interpreter over Name, built and allocated, plus its first input index.
 ready(Name) ->

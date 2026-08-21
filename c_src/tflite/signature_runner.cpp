@@ -338,11 +338,15 @@ ERL_NIF_TERM signature_runner_cancel(ErlNifEnv *env, int argc, const ERL_NIF_TER
     // takes what interpreter cancel takes and for the same reason: not the guard
     // invoke holds, because then it could never cancel an invoke, but the lock
     // that keeps it away from the call that deletes the interpreter under it.
-    if (self_res->interpreter_has_gone) {
+    TFLITE_BEAM_INTERPRETER_NOT_BEING_REPLACED(self_res->interpreter);
+
+    // After the lock, not before. get_resource read this flag already, but a
+    // rebuild that was running then finished while this waited, and it is the
+    // second read that says whether val is still there to be called.
+    if (self_res->interpreter_has_gone || self_res->val == nullptr) {
         return erlang::nif::error(env,
             "cannot access NifResSignatureRunner resource: the handle has been retired, because the interpreter it came from was rebuilt");
     }
-    TFLITE_BEAM_INTERPRETER_NOT_BEING_REPLACED(self_res->interpreter);
 
     return tflite_status_to_erl_term(env, self_res->val->Cancel());
 }
