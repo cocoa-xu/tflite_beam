@@ -35,6 +35,11 @@ cmake_tflite_beam/
 tflite_beam_precompiled.beam
 # rebar3 leaves one of these wherever it is run, and c_src has no rebar.config
 c_src/rebar.lock
+# Generated between tagging and publishing by scripts/generate_checksums.sh: the
+# tarballs it lists do not exist until the tag has been built, so a tracked copy
+# is always one release out of date -- which is exactly how 0.4.0-rc4 shipped
+# with rc3's manifest and refused to install.
+checksum.term
 libusb/
 
 # built by TFLITE_BEAM_BUILD_TEST_PLUGIN, for the external-delegate tests
