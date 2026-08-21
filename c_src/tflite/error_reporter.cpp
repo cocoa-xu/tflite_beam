@@ -9,7 +9,6 @@
 #include "error_reporter.h"
 
 ERL_NIF_TERM error_reporter_default_error_reporter(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    NifResErrorReporter * res = nullptr;
     auto e = tflite::DefaultErrorReporter();
     
     if (e == nullptr) {
@@ -17,8 +16,7 @@ ERL_NIF_TERM error_reporter_default_error_reporter(ErlNifEnv *env, int argc, con
     }
 
     ERL_NIF_TERM ret;
-    res = _make_error_reporter(env, e, ret);
-    res->is_default = true;
+    _make_error_reporter(env, e, ret);
     return ret;
 }
 
@@ -41,11 +39,10 @@ NifResErrorReporter * _make_error_reporter(ErlNifEnv *env, tflite::ErrorReporter
     if (!(res = NifResErrorReporter::allocate_resource(env, out))) {
         return res;
     }
+    ResourceRef<NifResErrorReporter> hold(res);
 
     res->val = e;
-    res->is_default = e == tflite::DefaultErrorReporter();
     ERL_NIF_TERM ret = enif_make_resource(env, res);
-    enif_release_resource(res);
     out = erlang::nif::ok(env, ret);
     return res;
 }
