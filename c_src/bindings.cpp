@@ -206,6 +206,11 @@ static ErlNifFunc nif_functions[] = {
     F(tflitetensor_to_binary, 2),
     F(tflitetensor_set_data, 2),
 
+    F(tflite_version, 0),
+    F(tflite_runtime_version, 0),
+    F(tflite_extension_apis_version, 0),
+    F(tflite_schema_version, 0),
+
     F_IO(tflite_print_interpreter_state, 1),
     F_CPU(tflite_reset_variable_tensor, 1),
 

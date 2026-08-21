@@ -241,6 +241,18 @@ tflitetensor_set_data(_self, _data) ->
     not_loaded(?LINE).
 
 
+tflite_version() ->
+    not_loaded(?LINE).
+
+tflite_runtime_version() ->
+    not_loaded(?LINE).
+
+tflite_extension_apis_version() ->
+    not_loaded(?LINE).
+
+tflite_schema_version() ->
+    not_loaded(?LINE).
+
 tflite_print_interpreter_state(_interpreter) ->
     not_loaded(?LINE).
 

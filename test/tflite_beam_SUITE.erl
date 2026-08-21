@@ -15,6 +15,7 @@
     interpreter_from_builder/1,
     interpreter_tensor_metadata/1,
     tensor_accessors_take_the_record/1,
+    build_version_is_injected/1,
     interpreter_invoke/1,
     interpreter_predict/1,
     signature_runner_invoke/1,
@@ -34,6 +35,7 @@ all() ->
         interpreter_from_builder,
         interpreter_tensor_metadata,
         tensor_accessors_take_the_record,
+        build_version_is_injected,
         interpreter_invoke,
         interpreter_predict,
         signature_runner_invoke,
@@ -97,6 +99,30 @@ tensor_accessors_take_the_record(_Config) ->
     ?assertEqual(tflite_beam_tensor:dims(Ref), tflite_beam_tensor:dims(Tensor)),
     ?assertEqual(tflite_beam_tensor:shape(Ref), tflite_beam_tensor:shape(Tensor)),
     ?assertEqual(7, tflite_beam_interpreter:tensors_size(Interpreter)).
+
+%% tflite_version/0 is what a delegate plugin gets matched against, and it comes
+%% from TFLITE_VER injected at compile time rather than from the runtime, whose
+%% own number is a hand-maintained constant upstream forgets to bump. This pins
+%% the whole path -- Makefile to cmake to macro to NIF -- because every link in
+%% it is silent when it breaks: a stale or missing value still returns a string.
+build_version_is_injected(_Config) ->
+    Version = tflite_beam:tflite_version(),
+    ?assertNotEqual(<<"unknown">>, Version),
+    ?assertEqual(makefile_tflite_ver(), Version),
+    ?assert(is_binary(tflite_beam:tflite_runtime_version())),
+    ?assert(is_binary(tflite_beam:tflite_extension_apis_version())),
+    ?assert(tflite_beam:tflite_schema_version() > 0).
+
+makefile_tflite_ver() ->
+    Root = filename:join(code:lib_dir(tflite_beam), filename:join(lists:duplicate(4, ".."))),
+    Makefile = case filelib:is_regular(filename:join(Root, "Makefile")) of
+        true -> filename:join(Root, "Makefile");
+        false -> "Makefile"
+    end,
+    {ok, Contents} = file:read_file(Makefile),
+    [_, Rest] = binary:split(Contents, <<"\nTFLITE_VER ?= ">>),
+    [Version | _] = binary:split(Rest, <<"\n">>),
+    Version.
 
 interpreter_invoke(_Config) ->
     Interpreter = tflite_beam_test_models:interpreter("multi_add.bin"),
