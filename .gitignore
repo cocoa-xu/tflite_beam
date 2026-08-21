@@ -33,6 +33,8 @@ tflite_beam-*.tar
 priv/
 cmake_tflite_beam/
 tflite_beam_precompiled.beam
+# rebar3 leaves one of these wherever it is run, and c_src has no rebar.config
+c_src/rebar.lock
 libusb/
 
 # built by TFLITE_BEAM_BUILD_TEST_PLUGIN, for the external-delegate tests
