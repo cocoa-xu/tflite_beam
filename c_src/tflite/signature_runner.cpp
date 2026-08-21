@@ -24,6 +24,14 @@ ERL_NIF_TERM interpreter_get_signature_runner(ErlNifEnv *env, int argc, const ER
         return ret;
     }
 
+    // GetSignatureRunner below builds a placeholder SignatureDef on demand and
+    // writes it into the interpreter, so this reads as a lookup and is a
+    // mutation. It serialises against invoke and allocate_tensors like any other.
+    InterpreterInUse in_use(self_res);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
+    }
+
     // nil asks TFLite for the primary subgraph: the first signature pointing at it, or
     // a placeholder one for a model that declares no signatures at all
     bool any_signature = erlang::nif::check_nil(env, signature_key_nif);
@@ -54,7 +62,9 @@ ERL_NIF_TERM interpreter_get_signature_runner(ErlNifEnv *env, int argc, const ER
     // away. The runner removes itself in its destructor instead, which is the
     // only moment the pointer could go stale.
     if (self_res->signature_runners) {
+        if (self_res->signature_runners_lock) enif_mutex_lock(self_res->signature_runners_lock);
         self_res->signature_runners->push_back(res);
+        if (self_res->signature_runners_lock) enif_mutex_unlock(self_res->signature_runners_lock);
     }
 
     ret = enif_make_resource(env, res);
@@ -72,6 +82,14 @@ ERL_NIF_TERM signature_runner_signature_key(ErlNifEnv *env, int argc, const ERL_
         return ret;
     }
 
+    // A runner works on a subgraph the interpreter owns, so it takes that
+    // interpreter's guard rather than one of its own: a lock private to the
+    // runner would serialise it against itself and against nothing else.
+    InterpreterInUse in_use(self_res->interpreter);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
+    }
+
     return erlang::nif::ok(env, erlang::nif::make_binary(env, self_res->val->signature_key().c_str()));
 }
 
@@ -85,6 +103,14 @@ ERL_NIF_TERM signature_runner_input_size(ErlNifEnv *env, int argc, const ERL_NIF
         return ret;
     }
 
+    // A runner works on a subgraph the interpreter owns, so it takes that
+    // interpreter's guard rather than one of its own: a lock private to the
+    // runner would serialise it against itself and against nothing else.
+    InterpreterInUse in_use(self_res->interpreter);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
+    }
+
     return erlang::nif::ok(env, enif_make_uint64(env, self_res->val->input_size()));
 }
 
@@ -96,6 +122,14 @@ ERL_NIF_TERM signature_runner_output_size(ErlNifEnv *env, int argc, const ERL_NI
 
     if (!(self_res = NifResSignatureRunner::get_resource(env, argv[0], ret))) {
         return ret;
+    }
+
+    // A runner works on a subgraph the interpreter owns, so it takes that
+    // interpreter's guard rather than one of its own: a lock private to the
+    // runner would serialise it against itself and against nothing else.
+    InterpreterInUse in_use(self_res->interpreter);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
     }
 
     return erlang::nif::ok(env, enif_make_uint64(env, self_res->val->output_size()));
@@ -120,6 +154,14 @@ ERL_NIF_TERM signature_runner_input_names(ErlNifEnv *env, int argc, const ERL_NI
         return ret;
     }
 
+    // A runner works on a subgraph the interpreter owns, so it takes that
+    // interpreter's guard rather than one of its own: a lock private to the
+    // runner would serialise it against itself and against nothing else.
+    InterpreterInUse in_use(self_res->interpreter);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
+    }
+
     return erlang::nif::ok(env, _names_to_list(env, self_res->val->input_names()));
 }
 
@@ -131,6 +173,14 @@ ERL_NIF_TERM signature_runner_output_names(ErlNifEnv *env, int argc, const ERL_N
 
     if (!(self_res = NifResSignatureRunner::get_resource(env, argv[0], ret))) {
         return ret;
+    }
+
+    // A runner works on a subgraph the interpreter owns, so it takes that
+    // interpreter's guard rather than one of its own: a lock private to the
+    // runner would serialise it against itself and against nothing else.
+    InterpreterInUse in_use(self_res->interpreter);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
     }
 
     return erlang::nif::ok(env, _names_to_list(env, self_res->val->output_names()));
@@ -148,6 +198,14 @@ ERL_NIF_TERM signature_runner_input_tensor(ErlNifEnv *env, int argc, const ERL_N
 
     if (!(self_res = NifResSignatureRunner::get_resource(env, argv[0], ret))) {
         return ret;
+    }
+
+    // A runner works on a subgraph the interpreter owns, so it takes that
+    // interpreter's guard rather than one of its own: a lock private to the
+    // runner would serialise it against itself and against nothing else.
+    InterpreterInUse in_use(self_res->interpreter);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
     }
 
     if (!erlang::nif::get(env, argv[1], input_name)) {
@@ -186,6 +244,14 @@ ERL_NIF_TERM signature_runner_output_tensor(ErlNifEnv *env, int argc, const ERL_
         return ret;
     }
 
+    // A runner works on a subgraph the interpreter owns, so it takes that
+    // interpreter's guard rather than one of its own: a lock private to the
+    // runner would serialise it against itself and against nothing else.
+    InterpreterInUse in_use(self_res->interpreter);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
+    }
+
     if (!erlang::nif::get(env, argv[1], output_name)) {
         return erlang::nif::error(env, "expecting `output_name` to be a string");
     }
@@ -216,6 +282,14 @@ static ERL_NIF_TERM _resize(ErlNifEnv *env, const ERL_NIF_TERM argv[], bool stri
 
     if (!(self_res = NifResSignatureRunner::get_resource(env, argv[0], ret))) {
         return ret;
+    }
+
+    // A runner works on a subgraph the interpreter owns, so it takes that
+    // interpreter's guard rather than one of its own: a lock private to the
+    // runner would serialise it against itself and against nothing else.
+    InterpreterInUse in_use(self_res->interpreter);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
     }
 
     if (!erlang::nif::get(env, argv[1], input_name)) {
@@ -252,6 +326,14 @@ ERL_NIF_TERM signature_runner_allocate_tensors(ErlNifEnv *env, int argc, const E
         return ret;
     }
 
+    // A runner works on a subgraph the interpreter owns, so it takes that
+    // interpreter's guard rather than one of its own: a lock private to the
+    // runner would serialise it against itself and against nothing else.
+    InterpreterInUse in_use(self_res->interpreter);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
+    }
+
     return tflite_status_to_erl_term(env, self_res->val->AllocateTensors());
 }
 
@@ -265,6 +347,14 @@ ERL_NIF_TERM signature_runner_invoke(ErlNifEnv *env, int argc, const ERL_NIF_TER
         return ret;
     }
 
+    // A runner works on a subgraph the interpreter owns, so it takes that
+    // interpreter's guard rather than one of its own: a lock private to the
+    // runner would serialise it against itself and against nothing else.
+    InterpreterInUse in_use(self_res->interpreter);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
+    }
+
     return tflite_status_to_erl_term(env, self_res->val->Invoke());
 }
 
@@ -276,6 +366,14 @@ ERL_NIF_TERM signature_runner_cancel(ErlNifEnv *env, int argc, const ERL_NIF_TER
 
     if (!(self_res = NifResSignatureRunner::get_resource(env, argv[0], ret))) {
         return ret;
+    }
+
+    // A runner works on a subgraph the interpreter owns, so it takes that
+    // interpreter's guard rather than one of its own: a lock private to the
+    // runner would serialise it against itself and against nothing else.
+    InterpreterInUse in_use(self_res->interpreter);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
     }
 
     return tflite_status_to_erl_term(env, self_res->val->Cancel());

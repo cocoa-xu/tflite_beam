@@ -213,6 +213,7 @@ NifResInterpreter * NifResInterpreter::allocate_resource(ErlNifEnv * env, ERL_NI
     res->edgetpu_context = nullptr;
     res->tensors = new std::map<int, NifResTfLiteTensor *>;
     res->signature_runners = new std::vector<NifResSignatureRunner *>;
+    res->signature_runners_lock = enif_mutex_create((char *)"tflite_beam_signature_runners");
     res->delegates = new std::vector<NifResDelegate *>;
     res->in_use = enif_mutex_create((char *)"tflite_beam_interpreter");
     res->is_controlled = false;
@@ -274,12 +275,14 @@ void NifResInterpreter::release_signature_runners(NifResInterpreter * res) {
     // Flag only: the registry never took a reference, so there is none to give
     // back. Whoever holds the runner in Erlang still holds it, and now finds out
     // that what it borrows from is gone.
+    if (res->signature_runners_lock) enif_mutex_lock(res->signature_runners_lock);
     for (auto runner_res : *res->signature_runners) {
         if (runner_res) {
             runner_res->interpreter_has_gone = true;
         }
     }
     res->signature_runners->clear();
+    if (res->signature_runners_lock) enif_mutex_unlock(res->signature_runners_lock);
 }
 
 void NifResInterpreter::destruct_resource(ErlNifEnv *env, void *args) {
@@ -295,6 +298,10 @@ void NifResInterpreter::destruct_resource(ErlNifEnv *env, void *args) {
         if (res->signature_runners) {
             delete res->signature_runners;
             res->signature_runners = nullptr;
+        }
+        if (res->signature_runners_lock) {
+            enif_mutex_destroy(res->signature_runners_lock);
+            res->signature_runners_lock = nullptr;
         }
 
         if (res->val) {
@@ -373,7 +380,11 @@ void NifResSignatureRunner::destruct_resource(ErlNifEnv *env, void *args) {
 
         // Out of the registry before the interpreter reference goes, or the
         // registry would be left holding an address that has just been freed.
+        // This runs on whichever thread dropped the last reference, so it takes
+        // the registry lock like every other writer.
         if (res->interpreter && res->interpreter->signature_runners) {
+            ErlNifMutex * lock = res->interpreter->signature_runners_lock;
+            if (lock) enif_mutex_lock(lock);
             auto & list = *res->interpreter->signature_runners;
             for (auto it = list.begin(); it != list.end(); ++it) {
                 if (*it == res) {
@@ -381,6 +392,7 @@ void NifResSignatureRunner::destruct_resource(ErlNifEnv *env, void *args) {
                     break;
                 }
             }
+            if (lock) enif_mutex_unlock(lock);
         }
 
         if (res->interpreter) {

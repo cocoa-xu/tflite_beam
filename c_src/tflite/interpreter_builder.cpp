@@ -155,6 +155,16 @@ ERL_NIF_TERM interpreter_builder_build(ErlNifEnv *env, int argc, const ERL_NIF_T
         return erlang::nif::error(env, "cannot access NifResInterpreter resource");
     }
 
+    // This is the one operation that deletes the whole tflite::Interpreter and
+    // puts another in its place, so it has to hold the same guard invoke,
+    // allocate_tensors and the tensor accessors take. Without it those four
+    // serialise carefully against each other while the call that replaces what
+    // they are all pointing at walks straight through.
+    InterpreterInUse in_use(interpreter_res);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
+    }
+
     // operator() destroys the interpreter these were taken from, whether it goes on
     // to succeed or not, so the cache cannot outlive this call. Once, before the
     // first attempt: the retry below resets an interpreter that is already gone.

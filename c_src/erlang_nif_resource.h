@@ -107,6 +107,11 @@ struct NifResInterpreter {
     // they are tracked here for the same reason: something has to tell them when
     // the interpreter they point into is replaced
     std::vector<NifResSignatureRunner *> * signature_runners;
+    // Guards signature_runners alone, not the interpreter. Insertion happens on a
+    // normal scheduler, removal in a destructor that can run on any thread, and
+    // the clear on a dirty one, so the vector needs its own lock even where the
+    // caller already holds in_use.
+    ErlNifMutex * signature_runners_lock;
     // the delegates behind this interpreter's graph, kept alive for its lifetime
     std::vector<NifResDelegate *> * delegates;
     // held while a NIF is inside this interpreter, so a second thread arriving
