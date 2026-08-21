@@ -52,6 +52,26 @@ private:
 // that allocates is not reached when the allocation throws, and a mutex nobody
 // unlocks is worse than the leak that got it there: every later reader of the
 // same structure waits forever.
+// Same shape as MutexLock, but reports the collision rather than waiting for it,
+// which is what every lock on an interpreter wants: a NIF that blocks is a
+// scheduler that blocks.
+class MutexTryLock {
+public:
+    explicit MutexTryLock(ErlNifMutex * mutex) : mutex_(mutex) {
+        acquired_ = mutex_ != nullptr && enif_mutex_trylock(mutex_) == 0;
+    }
+    ~MutexTryLock() { if (acquired_) enif_mutex_unlock(mutex_); }
+
+    MutexTryLock(const MutexTryLock &) = delete;
+    MutexTryLock & operator=(const MutexTryLock &) = delete;
+
+    bool acquired() const { return acquired_; }
+
+private:
+    ErlNifMutex * mutex_;
+    bool acquired_;
+};
+
 class MutexLock {
 public:
     explicit MutexLock(ErlNifMutex * mutex) : mutex_(mutex) {
@@ -177,6 +197,12 @@ struct NifResInterpreter {
     // every other non-POD member here: enif_alloc_resource hands back raw memory
     // and runs no constructor on it.
     ErlNifMutex * in_use;
+    // Held while val itself is being replaced, which only the builder does.
+    // Cancel cannot take in_use, since the whole point of it is to be called
+    // from another process while invoke holds that one, but it does dereference
+    // val and the builder deletes val. So the two meet here instead, and invoke
+    // is not in the way.
+    ErlNifMutex * being_replaced;
     // opt-in: once a process takes control, everyone else is refused. Unset by
     // default, because an interpreter is born shared and making it otherwise
     // would break every caller that builds in one process and runs in another.
@@ -192,6 +218,9 @@ struct NifResInterpreter {
     static void release_tensors(NifResInterpreter * res);
     // and so does every signature runner, which borrows a SignatureRunner *
     static void release_signature_runners(NifResInterpreter * res);
+    // for calls that may move tensors rather than existing to move them:
+    // retire only the handles whose index now resolves somewhere else
+    static void revalidate_tensors(NifResInterpreter * res);
 };
 
 // tflite::Interpreter is documented as not thread-safe, and invoke runs on a
@@ -208,7 +237,8 @@ public:
     explicit InterpreterInUse(NifResInterpreter * res) : res_(res) {
         // try, never wait: the point is to report the collision, not to
         // serialise around it on a dirty scheduler
-        acquired_ = res_->in_use != nullptr && enif_mutex_trylock(res_->in_use) == 0;
+        acquired_ = res_ != nullptr && res_->in_use != nullptr &&
+                    enif_mutex_trylock(res_->in_use) == 0;
     }
 
     ~InterpreterInUse() {
@@ -224,6 +254,42 @@ private:
     NifResInterpreter * res_;
     bool acquired_;
 };
+
+// Every entry point that dereferences an interpreter takes the guard, not only
+// the ones that write. interpreter_builder_build deletes the tflite::Interpreter
+// and puts another in its place, so a reader holding nothing but self_res is
+// holding a pointer to something that can be freed while it reads. There is one
+// exception, and it is the reason this is a macro rather than a helper that
+// returns a value: cancel exists to be called from another process while invoke
+// holds the guard, so it must not take it.
+// For cancel, and only cancel. See being_replaced above.
+#define TFLITE_BEAM_INTERPRETER_NOT_BEING_REPLACED(RES)                              \
+    MutexTryLock not_replacing((RES)->being_replaced);                               \
+    if (!not_replacing.acquired()) {                                                 \
+        return erlang::nif::error(env, "interpreter is being rebuilt");               \
+    }
+
+#define TFLITE_BEAM_INTERPRETER_IN_USE(RES)                                          \
+    InterpreterInUse in_use(RES);                                                    \
+    if (!in_use.acquired()) {                                                        \
+        return erlang::nif::error(env,                                               \
+            "interpreter is already in use by another process");                     \
+    }
+
+// The same for a handle that borrows from an interpreter, plus the part that
+// makes the borrow safe: the dead flag is read once by get_resource and once
+// here. A rebuild already running when the first read happened finishes while
+// this waits for the guard, and the second read is what catches it. Without it
+// the first read only proves the handle was alive a moment ago.
+#define TFLITE_BEAM_BORROWED_IN_USE(RES, RETIRED_MESSAGE)                            \
+    InterpreterInUse in_use((RES)->interpreter);                                     \
+    if ((RES)->interpreter != nullptr && !in_use.acquired()) {                       \
+        return erlang::nif::error(env,                                               \
+            "interpreter is already in use by another process");                     \
+    }                                                                                \
+    if ((RES)->interpreter_has_gone) {                                               \
+        return erlang::nif::error(env, RETIRED_MESSAGE);                             \
+    }
 
 struct NifResSignatureRunner {
     // owned by the interpreter that handed it out, so never deleted here
@@ -251,6 +317,9 @@ struct NifResTfLiteTensor {
     // fetched from, then never named again, is collectable while the tensor
     // taken out of it is still in use.
     NifResInterpreter * interpreter;
+    // which tensor this is, so that after a call that may have moved them the
+    // handle can be asked whether its own pointer is still the right one
+    int index;
     // and keeping the interpreter alive is not enough on its own, because
     // AllocateTensors and a reshape both move the arena out from under val
     // while the interpreter itself stays exactly where it was

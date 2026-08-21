@@ -142,7 +142,7 @@ static ErlNifFunc nif_functions[] = {
     F(flatbuffer_model_initialized, 1),
     F(flatbuffer_model_error_reporter, 1),
     F(flatbuffer_model_get_minimum_runtime, 1),
-    F(flatbuffer_model_read_all_metadata, 1),
+    F_CPU(flatbuffer_model_read_all_metadata, 1),
 
     F(ops_builtin_builtin_resolver_new, 1),
 
@@ -194,7 +194,9 @@ static ErlNifFunc nif_functions[] = {
     F_CPU(interpreter_invoke, 1),
     F(interpreter_set_num_threads, 2),
     F(interpreter_get_signature_defs, 1),
-    F(interpreter_get_signature_runner, 2),
+    // applies lazy delegate providers on first use, which can rewrite and
+    // repartition every subgraph, so its cost is the model's and not a fixed one
+    F_CPU(interpreter_get_signature_runner, 2),
     F(signature_runner_signature_key, 1),
     F(signature_runner_input_size, 1),
     F(signature_runner_output_size, 1),

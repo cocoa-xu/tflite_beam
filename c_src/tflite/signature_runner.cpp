@@ -42,6 +42,9 @@ ERL_NIF_TERM interpreter_get_signature_runner(ErlNifEnv *env, int argc, const ER
 
     tflite::SignatureRunner * runner =
         self_res->val->GetSignatureRunner(any_signature ? nullptr : signature_key.c_str());
+    // GetSignatureRunner can apply lazy delegate providers, which rewrites the
+    // graph, so handles taken before it may no longer point where they did.
+    NifResInterpreter::revalidate_tensors(self_res);
     if (runner == nullptr) {
         return erlang::nif::error(env, "cannot find a signature with the given key");
     }
@@ -87,13 +90,8 @@ ERL_NIF_TERM signature_runner_signature_key(ErlNifEnv *env, int argc, const ERL_
         return ret;
     }
 
-    // A runner works on a subgraph the interpreter owns, so it takes that
-    // interpreter's guard rather than one of its own: a lock private to the
-    // runner would serialise it against itself and against nothing else.
-    InterpreterInUse in_use(self_res->interpreter);
-    if (!in_use.acquired()) {
-        return erlang::nif::error(env, "interpreter is already in use by another process");
-    }
+    TFLITE_BEAM_BORROWED_IN_USE(self_res,
+        "cannot access NifResSignatureRunner resource: the handle has been retired, because the interpreter it came from was rebuilt");
 
     return erlang::nif::ok(env, erlang::nif::make_binary(env, self_res->val->signature_key().c_str()));
 }
@@ -108,13 +106,8 @@ ERL_NIF_TERM signature_runner_input_size(ErlNifEnv *env, int argc, const ERL_NIF
         return ret;
     }
 
-    // A runner works on a subgraph the interpreter owns, so it takes that
-    // interpreter's guard rather than one of its own: a lock private to the
-    // runner would serialise it against itself and against nothing else.
-    InterpreterInUse in_use(self_res->interpreter);
-    if (!in_use.acquired()) {
-        return erlang::nif::error(env, "interpreter is already in use by another process");
-    }
+    TFLITE_BEAM_BORROWED_IN_USE(self_res,
+        "cannot access NifResSignatureRunner resource: the handle has been retired, because the interpreter it came from was rebuilt");
 
     return erlang::nif::ok(env, enif_make_uint64(env, self_res->val->input_size()));
 }
@@ -129,13 +122,8 @@ ERL_NIF_TERM signature_runner_output_size(ErlNifEnv *env, int argc, const ERL_NI
         return ret;
     }
 
-    // A runner works on a subgraph the interpreter owns, so it takes that
-    // interpreter's guard rather than one of its own: a lock private to the
-    // runner would serialise it against itself and against nothing else.
-    InterpreterInUse in_use(self_res->interpreter);
-    if (!in_use.acquired()) {
-        return erlang::nif::error(env, "interpreter is already in use by another process");
-    }
+    TFLITE_BEAM_BORROWED_IN_USE(self_res,
+        "cannot access NifResSignatureRunner resource: the handle has been retired, because the interpreter it came from was rebuilt");
 
     return erlang::nif::ok(env, enif_make_uint64(env, self_res->val->output_size()));
 }
@@ -159,13 +147,8 @@ ERL_NIF_TERM signature_runner_input_names(ErlNifEnv *env, int argc, const ERL_NI
         return ret;
     }
 
-    // A runner works on a subgraph the interpreter owns, so it takes that
-    // interpreter's guard rather than one of its own: a lock private to the
-    // runner would serialise it against itself and against nothing else.
-    InterpreterInUse in_use(self_res->interpreter);
-    if (!in_use.acquired()) {
-        return erlang::nif::error(env, "interpreter is already in use by another process");
-    }
+    TFLITE_BEAM_BORROWED_IN_USE(self_res,
+        "cannot access NifResSignatureRunner resource: the handle has been retired, because the interpreter it came from was rebuilt");
 
     return erlang::nif::ok(env, _names_to_list(env, self_res->val->input_names()));
 }
@@ -180,13 +163,8 @@ ERL_NIF_TERM signature_runner_output_names(ErlNifEnv *env, int argc, const ERL_N
         return ret;
     }
 
-    // A runner works on a subgraph the interpreter owns, so it takes that
-    // interpreter's guard rather than one of its own: a lock private to the
-    // runner would serialise it against itself and against nothing else.
-    InterpreterInUse in_use(self_res->interpreter);
-    if (!in_use.acquired()) {
-        return erlang::nif::error(env, "interpreter is already in use by another process");
-    }
+    TFLITE_BEAM_BORROWED_IN_USE(self_res,
+        "cannot access NifResSignatureRunner resource: the handle has been retired, because the interpreter it came from was rebuilt");
 
     return erlang::nif::ok(env, _names_to_list(env, self_res->val->output_names()));
 }
@@ -205,13 +183,8 @@ ERL_NIF_TERM signature_runner_input_tensor(ErlNifEnv *env, int argc, const ERL_N
         return ret;
     }
 
-    // A runner works on a subgraph the interpreter owns, so it takes that
-    // interpreter's guard rather than one of its own: a lock private to the
-    // runner would serialise it against itself and against nothing else.
-    InterpreterInUse in_use(self_res->interpreter);
-    if (!in_use.acquired()) {
-        return erlang::nif::error(env, "interpreter is already in use by another process");
-    }
+    TFLITE_BEAM_BORROWED_IN_USE(self_res,
+        "cannot access NifResSignatureRunner resource: the handle has been retired, because the interpreter it came from was rebuilt");
 
     if (!erlang::nif::get(env, argv[1], input_name)) {
         return erlang::nif::error(env, "expecting `input_name` to be a string");
@@ -249,13 +222,8 @@ ERL_NIF_TERM signature_runner_output_tensor(ErlNifEnv *env, int argc, const ERL_
         return ret;
     }
 
-    // A runner works on a subgraph the interpreter owns, so it takes that
-    // interpreter's guard rather than one of its own: a lock private to the
-    // runner would serialise it against itself and against nothing else.
-    InterpreterInUse in_use(self_res->interpreter);
-    if (!in_use.acquired()) {
-        return erlang::nif::error(env, "interpreter is already in use by another process");
-    }
+    TFLITE_BEAM_BORROWED_IN_USE(self_res,
+        "cannot access NifResSignatureRunner resource: the handle has been retired, because the interpreter it came from was rebuilt");
 
     if (!erlang::nif::get(env, argv[1], output_name)) {
         return erlang::nif::error(env, "expecting `output_name` to be a string");
@@ -289,13 +257,8 @@ static ERL_NIF_TERM _resize(ErlNifEnv *env, const ERL_NIF_TERM argv[], bool stri
         return ret;
     }
 
-    // A runner works on a subgraph the interpreter owns, so it takes that
-    // interpreter's guard rather than one of its own: a lock private to the
-    // runner would serialise it against itself and against nothing else.
-    InterpreterInUse in_use(self_res->interpreter);
-    if (!in_use.acquired()) {
-        return erlang::nif::error(env, "interpreter is already in use by another process");
-    }
+    TFLITE_BEAM_BORROWED_IN_USE(self_res,
+        "cannot access NifResSignatureRunner resource: the handle has been retired, because the interpreter it came from was rebuilt");
 
     if (!erlang::nif::get(env, argv[1], input_name)) {
         return erlang::nif::error(env, "expecting `input_name` to be a string");
@@ -308,6 +271,7 @@ static ERL_NIF_TERM _resize(ErlNifEnv *env, const ERL_NIF_TERM argv[], bool stri
     TfLiteStatus status = strict
         ? self_res->val->ResizeInputTensorStrict(input_name.c_str(), dims)
         : self_res->val->ResizeInputTensor(input_name.c_str(), dims);
+    NifResInterpreter::revalidate_tensors(self_res->interpreter);
     return tflite_status_to_erl_term(env, status);
 }
 
@@ -331,15 +295,14 @@ ERL_NIF_TERM signature_runner_allocate_tensors(ErlNifEnv *env, int argc, const E
         return ret;
     }
 
-    // A runner works on a subgraph the interpreter owns, so it takes that
-    // interpreter's guard rather than one of its own: a lock private to the
-    // runner would serialise it against itself and against nothing else.
-    InterpreterInUse in_use(self_res->interpreter);
-    if (!in_use.acquired()) {
-        return erlang::nif::error(env, "interpreter is already in use by another process");
-    }
+    TFLITE_BEAM_BORROWED_IN_USE(self_res,
+        "cannot access NifResSignatureRunner resource: the handle has been retired, because the interpreter it came from was rebuilt");
 
-    return tflite_status_to_erl_term(env, self_res->val->AllocateTensors());
+    auto status = self_res->val->AllocateTensors();
+    // A runner allocates on the interpreter's own subgraph, so handles taken
+    // from that interpreter are as exposed to this as to its own call.
+    NifResInterpreter::revalidate_tensors(self_res->interpreter);
+    return tflite_status_to_erl_term(env, status);
 }
 
 ERL_NIF_TERM signature_runner_invoke(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
@@ -352,15 +315,12 @@ ERL_NIF_TERM signature_runner_invoke(ErlNifEnv *env, int argc, const ERL_NIF_TER
         return ret;
     }
 
-    // A runner works on a subgraph the interpreter owns, so it takes that
-    // interpreter's guard rather than one of its own: a lock private to the
-    // runner would serialise it against itself and against nothing else.
-    InterpreterInUse in_use(self_res->interpreter);
-    if (!in_use.acquired()) {
-        return erlang::nif::error(env, "interpreter is already in use by another process");
-    }
+    TFLITE_BEAM_BORROWED_IN_USE(self_res,
+        "cannot access NifResSignatureRunner resource: the handle has been retired, because the interpreter it came from was rebuilt");
 
-    return tflite_status_to_erl_term(env, self_res->val->Invoke());
+    auto status = self_res->val->Invoke();
+    NifResInterpreter::revalidate_tensors(self_res->interpreter);
+    return tflite_status_to_erl_term(env, status);
 }
 
 ERL_NIF_TERM signature_runner_cancel(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
@@ -373,13 +333,16 @@ ERL_NIF_TERM signature_runner_cancel(ErlNifEnv *env, int argc, const ERL_NIF_TER
         return ret;
     }
 
-    // A runner works on a subgraph the interpreter owns, so it takes that
-    // interpreter's guard rather than one of its own: a lock private to the
-    // runner would serialise it against itself and against nothing else.
-    InterpreterInUse in_use(self_res->interpreter);
-    if (!in_use.acquired()) {
-        return erlang::nif::error(env, "interpreter is already in use by another process");
+    // SignatureRunner::Cancel is subgraph_->Cancel(), the same call
+    // Interpreter::Cancel makes, and all it does is clear an atomic flag. So it
+    // takes what interpreter cancel takes and for the same reason: not the guard
+    // invoke holds, because then it could never cancel an invoke, but the lock
+    // that keeps it away from the call that deletes the interpreter under it.
+    if (self_res->interpreter_has_gone) {
+        return erlang::nif::error(env,
+            "cannot access NifResSignatureRunner resource: the handle has been retired, because the interpreter it came from was rebuilt");
     }
+    TFLITE_BEAM_INTERPRETER_NOT_BEING_REPLACED(self_res->interpreter);
 
     return tflite_status_to_erl_term(env, self_res->val->Cancel());
 }

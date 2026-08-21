@@ -80,7 +80,7 @@ build_twice_invalidates_tensors(_Config) ->
 
     ok = tflite_beam_interpreter_builder:build(Builder, Interpreter),
     {error, Reason} = tflite_beam_tensor:to_binary(Tensor),
-    ?assertNotEqual(nomatch, binary:match(Reason, <<"has been dropped">>)),
+    ?assertNotEqual(nomatch, binary:match(Reason, <<"has been retired">>)),
     ?assertMatch({error, _}, tflite_beam_tensor:dims(Tensor#tflite_beam_tensor.ref)),
     ?assertMatch({error, _}, tflite_beam_tensor:set_data(Tensor, ?FILLED(1.0))).
 

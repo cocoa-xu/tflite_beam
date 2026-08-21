@@ -169,10 +169,10 @@ ERL_NIF_TERM interpreter_builder_build(ErlNifEnv *env, int argc, const ERL_NIF_T
     // allocate_tensors and the tensor accessors take. Without it those four
     // serialise carefully against each other while the call that replaces what
     // they are all pointing at walks straight through.
-    InterpreterInUse in_use(interpreter_res);
-    if (!in_use.acquired()) {
-        return erlang::nif::error(env, "interpreter is already in use by another process");
-    }
+    TFLITE_BEAM_INTERPRETER_IN_USE(interpreter_res);
+    // and the one cancel takes, since this is the call that deletes the
+    // tflite::Interpreter cancel would otherwise be reaching into
+    TFLITE_BEAM_INTERPRETER_NOT_BEING_REPLACED(interpreter_res);
 
     // operator() destroys the interpreter these were taken from, whether it goes on
     // to succeed or not, so the cache cannot outlive this call. Once, before the

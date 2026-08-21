@@ -238,6 +238,7 @@ NifResInterpreter * NifResInterpreter::allocate_resource(ErlNifEnv * env, ERL_NI
     res->signature_runners_lock = nullptr;
     res->delegates = nullptr;
     res->in_use = nullptr;
+    res->being_replaced = nullptr;
     res->is_controlled = false;
 
     // All or nothing, for the same reason as the builder above and one more: an
@@ -258,7 +259,9 @@ NifResInterpreter * NifResInterpreter::allocate_resource(ErlNifEnv * env, ERL_NI
     res->tensors_lock = enif_mutex_create((char *)"tflite_beam_tensors");
     res->signature_runners_lock = enif_mutex_create((char *)"tflite_beam_signature_runners");
     res->in_use = enif_mutex_create((char *)"tflite_beam_interpreter");
-    if (res->tensors_lock == nullptr || res->signature_runners_lock == nullptr || res->in_use == nullptr) {
+    res->being_replaced = enif_mutex_create((char *)"tflite_beam_interpreter_replace");
+    if (res->tensors_lock == nullptr || res->signature_runners_lock == nullptr ||
+        res->in_use == nullptr || res->being_replaced == nullptr) {
         enif_release_resource(res);
         error = erlang::nif::error(env, "cannot allocate NifResInterpreter resource");
         return nullptr;
@@ -315,6 +318,28 @@ void NifResInterpreter::release_tensors(NifResInterpreter * res) {
         }
     }
     res->tensors->clear();
+}
+
+// For the calls that may move tensors rather than existing to move them.
+// Upstream is explicit that Invoke and AddTensors "may invalidate the pointer
+// returned by this function", and that the list is not exhaustive, so the choice
+// is between retiring every handle after every invoke and asking whether
+// anything actually moved. Retiring them all would make a handle useless: fetch,
+// set, invoke, read is the ordinary sequence and the read would always fail.
+// Asking costs one pointer compare per live handle.
+void NifResInterpreter::revalidate_tensors(NifResInterpreter * res) {
+    if (res == nullptr || res->tensors == nullptr || res->val == nullptr) return;
+
+    MutexLock registry(res->tensors_lock);
+    const size_t count = res->val->tensors_size();
+    for (auto tensor_res : *res->tensors) {
+        if (tensor_res == nullptr || tensor_res->interpreter_has_gone) continue;
+        const int index = tensor_res->index;
+        if (index < 0 || (size_t)index >= count ||
+            res->val->tensor(index) != tensor_res->val) {
+            tensor_res->interpreter_has_gone = true;
+        }
+    }
 }
 
 void NifResInterpreter::release_signature_runners(NifResInterpreter * res) {
@@ -376,6 +401,11 @@ void NifResInterpreter::destruct_resource(ErlNifEnv *env, void *args) {
             res->in_use = nullptr;
         }
 
+        if (res->being_replaced) {
+            enif_mutex_destroy(res->being_replaced);
+            res->being_replaced = nullptr;
+        }
+
         // after the interpreter itself: a delegate has to outlive the graph it
         // was applied to
         if (res->delegates) {
@@ -410,7 +440,7 @@ NifResSignatureRunner * NifResSignatureRunner::get_resource(ErlNifEnv * env, ERL
     }
 
     if (self_res->interpreter_has_gone) {
-        error = erlang::nif::error(env, "cannot access NifResSignatureRunner resource: the interpreter it came from has been rebuilt");
+        error = erlang::nif::error(env, "cannot access NifResSignatureRunner resource: the handle has been retired, because the interpreter it came from was rebuilt");
         return nullptr;
     }
 
@@ -462,6 +492,7 @@ NifResTfLiteTensor * NifResTfLiteTensor::allocate_resource(ErlNifEnv * env, ERL_
     res->val = nullptr;
     res->borrowed = false;
     res->interpreter = nullptr;
+    res->index = -1;
     res->interpreter_has_gone = false;
 
     return res;
@@ -475,7 +506,7 @@ NifResTfLiteTensor * NifResTfLiteTensor::get_resource(ErlNifEnv * env, ERL_NIF_T
     }
 
     if (self_res->interpreter_has_gone) {
-        error = erlang::nif::error(env, "cannot access NifResTfLiteTensor resource: associcated interpreter has been dropped");
+        error = erlang::nif::error(env, "cannot access NifResTfLiteTensor resource: the handle has been retired, because the interpreter moved its tensors");
         return nullptr;
     }
 

@@ -190,6 +190,9 @@ ERL_NIF_TERM tflitetensor_type(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv
         return ret;
     }
 
+    TFLITE_BEAM_BORROWED_IN_USE(self_res,
+        "cannot access NifResTfLiteTensor resource: the handle has been retired, because the interpreter moved its tensors");
+
     ret = erlang::nif::error(env, "invalid tensor");
     _tflitetensor_type(env, self_res->val, ret);
     return ret;
@@ -205,6 +208,9 @@ ERL_NIF_TERM tflitetensor_dims(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv
     if (!(self_res = NifResTfLiteTensor::get_resource(env, self_nif, ret))) {
         return ret;
     }
+
+    TFLITE_BEAM_BORROWED_IN_USE(self_res,
+        "cannot access NifResTfLiteTensor resource: the handle has been retired, because the interpreter moved its tensors");
 
     ERL_NIF_TERM tensor_shape;
     if (!_tflitetensor_shape(env, self_res->val, tensor_shape)) {
@@ -222,6 +228,9 @@ ERL_NIF_TERM tflitetensor_quantization_params(ErlNifEnv *env, int argc, const ER
     if (!(self_res = NifResTfLiteTensor::get_resource(env, self_nif, ret))) {
         return ret;
     }
+
+    TFLITE_BEAM_BORROWED_IN_USE(self_res,
+        "cannot access NifResTfLiteTensor resource: the handle has been retired, because the interpreter moved its tensors");
 
     ERL_NIF_TERM tensor_quantization_params;
     if (!_tflitetensor_quantization_params(env, self_res->val, tensor_quantization_params)) {
@@ -242,6 +251,9 @@ ERL_NIF_TERM tflitetensor_to_binary(ErlNifEnv *env, int argc, const ERL_NIF_TERM
     if (!(self_res = NifResTfLiteTensor::get_resource(env, self_nif, ret))) {
         return ret;
     }
+
+    TFLITE_BEAM_BORROWED_IN_USE(self_res,
+        "cannot access NifResTfLiteTensor resource: the handle has been retired, because the interpreter moved its tensors");
 
     if (!enif_get_uint64(env, limit, (ErlNifUInt64 *)&limit_len)) {
         return erlang::nif::error(env, "expecting limit to be an unsigned integer");
@@ -278,6 +290,9 @@ ERL_NIF_TERM tflitetensor_set_data(ErlNifEnv *env, int argc, const ERL_NIF_TERM 
     if (!(self_res = NifResTfLiteTensor::get_resource(env, self_nif, ret))) {
         return ret;
     }
+
+    TFLITE_BEAM_BORROWED_IN_USE(self_res,
+        "cannot access NifResTfLiteTensor resource: the handle has been retired, because the interpreter moved its tensors");
 
     if (!enif_inspect_binary(env, data_nif, &data)) {
         return erlang::nif::error(env, "cannot get input data");
