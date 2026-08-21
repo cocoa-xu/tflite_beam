@@ -11,6 +11,37 @@
 
 #include "status.h"
 
+#ifndef TFLITE_BEAM_TFLITE_VERSION
+#define TFLITE_BEAM_TFLITE_VERSION "unknown"
+#endif
+
+// The version of the TfLite sources this was built from. TfLiteVersion() below
+// cannot answer that: lite/version.h holds a hand-maintained number that upstream
+// forgets to bump, so a 2.21.0 tree reports 2.19.0, and two builds from different
+// releases are indistinguishable through it. Delegate plugins must match the
+// source version, so this is the one to compare.
+ERL_NIF_TERM tflite_version(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 0) return enif_make_badarg(env);
+    return erlang::nif::make_binary(env, TFLITE_BEAM_TFLITE_VERSION);
+}
+
+// What the linked runtime says about itself. Kept for diagnosis, not for
+// matching -- see above.
+ERL_NIF_TERM tflite_runtime_version(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 0) return enif_make_badarg(env);
+    return erlang::nif::make_binary(env, TfLiteVersion());
+}
+
+ERL_NIF_TERM tflite_extension_apis_version(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 0) return enif_make_badarg(env);
+    return erlang::nif::make_binary(env, TfLiteExtensionApisVersion());
+}
+
+ERL_NIF_TERM tflite_schema_version(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 0) return enif_make_badarg(env);
+    return enif_make_int(env, TfLiteSchemaVersion());
+}
+
 ERL_NIF_TERM tflite_print_interpreter_state(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
 

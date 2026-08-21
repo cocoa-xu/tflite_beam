@@ -270,6 +270,14 @@ endif()
 # branches above turn XNNPACK off before that, and TFLite's own
 # TFLITE_BUILD_WITH_XNNPACK_DELEGATE does not reach us through the
 # plain-signature target_link_libraries.
+# TfLite's own TfLiteVersion() cannot serve this purpose: lite/version.h carries
+# a hand-maintained TF_MINOR_VERSION that upstream forgets to bump -- 2.21.0's
+# tree still says 2.19 -- and it only applies when the build system does not
+# inject one, which Bazel does and CMake does not. A delegate plugin has to match
+# the source version, so record that.
+if(TFLITE_BEAM_TFLITE_VERSION)
+    add_compile_definitions(TFLITE_BEAM_TFLITE_VERSION="${TFLITE_BEAM_TFLITE_VERSION}")
+endif()
 if(TFLITE_ENABLE_XNNPACK)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTFLITE_BEAM_XNNPACK_ENABLED=1")
 endif()
