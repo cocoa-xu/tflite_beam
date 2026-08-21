@@ -695,9 +695,6 @@ ERL_NIF_TERM interpreter_input_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TE
     }
 
     auto input_tensor = self_res->val->input_tensor(index);
-    if (input_tensor == nullptr) {
-        return erlang::nif::error(env, "cannot get the input tensor at the given index");
-    }
     if (input_tensor->data.data == nullptr) {
         return erlang::nif::error(env, "tensor is not allocated yet? Please call TFLiteBEAM.Interpreter.allocate_tensors first");
     }
@@ -738,9 +735,6 @@ ERL_NIF_TERM interpreter_output_tensor(ErlNifEnv *env, int argc, const ERL_NIF_T
     }
 
     auto t = self_res->val->output_tensor(index);
-    if (t == nullptr) {
-        return erlang::nif::error(env, "cannot get the output tensor at the given index");
-    }
     if (t->data.data == nullptr) {
         return erlang::nif::error(env, "tensor is not allocated yet? Please call TFLiteBEAM.Interpreter.allocate_tensors first");
     }
