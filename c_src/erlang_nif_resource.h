@@ -42,11 +42,18 @@ struct NifResErrorReporter {
     static void destruct_resource(ErlNifEnv *env, void *args);
 };
 
+struct NifResErrorReporter;
 struct NifResFlatBufferModel {
     tflite::FlatBufferModel * val;
 
     // copy the buffer when build from buffer
     const char * copied_buffer;
+
+    // TFLite keeps the reporter pointer for the model's lifetime, so the
+    // resource holding it is kept alive here with enif_keep_resource. nullptr
+    // when the model was built with the default reporter, which is a static
+    // singleton and outlives everything.
+    NifResErrorReporter * error_reporter;
 
     static ErlNifResourceType * type;
     static NifResFlatBufferModel * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);

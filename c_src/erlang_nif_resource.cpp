@@ -79,6 +79,7 @@ NifResFlatBufferModel * NifResFlatBufferModel::allocate_resource(ErlNifEnv * env
     
     res->val = nullptr;
     res->copied_buffer = nullptr;
+    res->error_reporter = nullptr;
 
     return res;
 }
@@ -102,6 +103,11 @@ void NifResFlatBufferModel::destruct_resource(ErlNifEnv *env, void *args) {
         if (res->copied_buffer) {
             enif_free((void *)res->copied_buffer);
             res->copied_buffer = nullptr;
+        }
+        // after the model, since destroying it can still report through this
+        if (res->error_reporter) {
+            enif_release_resource(res->error_reporter);
+            res->error_reporter = nullptr;
         }
     }
 }

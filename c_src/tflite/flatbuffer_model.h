@@ -22,6 +22,6 @@ ERL_NIF_TERM flatbuffer_model_read_all_metadata(ErlNifEnv *env, int argc, const 
 /// @param out out nif resource term
 /// @param copied_buffer copied_buffer
 /// @return out nif resource
-NifResFlatBufferModel * _make_flatbuffer_model_resource(ErlNifEnv *env, std::unique_ptr<tflite::FlatBufferModel>& m, ERL_NIF_TERM &out, void * copied_buffer = nullptr);
+NifResFlatBufferModel * _make_flatbuffer_model_resource(ErlNifEnv *env, std::unique_ptr<tflite::FlatBufferModel>& m, ERL_NIF_TERM &out, void * copied_buffer = nullptr, NifResErrorReporter * error_reporter_res = nullptr);
 
 #endif // TFLITE_FLATBUFFERMODEL_BINDINGS_H

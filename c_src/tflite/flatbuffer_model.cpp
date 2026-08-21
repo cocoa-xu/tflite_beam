@@ -36,7 +36,7 @@ ERL_NIF_TERM flatbuffer_model_build_from_file(ErlNifEnv *env, int argc, const ER
     }
 
     auto m = tflite::FlatBufferModel::BuildFromFile(filename.c_str(), error_reporter);
-    _make_flatbuffer_model_resource(env, m, ret);
+    _make_flatbuffer_model_resource(env, m, ret, nullptr, error_reporter_res);
     return ret;
 }
 
@@ -66,7 +66,7 @@ ERL_NIF_TERM flatbuffer_model_verify_and_build_from_file(ErlNifEnv *env, int arg
         return erlang::nif::atom(env, "invalid");
     }
 
-    _make_flatbuffer_model_resource(env, m, ret);
+    _make_flatbuffer_model_resource(env, m, ret, nullptr, error_reporter_res);
     return ret;
 }
 
@@ -114,7 +114,7 @@ ERL_NIF_TERM flatbuffer_model_verify_and_build_from_buffer(ErlNifEnv *env, int a
         return erlang::nif::atom(env, "invalid");
     }
 
-    _make_flatbuffer_model_resource(env, m, ret, copied_buffer);
+    _make_flatbuffer_model_resource(env, m, ret, copied_buffer, error_reporter_res);
 
     return ret;
 }
@@ -143,7 +143,7 @@ ERL_NIF_TERM flatbuffer_model_build_from_buffer(ErlNifEnv *env, int argc, const 
     memcpy((void *)copied_buffer, data.data, data.size);
 
     auto m = tflite::FlatBufferModel::BuildFromBuffer(copied_buffer, data.size, error_reporter);
-    _make_flatbuffer_model_resource(env, m, ret, copied_buffer);
+    _make_flatbuffer_model_resource(env, m, ret, copied_buffer, error_reporter_res);
 
     return ret;
 }
@@ -266,7 +266,7 @@ ERL_NIF_TERM flatbuffer_model_read_all_metadata(ErlNifEnv *env, int argc, const 
 
 // ------------------ internal api ------------------
 
-NifResFlatBufferModel * _make_flatbuffer_model_resource(ErlNifEnv *env, std::unique_ptr<tflite::FlatBufferModel>& m, ERL_NIF_TERM &out, void * copied_buffer) {
+NifResFlatBufferModel * _make_flatbuffer_model_resource(ErlNifEnv *env, std::unique_ptr<tflite::FlatBufferModel>& m, ERL_NIF_TERM &out, void * copied_buffer, NifResErrorReporter * error_reporter_res) {
     NifResFlatBufferModel * res = nullptr;
     if (m.get() == nullptr) {
         if (copied_buffer) enif_free(copied_buffer);
@@ -284,6 +284,13 @@ NifResFlatBufferModel * _make_flatbuffer_model_resource(ErlNifEnv *env, std::uni
     tflite::FlatBufferModel * model = m.release();
     m.reset(nullptr);
     res->val = model;
+    // TFLite holds the reporter pointer for as long as the model lives, so the
+    // resource behind it has to live at least that long too. Null for the
+    // default reporter, which is a singleton and needs no keeping.
+    if (error_reporter_res) {
+        res->error_reporter = error_reporter_res;
+        enif_keep_resource(error_reporter_res);
+    }
     ERL_NIF_TERM ret = enif_make_resource(env, res);
     res->copied_buffer = (const char *)copied_buffer;
     enif_release_resource(res);
