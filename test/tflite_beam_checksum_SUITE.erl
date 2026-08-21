@@ -13,7 +13,8 @@
     manifest_lists_every_target/1,
     accepts_a_tarball_that_matches/1,
     rejects_and_deletes_a_tarball_that_does_not/1,
-    rejects_a_file_the_manifest_does_not_list/1
+    manifest_for_another_release_warns_and_proceeds/1,
+    a_listed_file_with_a_wrong_digest_is_still_refused/1
 ]).
 
 all() ->
@@ -21,7 +22,8 @@ all() ->
         manifest_lists_every_target,
         accepts_a_tarball_that_matches,
         rejects_and_deletes_a_tarball_that_does_not,
-        rejects_a_file_the_manifest_does_not_list
+        manifest_for_another_release_warns_and_proceeds,
+        a_listed_file_with_a_wrong_digest_is_still_refused
     ].
 
 init_per_suite(Config) ->
@@ -67,19 +69,33 @@ rejects_and_deletes_a_tarball_that_does_not(Config) ->
     ?assertMatch({error, _}, tflite_beam_precompiled:compare_checksum("tampered.tar.gz", Path, Wrong)),
     ?assertNot(filelib:is_regular(Path)).
 
-%% A name the manifest says nothing about is refused rather than accepted for
-%% lack of an opinion. Written against a manifest the test makes itself, so it
-%% holds whether or not this checkout has been through a release.
-rejects_a_file_the_manifest_does_not_list(Config) ->
+%% A manifest that says nothing about this file cannot vouch for it, which is
+%% where having no manifest leaves us too. It used to be refused instead, and
+%% that is not a hypothetical: 0.4.0-rc4 went to hex carrying rc3's manifest and
+%% would not install until it was republished. Written against a manifest the
+%% test makes itself, so it holds whether or not this checkout has been released.
+manifest_for_another_release_warns_and_proceeds(Config) ->
     {Path, Digest} = a_file_with_known_digest(Config, "unlisted.tar.gz"),
     Manifest = filename:join(?config(priv_dir, Config), "checksum.term"),
     ok = file:write_file(Manifest,
                          io_lib:format("{\"something-else.tar.gz\", \"~s\"}.~n", [Digest])),
-    ?assertMatch({error, _},
+    ?assertMatch({ok, _},
                  tflite_beam_precompiled:verify_checksum("unlisted.tar.gz", Path, Manifest)),
-    %% and the same manifest does accept the name it does list
+    %% and the same manifest still checks the name it does list
     ?assertMatch({ok, _},
                  tflite_beam_precompiled:verify_checksum("something-else.tar.gz", Path, Manifest)).
+
+%% The half that must not have been relaxed with it: an entry that exists and
+%% disagrees is still a refusal, and the file still goes.
+a_listed_file_with_a_wrong_digest_is_still_refused(Config) ->
+    {Path, _Digest} = a_file_with_known_digest(Config, "listed-but-wrong.tar.gz"),
+    Manifest = filename:join(?config(priv_dir, Config), "checksum.term"),
+    ok = file:write_file(Manifest,
+                         io_lib:format("{\"listed-but-wrong.tar.gz\", \"~s\"}.~n",
+                                       [lists:duplicate(64, $a)])),
+    ?assertMatch({error, _},
+                 tflite_beam_precompiled:verify_checksum("listed-but-wrong.tar.gz", Path, Manifest)),
+    ?assertNot(filelib:is_regular(Path)).
 
 a_file_with_known_digest(Config, Name) ->
     Path = filename:join(?config(priv_dir, Config), Name),
