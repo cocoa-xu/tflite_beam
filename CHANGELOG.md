@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## v0.4.0-rc4 (2026-08-21)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.4.0-rc4) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.4.0-rc4)
+
+Two processes sharing one interpreter used to get each other's answers -- silently,
+without a crash, 147 times in 400 on a real model. Most of this release is about that,
+and about checking that a downloaded binary is the one we published.
 
 ### Added
 - `tflite_beam_interpreter_server`, an interpreter that lives inside a process so that
