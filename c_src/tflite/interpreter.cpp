@@ -103,6 +103,15 @@ ERL_NIF_TERM interpreter_set_inputs(ErlNifEnv *env, int argc, const ERL_NIF_TERM
         return ret;
     }
 
+    // Mutates interpreter state, so it serialises with invoke and with the
+    // builder the same way allocate_tensors does. Cancel is deliberately left
+    // out of this: it exists to be called from another process while invoke
+    // holds the guard, and taking it there would deadlock.
+    InterpreterInUse in_use(self_res);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
+    }
+
     if (!erlang::nif::get_list(env, inputs_nif, inputs)) {
         return erlang::nif::error(env, "expecting `inputs` to be a list of non-negative integers");
     }
@@ -124,6 +133,15 @@ ERL_NIF_TERM interpreter_resize_input_tensor(ErlNifEnv *env, int argc, const ERL
 
     if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
         return ret;
+    }
+
+    // Mutates interpreter state, so it serialises with invoke and with the
+    // builder the same way allocate_tensors does. Cancel is deliberately left
+    // out of this: it exists to be called from another process while invoke
+    // holds the guard, and taking it there would deadlock.
+    InterpreterInUse in_use(self_res);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
     }
 
     if (!erlang::nif::get(env, tensor_index_nif, &tensor_index)) {
@@ -155,6 +173,15 @@ ERL_NIF_TERM interpreter_resize_input_tensor_strict(ErlNifEnv *env, int argc, co
         return ret;
     }
 
+    // Mutates interpreter state, so it serialises with invoke and with the
+    // builder the same way allocate_tensors does. Cancel is deliberately left
+    // out of this: it exists to be called from another process while invoke
+    // holds the guard, and taking it there would deadlock.
+    InterpreterInUse in_use(self_res);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
+    }
+
     if (!erlang::nif::get(env, tensor_index_nif, &tensor_index)) {
         return erlang::nif::error(env, "expecting `tensor_index` to be an integer");
     }
@@ -177,6 +204,15 @@ ERL_NIF_TERM interpreter_enable_cancellation(ErlNifEnv *env, int argc, const ERL
 
     if (!(self_res = NifResInterpreter::get_resource(env, argv[0], ret))) {
         return ret;
+    }
+
+    // Mutates interpreter state, so it serialises with invoke and with the
+    // builder the same way allocate_tensors does. Cancel is deliberately left
+    // out of this: it exists to be called from another process while invoke
+    // holds the guard, and taking it there would deadlock.
+    InterpreterInUse in_use(self_res);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
     }
 
     return tflite_status_to_erl_term(env, self_res->val->EnableCancellation());
@@ -205,6 +241,15 @@ ERL_NIF_TERM interpreter_release_non_persistent_memory(ErlNifEnv *env, int argc,
         return ret;
     }
 
+    // Mutates interpreter state, so it serialises with invoke and with the
+    // builder the same way allocate_tensors does. Cancel is deliberately left
+    // out of this: it exists to be called from another process while invoke
+    // holds the guard, and taking it there would deadlock.
+    InterpreterInUse in_use(self_res);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
+    }
+
     return tflite_status_to_erl_term(env, self_res->val->ReleaseNonPersistentMemory());
 }
 
@@ -216,6 +261,15 @@ ERL_NIF_TERM interpreter_reset_variable_tensors(ErlNifEnv *env, int argc, const 
 
     if (!(self_res = NifResInterpreter::get_resource(env, argv[0], ret))) {
         return ret;
+    }
+
+    // Mutates interpreter state, so it serialises with invoke and with the
+    // builder the same way allocate_tensors does. Cancel is deliberately left
+    // out of this: it exists to be called from another process while invoke
+    // holds the guard, and taking it there would deadlock.
+    InterpreterInUse in_use(self_res);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
     }
 
     return tflite_status_to_erl_term(env, self_res->val->ResetVariableTensors());
@@ -256,6 +310,15 @@ ERL_NIF_TERM interpreter_set_allow_fp16_precision_for_fp32(ErlNifEnv *env, int a
 
     if (!(self_res = NifResInterpreter::get_resource(env, argv[0], ret))) {
         return ret;
+    }
+
+    // Mutates interpreter state, so it serialises with invoke and with the
+    // builder the same way allocate_tensors does. Cancel is deliberately left
+    // out of this: it exists to be called from another process while invoke
+    // holds the guard, and taking it there would deadlock.
+    InterpreterInUse in_use(self_res);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
     }
 
     if (!erlang::nif::get_atom(env, argv[1], allow) || (allow != "true" && allow != "false")) {
@@ -343,6 +406,15 @@ ERL_NIF_TERM interpreter_set_outputs(ErlNifEnv *env, int argc, const ERL_NIF_TER
         return ret;
     }
 
+    // Mutates interpreter state, so it serialises with invoke and with the
+    // builder the same way allocate_tensors does. Cancel is deliberately left
+    // out of this: it exists to be called from another process while invoke
+    // holds the guard, and taking it there would deadlock.
+    InterpreterInUse in_use(self_res);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
+    }
+
     if (!erlang::nif::get_list(env, outputs_nif, outputs)) {
         return erlang::nif::error(env, "expecting `outputs` to be a list of non-negative integers");
     }
@@ -362,6 +434,15 @@ ERL_NIF_TERM interpreter_set_variables(ErlNifEnv *env, int argc, const ERL_NIF_T
 
     if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
         return ret;
+    }
+
+    // Mutates interpreter state, so it serialises with invoke and with the
+    // builder the same way allocate_tensors does. Cancel is deliberately left
+    // out of this: it exists to be called from another process while invoke
+    // holds the guard, and taking it there would deadlock.
+    InterpreterInUse in_use(self_res);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
     }
 
     if (!erlang::nif::get_list(env, variables_nif, variables)) {
@@ -918,6 +999,15 @@ ERL_NIF_TERM interpreter_set_num_threads(ErlNifEnv *env, int argc, const ERL_NIF
 
     if (!(self_res = NifResInterpreter::get_resource(env, self_nif, ret))) {
         return ret;
+    }
+
+    // Mutates interpreter state, so it serialises with invoke and with the
+    // builder the same way allocate_tensors does. Cancel is deliberately left
+    // out of this: it exists to be called from another process while invoke
+    // holds the guard, and taking it there would deadlock.
+    InterpreterInUse in_use(self_res);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
     }
 
     if (!enif_get_int(env, num_threads_nif, &num_threads) || num_threads < 1) {
