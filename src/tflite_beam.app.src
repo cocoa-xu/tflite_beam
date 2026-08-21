@@ -34,7 +34,11 @@
   {exclude_paths, [
     "priv",
     "c_src/libcoral",
-    "c_src/metadata_schema.fbs"
+    "c_src/metadata_schema.fbs",
+    %% rebar3 leaves one of these wherever it is run and rebar3_hex packages from
+    %% the filesystem rather than from git, so excluding it is what keeps a
+    %% regenerated one out of the tarball
+    "c_src/rebar.lock"
   ]},
   {doc, "doc"}
  ]
