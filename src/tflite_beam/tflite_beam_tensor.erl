@@ -24,8 +24,8 @@ type(Self) when is_reference(Self) ->
 %% @doc
 %% Get the dimensions (C++) API
 -spec dims(#tflite_beam_tensor{} | reference()) -> list(integer()) | {error, binary()}.
-dims(#tflite_beam_tensor{shape = Shape}) when is_tuple(Shape) ->
-    [element(I,Shape) || I <- lists:seq(1,tuple_size(Shape))];
+dims(#tflite_beam_tensor{shape = Shape}) when is_list(Shape) ->
+    Shape;
 dims(Self) when is_reference(Self) ->
     case tflite_beam_nif:tflitetensor_dims(Self) of
         {ok, Dims} ->
@@ -36,8 +36,8 @@ dims(Self) when is_reference(Self) ->
 
 %% @doc Get the tensor shape
 -spec shape(#tflite_beam_tensor{} | reference()) -> tuple() | {error, binary()}.
-shape(#tflite_beam_tensor{shape = Shape}) when is_tuple(Shape) ->
-    Shape;
+shape(#tflite_beam_tensor{shape = Shape}) when is_list(Shape) ->
+    list_to_tuple(Shape);
 shape(Self) when is_reference(Self) ->
     case tflite_beam_nif:tflitetensor_dims(Self) of
         {ok, Dims} ->
