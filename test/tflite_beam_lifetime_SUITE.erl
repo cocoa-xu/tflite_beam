@@ -29,7 +29,7 @@
     interpreter_allocation_failure_is_reported_not_leaked/1,
     builder_allocation_failure_is_reported_not_leaked/1,
     add_delegate_failure_strands_no_delegate/1,
-    delegate_transfer_failure_strands_no_delegate/1
+    delegate_transfer_failure_leaves_the_interpreter_untouched/1
 ]).
 
 all() ->
@@ -50,7 +50,7 @@ all() ->
         interpreter_allocation_failure_is_reported_not_leaked,
         builder_allocation_failure_is_reported_not_leaked,
         add_delegate_failure_strands_no_delegate,
-        delegate_transfer_failure_strands_no_delegate
+        delegate_transfer_failure_leaves_the_interpreter_untouched
     ].
 
 %% Arming a fault point is a global switch that crosses processes, so the NIF
@@ -64,7 +64,7 @@ init_per_testcase(Case, Config) when
         Case =:= interpreter_allocation_failure_is_reported_not_leaked;
         Case =:= builder_allocation_failure_is_reported_not_leaked;
         Case =:= add_delegate_failure_strands_no_delegate;
-        Case =:= delegate_transfer_failure_strands_no_delegate ->
+        Case =:= delegate_transfer_failure_leaves_the_interpreter_untouched ->
     case tflite_beam_nif:nif_arm_fault(none) of
         ok -> Config;
         {error, _} ->
@@ -362,6 +362,14 @@ builder_allocation_failure_is_reported_not_leaked(_Config) ->
 %% weighing rather than exercising. What is weighed is the resource struct, a few
 %% hundred bytes each: the delegate's own memory comes from malloc and erlang:memory
 %% cannot see it, so the count has to be high enough for the part it can see.
+%%
+%% Worth being exact about what this can and cannot catch, because it is weaker
+%% than the case above. The stranded reference is the only consequence: the
+%% builder still applies the delegate, and the leaked reference is what keeps it
+%% alive, so nothing crashes and nothing else is observable from Erlang. That
+%% means the case only reproduces while the fault point sits at whichever step
+%% grows the list. Move the growth back after the retain, as the old code had it,
+%% and the point has to move with it or this passes against the defect.
 add_delegate_failure_strands_no_delegate(_Config) ->
     skip_without_xnnpack(fun() ->
         Fail = fun() ->
@@ -385,32 +393,37 @@ add_delegate_failure_strands_no_delegate(_Config) ->
                 lists:flatten(io_lib:format("~p bytes stranded by 20000 failures", [Growth])))
     end).
 
-%% Handing the delegates over to a rebuilt interpreter took every new reference,
-%% gave back every old one, and only then copied the list. A failure in the copy
-%% left the new references taken with the list that would give them back in a
-%% state the standard declines to define. Building the list first and swapping
-%% after leaves nothing to define, and nothing stranded.
-delegate_transfer_failure_strands_no_delegate(_Config) ->
-    skip_without_xnnpack(fun() ->
-        Fail = fun() ->
-            [begin
-                {Builder, Interpreter} = tflite_beam_test_models:builder("multi_add.bin"),
-                {ok, Delegate} = tflite_beam_delegate:xnnpack(),
-                ok = tflite_beam_interpreter_builder:add_delegate(Builder, Delegate),
-                arm(delegate_transfer),
-                true = is_oom(tflite_beam_interpreter_builder:build(Builder, Interpreter))
-             end || _ <- lists:seq(1, 20000)]
-        end,
-        Growth = grew_by(Fail),
-        disarm(),
-        {Builder, Interpreter} = tflite_beam_test_models:builder("multi_add.bin"),
-        {ok, Delegate} = tflite_beam_delegate:xnnpack(),
-        ok = tflite_beam_interpreter_builder:add_delegate(Builder, Delegate),
-        ok = tflite_beam_interpreter_builder:build(Builder, Interpreter),
-        ok = tflite_beam_interpreter:allocate_tensors(Interpreter),
-        ?assert(Growth < 1024 * 1024,
-                lists:flatten(io_lib:format("~p bytes stranded by 20000 failures", [Growth])))
-    end).
+%% Building into an interpreter used to install the new graph before the one
+%% step in the handover that can fail, so a failure left the interpreter running
+%% a graph built from the new model while its bookkeeping still named the old
+%% one, and dropping the builder could then free what the graph was reading.
+%% Doing that step before operator() runs means a failure changes nothing at all,
+%% and that is what this checks rather than the ordering that produced it: an
+%% interpreter built from a one-input model still has one input after a rebuild
+%% from a four-input one has failed. It needs no delegate, because the handover
+%% list is prepared on every build whether there are delegates in it or not.
+delegate_transfer_failure_leaves_the_interpreter_untouched(_Config) ->
+    {BuilderA, Interpreter} = plain_builder("add.bin"),
+    ok = tflite_beam_interpreter_builder:build(BuilderA, Interpreter),
+    ok = tflite_beam_interpreter:allocate_tensors(Interpreter),
+    ?assertEqual(1, length(inputs_of(Interpreter))),
+
+    {BuilderB, _} = plain_builder("multi_add.bin"),
+    arm(delegate_transfer),
+    ?assert(is_oom(tflite_beam_interpreter_builder:build(BuilderB, Interpreter))),
+    disarm(),
+
+    %% still the model it was built from, and still usable
+    ?assertEqual(1, length(inputs_of(Interpreter))),
+    ok = tflite_beam_interpreter:allocate_tensors(Interpreter),
+    ?assert(is_integer(tflite_beam_interpreter:tensors_size(Interpreter))).
+
+plain_builder(Name) ->
+    tflite_beam_test_models:builder(Name, #{apply_default_delegates => false}).
+
+inputs_of(Interpreter) ->
+    {ok, Inputs} = tflite_beam_interpreter:inputs(Interpreter),
+    Inputs.
 
 skip_without_xnnpack(Body) ->
     case lists:member(xnnpack, tflite_beam_delegate:available()) of

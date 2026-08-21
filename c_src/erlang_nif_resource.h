@@ -39,10 +39,6 @@ public:
     T * operator->() const { return res_; }
     explicit operator bool() const { return res_ != nullptr; }
 
-    // For the handover that is not enif_make_resource: a container that takes
-    // the allocation reference for itself, rather than a term that takes one of
-    // its own. Call it once the container holds the pointer.
-    T * release() { T * res = res_; res_ = nullptr; return res; }
 
 private:
     T * res_;
@@ -232,31 +228,14 @@ struct NifResInterpreter {
 // interpreter they belong to.
 bool caller_may_use(ErlNifEnv * env, NifResInterpreter * res);
 
-class InterpreterInUse {
-public:
-    explicit InterpreterInUse(NifResInterpreter * res) : res_(res) {
-        // try, never wait: the point is to report the collision, not to
-        // serialise around it on a dirty scheduler
-        acquired_ = res_ != nullptr && res_->in_use != nullptr &&
-                    enif_mutex_trylock(res_->in_use) == 0;
-    }
-
-    ~InterpreterInUse() {
-        if (acquired_) enif_mutex_unlock(res_->in_use);
-    }
-
-    InterpreterInUse(const InterpreterInUse &) = delete;
-    InterpreterInUse & operator=(const InterpreterInUse &) = delete;
-
-    bool acquired() const { return acquired_; }
-
-private:
-    NifResInterpreter * res_;
-    bool acquired_;
-};
 
 // Every entry point that dereferences an interpreter takes the guard, not only
-// the ones that write. interpreter_builder_build deletes the tflite::Interpreter
+// the ones that write, and re-reads val after taking it. get_resource checks val
+// before the guard, which proves only that it was not null a moment ago: a
+// rebuild that fails stores null, and a caller that passed the earlier check and
+// was then descheduled would go on to dereference it. The check that counts is
+// the one under the lock.
+// interpreter_builder_build deletes the tflite::Interpreter
 // and puts another in its place, so a reader holding nothing but self_res is
 // holding a pointer to something that can be freed while it reads. There is one
 // exception, and it is the reason this is a macro rather than a helper that
@@ -270,10 +249,13 @@ private:
     }
 
 #define TFLITE_BEAM_INTERPRETER_IN_USE(RES)                                          \
-    InterpreterInUse in_use(RES);                                                    \
+    MutexTryLock in_use((RES)->in_use);                                              \
     if (!in_use.acquired()) {                                                        \
         return erlang::nif::error(env,                                               \
             "interpreter is already in use by another process");                     \
+    }                                                                                \
+    if ((RES)->val == nullptr) {                                                     \
+        return erlang::nif::error(env, "cannot access NifResInterpreter resource");  \
     }
 
 // The same for a handle that borrows from an interpreter, plus the part that
@@ -282,12 +264,14 @@ private:
 // this waits for the guard, and the second read is what catches it. Without it
 // the first read only proves the handle was alive a moment ago.
 #define TFLITE_BEAM_BORROWED_IN_USE(RES, RETIRED_MESSAGE)                            \
-    InterpreterInUse in_use((RES)->interpreter);                                     \
+    MutexTryLock in_use((RES)->interpreter == nullptr                                \
+                            ? nullptr : (RES)->interpreter->in_use);                  \
     if ((RES)->interpreter != nullptr && !in_use.acquired()) {                       \
         return erlang::nif::error(env,                                               \
             "interpreter is already in use by another process");                     \
     }                                                                                \
-    if ((RES)->interpreter_has_gone) {                                               \
+    if ((RES)->interpreter_has_gone || (RES)->val == nullptr ||                      \
+        ((RES)->interpreter != nullptr && (RES)->interpreter->val == nullptr)) {     \
         return erlang::nif::error(env, RETIRED_MESSAGE);                             \
     }
 

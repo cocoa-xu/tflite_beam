@@ -82,10 +82,9 @@ interpreter_tensor_metadata(_Config) ->
     ?assertEqual([1, 8, 8, 3], tflite_beam_tensor:dims(Tensor#tflite_beam_tensor.ref)),
     ?assertEqual({f, 32}, tflite_beam_tensor:type(Tensor#tflite_beam_tensor.ref)),
     ?assert(is_binary(tflite_beam_tensor:to_binary(Tensor))),
-    %% a handle borrows the interpreter's memory and does not keep it alive, so
-    %% the interpreter has to still be reachable here or the reads above race a
-    %% GC that would invalidate the handle. See
-    %% tflite_beam_build_SUITE:tensor_handle_does_not_outlive_its_interpreter/1
+    %% a handle keeps its interpreter alive, so naming the interpreter here is
+    %% not what makes the reads above safe. See
+    %% tflite_beam_lifetime_SUITE:tensor_handle_keeps_its_interpreter_alive/1
     ?assertEqual(7, tflite_beam_interpreter:tensors_size(Interpreter)).
 
 %% dims/1 and shape/1 accept the record as well as the handle. Their record

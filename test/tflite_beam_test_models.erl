@@ -1,7 +1,7 @@
 %% @doc Locating and loading the model fixtures the suites share.
 -module(tflite_beam_test_models).
 
--export([path/1, builder/1, lazy_builder/1, interpreter/1]).
+-export([path/1, builder/1, builder/2, lazy_builder/1, interpreter/1]).
 
 -include("../src/tflite_beam/tflite_beam_records.hrl").
 

@@ -28,10 +28,7 @@ ERL_NIF_TERM interpreter_get_signature_runner(ErlNifEnv *env, int argc, const ER
     // GetSignatureRunner below builds a placeholder SignatureDef on demand and
     // writes it into the interpreter, so this reads as a lookup and is a
     // mutation. It serialises against invoke and allocate_tensors like any other.
-    InterpreterInUse in_use(self_res);
-    if (!in_use.acquired()) {
-        return erlang::nif::error(env, "interpreter is already in use by another process");
-    }
+    TFLITE_BEAM_INTERPRETER_IN_USE(self_res);
 
     // nil asks TFLite for the primary subgraph: the first signature pointing at it, or
     // a placeholder one for a model that declares no signatures at all
