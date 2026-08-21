@@ -47,11 +47,13 @@ ERL_NIF_TERM interpreter_get_signature_runner(ErlNifEnv *env, int argc, const ER
 
     // Registered so that building into this interpreter again can retire the
     // runner: operator() destroys the tflite::Interpreter this borrows from, and
-    // keeping the resource alive does not keep the borrowed pointer valid. The
-    // keep here is the registry's own reference, released by
-    // release_signature_runners.
+    // keeping the resource alive does not keep the borrowed pointer valid.
+    //
+    // The registry holds a bare pointer and takes no reference. Taking one would
+    // keep every runner a caller ever asked for alive until the interpreter went
+    // away. The runner removes itself in its destructor instead, which is the
+    // only moment the pointer could go stale.
     if (self_res->signature_runners) {
-        enif_keep_resource(res);
         self_res->signature_runners->push_back(res);
     }
 

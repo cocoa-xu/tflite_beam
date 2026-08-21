@@ -271,10 +271,12 @@ void NifResInterpreter::release_tensors(NifResInterpreter * res) {
 void NifResInterpreter::release_signature_runners(NifResInterpreter * res) {
     if (res == nullptr || res->signature_runners == nullptr) return;
 
+    // Flag only: the registry never took a reference, so there is none to give
+    // back. Whoever holds the runner in Erlang still holds it, and now finds out
+    // that what it borrows from is gone.
     for (auto runner_res : *res->signature_runners) {
         if (runner_res) {
             runner_res->interpreter_has_gone = true;
-            enif_release_resource(runner_res);
         }
     }
     res->signature_runners->clear();
@@ -368,6 +370,18 @@ void NifResSignatureRunner::destruct_resource(ErlNifEnv *env, void *args) {
     if (res) {
         // the interpreter owns the runner, so only the pointer is dropped here
         res->val = nullptr;
+
+        // Out of the registry before the interpreter reference goes, or the
+        // registry would be left holding an address that has just been freed.
+        if (res->interpreter && res->interpreter->signature_runners) {
+            auto & list = *res->interpreter->signature_runners;
+            for (auto it = list.begin(); it != list.end(); ++it) {
+                if (*it == res) {
+                    list.erase(it);
+                    break;
+                }
+            }
+        }
 
         if (res->interpreter) {
             enif_release_resource(res->interpreter);
