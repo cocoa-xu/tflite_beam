@@ -102,10 +102,16 @@ struct NifResInterpreter {
     // kept alive the same way; an Edge TPU interpreter delegates to this context.
     // nullptr for interpreters that do not run on a TPU
     NifResEdgeTpuContext * edgetpu_context;
+    // Owning. interpreter_tensor hands the reference from allocate_resource to
+    // this map, and release_tensors gives it back. A handle therefore lives as
+    // long as the cache does, whatever Erlang is still holding.
     std::map<int, NifResTfLiteTensor *> * tensors;
-    // signature runners borrow from this interpreter the same way tensors do, so
-    // they are tracked here for the same reason: something has to tell them when
-    // the interpreter they point into is replaced
+    // Non-owning, which is the opposite of the map above and deliberately so.
+    // Runners are created and handed straight to Erlang, so taking a reference
+    // here would keep every runner ever asked for alive until the interpreter
+    // went away. Each removes itself in its destructor. Both containers exist
+    // for the same reason, to reach the borrowers when the interpreter is
+    // replaced, and they get there by opposite routes.
     std::vector<NifResSignatureRunner *> * signature_runners;
     // Guards signature_runners alone, not the interpreter. Insertion happens on a
     // normal scheduler, removal in a destructor that can run on any thread, and
