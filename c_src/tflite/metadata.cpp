@@ -286,7 +286,7 @@ bool _fb_var_to_erl(ErlNifEnv *env, const tflite::ScoreCalibrationOptions* fb_va
 
     enif_make_map_put(env, out, erlang::nif::atom(env, "default_score"), erlang::nif::make(env, fb_var->default_score()), &out);
 
-    return false;
+    return true;
 }
 
 template <>
@@ -300,7 +300,7 @@ bool _fb_var_to_erl(ErlNifEnv *env, const tflite::ScoreThresholdingOptions* fb_v
     values[0] = erlang::nif::make(env, fb_var->global_score_threshold());
     enif_make_map_from_arrays(env, keys, values, 1, &out);
 
-    return false;
+    return true;
 }
 
 template <>
@@ -318,7 +318,7 @@ bool _fb_var_to_erl(ErlNifEnv *env, const tflite::BertTokenizerOptions* fb_var, 
     keys[0] = erlang::nif::atom(env, "vocab_file");
     enif_make_map_from_arrays(env, keys, values, 1, &out);
 
-    return false;
+    return true;
 }
 
 template <>
@@ -342,7 +342,7 @@ bool _fb_var_to_erl(ErlNifEnv *env, const tflite::SentencePieceTokenizerOptions*
 
     enif_make_map_from_arrays(env, keys, values, 2, &out);
 
-    return false;
+    return true;
 }
 
 template <>
@@ -366,7 +366,7 @@ bool _fb_var_to_erl(ErlNifEnv *env, const tflite::RegexTokenizerOptions* fb_var,
 
     enif_make_map_from_arrays(env, keys, values, 2, &out);
 
-    return false;
+    return true;
 }
 
 template <>
@@ -734,14 +734,31 @@ bool _fb_var_to_erl(ErlNifEnv *env, const tflite::ModelMetadata* fb_var, ERL_NIF
     return true;
 }
 
-ERL_NIF_TERM tflite_metadata_to_erl_term(ErlNifEnv *env, const void *buf) {
-    const tflite::ModelMetadata * metadata = nullptr;
-    if (!buf || !(metadata = tflite::GetModelMetadata(buf))) {
+ERL_NIF_TERM tflite_metadata_to_erl_term(ErlNifEnv *env, const void *buf, size_t size) {
+    if (!buf || size == 0) {
         return erlang::nif::atom(env, "nil");
     }
 
+    // GetModelMetadata is a cast over bytes that came out of the model file, and
+    // flatbuffers resolves offsets by pointer arithmetic without checking them.
+    // A malformed TFLITE_METADATA block would otherwise be walked as if it were
+    // well-formed, off the end of the buffer.
+    ::flatbuffers::Verifier verifier(static_cast<const uint8_t *>(buf), size);
+    if (!tflite::VerifyModelMetadataBuffer(verifier)) {
+        return erlang::nif::atom(env, "nil");
+    }
+
+    const tflite::ModelMetadata * metadata = tflite::GetModelMetadata(buf);
+    if (metadata == nullptr) {
+        return erlang::nif::atom(env, "nil");
+    }
+
+    // out is only assigned when the conversion succeeds, so it cannot be
+    // returned uninitialised.
     ERL_NIF_TERM out;
-    _fb_var_to_erl(env, metadata, out);
+    if (!_fb_var_to_erl(env, metadata, out)) {
+        return erlang::nif::atom(env, "nil");
+    }
     return out;
 }
 

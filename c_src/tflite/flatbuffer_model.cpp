@@ -246,7 +246,7 @@ ERL_NIF_TERM flatbuffer_model_read_all_metadata(ErlNifEnv *env, int argc, const 
                 }
             } else if (iter.first == "TFLITE_METADATA") {
                 keys[index] = erlang::nif::atom(env, iter.first.c_str());
-                values[index] = tflite_metadata_to_erl_term(env, iter.second.c_str());
+                values[index] = tflite_metadata_to_erl_term(env, iter.second.data(), iter.second.size());
             } else {
                 keys[index] = erlang::nif::make_binary(env, iter.first);
                 values[index] = erlang::nif::make_binary(env, iter.second);
