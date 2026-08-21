@@ -108,7 +108,6 @@ int get(ErlNifEnv *env, ERL_NIF_TERM term, std::string &var) {
         var.resize(ret - 1);
     } else if (ret == 0) {
         var.resize(0);
-    } else {
     }
 
     return ret;

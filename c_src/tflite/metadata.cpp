@@ -134,19 +134,17 @@ bool _fb_var_to_erl(ErlNifEnv *env, const flatbuffers::Vector<flatbuffers::Offse
     }
 
     std::vector<std::map<std::string, std::string>> associated_files_;
-    if (fb_vars) {
-        for (size_t i = 0; i < fb_vars->size(); i++) {
-            std::map<std::string, std::string> associated_file_;
-            auto associated_file = fb_vars->Get(i);
-            if (associated_file) {
-                _tflite_metadata_set_key_value(associated_file_, "name", associated_file->name());
-                _tflite_metadata_set_key_value(associated_file_, "description", associated_file->description());
-                _tflite_metadata_set_key_value(associated_file_, "locale", associated_file->locale());
-                _tflite_metadata_set_key_value(associated_file_, "version", associated_file->version());
-                associated_file_["type"] = EnumNameAssociatedFileType(associated_file->type());
-            }
-            associated_files_.emplace_back(associated_file_);
+    for (size_t i = 0; i < count; i++) {
+        std::map<std::string, std::string> associated_file_;
+        auto associated_file = fb_vars->Get(i);
+        if (associated_file) {
+            _tflite_metadata_set_key_value(associated_file_, "name", associated_file->name());
+            _tflite_metadata_set_key_value(associated_file_, "description", associated_file->description());
+            _tflite_metadata_set_key_value(associated_file_, "locale", associated_file->locale());
+            _tflite_metadata_set_key_value(associated_file_, "version", associated_file->version());
+            associated_file_["type"] = EnumNameAssociatedFileType(associated_file->type());
         }
+        associated_files_.emplace_back(associated_file_);
     }
 
     if (erlang::nif::make(env, associated_files_, out, true)) {

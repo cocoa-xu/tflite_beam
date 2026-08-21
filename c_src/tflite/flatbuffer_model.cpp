@@ -282,7 +282,6 @@ NifResFlatBufferModel * _make_flatbuffer_model_resource(ErlNifEnv *env, std::uni
 
     // take ownership
     tflite::FlatBufferModel * model = m.release();
-    m.reset(nullptr);
     res->val = model;
     // TFLite holds the reporter pointer for as long as the model lives, so the
     // resource behind it has to live at least that long too. Null for the
