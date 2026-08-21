@@ -13,7 +13,7 @@
     manifest_lists_every_target/1,
     accepts_a_tarball_that_matches/1,
     rejects_and_deletes_a_tarball_that_does_not/1,
-    manifest_for_another_release_warns_and_proceeds/1,
+    rejects_a_file_the_manifest_does_not_list/1,
     a_listed_file_with_a_wrong_digest_is_still_refused/1
 ]).
 
@@ -22,7 +22,7 @@ all() ->
         manifest_lists_every_target,
         accepts_a_tarball_that_matches,
         rejects_and_deletes_a_tarball_that_does_not,
-        manifest_for_another_release_warns_and_proceeds,
+        rejects_a_file_the_manifest_does_not_list,
         a_listed_file_with_a_wrong_digest_is_still_refused
     ].
 
@@ -52,7 +52,16 @@ manifest_lists_every_target(Config) ->
             {skip, "no checksum.term here; it is generated at release time"};
         {ok, Entries} ->
             ?assertEqual(7, length(Entries)),
-            [?assert(is_list(Name) andalso length(Digest) =:= 64) || {Name, Digest} <- Entries]
+            [?assert(is_list(Name) andalso length(Digest) =:= 64) || {Name, Digest} <- Entries],
+            %% and every one of them for the version being published. A manifest
+            %% left over from the previous release lists seven perfectly good
+            %% checksums for seven files nobody is about to download, and the
+            %% installer then refuses every target. That is how 0.4.0-rc4 shipped.
+            Version = tflite_beam_precompiled:app_version(),
+            Suffix = "-v" ++ Version ++ ".tar.gz",
+            [?assert(lists:suffix(Suffix, Name),
+                     lists:flatten(io_lib:format("~ts is not a v~ts tarball", [Name, Version])))
+             || {Name, _} <- Entries]
     end.
 
 accepts_a_tarball_that_matches(Config) ->
@@ -69,19 +78,22 @@ rejects_and_deletes_a_tarball_that_does_not(Config) ->
     ?assertMatch({error, _}, tflite_beam_precompiled:compare_checksum("tampered.tar.gz", Path, Wrong)),
     ?assertNot(filelib:is_regular(Path)).
 
-%% A manifest that says nothing about this file cannot vouch for it, which is
-%% where having no manifest leaves us too. It used to be refused instead, and
-%% that is not a hypothetical: 0.4.0-rc4 went to hex carrying rc3's manifest and
-%% would not install until it was republished. Written against a manifest the
-%% test makes itself, so it holds whether or not this checkout has been released.
-manifest_for_another_release_warns_and_proceeds(Config) ->
+%% A name the manifest says nothing about is refused rather than accepted for lack
+%% of an opinion, and it has to stay that way. The only route to this branch is a
+%% manifest that does not describe this release, and accepting on that basis would
+%% disable verification for every target of the release at once, handing a free
+%% pass to anyone who noticed the manifest was stale. That is strictly worse than
+%% refusing to install, which is loud, local and recoverable with one environment
+%% variable. The release slip that made this look tempting -- 0.4.0-rc4 shipping
+%% with rc3's manifest -- is fixed where it happened instead.
+rejects_a_file_the_manifest_does_not_list(Config) ->
     {Path, Digest} = a_file_with_known_digest(Config, "unlisted.tar.gz"),
     Manifest = filename:join(?config(priv_dir, Config), "checksum.term"),
     ok = file:write_file(Manifest,
                          io_lib:format("{\"something-else.tar.gz\", \"~s\"}.~n", [Digest])),
-    ?assertMatch({ok, _},
+    ?assertMatch({error, _},
                  tflite_beam_precompiled:verify_checksum("unlisted.tar.gz", Path, Manifest)),
-    %% and the same manifest still checks the name it does list
+    %% and the same manifest does accept the name it does list
     ?assertMatch({ok, _},
                  tflite_beam_precompiled:verify_checksum("something-else.tar.gz", Path, Manifest)).
 

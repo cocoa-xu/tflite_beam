@@ -51,11 +51,13 @@ the fix, rather than by waiting for a crash report.
   fixed: a 64 MB tensor takes 3.85 ms to read and 1.57 ms to write, well past what
   a normal scheduler should be holding. `get_signature_runner` and
   `read_all_metadata` moved for the same reason.
-- A `checksum.term` that does not name the file being installed now warns and
-  carries on rather than refusing. That is the same position as having no manifest
-  at all, and it means the manifest describes a different release: 0.4.0-rc4 went
-  to hex carrying rc3's and would not install until it was republished. A file the
-  manifest does name and disagrees with is still refused, and still deleted.
+- `scripts/generate_checksums.sh` now names every target it expects rather than
+  counting them, and refuses to write a manifest that is missing one or that
+  contains a tarball from another release. A manifest covering six of the seven
+  targets is worse than none: the seventh refuses to install and the six that
+  verify give no hint why, which is the shape of the 0.4.0-rc4 slip. The installer
+  still refuses a file the manifest does not name, because the alternative would
+  disable verification for a whole release at once.
 
 ### Added
 - `tflite_beam_lifetime_SUITE`, seventeen cases that each stand for a defect that

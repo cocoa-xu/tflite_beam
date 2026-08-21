@@ -28,9 +28,43 @@ fi
 echo "Downloading the assets of v${VERSION}..."
 gh release download "v${VERSION}" --repo cocoa-xu/tflite_beam --dir "$WORK_DIR" --pattern '*.tar.gz'
 
+# Every target, named rather than counted. A manifest that covers six of the seven
+# is worse than none: the seventh refuses to install, and the six that verify give
+# no hint why. This is also the check that stops a stale or partial manifest going
+# out, which is the whole reason the installer can refuse a file it does not name.
+EXPECTED_TARGETS=(
+  aarch64-apple-darwin
+  aarch64-linux-gnu
+  armv6-linux-gnueabihf
+  armv7l-linux-gnueabihf
+  riscv64-linux-gnu
+  x86_64-apple-darwin
+  x86_64-linux-gnu
+)
+
 COUNT="$(find "$WORK_DIR" -name '*.tar.gz' | wc -l | tr -d ' ')"
 if [ "$COUNT" -eq 0 ]; then
   echo "v${VERSION} has no tarballs; has the precompile matrix finished?" >&2
+  exit 1
+fi
+
+MISSING=()
+for target in "${EXPECTED_TARGETS[@]}"; do
+  if ! find "$WORK_DIR" -name "*-${target}-v${VERSION}.tar.gz" | grep -q .; then
+    MISSING+=("$target")
+  fi
+done
+if [ "${#MISSING[@]}" -ne 0 ]; then
+  echo "v${VERSION} is missing tarballs for: ${MISSING[*]}" >&2
+  echo "Publishing with a partial manifest makes those targets refuse to install." >&2
+  exit 1
+fi
+
+# and nothing from another release, which is how 0.4.0-rc4 went out carrying
+# rc3's manifest
+STRAY="$(find "$WORK_DIR" -name '*.tar.gz' ! -name "*-v${VERSION}.tar.gz" -print -quit)"
+if [ -n "$STRAY" ]; then
+  echo "not a v${VERSION} tarball: $(basename "$STRAY")" >&2
   exit 1
 fi
 

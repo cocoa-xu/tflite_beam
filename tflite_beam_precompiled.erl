@@ -234,23 +234,23 @@ verify_checksum(Filename, Tarball, Manifest) ->
                 {_, Expected} ->
                     compare_checksum(Filename, Tarball, Expected);
                 false ->
-                    %% A manifest that does not name this file cannot vouch for
-                    %% it, which puts us where having no manifest does rather
-                    %% than giving grounds to refuse the install. In practice it
-                    %% means the manifest describes a different release: 0.4.0-rc4
-                    %% went to hex carrying rc3's, and so refused to install for
-                    %% the 24 minutes it took to notice and republish.
+                    %% Refused, not warned through. A file the manifest does not
+                    %% name is by definition not one we published, and the only
+                    %% way to reach this is a manifest that does not describe this
+                    %% release at all. Waving that through would mean verification
+                    %% is disabled for every target of that release, which is a
+                    %% far worse position than refusing to install: whoever
+                    %% noticed the manifest was stale would have a free hand.
                     %%
-                    %% This cannot be used to slip an unlisted file past the
-                    %% check. The download URL is built from the one filename we
-                    %% computed ourselves, so a tampered download is a tampered
-                    %% listed file, and that still fails on the digest.
-                    io:fwrite("[WARNING] checksum.term has no entry for ~ts, so the~n"
-                              "[WARNING] precompiled binary is being used unverified.~n"
-                              "[WARNING] Set TFLITE_BEAM_PREFER_PRECOMPILED=false to build~n"
-                              "[WARNING] from source instead.~n",
+                    %% The release-process slip that produced it once is fixed at
+                    %% the source instead. checksum.term is not tracked, so it
+                    %% cannot be a release out of date, and the publish step
+                    %% checks it names every target for the version going out.
+                    io:fwrite("[ERROR] checksum.term has no entry for ~ts, so there is~n"
+                              "[ERROR] nothing to check it against. Set~n"
+                              "[ERROR] TFLITE_BEAM_PREFER_PRECOMPILED=false to build from source.~n",
                               [Filename]),
-                    {ok, Tarball}
+                    {error, Tarball}
             end
     end.
 
