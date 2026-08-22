@@ -193,8 +193,12 @@ ERL_NIF_TERM tflitetensor_type(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv
     TFLITE_BEAM_BORROWED_IN_USE(self_res,
         "cannot access NifResTfLiteTensor resource: the handle has been retired, because the interpreter moved its tensors");
 
-    ret = erlang::nif::error(env, "invalid tensor");
-    _tflitetensor_type(env, self_res->val, ret);
+    if (!_tflitetensor_type(env, self_res->val, ret)) {
+        // Not an invalid tensor, which is what this used to say. The tensor is
+        // whole; its element type is one there is no Erlang spelling for.
+        return erlang::nif::error(env,
+            "this tensor's element type has no representation in tflite_beam");
+    }
     return ret;
 }
 

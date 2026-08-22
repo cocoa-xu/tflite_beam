@@ -606,6 +606,9 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
 
     ERL_NIF_TERM tensor_type;
     if (!_tflitetensor_type(env, tensor_res->val, tensor_type)) {
+        // Everything else about the tensor is still worth having, so the record
+        // is built and the one field that cannot be filled says so. `unknown` is
+        // a member of tflite_beam_tensor_type() for exactly this.
         tensor_type = erlang::nif::atom(env, "unknown");
     }
 

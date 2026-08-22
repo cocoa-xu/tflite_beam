@@ -18,5 +18,12 @@
                                 | {u, 64}
                                 | resource
                                 | variant
-                                | {u, 32}.
+                                | {u, 32}
+                                | {u, 16}
+                                | {bf, 16}
+                                %% the tensor is fine and its shape, name and
+                                %% handle are all usable; TfLite's element type
+                                %% is one this binding has no Erlang spelling
+                                %% for, such as a packed four-bit one
+                                | unknown.
 -record(tflite_beam_tensor, {name :: binary(), index :: non_neg_integer(), shape :: list(), shape_signature :: list(), type :: tflite_beam_tensor_type(), quantization_params :: #tflite_beam_quantization_params{}, sparsity_params, ref :: reference()}).
