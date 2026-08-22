@@ -53,6 +53,13 @@ ERL_NIF_TERM error(ErlNifEnv *env, const char *msg) {
     }
 }
 
+// Says both numbers, because "wrong size" without them sends the caller to count
+// bytes by hand when the binding already knows both.
+std::string size_mismatch(size_t given, size_t expected) {
+    return "expecting " + std::to_string(expected) + " bytes for this tensor, got " +
+           std::to_string(given);
+}
+
 // Helper for returning `{:ok, term}` from NIF.
 ERL_NIF_TERM ok(ErlNifEnv *env) {
     return atom(env, "ok");

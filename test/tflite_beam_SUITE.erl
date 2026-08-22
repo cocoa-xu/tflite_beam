@@ -13,6 +13,7 @@
     model_from_missing_file/1,
     model_from_invalid_buffer/1,
     associated_files_one_and_many/1,
+    set_data_takes_the_whole_tensor_or_nothing/1,
     interpreter_from_builder/1,
     interpreter_tensor_metadata/1,
     tensor_accessors_take_the_record/1,
@@ -34,6 +35,7 @@ all() ->
         model_from_missing_file,
         model_from_invalid_buffer,
         associated_files_one_and_many,
+        set_data_takes_the_whole_tensor_or_nothing,
         interpreter_from_builder,
         interpreter_tensor_metadata,
         tensor_accessors_take_the_record,
@@ -209,3 +211,26 @@ associated_files_one_and_many(_Config) ->
     ?assertEqual(Labels, tflite_beam_flatbuffer_model:get_associated_file(Zip, <<"labels.txt">>)),
     ?assertEqual(#{<<"labels.txt">> => Labels},
                  tflite_beam_flatbuffer_model:get_associated_file(Zip, [<<"labels.txt">>])).
+
+%% Writing fewer bytes than the tensor holds used to be memcpy'd as far as the
+%% binary went and reported as ok, which leaves the rest of the tensor holding
+%% whatever the arena held before it and produces an answer computed partly from
+%% that. Writing more was truncated just as quietly. Both are now refused, and
+%% the error says both numbers so nobody has to count bytes to find out which
+%% way they were wrong.
+set_data_takes_the_whole_tensor_or_nothing(_Config) ->
+    Interpreter = tflite_beam_test_models:interpreter("add.bin"),
+    {ok, [Index | _]} = tflite_beam_interpreter:inputs(Interpreter),
+    Tensor = tflite_beam_interpreter:tensor(Interpreter, Index),
+    Exact = 1 * 8 * 8 * 3 * 4,
+
+    ok = tflite_beam_tensor:set_data(Tensor, binary:copy(<<7>>, Exact)),
+
+    {error, Short} = tflite_beam_tensor:set_data(Tensor, binary:copy(<<7>>, Exact - 4)),
+    ?assertNotEqual(nomatch, binary:match(Short, integer_to_binary(Exact))),
+    ?assertNotEqual(nomatch, binary:match(Short, integer_to_binary(Exact - 4))),
+
+    ?assertMatch({error, _}, tflite_beam_tensor:set_data(Tensor, binary:copy(<<7>>, Exact + 4))),
+
+    %% the refusal left the tensor as the exact write put it, not half rewritten
+    ?assertEqual(binary:copy(<<7>>, Exact), tflite_beam_tensor:to_binary(Tensor)).

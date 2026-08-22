@@ -302,11 +302,15 @@ ERL_NIF_TERM tflitetensor_set_data(ErlNifEnv *env, int argc, const ERL_NIF_TERM 
         return erlang::nif::error(env, "tensor is not allocated yet? Please call TFLite.Interpreter.allocateTensors first");
     }
 
-    size_t maximum_bytes = self_res->val->bytes;
-    if (data.size < maximum_bytes) {
-        maximum_bytes = data.size;
+    // Exactly the tensor's size, or nothing. A short binary used to be memcpy'd
+    // as far as it went and reported as ok, which leaves the tail of the tensor
+    // holding whatever the arena held before and gives an answer computed partly
+    // from that. A long one used to be truncated just as quietly. Neither is
+    // something a caller can have meant.
+    if (data.size != self_res->val->bytes) {
+        return erlang::nif::error(env, erlang::nif::size_mismatch(data.size, self_res->val->bytes).c_str());
     }
 
-    memcpy(self_res->val->data.data, data.data, maximum_bytes);
+    memcpy(self_res->val->data.data, data.data, data.size);
     return erlang::nif::ok(env);
 }

@@ -720,11 +720,16 @@ ERL_NIF_TERM interpreter_input_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TE
         return erlang::nif::error(env, "tensor is not allocated yet? Please call TFLiteBEAM.Interpreter.allocate_tensors first");
     }
 
-    size_t maximum_bytes = input_tensor->bytes;
-    if (data.size < maximum_bytes) {
-        maximum_bytes = data.size;
+    // Exactly the tensor's size, or nothing. A short binary used to be memcpy'd
+    // as far as it went and reported as ok, which leaves the tail of the tensor
+    // holding whatever the arena held before and gives an answer computed partly
+    // from that. A long one used to be truncated just as quietly. Neither is
+    // something a caller can have meant.
+    if (data.size != input_tensor->bytes) {
+        return erlang::nif::error(env, erlang::nif::size_mismatch(data.size, input_tensor->bytes).c_str());
     }
-    memcpy(input_tensor->data.data, data.data, maximum_bytes);
+
+    memcpy(input_tensor->data.data, data.data, data.size);
     return erlang::nif::ok(env);
 }
 

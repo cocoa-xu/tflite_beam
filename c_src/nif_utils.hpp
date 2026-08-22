@@ -27,6 +27,10 @@ ERL_NIF_TERM ok(ErlNifEnv *env);
 // Helper for returning `:ok` from NIF.
 ERL_NIF_TERM ok(ErlNifEnv *env, ERL_NIF_TERM term);
 
+// Says both numbers, because "wrong size" without them sends the caller to
+// count bytes by hand when the binding already knows both.
+std::string size_mismatch(size_t given, size_t expected);
+
 template<typename T>
 int make_f64_list_from_c_array(ErlNifEnv *env, size_t count, T *data, ERL_NIF_TERM &out) {
     if (count == 0) {
