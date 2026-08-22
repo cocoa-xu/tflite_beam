@@ -1,5 +1,36 @@
 # Changelog
 
+## v0.4.0-rc6 (2026-08-23)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.4.0-rc6) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.4.0-rc6)
+
+Three faults on the path a caller actually takes, all found by auditing the type
+and error handling rather than by a crash report. Two of them were made reachable
+by the first: it turns a silent wrong answer into an error, and nothing on the way
+out was ready to carry one.
+
+### Fixed
+- Writing to a tensor takes exactly its size. A short binary used to be copied as
+  far as it went and reported as success, leaving the rest of the tensor holding
+  whatever the arena held before and producing an answer computed partly from
+  that. A long one was truncated just as quietly. Both are refused now, and the
+  error names both sizes.
+- `predict/2` reports a bad input instead of crashing. The code that collected
+  what went wrong while filling the inputs appended each failure with `R/binary`,
+  which raises `badarg` on the `{error, Binary}` that `set_data/2` actually
+  returns. So the one path that had a real reason to report crashed instead of
+  reporting it, and it crashed hardest where it mattered most, since every
+  refusal from the interpreter guard arrives there. Inside
+  `tflite_beam_interpreter_server` that `badarg` took the whole process with it,
+  so one malformed request from one client destroyed the served model for
+  everybody.
+- `predict/2` no longer answers from a failed invoke. It discarded what `invoke/1`
+  returned and read the output tensors regardless, so a refused or failed run
+  handed back the previous one's answer. Concurrently that is the fault the
+  interpreter guard exists to close, arriving by a different door: 14 wrong
+  answers in 400 calls before, 6 after. The rest is the gap between feeding,
+  running and reading, which no per-call guard can close and
+  `tflite_beam_interpreter_server` can, measured at 400 correct in 400.
+
 ## v0.4.0-rc5 (2026-08-22)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.4.0-rc5) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.4.0-rc5)
 
