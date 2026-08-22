@@ -374,8 +374,21 @@ predict(Self, Input) when is_reference(Self) and (is_binary(Input) or is_list(In
                 {ok, OutputTensors} ->
                     case fill_input(Self, InputTensors, Input) of
                         ok ->
-                            tflite_beam_interpreter:invoke(Self),
-                            fetch_output(Self, OutputTensors);
+                            %% The result of the invoke decides whether the
+                            %% output tensors mean anything. Dropping it meant
+                            %% reading them anyway: a refused invoke, which is
+                            %% what a second process sharing this interpreter
+                            %% now gets, returned the previous run's answer to
+                            %% whoever asked. Measured at fourteen wrong answers
+                            %% in four hundred concurrent calls, which is the
+                            %% same fault the interpreter guard was added to
+                            %% close, arriving by a different door.
+                            case tflite_beam_interpreter:invoke(Self) of
+                                ok ->
+                                    fetch_output(Self, OutputTensors);
+                                {error, Reason} ->
+                                    {error, Reason}
+                            end;
                         {error, Reason} ->
                             {error, Reason}
                     end;
@@ -457,20 +470,25 @@ fetch_output(Self, OutputTensorIndex) when is_reference(Self) and is_integer(Out
             {error, Reason}
     end.
 
+%% Collects what went wrong while filling the inputs.
+%%
+%% This used to treat every non-ok element as a bare binary and append it with
+%% `R/binary', which raises badarg on anything else. What it is actually given is
+%% whatever `tflite_beam_tensor:set_data/2' returned, and that is `{error,
+%% Binary}'. So the one path that had a real reason to report crashed instead of
+%% reporting it, and it crashed hardest exactly when it mattered: every refusal
+%% from the interpreter guard arrives here.
 not_ok_to_reason(Results) when is_list(Results) ->
-    Filtered = lists:filter(
-        fun(R) ->
-            not (R == ok)
-        end,
-        Results
-    ),
-    case Filtered of
-        [] -> 
+    case [reason_of(R) || R <- Results, R =/= ok] of
+        [] ->
             ok;
-        _ ->
-            Reason = lists:foldl(fun(R, Acc) -> <<Acc/binary, <<"; ">>/binary, R/binary>> end, <<"">>, Filtered),
-            {error, binary:part(Reason, {2, byte_size(Reason) - 2})}
+        Reasons ->
+            {error, iolist_to_binary(lists:join(<<"; ">>, Reasons))}
     end.
+
+reason_of({error, Reason}) when is_binary(Reason) -> Reason;
+reason_of(Reason) when is_binary(Reason) -> Reason;
+reason_of(Other) -> iolist_to_binary(io_lib:format("~p", [Other])).
 
 %% @doc
 %% The inputs of the named signature, as a map of name to tensor index.

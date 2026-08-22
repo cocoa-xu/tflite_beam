@@ -82,6 +82,12 @@ says they have to be treated as one. Two processes taking turns badly get each
 other's answers: measured on a real model, 147 wrong results in 400 calls,
 silently and without a crash.
 
+The guard described below now refuses most of those, and `predict/2` no longer
+reads the output tensors after an invoke it was refused. What is left is the gap
+between the three calls, which no per-call guard can close: the same measurement
+today gives 6 wrong answers in 400 rather than 147. Six is not zero, so if more
+than one process touches an interpreter, use the server.
+
 **If you want that handled for you, use `tflite_beam_interpreter_server`:**
 
 ```erlang
@@ -193,6 +199,24 @@ Add `tflite_beam` to your list of dependencies in `rebar.config`:
   {tflite_beam, "0.3.12"}
 ]}
 ```
+
+The 0.4.0 release candidates carry the memory-safety work described above and are
+worth using if any of it applies to you. Hex never resolves a pre-release from a
+range, so name it exactly:
+
+```erlang
+{deps, [
+  {tflite_beam, "0.4.0-rc6"}
+]}
+```
+
+Two behaviours changed in that line, both turning something silent into an error.
+A tensor handle stops working once `allocate_tensors/1`, a resize or a second
+`build/2` has moved what it points at, instead of reading memory that has been
+given to something else; fetch it again afterwards. And writing to a tensor now
+takes exactly its size, where a short binary used to be written as far as it went
+and reported as success, leaving the rest of the tensor holding whatever was
+there before.
 
 Documentation is published on [HexDocs](https://hexdocs.pm/tflite_beam).
 

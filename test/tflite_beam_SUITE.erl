@@ -14,6 +14,10 @@
     model_from_invalid_buffer/1,
     associated_files_one_and_many/1,
     set_data_takes_the_whole_tensor_or_nothing/1,
+    predict_reports_a_bad_input_instead_of_crashing/1,
+    predict_does_not_answer_from_a_failed_invoke/1,
+    the_server_is_the_concurrency_safe_path/1,
+    the_server_survives_a_malformed_request/1,
     interpreter_from_builder/1,
     interpreter_tensor_metadata/1,
     tensor_accessors_take_the_record/1,
@@ -36,6 +40,10 @@ all() ->
         model_from_invalid_buffer,
         associated_files_one_and_many,
         set_data_takes_the_whole_tensor_or_nothing,
+        predict_reports_a_bad_input_instead_of_crashing,
+        predict_does_not_answer_from_a_failed_invoke,
+        the_server_is_the_concurrency_safe_path,
+        the_server_survives_a_malformed_request,
         interpreter_from_builder,
         interpreter_tensor_metadata,
         tensor_accessors_take_the_record,
@@ -234,3 +242,75 @@ set_data_takes_the_whole_tensor_or_nothing(_Config) ->
 
     %% the refusal left the tensor as the exact write put it, not half rewritten
     ?assertEqual(binary:copy(<<7>>, Exact), tflite_beam_tensor:to_binary(Tensor)).
+
+%% Filling the inputs answers with {error, Binary} tuples, and the code that
+%% turned those into one message appended each with R/binary, which raises badarg
+%% on anything that is not a bare binary. So the one path that had a real reason
+%% to report crashed instead of reporting it, and it crashed hardest where it
+%% mattered most: every refusal from the interpreter guard arrives here.
+predict_reports_a_bad_input_instead_of_crashing(_Config) ->
+    {ok, Interpreter} = tflite_beam_interpreter:new(tflite_beam_test_models:path("add.bin")),
+    Result = (catch tflite_beam_interpreter:predict(Interpreter, [<<0, 0>>])),
+    ?assertNotMatch({'EXIT', _}, Result),
+    ?assertMatch({error, _}, Result),
+    {error, Reason} = Result,
+    ?assertNotEqual(nomatch, binary:match(Reason, <<"768">>)).
+
+%% predict/2 used to throw away what invoke/1 returned and read the output
+%% tensors regardless, so a failed invoke handed back whatever the arena still
+%% held from the run before. Reached deterministically here by resizing an input
+%% and not allocating, which leaves the graph not ready: TfLite refuses the
+%% invoke, and predict has to pass that on rather than answer from stale memory.
+predict_does_not_answer_from_a_failed_invoke(_Config) ->
+    {ok, Interpreter} = tflite_beam_interpreter:new(
+                          tflite_beam_test_models:path("dynamic_shapes.bin")),
+    {ok, [First | _]} = tflite_beam_interpreter:inputs(Interpreter),
+    Sized = [binary:copy(<<0>>, byte_size(tflite_beam_tensor:to_binary(
+                                            tflite_beam_interpreter:tensor(Interpreter, I))))
+             || I <- element(2, tflite_beam_interpreter:inputs(Interpreter))],
+
+    %% resized and not allocated, so the graph is not ready and TfLite refuses
+    ok = tflite_beam_interpreter:resize_input_tensor(Interpreter, First, [4, 42, 1024]),
+
+    %% one error for the whole call, not a list with error tuples where a caller
+    %% matching [Output] would find one and read it as if it were data
+    ?assertMatch({error, _}, tflite_beam_interpreter:predict(Interpreter, Sized)).
+
+%% And the concurrent case, which predict/2 cannot answer and the server can.
+%% Feeding, running and reading back are three separate calls into the NIF, and
+%% the interpreter's guard is released between them, so two processes sharing one
+%% interpreter through predict/2 can still read each other's output. That is the
+%% documented contract for the direct API. The server exists so there is a way to
+%% do it that holds all three together, and this pins the difference rather than
+%% leaving it as prose.
+the_server_is_the_concurrency_safe_path(_Config) ->
+    Path = tflite_beam_test_models:path("add.bin"),
+    {ok, Server} = tflite_beam_interpreter_server:start_link(Path, []),
+    Parent = self(),
+    N = 400,
+    [spawn(fun() ->
+        Value = case Index rem 2 of 0 -> 1.0; _ -> 5.0 end,
+        Input = binary:copy(<<Value:32/float-native>>, 192),
+        Want = binary:copy(<<(Value * 3):32/float-native>>, 192),
+        Verdict = case catch tflite_beam_interpreter_server:predict(Server, [Input]) of
+            [Out] when is_binary(Out) -> case Out =:= Want of true -> ok; false -> wrong end;
+            Other -> Other
+        end,
+        Parent ! {verdict, Verdict}
+     end) || Index <- lists:seq(1, N)],
+    Verdicts = [receive {verdict, V} -> V after 120000 -> timeout end || _ <- lists:seq(1, N)],
+    ?assertEqual(N, length([x || ok <- Verdicts]),
+                 lists:flatten(io_lib:format("~p", [lists:usort(Verdicts)]))).
+
+%% The crash above was raised inside the server's handle_call, so it took the
+%% whole process with it and the model had to be loaded from disk again. One bad
+%% client request destroyed the served model for every other client.
+the_server_survives_a_malformed_request(_Config) ->
+    {ok, Server} = tflite_beam_interpreter_server:start_link(
+                     tflite_beam_test_models:path("add.bin"), []),
+    Good = binary:copy(<<0, 0, 128, 63>>, 192),
+    ?assertMatch([_ | _], tflite_beam_interpreter_server:predict(Server, [Good])),
+    ?assertMatch({error, _}, catch tflite_beam_interpreter_server:predict(Server, [<<0, 0>>])),
+    timer:sleep(100),
+    ?assert(is_process_alive(Server)),
+    ?assertMatch([_ | _], tflite_beam_interpreter_server:predict(Server, [Good])).
