@@ -51,7 +51,29 @@ cache_basepath() ->
             {error, lists:flatten(io_lib:fwrite("Cannot create cache directory ~s: ~s", [CacheDir, Reason]))}
     end.
 
+%% Neither of these may leave the cache directory. filename:join/2 hands back an
+%% absolute second argument unchanged, so join(Cache, "/etc/anything") is
+%% "/etc/anything", and a relative one may still climb out with "..". Both
+%% arrive from the caller: tflite_beam_contrib_huggingface passes a repository
+%% name and a filename straight through from whatever asked for the model.
+inside_cache(Component) ->
+    Parts = filename:split(Component),
+    case filename:pathtype(Component) =:= relative andalso
+         not lists:member("..", Parts) of
+        true -> ok;
+        false -> {error, lists:flatten(io_lib:fwrite(
+                     "~ts would write outside the cache directory", [Component]))}
+    end.
+
 cache_path(CacheSubdir, CacheFilename, ForceDownload) ->
+    case [E || C <- [CacheSubdir, CacheFilename], {error, E} <- [inside_cache(C)]] of
+        [Escape | _] ->
+            {error, Escape};
+        [] ->
+            cache_path_checked(CacheSubdir, CacheFilename, ForceDownload)
+    end.
+
+cache_path_checked(CacheSubdir, CacheFilename, ForceDownload) ->
     case cache_basepath() of
         {ok, BaseDir} ->
             CacheDir = filename:join(BaseDir, CacheSubdir),

@@ -14,6 +14,7 @@
     model_from_invalid_buffer/1,
     associated_files_one_and_many/1,
     set_data_takes_the_whole_tensor_or_nothing/1,
+    a_download_cannot_be_aimed_outside_the_cache/1,
     predict_reports_a_bad_input_instead_of_crashing/1,
     predict_does_not_answer_from_a_failed_invoke/1,
     the_server_is_the_concurrency_safe_path/1,
@@ -40,6 +41,7 @@ all() ->
         model_from_invalid_buffer,
         associated_files_one_and_many,
         set_data_takes_the_whole_tensor_or_nothing,
+        a_download_cannot_be_aimed_outside_the_cache,
         predict_reports_a_bad_input_instead_of_crashing,
         predict_does_not_answer_from_a_failed_invoke,
         the_server_is_the_concurrency_safe_path,
@@ -314,3 +316,32 @@ the_server_survives_a_malformed_request(_Config) ->
     timer:sleep(100),
     ?assert(is_process_alive(Server)),
     ?assertMatch([_ | _], tflite_beam_interpreter_server:predict(Server, [Good])).
+
+%% Both halves of the cache path come from the caller, and
+%% tflite_beam_contrib_huggingface passes a repository name and a filename
+%% straight through from whatever asked for the model. filename:join/2 returns an
+%% absolute second argument unchanged, so joining a cache directory with
+%% "/etc/anything" gives "/etc/anything", and a relative one can still climb out
+%% with "..". Either one made a successful download overwrite a file of the
+%% caller's choosing. Refused before the request is made, so none of these reach
+%% the network.
+a_download_cannot_be_aimed_outside_the_cache(_Config) ->
+    Escapes = [
+        {"/etc", "evil"},
+        {"models", "/etc/evil"},
+        {"../../..", "evil"},
+        {"models", "../../../evil"}
+    ],
+    [begin
+        Result = tflite_beam_utils_downloader:download(
+                   "https://example.invalid/x", Subdir, File, true),
+        ?assertMatch({error, _}, Result),
+        {error, Reason} = Result,
+        ?assertNotEqual(nomatch,
+                        binary:match(iolist_to_binary(Reason), <<"outside the cache">>),
+                        lists:flatten(io_lib:format("~ts / ~ts gave ~ts", [Subdir, File, Reason])))
+     end || {Subdir, File} <- Escapes],
+
+    %% and an ordinary name is still allowed through to the request itself
+    ?assertMatch({error, _}, tflite_beam_utils_downloader:download(
+                               "https://example.invalid/x", "models", "fine.bin", true)).
