@@ -57,7 +57,10 @@ manifest_lists_every_target(Config) ->
             %% left over from the previous release lists seven perfectly good
             %% checksums for seven files nobody is about to download, and the
             %% installer then refuses every target. That is how 0.4.0-rc4 shipped.
-            Version = tflite_beam_precompiled:app_version(),
+            %% not tflite_beam_precompiled:app_version/0: it reads app.src
+            %% relative to the working directory, and Common Test runs from its
+            %% own log directory, where it finds nothing and answers "unknown"
+            Version = version_from(repository_root()),
             Suffix = "-v" ++ Version ++ ".tar.gz",
             [?assert(lists:suffix(Suffix, Name),
                      lists:flatten(io_lib:format("~ts is not a v~ts tarball", [Name, Version])))
@@ -108,6 +111,12 @@ a_listed_file_with_a_wrong_digest_is_still_refused(Config) ->
     ?assertMatch({error, _},
                  tflite_beam_precompiled:verify_checksum("listed-but-wrong.tar.gz", Path, Manifest)),
     ?assertNot(filelib:is_regular(Path)).
+
+version_from(Root) ->
+    {ok, Bin} = file:read_file(filename:join([Root, "src", "tflite_beam.app.src"])),
+    {ok, Tokens, _} = erl_scan:string(binary_to_list(Bin)),
+    {ok, {application, tflite_beam, App}} = erl_parse:parse_term(Tokens),
+    proplists:get_value(vsn, App).
 
 a_file_with_known_digest(Config, Name) ->
     Path = filename:join(?config(priv_dir, Config), Name),
