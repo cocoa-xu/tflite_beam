@@ -36,7 +36,8 @@
     a_truncated_model_is_refused_rather_than_walked_off_the_end/1,
     a_nested_cache_subdirectory_is_created_not_refused/1,
     the_delegate_width_is_reportable_rather_than_a_hidden_rule/1,
-    num_threads_follows_tflites_own_contract/1
+    num_threads_follows_tflites_own_contract/1,
+    metadata_reaches_the_corners_of_its_own_schema/1
 ]).
 
 %% every tensor in multi_add.bin is a [1, 8, 8, 3] float32
@@ -72,7 +73,8 @@ all() ->
         a_truncated_model_is_refused_rather_than_walked_off_the_end,
         a_nested_cache_subdirectory_is_created_not_refused,
         the_delegate_width_is_reportable_rather_than_a_hidden_rule,
-        num_threads_follows_tflites_own_contract
+        num_threads_follows_tflites_own_contract,
+        metadata_reaches_the_corners_of_its_own_schema
     ].
 
 model_from_file(_Config) ->
@@ -631,3 +633,49 @@ num_threads_follows_tflites_own_contract(_Config) ->
     lists:foreach(fun(N) ->
         ?assertEqual(ok, tflite_beam_interpreter_builder:set_num_threads(Builder, N))
     end, [-1, 0, 1]).
+
+%% Four parts of the metadata schema that no model in this corpus reaches, so
+%% test/models/metadata_corners.bin is built for them by
+%% scripts/make_metadata_fixture.cpp. Every assertion here failed before its fix.
+metadata_reaches_the_corners_of_its_own_schema(_Config) ->
+    Model = tflite_beam_flatbuffer_model:build_from_file(
+                tflite_beam_test_models:path("metadata_corners.bin")),
+    #{'TFLITE_METADATA' := Metadata} =
+        tflite_beam_flatbuffer_model:read_all_metadata(Model),
+    #{subgraph_metadata := [Subgraph]} = Metadata,
+    #{input_tensor_metadata := [Features, Scores, Tokens]} = Subgraph,
+
+    %% FeatureProperties is an empty marker table, so there is nothing in it that
+    %% can fail. Reporting one discarded the whole content map built around it,
+    %% and the range with it.
+    ?assertMatch(#{content := #{content_properties_type := <<"FeatureProperties">>,
+                                content_properties := #{},
+                                range := #{min := 1, max := 1}}},
+                 Features),
+
+    %% the thresholding option put global_score_threshold under default_score,
+    %% which is a real and different field on ScoreCalibrationOptions
+    #{process_units := ScoreUnits} = Scores,
+    ?assertMatch([#{options_type := <<"ScoreThresholdingOptions">>,
+                    options := #{global_score_threshold := 0.25}},
+                  #{options_type := <<"NormalizationOptions">>}],
+                 ScoreUnits),
+    [#{options := ScoreOptions} | _] = ScoreUnits,
+    ?assertNot(maps:is_key(default_score, ScoreOptions)),
+
+    %% vocab_file is optional here, and its absence used to take every process
+    %% unit on the tensor down with it, the unrelated one included
+    #{process_units := TokenUnits} = Tokens,
+    ?assertEqual(2, length(TokenUnits)),
+    ?assertMatch([#{options_type := <<"SentencePieceTokenizerOptions">>},
+                  #{options_type := <<"NormalizationOptions">>}],
+                 TokenUnits),
+    [#{options := SentencePiece} | _] = TokenUnits,
+    ?assert(maps:is_key(sentencePiece_model, SentencePiece)),
+    ?assertNot(maps:is_key(vocab_file, SentencePiece)),
+
+    %% and custom_metadata has been in the schema all along without ever being
+    %% read
+    ?assertMatch(#{custom_metadata := [#{name := <<"beam_test">>,
+                                         data := <<1, 2, 3, 4>>}]},
+                 Subgraph).

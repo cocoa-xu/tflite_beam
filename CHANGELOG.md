@@ -3,13 +3,17 @@
 ## v0.4.0-rc6 (2026-08-23)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.4.0-rc6) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.4.0-rc6)
 
-Seven faults on the path a caller actually takes, three of which end the emulator
-rather than return an error, and one of those writes integers of the caller's
-choosing past the end of a stack buffer. All were found by auditing the binding
+Eleven faults on the path a caller actually takes, three of which end the
+emulator rather than return an error, and one of those writes integers of the
+caller's choosing past the end of a stack buffer. Four more answered with the
+wrong value or quietly dropped one. All were found by auditing the binding
 against TfLite's own contracts rather than by a crash report, and each is held by
 a test that fails without its fix.
 
 ### Added
+- Model metadata now reports `custom_metadata`. The field has been on every
+  subgraph in the schema all along and nothing here ever read it, so whatever a
+  model author put there was unreachable.
 - `tflite_beam:xnnpack_max_tensor_dims/0` reports the widest tensor the delegate
   in this build can describe, or `nil` where no delegate imposes a width, as the
   armv6 and armv7l targets do. It is the number the resize guard below enforces,
@@ -37,6 +41,25 @@ a test that fails without its fix.
   and `build_from_file` used the constructors that do not verify, so a model cut
   short segfaulted inside the NIF before returning anything. Both verify now, at
   the cost of a linear scan next to a copy the loader already made.
+- A tensor whose content is `FeatureProperties` keeps its metadata. That table
+  is an empty marker in the schema, so there is nothing in it that can fail, but
+  reading one was treated as a failure and discarded the whole content map built
+  around it, `content_properties_type` and `range` included.
+- A score thresholding unit reports `global_score_threshold` under its own name.
+  It was reported as `default_score`, which is a real and different field on the
+  `ScoreCalibrationOptions` beside it, so the name did not merely read oddly, it
+  named something else.
+- An absent optional file no longer empties a tensor's `process_units`. The
+  tokenizer options treated a missing `vocab_file` as a failure, and the loop
+  over the units gives up on the first failure, so a SentencePiece tokenizer
+  shipping only its model discarded every unit on that tensor, unrelated ones
+  included. The Bert and regex options had the same shape.
+- `set_num_threads/2` accepts the values TfLite documents. Its own contract is
+  ">= 0, or just -1 to let TFLite runtime set the value", and the interpreter
+  refused everything below 1, so it turned away the one value that asks TfLite
+  to choose. `tflite_beam_interpreter_builder:set_num_threads/2` next to it
+  always passed the integer straight through, and its spec has been widened from
+  `pos_integer()` to match.
 - The model cache creates nested directories. Every HuggingFace repository id is
   `owner/name` and goes in as the cache subdirectory, but the cache called the
   non recursive `file:make_dir/1`, which fails when the parent is missing. All 88

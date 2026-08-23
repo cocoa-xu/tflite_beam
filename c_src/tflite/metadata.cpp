@@ -157,7 +157,16 @@ bool _fb_var_to_erl(ErlNifEnv *env, const flatbuffers::Vector<flatbuffers::Offse
 
 template <>
 bool _fb_var_to_erl(ErlNifEnv *env, const tflite::FeatureProperties* fb_var, ERL_NIF_TERM &out) {
-    return false;
+    if (!fb_var) {
+        return false;
+    }
+
+    // FeatureProperties is an empty table in the schema. It marks a tensor as
+    // holding plain feature values and carries nothing of its own, so there is
+    // nothing here that can fail. Answering false discarded the whole Content
+    // map built around it, taking content_properties_type and range with it.
+    out = enif_make_new_map(env);
+    return true;
 }
 
 template <>
@@ -293,8 +302,11 @@ bool _fb_var_to_erl(ErlNifEnv *env, const tflite::ScoreThresholdingOptions* fb_v
         return false;
     }
 
+    // This is global_score_threshold. It used to be reported as default_score,
+    // which is a real and different field on ScoreCalibrationOptions next door,
+    // so the name did not merely read oddly, it named something else.
     ERL_NIF_TERM keys[1], values[1];
-    keys[0] = erlang::nif::atom(env, "default_score");
+    keys[0] = erlang::nif::atom(env, "global_score_threshold");
     values[0] = erlang::nif::make(env, fb_var->global_score_threshold());
     enif_make_map_from_arrays(env, keys, values, 1, &out);
 
@@ -307,14 +319,14 @@ bool _fb_var_to_erl(ErlNifEnv *env, const tflite::BertTokenizerOptions* fb_var, 
         return false;
     }
 
-    ERL_NIF_TERM keys[1], values[1];
-    if (!_fb_var_to_erl(env, fb_var->vocab_file(), values[0])) {
-        out = values[0];
-        return false;
+    // vocab_file is optional. Treating its absence as a failure took the whole
+    // process_units list of the tensor down with it, unrelated units included,
+    // because the loop over them gives up on the first one that answers false.
+    out = enif_make_new_map(env);
+    ERL_NIF_TERM vocab_file;
+    if (_fb_var_to_erl(env, fb_var->vocab_file(), vocab_file)) {
+        enif_make_map_put(env, out, erlang::nif::atom(env, "vocab_file"), vocab_file, &out);
     }
-
-    keys[0] = erlang::nif::atom(env, "vocab_file");
-    enif_make_map_from_arrays(env, keys, values, 1, &out);
 
     return true;
 }
@@ -325,20 +337,18 @@ bool _fb_var_to_erl(ErlNifEnv *env, const tflite::SentencePieceTokenizerOptions*
         return false;
     }
 
-    ERL_NIF_TERM keys[2], values[2];
-    if (!_fb_var_to_erl(env, fb_var->sentencePiece_model(), values[0])) {
-        out = values[0];
-        return false;
+    // Both files are optional here, and a tokenizer that ships only the model
+    // is ordinary. See the note on BertTokenizerOptions above for what an
+    // absent one used to cost.
+    out = enif_make_new_map(env);
+    ERL_NIF_TERM model_term;
+    if (_fb_var_to_erl(env, fb_var->sentencePiece_model(), model_term)) {
+        enif_make_map_put(env, out, erlang::nif::atom(env, "sentencePiece_model"), model_term, &out);
     }
-    keys[0] = erlang::nif::atom(env, "sentencePiece_model");
-
-    if (!_fb_var_to_erl(env, fb_var->vocab_file(), values[1])) {
-        out = values[1];
-        return false;
+    ERL_NIF_TERM vocab_file;
+    if (_fb_var_to_erl(env, fb_var->vocab_file(), vocab_file)) {
+        enif_make_map_put(env, out, erlang::nif::atom(env, "vocab_file"), vocab_file, &out);
     }
-    keys[1] = erlang::nif::atom(env, "vocab_file");
-
-    enif_make_map_from_arrays(env, keys, values, 2, &out);
 
     return true;
 }
@@ -349,20 +359,16 @@ bool _fb_var_to_erl(ErlNifEnv *env, const tflite::RegexTokenizerOptions* fb_var,
         return false;
     }
 
-    ERL_NIF_TERM keys[2], values[2];
-    if (!_fb_var_to_erl(env, fb_var->delim_regex_pattern(), values[0])) {
-        out = values[0];
-        return false;
+    // Both optional, as above.
+    out = enif_make_new_map(env);
+    ERL_NIF_TERM pattern;
+    if (_fb_var_to_erl(env, fb_var->delim_regex_pattern(), pattern)) {
+        enif_make_map_put(env, out, erlang::nif::atom(env, "delim_regex_pattern"), pattern, &out);
     }
-    keys[0] = erlang::nif::atom(env, "delim_regex_pattern");
-
-    if (!_fb_var_to_erl(env, fb_var->vocab_file(), values[1])) {
-        out = values[1];
-        return false;
+    ERL_NIF_TERM vocab_file;
+    if (_fb_var_to_erl(env, fb_var->vocab_file(), vocab_file)) {
+        enif_make_map_put(env, out, erlang::nif::atom(env, "vocab_file"), vocab_file, &out);
     }
-    keys[1] = erlang::nif::atom(env, "vocab_file");
-
-    enif_make_map_from_arrays(env, keys, values, 2, &out);
 
     return true;
 }
@@ -625,6 +631,65 @@ bool _fb_var_to_erl(ErlNifEnv *env, const flatbuffers::Vector<flatbuffers::Offse
     return true;
 }
 
+// The schema has carried custom_metadata on every subgraph all along and
+// nothing here ever read it, so whatever a model author put there was
+// unreachable through this binding.
+template <>
+bool _fb_var_to_erl(ErlNifEnv *env, const flatbuffers::Vector<flatbuffers::Offset<tflite::CustomMetadata>>* fb_vars, ERL_NIF_TERM &out) {
+    if (!fb_vars) {
+        return false;
+    }
+
+    size_t count = fb_vars->size();
+    if (count == 0) {
+        out = enif_make_list_from_array(env, nullptr, 0);
+        return true;
+    }
+
+    ERL_NIF_TERM * entries = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * count);
+    if (!entries) {
+        out = erlang::nif::error(env, "enif_alloc failed");
+        return false;
+    }
+
+    size_t valid = 0;
+    for (size_t i = 0; i < count; i++) {
+        auto entry = fb_vars->Get(i);
+        if (!entry) {
+            continue;
+        }
+
+        std::map<std::string, std::string> named;
+        _tflite_metadata_set_key_value(named, "name", entry->name());
+        if (erlang::nif::make(env, named, entries[valid], true)) {
+            enif_free(entries);
+            out = erlang::nif::error(env, "enif_alloc failed");
+            return false;
+        }
+
+        // data is an opaque byte vector, so it goes out as a binary rather than
+        // being interpreted.
+        auto data = entry->data();
+        if (data) {
+            ERL_NIF_TERM data_term;
+            unsigned char * ptr = enif_make_new_binary(env, data->size(), &data_term);
+            if (!ptr) {
+                enif_free(entries);
+                out = erlang::nif::error(env, "enif_make_new_binary failed");
+                return false;
+            }
+            memcpy(ptr, data->data(), data->size());
+            enif_make_map_put(env, entries[valid], erlang::nif::atom(env, "data"), data_term, &entries[valid]);
+        }
+
+        valid++;
+    }
+
+    out = enif_make_list_from_array(env, entries, valid);
+    enif_free(entries);
+    return true;
+}
+
 template <>
 bool _fb_var_to_erl(ErlNifEnv *env, const flatbuffers::Vector<flatbuffers::Offset<tflite::SubGraphMetadata>>* fb_vars, ERL_NIF_TERM &out) {
     if (!fb_vars) {
@@ -685,6 +750,11 @@ bool _fb_var_to_erl(ErlNifEnv *env, const flatbuffers::Vector<flatbuffers::Offse
             ERL_NIF_TERM input_tensor_groups_term;
             if (_fb_var_to_erl(env, subgraph->input_tensor_groups(), input_tensor_groups_term)) {
                 enif_make_map_put(env, subgraphs[valid], erlang::nif::atom(env, "input_tensor_groups"), input_tensor_groups_term, &subgraphs[valid]);
+            }
+
+            ERL_NIF_TERM custom_metadata_term;
+            if (_fb_var_to_erl(env, subgraph->custom_metadata(), custom_metadata_term)) {
+                enif_make_map_put(env, subgraphs[valid], erlang::nif::atom(env, "custom_metadata"), custom_metadata_term, &subgraphs[valid]);
             }
 
             ERL_NIF_TERM output_tensor_groups_term;
