@@ -12,6 +12,8 @@
     edge_tpu_default_path/1,
     edge_tpu_absent_device/1,
     dequantize_tensor_accepts_the_types_it_documents/1,
+    dequantize_tensor_returns_real_numbers_by_default/1,
+    dequantize_tensor_refuses_what_it_cannot_undo/1,
     edge_tpu_delegate_inference/1,
     edge_tpu_delegate_composes/1
 ]).
@@ -21,7 +23,9 @@ all() ->
         edge_tpu_plugin_symbols,
         edge_tpu_default_path,
         edge_tpu_absent_device,
-        dequantize_tensor_accepts_the_types_it_documents
+        dequantize_tensor_accepts_the_types_it_documents,
+        dequantize_tensor_returns_real_numbers_by_default,
+        dequantize_tensor_refuses_what_it_cannot_undo
     ].
 
 groups() ->
@@ -148,3 +152,42 @@ dequantize_tensor_accepts_the_types_it_documents(_Config) ->
     %% and a type it does not have still says so, rather than saying the term
     %% could not be read at all
     ?assertMatch({error, _}, tflite_beam_coral:dequantize_tensor(Interpreter, Output, nonsense)).
+
+%% The default asked for the quantized type back, so scale * (q - zero_point) was
+%% truncated into an int8, and a scale is normally well under one. Every value
+%% came out as nought from the function whose whole job is to undo that.
+dequantize_tensor_returns_real_numbers_by_default(_Config) ->
+    Interpreter = tflite_beam_test_models:interpreter("add_quantized_int8.bin"),
+    {ok, [Index | _]} = tflite_beam_interpreter:inputs(Interpreter),
+    Tensor = tflite_beam_interpreter:tensor(Interpreter, Index),
+    Size = byte_size(tflite_beam_tensor:to_binary(Tensor)),
+    ok = tflite_beam_tensor:set_data(
+           Tensor, list_to_binary([(N rem 50) + 3 || N <- lists:seq(1, Size)])),
+    ok = tflite_beam_interpreter:invoke(Interpreter),
+    {ok, [Output | _]} = tflite_beam_interpreter:outputs(Interpreter),
+
+    {ok, Default} = tflite_beam_coral:dequantize_tensor(Interpreter, Output, nil),
+    {ok, AsFloat} = tflite_beam_coral:dequantize_tensor(Interpreter, Output, f32),
+    ?assertEqual(AsFloat, Default),
+
+    %% and they are the numbers scale * (q - zero_point) gives, not zeroes
+    ?assert(lists:any(fun(V) -> V > 0.0 andalso V < 1.0 end, Default),
+            lists:flatten(io_lib:format("~p", [lists:sublist(Default, 6)]))).
+
+%% coral::DequantizeTensor reads the input as uint8 or int8 and reaches
+%% LOG(FATAL) for anything else, which aborts the emulator rather than returning.
+%% Nothing checked the tensor's type before calling it, so asking for f32 from a
+%% float tensor took the node down.
+dequantize_tensor_refuses_what_it_cannot_undo(_Config) ->
+    Interpreter = tflite_beam_test_models:interpreter("add.bin"),
+    {ok, [Output | _]} = tflite_beam_interpreter:outputs(Interpreter),
+
+    %% surviving this call is most of the assertion
+    ?assertMatch({error, _},
+                 tflite_beam_coral:dequantize_tensor(Interpreter, Output, f32)),
+
+    %% an index too large for an int used to narrow rather than fall out of range
+    ?assertMatch({error, _},
+                 tflite_beam_coral:dequantize_tensor(Interpreter, 4294967296, f32)),
+
+    ?assert(is_integer(tflite_beam_interpreter:tensors_size(Interpreter))).

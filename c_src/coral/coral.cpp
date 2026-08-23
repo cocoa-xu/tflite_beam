@@ -200,23 +200,51 @@ ERL_NIF_TERM coral_dequantize_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TER
     }
 
     auto interpreter = interpreter_res->val;
-    const TfLiteTensor * tensor = interpreter->tensor(tensor_index);
+    // interpreter->tensor takes an int, so a larger index used to narrow rather
+    // than fall out of range: 4294967296 became 0 and answered with tensor zero.
+    if (tensor_index < 0 || tensor_index >= interpreter->tensors_size()) {
+        return erlang::nif::error(env, "tensor_index out-of-bound");
+    }
+
+    const TfLiteTensor * tensor = interpreter->tensor((int)tensor_index);
     if (tensor == nullptr) {
         return erlang::nif::error(env, "tensor_index out-of-bound");
     }
 
+    // Two things have to hold before coral::DequantizeTensor is called at all.
+    //
+    // It reads the input through TensorData<uint8_t> or TensorData<int8_t> and
+    // reaches LOG(FATAL) for anything else, which aborts the emulator rather
+    // than returning. Asking for f32 from a float tensor did exactly that.
+    if (tensor->type != kTfLiteUInt8 && tensor->type != kTfLiteInt8) {
+        return erlang::nif::error(env,
+            "only a uint8 or int8 tensor can be dequantized");
+    }
+
+    // And it reads the legacy scalar tensor.params, which TfLite leaves at zero
+    // whenever the affine quantization does not have exactly one scale. A
+    // per-axis tensor therefore came back as every value multiplied by a scale
+    // of nought, which is a column of zeroes rather than an error.
+    if (tensor->quantization.type == kTfLiteAffineQuantization) {
+        const auto * affine =
+            reinterpret_cast<const TfLiteAffineQuantization *>(tensor->quantization.params);
+        if (affine == nullptr || affine->scale == nullptr || affine->scale->size != 1) {
+            return erlang::nif::error(env,
+                "this tensor is quantized per axis, which this call cannot undo; "
+                "read its quantization_params and apply them yourself");
+        }
+    }
+
     ERL_NIF_TERM out;
     int ret_status;
-    if (type == "nil") {
-        if (tensor->type == kTfLiteUInt8) {
-            auto vec = coral::DequantizeTensor<uint8_t>(*tensor);
-            ret_status = erlang::nif::make(env, vec, out);
-        } else if (tensor->type == kTfLiteInt8) {
-            auto vec = coral::DequantizeTensor<int8_t>(*tensor);
-            ret_status = erlang::nif::make(env, vec, out);
-        } else {
-            return erlang::nif::error(env, "only support tensor with its data type as 'uint8_t' or 'int8_t'");
-        }
+    // The default produces real numbers. It used to produce the quantized type
+    // back again, so scale * (q - zero_point) was truncated into an int8 or a
+    // uint8, and since a scale is normally well below one that meant every value
+    // came out as zero. Measured on a model with scale 0.0039: the true values
+    // began 0.047, 0.059, 0.071 and this returned 0, 0, 0.
+    if (type == "nil" || type == "f32") {
+        auto vec = coral::DequantizeTensor<float>(*tensor);
+        ret_status = erlang::nif::make(env, vec, out);
     } else if (type == "u8") {
         auto vec = coral::DequantizeTensor<uint8_t>(*tensor);
         ret_status = erlang::nif::make(env, vec, out);
@@ -240,9 +268,6 @@ ERL_NIF_TERM coral_dequantize_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TER
         ret_status = erlang::nif::make(env, vec, out);
     } else if (type == "s64") {
         auto vec = coral::DequantizeTensor<int64_t>(*tensor);
-        ret_status = erlang::nif::make(env, vec, out);
-    } else if (type == "f32") {
-        auto vec = coral::DequantizeTensor<float>(*tensor);
         ret_status = erlang::nif::make(env, vec, out);
     } else if (type == "f64") {
         auto vec = coral::DequantizeTensor<double>(*tensor);
