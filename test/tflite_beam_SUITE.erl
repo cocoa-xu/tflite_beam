@@ -34,7 +34,8 @@
     a_rank_above_six_is_refused_rather_than_overrunning_the_stack/1,
     an_unnamed_tensor_reads_as_empty_rather_than_dereferencing_null/1,
     a_truncated_model_is_refused_rather_than_walked_off_the_end/1,
-    a_nested_cache_subdirectory_is_created_not_refused/1
+    a_nested_cache_subdirectory_is_created_not_refused/1,
+    the_delegate_width_is_reportable_rather_than_a_hidden_rule/1
 ]).
 
 %% every tensor in multi_add.bin is a [1, 8, 8, 3] float32
@@ -68,7 +69,8 @@ all() ->
         a_rank_above_six_is_refused_rather_than_overrunning_the_stack,
         an_unnamed_tensor_reads_as_empty_rather_than_dereferencing_null,
         a_truncated_model_is_refused_rather_than_walked_off_the_end,
-        a_nested_cache_subdirectory_is_created_not_refused
+        a_nested_cache_subdirectory_is_created_not_refused,
+        the_delegate_width_is_reportable_rather_than_a_hidden_rule
     ].
 
 model_from_file(_Config) ->
@@ -448,48 +450,60 @@ an_overlong_word_becomes_unknown_rather_than_nothing(_Config) ->
     ?assertNotEqual([<<"[UNK]">>],
                     tflite_beam_wordpiece_tokenizer:tokenize(Wide, Vocabulary)).
 
-%% XNNPACK's Subgraph::Prepare copies a tensor's dimensions into a
-%% std::array<size_t, XNN_MAX_TENSOR_DIMS> with no bound on the count, so
-%% growing a delegated tensor past six dimensions wrote caller-supplied values
-%% off the end of the stack. Rank 7 and 8 aborted, rank 10 took SIGBUS, and a
-%% dimension of 16#12345678 reached SIGSEGV, which makes it a controlled write
-%% and not only a crash. Rank six is the boundary and still has to work.
+%% The delegate holds a tensor's dimensions in a fixed-width array and bounds
+%% the count only when it first decides to take the graph. Nothing rechecks it
+%% on the reshape a resize reaches, so growing a delegated tensor across that
+%% bound wrote the caller's own integers past the end of the array: rank 7 and 8
+%% tripped the stack protector, rank 10 took SIGBUS, and a dimension of
+%% 16#12345678 reached SIGSEGV. The bound itself is asked for rather than
+%% assumed, so this test says the same thing on a build that has no delegate.
 a_rank_above_six_is_refused_rather_than_overrunning_the_stack(_Config) ->
     Interpreter = tflite_beam_test_models:interpreter("add.bin"),
     {ok, [Input | _]} = tflite_beam_interpreter:inputs(Interpreter),
 
-    ?assertEqual(ok, tflite_beam_interpreter:resize_input_tensor(
-                         Interpreter, Input, [1, 8, 8, 3, 1, 1])),
-    ?assertEqual(ok, tflite_beam_interpreter:allocate_tensors(Interpreter)),
+    case tflite_beam:xnnpack_max_tensor_dims() of
+        nil ->
+            %% nothing here imposes a width, so nothing may be refused for one
+            ?assertEqual(ok, tflite_beam_interpreter:resize_input_tensor(
+                                 Interpreter, Input, [1, 8, 8, 3, 1, 1, 1]));
+        Max when is_integer(Max), Max > 3 ->
+            AtBound = [1, 8, 8, 3] ++ lists:duplicate(Max - 4, 1),
+            ?assertEqual(ok, tflite_beam_interpreter:resize_input_tensor(
+                                 Interpreter, Input, AtBound)),
+            ?assertEqual(ok, tflite_beam_interpreter:allocate_tensors(Interpreter)),
 
-    lists:foreach(fun(Dims) ->
-        ?assertMatch({error, _},
-                     tflite_beam_interpreter:resize_input_tensor(Interpreter, Input, Dims))
-    end, [
-        [1, 8, 8, 3, 1, 1, 1],
-        [1, 8, 8, 3, 1, 1, 1, 1],
-        [1, 8, 8, 3, 1, 1, 1, 1, 1, 1],
-        [1, 8, 8, 3, 1, 1, 16#12345678]
-    ]),
+            lists:foreach(fun(Over) ->
+                Dims = AtBound ++ lists:duplicate(Over, 1),
+                ?assertMatch({error, _},
+                             tflite_beam_interpreter:resize_input_tensor(
+                                 Interpreter, Input, Dims))
+            end, [1, 2, 4]),
 
-    %% the refusal has to leave the interpreter usable, not half resized
-    ?assertEqual(ok, tflite_beam_interpreter:allocate_tensors(Interpreter)),
+            %% the value written past the end was the dimension itself, so the
+            %% one that reached SIGSEGV belongs here too
+            ?assertMatch({error, _},
+                         tflite_beam_interpreter:resize_input_tensor(
+                             Interpreter, Input, AtBound ++ [16#12345678])),
 
-    %% the signature runner reaches the same resize and needs the same guard
-    Multi = tflite_beam_test_models:interpreter("multi_add.bin"),
-    {ok, Runner} = tflite_beam_interpreter:get_signature_runner(Multi, <<"serving_default">>),
-    %% every input of this one feeds the same add, so they move together or the
-    %% shapes stop broadcasting and allocation fails for a reason that is not
-    %% the guard
-    lists:foreach(fun(Name) ->
-        ?assertEqual(ok, tflite_beam_signature_runner:resize_input_tensor(
-                             Runner, Name, [1, 8, 8, 3, 1, 1]))
-    end, [<<"a">>, <<"b">>, <<"c">>, <<"d">>]),
-    ?assertMatch({error, _}, tflite_beam_signature_runner:resize_input_tensor(
-                                 Runner, <<"a">>, [1, 8, 8, 3, 1, 1, 1])),
-    ?assertMatch({error, _}, tflite_beam_signature_runner:resize_input_tensor(
-                                 Runner, <<"a">>, [1, 8, 8, 3, 1, 1, 16#12345678])),
-    ?assertEqual(ok, tflite_beam_signature_runner:allocate_tensors(Runner)).
+            %% the refusal has to leave the interpreter usable, not half resized
+            ?assertEqual(ok, tflite_beam_interpreter:allocate_tensors(Interpreter)),
+
+            %% the signature runner reaches the same resize and needs the same
+            %% guard. Every input of this one feeds the same add, so they move
+            %% together or the shapes stop broadcasting and allocation fails for
+            %% a reason that is not the guard.
+            Multi = tflite_beam_test_models:interpreter("multi_add.bin"),
+            {ok, Runner} = tflite_beam_interpreter:get_signature_runner(Multi, <<"serving_default">>),
+            lists:foreach(fun(Name) ->
+                ?assertEqual(ok, tflite_beam_signature_runner:resize_input_tensor(
+                                     Runner, Name, AtBound))
+            end, [<<"a">>, <<"b">>, <<"c">>, <<"d">>]),
+            ?assertMatch({error, _}, tflite_beam_signature_runner:resize_input_tensor(
+                                         Runner, <<"a">>, AtBound ++ [1])),
+            ?assertMatch({error, _}, tflite_beam_signature_runner:resize_input_tensor(
+                                         Runner, <<"a">>, AtBound ++ [16#12345678])),
+            ?assertEqual(ok, tflite_beam_signature_runner:allocate_tensors(Runner))
+    end.
 
 %% TfLite leaves name null on the scratch tensors an op allocates through
 %% context->AddTensors, and conv3d asks for one to hold its im2col buffer. The
@@ -568,4 +582,29 @@ a_nested_cache_subdirectory_is_created_not_refused(Config) ->
             false -> os:unsetenv("TFLITE_BEAM_CACHE_DIR");
             _ -> os:putenv("TFLITE_BEAM_CACHE_DIR", Previous)
         end
+    end.
+
+%% The width the resize guard enforces is asked for, not written down twice: the
+%% C side takes it from XNNPACK's own header and reports it here, so a build
+%% that changes it cannot leave the guard and the documentation disagreeing, and
+%% a caller who hits the refusal can find out what the number is.
+the_delegate_width_is_reportable_rather_than_a_hidden_rule(_Config) ->
+    case tflite_beam:xnnpack_max_tensor_dims() of
+        nil ->
+            %% a build with no delegate imposing a width refuses nothing for one
+            Interpreter = tflite_beam_test_models:interpreter("add.bin"),
+            {ok, [Input | _]} = tflite_beam_interpreter:inputs(Interpreter),
+            ?assertEqual(ok, tflite_beam_interpreter:resize_input_tensor(
+                                 Interpreter, Input, [1, 8, 8, 3, 1, 1, 1, 1]));
+        Max ->
+            ?assert(is_integer(Max)),
+            ?assert(Max > 0),
+            %% and the number it reports is the one the guard actually applies
+            Interpreter = tflite_beam_test_models:interpreter("add.bin"),
+            {ok, [Input | _]} = tflite_beam_interpreter:inputs(Interpreter),
+            AtBound = [1, 8, 8, 3] ++ lists:duplicate(Max - 4, 1),
+            ?assertEqual(ok, tflite_beam_interpreter:resize_input_tensor(
+                                 Interpreter, Input, AtBound)),
+            ?assertMatch({error, _}, tflite_beam_interpreter:resize_input_tensor(
+                                         Interpreter, Input, AtBound ++ [1]))
     end.

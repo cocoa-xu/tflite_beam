@@ -9,17 +9,26 @@ choosing past the end of a stack buffer. All were found by auditing the binding
 against TfLite's own contracts rather than by a crash report, and each is held by
 a test that fails without its fix.
 
+### Added
+- `tflite_beam:xnnpack_max_tensor_dims/0` reports the widest tensor the delegate
+  in this build can describe, or `nil` where no delegate imposes a width, as the
+  armv6 and armv7l targets do. It is the number the resize guard below enforces,
+  so the rule is one a caller can ask about rather than discover by being
+  refused. CMake lifts the value out of XNNPACK's own header at configure time,
+  which keeps the guard, this function and the delegate from ever disagreeing.
+
 ### Fixed
-- Resizing an input tensor past six dimensions is refused. XNNPACK copies a
-  tensor's dimensions into a `std::array<size_t, XNN_MAX_TENSOR_DIMS>`, six wide,
-  and bounds the count only when it first decides to take the graph. Nothing
-  rechecks it on the reshape that `resize_input_tensor/3` reaches, so the seventh
-  dimension onward was written past the end of the array, and what it wrote were
-  the integers passed in from Erlang. Rank 7 and 8 tripped the stack protector,
-  rank 10 took SIGBUS, and a dimension of `16#12345678` reached SIGSEGV. The
-  refusal is limited to the case that is unsafe: a tensor already above six
-  dimensions was never delegated and can still be reshaped. The upstream code is
-  unchanged in LiteRT, so the guard stays after the source tree moves.
+- Resizing an input tensor past the delegate's width is refused. XNNPACK holds a
+  tensor's dimensions in a `std::array<size_t, XNN_MAX_TENSOR_DIMS>` and bounds
+  the count only when it first decides to take the graph. Nothing rechecks it on
+  the reshape that `resize_input_tensor/3` reaches, so every dimension past the
+  sixth was written off the end of that array, and what it wrote were the
+  integers passed in from Erlang. Rank 7 and 8 tripped the stack protector, rank
+  10 took SIGBUS, and a dimension of `16#12345678` reached SIGSEGV. Only the
+  unsafe transition is refused: a tensor already wider than the bound was never
+  delegated and can still be reshaped, and a build without the delegate refuses
+  nothing. The upstream code is unchanged in LiteRT, so the guard stays after the
+  source tree moves.
 - Reading a tensor by index no longer depends on it having a name. TfLite leaves
   the name null on the scratch tensors an op allocates for itself, and the name
   helper ran `strlen` on that null, so walking a graph took the emulator down on

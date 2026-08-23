@@ -10,6 +10,7 @@
 #include "tensorflow/lite/optional_debug_tools.h"
 
 #include "status.h"
+#include "../xnnpack_limits.h"
 
 #ifndef TFLITE_BEAM_TFLITE_VERSION
 #define TFLITE_BEAM_TFLITE_VERSION "unknown"
@@ -40,6 +41,18 @@ ERL_NIF_TERM tflite_extension_apis_version(ErlNifEnv *env, int argc, const ERL_N
 ERL_NIF_TERM tflite_schema_version(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 0) return enif_make_badarg(env);
     return enif_make_int(env, TfLiteSchemaVersion());
+}
+
+// The widest tensor the attached delegate can describe, or nil when this build
+// has no delegate that imposes one. Reshaping a delegated tensor past it is
+// refused rather than performed, so this is the number that explains the
+// refusal instead of leaving it as an unexplained rule.
+ERL_NIF_TERM xnnpack_max_tensor_dims(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 0) return enif_make_badarg(env);
+    if (kMaxDelegatedRank <= 0) {
+        return erlang::nif::atom(env, "nil");
+    }
+    return enif_make_int(env, kMaxDelegatedRank);
 }
 
 ERL_NIF_TERM tflite_print_interpreter_state(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {

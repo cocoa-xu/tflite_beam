@@ -307,6 +307,28 @@ if(TFLITE_BEAM_TFLITE_VERSION)
 endif()
 if(TFLITE_ENABLE_XNNPACK)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTFLITE_BEAM_XNNPACK_ENABLED=1")
+    # XNN_MAX_TENSOR_DIMS bounds every reshape the delegate performs, and the
+    # binding refuses a resize that would carry a tensor across it. Lift the
+    # value out of XNNPACK's own header so the guard cannot drift from what the
+    # delegate was compiled with. Read rather than included: xnnpack.h pulls in
+    # pthreadpool.h, and it is only on the include path here by way of TfLite
+    # linking XNNPACK, which is not a thing to depend on for a constant.
+    if(NOT XNNPACK_SOURCE_DIR)
+        message(FATAL_ERROR "XNNPACK is enabled but XNNPACK_SOURCE_DIR is unset, so "
+                            "XNN_MAX_TENSOR_DIMS cannot be read from its header")
+    endif()
+    file(STRINGS "${XNNPACK_SOURCE_DIR}/include/xnnpack.h" XNN_MAX_DIMS_LINE
+         REGEX "^#define[ \t]+XNN_MAX_TENSOR_DIMS[ \t]+[0-9]+")
+    if(NOT XNN_MAX_DIMS_LINE)
+        message(FATAL_ERROR "XNN_MAX_TENSOR_DIMS is not where it was in "
+                            "${XNNPACK_SOURCE_DIR}/include/xnnpack.h, so the resize "
+                            "guard has nothing to enforce")
+    endif()
+    string(REGEX REPLACE "^#define[ \t]+XNN_MAX_TENSOR_DIMS[ \t]+([0-9]+).*" "\\1"
+           TFLITE_BEAM_MAX_DELEGATED_RANK "${XNN_MAX_DIMS_LINE}")
+    message(STATUS "XNN_MAX_TENSOR_DIMS is ${TFLITE_BEAM_MAX_DELEGATED_RANK}")
+    set(CMAKE_CXX_FLAGS
+        "${CMAKE_CXX_FLAGS} -DTFLITE_BEAM_MAX_DELEGATED_RANK=${TFLITE_BEAM_MAX_DELEGATED_RANK}")
 endif()
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g3")

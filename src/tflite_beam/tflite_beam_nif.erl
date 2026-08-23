@@ -257,6 +257,9 @@ tflite_runtime_version() ->
 tflite_extension_apis_version() ->
     not_loaded(?LINE).
 
+xnnpack_max_tensor_dims() ->
+    not_loaded(?LINE).
+
 tflite_schema_version() ->
     not_loaded(?LINE).
 

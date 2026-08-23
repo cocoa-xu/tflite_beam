@@ -5,7 +5,8 @@
     tflite_version/0,
     tflite_runtime_version/0,
     tflite_extension_apis_version/0,
-    tflite_schema_version/0
+    tflite_schema_version/0,
+    xnnpack_max_tensor_dims/0
 ]).
 
 %% @doc The version of the TfLite sources this library was built from, e.g.
@@ -50,3 +51,21 @@ tflite_extension_apis_version() ->
 -spec tflite_schema_version() -> integer().
 tflite_schema_version() ->
     tflite_beam_nif:tflite_schema_version().
+
+%% @doc The widest tensor the delegate in this build can describe, or `nil' if
+%% no delegate here imposes a width.
+%%
+%% XNNPACK holds a tensor's dimensions in a fixed-width array and checks the
+%% count once, when it decides whether to take a graph. Nothing rechecks it
+%% afterwards, so growing an already-delegated tensor past this many dimensions
+%% would write the dimensions you passed in past the end of that array.
+%% {@link tflite_beam_interpreter:resize_input_tensor/3} and its signature
+%% runner counterpart refuse that one transition rather than perform it.
+%%
+%% A tensor that is already wider than this was refused by the delegate to begin
+%% with, was therefore never delegated, and can still be reshaped freely. The
+%% armv6 and armv7l builds carry no XNNPACK and answer `nil', where nothing is
+%% refused.
+-spec xnnpack_max_tensor_dims() -> integer() | nil.
+xnnpack_max_tensor_dims() ->
+    tflite_beam_nif:xnnpack_max_tensor_dims().
