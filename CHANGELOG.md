@@ -3,12 +3,35 @@
 ## v0.4.0-rc6 (2026-08-23)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.4.0-rc6) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.4.0-rc6)
 
-Three faults on the path a caller actually takes, all found by auditing the type
-and error handling rather than by a crash report. Two of them were made reachable
-by the first: it turns a silent wrong answer into an error, and nothing on the way
-out was ready to carry one.
+Seven faults on the path a caller actually takes, three of which end the emulator
+rather than return an error, and one of those writes integers of the caller's
+choosing past the end of a stack buffer. All were found by auditing the binding
+against TfLite's own contracts rather than by a crash report, and each is held by
+a test that fails without its fix.
 
 ### Fixed
+- Resizing an input tensor past six dimensions is refused. XNNPACK copies a
+  tensor's dimensions into a `std::array<size_t, XNN_MAX_TENSOR_DIMS>`, six wide,
+  and bounds the count only when it first decides to take the graph. Nothing
+  rechecks it on the reshape that `resize_input_tensor/3` reaches, so the seventh
+  dimension onward was written past the end of the array, and what it wrote were
+  the integers passed in from Erlang. Rank 7 and 8 tripped the stack protector,
+  rank 10 took SIGBUS, and a dimension of `16#12345678` reached SIGSEGV. The
+  refusal is limited to the case that is unsafe: a tensor already above six
+  dimensions was never delegated and can still be reshaped. The upstream code is
+  unchanged in LiteRT, so the guard stays after the source tree moves.
+- Reading a tensor by index no longer depends on it having a name. TfLite leaves
+  the name null on the scratch tensors an op allocates for itself, and the name
+  helper ran `strlen` on that null, so walking a graph took the emulator down on
+  any model with one. A detection model reaches it at index 261.
+- A truncated or corrupt model is refused instead of walked. `build_from_buffer`
+  and `build_from_file` used the constructors that do not verify, so a model cut
+  short segfaulted inside the NIF before returning anything. Both verify now, at
+  the cost of a linear scan next to a copy the loader already made.
+- The model cache creates nested directories. Every HuggingFace repository id is
+  `owner/name` and goes in as the cache subdirectory, but the cache called the
+  non recursive `file:make_dir/1`, which fails when the parent is missing. All 88
+  models in the contrib catalogue were undownloadable.
 - Writing to a tensor takes exactly its size. A short binary used to be copied as
   far as it went and reported as success, leaving the rest of the tensor holding
   whatever the arena held before and producing an answer computed partly from
