@@ -35,7 +35,15 @@ ERL_NIF_TERM flatbuffer_model_build_from_file(ErlNifEnv *env, int argc, const ER
         return ret;
     }
 
-    auto m = tflite::FlatBufferModel::BuildFromFile(filename.c_str(), error_reporter);
+    // Verify even though the name does not say so. The unverified constructor
+    // segfaults on a truncated or corrupt file rather than reporting one, and a
+    // model read off disk or out of a download is exactly where that happens.
+    // The scan is linear and vanishes next to building the interpreter.
+    auto m = tflite::FlatBufferModel::VerifyAndBuildFromFile(filename.c_str(), nullptr, error_reporter);
+    if (m.get() == nullptr) {
+        return erlang::nif::error(env, "cannot build model from file: not a valid flatbuffer");
+    }
+
     _make_flatbuffer_model_resource(env, m, ret, nullptr, error_reporter_res);
     return ret;
 }
@@ -142,7 +150,15 @@ ERL_NIF_TERM flatbuffer_model_build_from_buffer(ErlNifEnv *env, int argc, const 
     char * copied_buffer = (char *)enif_alloc(sizeof(char) * data.size);
     memcpy((void *)copied_buffer, data.data, data.size);
 
-    auto m = tflite::FlatBufferModel::BuildFromBuffer(copied_buffer, data.size, error_reporter);
+    // As above: the unverified constructor walks straight off the end of a
+    // truncated buffer. It also leaked copied_buffer whenever the model failed
+    // to build.
+    auto m = tflite::FlatBufferModel::VerifyAndBuildFromBuffer(copied_buffer, data.size, nullptr, error_reporter);
+    if (m.get() == nullptr) {
+        enif_free(copied_buffer);
+        return erlang::nif::error(env, "cannot build model from buffer: not a valid flatbuffer");
+    }
+
     _make_flatbuffer_model_resource(env, m, ret, copied_buffer, error_reporter_res);
 
     return ret;

@@ -9,6 +9,8 @@
 #include "signature_runner.h"
 #include "status.h"
 
+static constexpr size_t kMaxDelegatedRank = 6;
+
 // The runner belongs to the interpreter that handed it out and lives exactly as long,
 // so the resource holds a reference to the interpreter and never deletes the runner.
 ERL_NIF_TERM interpreter_get_signature_runner(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
@@ -268,6 +270,25 @@ static ERL_NIF_TERM _resize(ErlNifEnv *env, const ERL_NIF_TERM argv[], bool stri
 
     if (!erlang::nif::get_list(env, argv[2], dims)) {
         return erlang::nif::error(env, "expecting `dims` to be a list of non-negative integers");
+    }
+
+    const TfLiteTensor * tensor = self_res->val->input_tensor(input_name.c_str());
+    // XNNPACK's delegate copies a tensor's dimensions into a std::array of six
+    // with no bound on the count (xnnpack_delegate.cc, Subgraph::Prepare), so a
+    // rank above that overruns the stack with values supplied from Erlang. It is
+    // reachable only through this transition: XNNPACK refuses to delegate a
+    // graph of rank above six in the first place, so a tensor that already has
+    // more was never delegated and is safe to reshape. Growing a delegated one
+    // past six is what writes off the end, and it is a caller-controlled write,
+    // not merely a crash.
+    const size_t new_rank = dims.size();
+    const size_t old_rank = (tensor != nullptr && tensor->dims != nullptr)
+                                ? (size_t)tensor->dims->size : new_rank;
+    if (new_rank > kMaxDelegatedRank && old_rank <= kMaxDelegatedRank) {
+        return erlang::nif::error(env,
+            "cannot reshape a tensor to more than six dimensions: the delegate "
+            "attached to this graph cannot describe one, and reshaping it there "
+            "writes past the end of a fixed buffer");
     }
 
     TfLiteStatus status = strict

@@ -10,6 +10,15 @@
 
 int _tflitetensor_name(ErlNifEnv *env, TfLiteTensor * tensor, ERL_NIF_TERM &out) {
     auto tensor_name_str = TfLiteTensorName(tensor);
+    if (tensor_name_str == nullptr) {
+        // TfLite leaves name null for the scratch tensors an op allocates
+        // through context->AddTensors, and a detection model has two of them.
+        // They are in range, so walking the graph by index reaches them, and
+        // strlen on the null took the node down. Every sibling helper here
+        // null-checks; this one did not.
+        out = erlang::nif::make_binary(env, "");
+        return true;
+    }
     ERL_NIF_TERM tensor_name;
     unsigned char * ptr;
     size_t len = strlen(tensor_name_str);

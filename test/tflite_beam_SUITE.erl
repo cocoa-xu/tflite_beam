@@ -30,7 +30,10 @@
     interpreter_predict/1,
     signature_runner_invoke/1,
     execution_plan_baseline/1,
-    quantized_model_is_not_delegated/1
+    quantized_model_is_not_delegated/1,
+    a_rank_above_six_is_refused_rather_than_overrunning_the_stack/1,
+    an_unnamed_tensor_reads_as_empty_rather_than_dereferencing_null/1,
+    a_truncated_model_is_refused_rather_than_walked_off_the_end/1
 ]).
 
 %% every tensor in multi_add.bin is a [1, 8, 8, 3] float32
@@ -60,7 +63,10 @@ all() ->
         interpreter_predict,
         signature_runner_invoke,
         execution_plan_baseline,
-        quantized_model_is_not_delegated
+        quantized_model_is_not_delegated,
+        a_rank_above_six_is_refused_rather_than_overrunning_the_stack,
+        an_unnamed_tensor_reads_as_empty_rather_than_dereferencing_null,
+        a_truncated_model_is_refused_rather_than_walked_off_the_end
     ].
 
 model_from_file(_Config) ->
@@ -439,3 +445,94 @@ an_overlong_word_becomes_unknown_rather_than_nothing(_Config) ->
     Wide = unicode:characters_to_binary(lists:duplicate(100, 16#4E00)),
     ?assertNotEqual([<<"[UNK]">>],
                     tflite_beam_wordpiece_tokenizer:tokenize(Wide, Vocabulary)).
+
+%% XNNPACK's Subgraph::Prepare copies a tensor's dimensions into a
+%% std::array<size_t, XNN_MAX_TENSOR_DIMS> with no bound on the count, so
+%% growing a delegated tensor past six dimensions wrote caller-supplied values
+%% off the end of the stack. Rank 7 and 8 aborted, rank 10 took SIGBUS, and a
+%% dimension of 16#12345678 reached SIGSEGV, which makes it a controlled write
+%% and not only a crash. Rank six is the boundary and still has to work.
+a_rank_above_six_is_refused_rather_than_overrunning_the_stack(_Config) ->
+    Interpreter = tflite_beam_test_models:interpreter("add.bin"),
+    {ok, [Input | _]} = tflite_beam_interpreter:inputs(Interpreter),
+
+    ?assertEqual(ok, tflite_beam_interpreter:resize_input_tensor(
+                         Interpreter, Input, [1, 8, 8, 3, 1, 1])),
+    ?assertEqual(ok, tflite_beam_interpreter:allocate_tensors(Interpreter)),
+
+    lists:foreach(fun(Dims) ->
+        ?assertMatch({error, _},
+                     tflite_beam_interpreter:resize_input_tensor(Interpreter, Input, Dims))
+    end, [
+        [1, 8, 8, 3, 1, 1, 1],
+        [1, 8, 8, 3, 1, 1, 1, 1],
+        [1, 8, 8, 3, 1, 1, 1, 1, 1, 1],
+        [1, 8, 8, 3, 1, 1, 16#12345678]
+    ]),
+
+    %% the refusal has to leave the interpreter usable, not half resized
+    ?assertEqual(ok, tflite_beam_interpreter:allocate_tensors(Interpreter)),
+
+    %% the signature runner reaches the same resize and needs the same guard
+    Multi = tflite_beam_test_models:interpreter("multi_add.bin"),
+    {ok, Runner} = tflite_beam_interpreter:get_signature_runner(Multi, <<"serving_default">>),
+    %% every input of this one feeds the same add, so they move together or the
+    %% shapes stop broadcasting and allocation fails for a reason that is not
+    %% the guard
+    lists:foreach(fun(Name) ->
+        ?assertEqual(ok, tflite_beam_signature_runner:resize_input_tensor(
+                             Runner, Name, [1, 8, 8, 3, 1, 1]))
+    end, [<<"a">>, <<"b">>, <<"c">>, <<"d">>]),
+    ?assertMatch({error, _}, tflite_beam_signature_runner:resize_input_tensor(
+                                 Runner, <<"a">>, [1, 8, 8, 3, 1, 1, 1])),
+    ?assertMatch({error, _}, tflite_beam_signature_runner:resize_input_tensor(
+                                 Runner, <<"a">>, [1, 8, 8, 3, 1, 1, 16#12345678])),
+    ?assertEqual(ok, tflite_beam_signature_runner:allocate_tensors(Runner)).
+
+%% TfLite leaves name null on the scratch tensors an op allocates through
+%% context->AddTensors, and conv3d asks for one to hold its im2col buffer. The
+%% name helper ran strlen on that null and took the whole VM down, so reading a
+%% tensor by index was unsafe on any model with a scratch tensor: this one
+%% reaches it at index 3, a detection model at 261. An unnamed tensor is not an
+%% error to report, it just has no name, so it reads as empty.
+an_unnamed_tensor_reads_as_empty_rather_than_dereferencing_null(_Config) ->
+    Interpreter = tflite_beam_test_models:interpreter("conv3d_huge_im2col.bin"),
+    ?assertEqual(ok, tflite_beam_interpreter:allocate_tensors(Interpreter)),
+    Count = tflite_beam_interpreter:tensors_size(Interpreter),
+    ?assert(Count > 0),
+    Names = [begin
+                 Tensor = tflite_beam_interpreter:tensor(Interpreter, Index),
+                 ?assertMatch(#tflite_beam_tensor{}, Tensor),
+                 Tensor#tflite_beam_tensor.name
+             end || Index <- lists:seq(0, Count - 1)],
+    ?assert(lists:all(fun is_binary/1, Names)),
+    %% the scratch tensor is the one that used to be fatal, so the model has to
+    %% keep having one for this to be testing anything
+    ?assert(lists:member(<<>>, Names)).
+
+%% BuildFromBuffer and BuildFromFile do not verify, and a truncated model sent
+%% them straight off the end of the buffer: cutting this one to a fiftieth of
+%% its length segfaulted inside the NIF before it returned anything at all.
+%% Both now verify, so the whole model still loads and every prefix of it is
+%% refused rather than walked.
+a_truncated_model_is_refused_rather_than_walked_off_the_end(_Config) ->
+    Path = tflite_beam_test_models:path("dynamic_shapes.bin"),
+    {ok, Whole} = file:read_file(Path),
+
+    ?assertMatch(#tflite_beam_flatbuffer_model{initialized = true},
+                 tflite_beam_flatbuffer_model:build_from_buffer(Whole)),
+
+    Dir = filename:dirname(Path),
+    lists:foreach(fun(Percent) ->
+        Keep = byte_size(Whole) * Percent div 100,
+        <<Prefix:Keep/binary, _/binary>> = Whole,
+        ?assertMatch({error, _}, tflite_beam_flatbuffer_model:build_from_buffer(Prefix)),
+
+        Cut = filename:join(Dir, "truncated_" ++ integer_to_list(Percent) ++ ".bin"),
+        ok = file:write_file(Cut, Prefix),
+        try
+            ?assertMatch({error, _}, tflite_beam_flatbuffer_model:build_from_file(Cut))
+        after
+            file:delete(Cut)
+        end
+    end, [90, 50, 10, 2]).
