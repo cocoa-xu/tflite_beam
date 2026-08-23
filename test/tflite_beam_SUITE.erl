@@ -33,7 +33,8 @@
     quantized_model_is_not_delegated/1,
     a_rank_above_six_is_refused_rather_than_overrunning_the_stack/1,
     an_unnamed_tensor_reads_as_empty_rather_than_dereferencing_null/1,
-    a_truncated_model_is_refused_rather_than_walked_off_the_end/1
+    a_truncated_model_is_refused_rather_than_walked_off_the_end/1,
+    a_nested_cache_subdirectory_is_created_not_refused/1
 ]).
 
 %% every tensor in multi_add.bin is a [1, 8, 8, 3] float32
@@ -66,7 +67,8 @@ all() ->
         quantized_model_is_not_delegated,
         a_rank_above_six_is_refused_rather_than_overrunning_the_stack,
         an_unnamed_tensor_reads_as_empty_rather_than_dereferencing_null,
-        a_truncated_model_is_refused_rather_than_walked_off_the_end
+        a_truncated_model_is_refused_rather_than_walked_off_the_end,
+        a_nested_cache_subdirectory_is_created_not_refused
     ].
 
 model_from_file(_Config) ->
@@ -536,3 +538,34 @@ a_truncated_model_is_refused_rather_than_walked_off_the_end(_Config) ->
             file:delete(Cut)
         end
     end, [90, 50, 10, 2]).
+
+%% The cache subdirectory is the HuggingFace repo id, and every repo id is
+%% owner/name. mkdir_dir_p called the non-recursive make_dir, which fails with
+%% enoent when the parent is missing, so download_model could not fetch a single
+%% model in the catalogue.
+a_nested_cache_subdirectory_is_created_not_refused(Config) ->
+    Models = tflite_beam_contrib_huggingface:all_models(),
+    Nested = [Repo || #{repo := Repo} <- Models, lists:member($/, Repo)],
+    %% not some of the catalogue, all of it
+    ?assertEqual(length(Models), length(Nested)),
+
+    Cache = filename:join(?config(priv_dir, Config), "cache"),
+    Previous = os:getenv("TFLITE_BEAM_CACHE_DIR"),
+    true = os:putenv("TFLITE_BEAM_CACHE_DIR", Cache),
+    try
+        Subdir = hd(Nested),
+        Result = tflite_beam_utils_downloader:download(
+                   "https://example.invalid/x", Subdir, "model.tflite", true),
+        ?assertMatch({error, _}, Result),
+        {error, Reason} = Result,
+        %% a refused directory and a failed request are both {error, _}, so the
+        %% assertion has to say which one this is: it has to be the request
+        Printed = lists:flatten(io_lib:format("~p", [Reason])),
+        ?assertEqual(nomatch, string:find(Printed, "Cannot create"), Printed),
+        ?assert(filelib:is_dir(filename:join(Cache, Subdir)))
+    after
+        case Previous of
+            false -> os:unsetenv("TFLITE_BEAM_CACHE_DIR");
+            _ -> os:putenv("TFLITE_BEAM_CACHE_DIR", Previous)
+        end
+    end.

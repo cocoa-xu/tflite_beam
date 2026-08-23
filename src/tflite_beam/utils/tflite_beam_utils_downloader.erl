@@ -32,10 +32,13 @@ maybe_override_by_env(EnvName, Default) ->
     end.
 
 mkdir_dir_p(Dir) ->
-    case file:make_dir(Dir) of
+    %% make_dir creates one level. Every HuggingFace repo id is owner/name and
+    %% goes in as the cache subdirectory, so this failed with enoent for all 88
+    %% models in the contrib catalogue and download_model never fetched one.
+    %% ensure_dir builds the parents of the path it is given, so it needs a name
+    %% inside the directory we actually want.
+    case filelib:ensure_dir(filename:join(Dir, ".keep")) of
         ok ->
-            ok;
-        {error, eexist} ->
             ok;
         {error, Reason} ->
             {error, lists:flatten(io_lib:fwrite("Cannot create directory ~s: ~s", [Dir, Reason]))}
