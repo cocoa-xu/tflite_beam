@@ -11,6 +11,7 @@
     edge_tpu_plugin_symbols/1,
     edge_tpu_default_path/1,
     edge_tpu_absent_device/1,
+    dequantize_tensor_accepts_the_types_it_documents/1,
     edge_tpu_delegate_inference/1,
     edge_tpu_delegate_composes/1
 ]).
@@ -19,7 +20,8 @@ all() ->
     [
         edge_tpu_plugin_symbols,
         edge_tpu_default_path,
-        edge_tpu_absent_device
+        edge_tpu_absent_device,
+        dequantize_tensor_accepts_the_types_it_documents
     ].
 
 groups() ->
@@ -127,3 +129,22 @@ symbol_reader() ->
         [Reader | _] -> Reader;
         [] -> false
     end.
+
+%% dequantize_tensor/3 needs no device: it reads a tensor out of an ordinary
+%% interpreter and scales it. It never worked for any type. tflite_beam_coral
+%% passes the type as an atom, and the NIF read it with the string reader, which
+%% takes charlists and binaries and refuses an atom, so every call answered
+%% "cannot get value of parameter 'type' in nif" including the default.
+dequantize_tensor_accepts_the_types_it_documents(_Config) ->
+    Interpreter = tflite_beam_test_models:interpreter("add_quantized_int8.bin"),
+    {ok, [Output | _]} = tflite_beam_interpreter:outputs(Interpreter),
+
+    [begin
+        Result = tflite_beam_coral:dequantize_tensor(Interpreter, Output, Type),
+        ?assertMatch({ok, Values} when is_list(Values), Result,
+                     lists:flatten(io_lib:format("~p gave ~p", [Type, Result])))
+     end || Type <- [nil, s8, {s, 8}, f32, {f, 32}]],
+
+    %% and a type it does not have still says so, rather than saying the term
+    %% could not be read at all
+    ?assertMatch({error, _}, tflite_beam_coral:dequantize_tensor(Interpreter, Output, nonsense)).

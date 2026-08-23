@@ -208,7 +208,7 @@ dequantize_tensor(Interpreter, TensorIndex) when is_reference(Interpreter) and i
 
 %% @doc
 %% Returns a dequantized version of the given tensor.
--spec dequantize_tensor(reference(), non_neg_integer(), {u | s, 8 | 16 | 32 | 64} | {f, 32 | 64} | s8 | s16 | s32 | s64 | u8 | u16 | u32 | u64 | f32 | f64 | nil) -> list(number()) | {error, binary()}.
+-spec dequantize_tensor(reference(), non_neg_integer(), {u | s, 8 | 16 | 32 | 64} | {f, 32 | 64} | s8 | s16 | s32 | s64 | u8 | u16 | u32 | u64 | f32 | f64 | nil) -> {ok, list(number())} | {error, binary()}.
 dequantize_tensor(Interpreter, TensorIndex, AsType) when is_reference(Interpreter) and is_integer(TensorIndex) ->
     case map_type(AsType) of
         MappedType when is_atom(MappedType) ->

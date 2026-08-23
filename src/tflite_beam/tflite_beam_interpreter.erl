@@ -342,8 +342,10 @@ set_num_threads(Self, NumThreads) when is_reference(Self) and is_integer(NumThre
 %% @doc
 %% Get SignatureDef map from the Metadata of a TfLite FlatBuffer buffer.
 %%
-%% @return A map containing serving names to SignatureDefs if exists, otherwise, `nil'.
--spec get_signature_defs(reference()) -> {ok, map()} | nil | {error, binary()}.
+%% @return `{ok, Map}' of serving names to SignatureDefs, or `{ok, nil}' for a
+%% model that declares none. The bare `nil' this used to promise is not a shape
+%% the function can produce, so anyone matching on it never matched.
+-spec get_signature_defs(reference()) -> {ok, map() | nil} | {error, binary()}.
 get_signature_defs(Self) when is_reference(Self) ->
     tflite_beam_nif:interpreter_get_signature_defs(Self).
 

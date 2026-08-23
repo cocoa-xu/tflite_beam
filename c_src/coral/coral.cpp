@@ -189,9 +189,14 @@ ERL_NIF_TERM coral_dequantize_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TER
         return erlang::nif::error(env, "cannot get value of parameter 'tensor_index' in nif");
     }
 
+    // An atom, which is what tflite_beam_coral:map_type/1 produces. The string
+    // reader used here before takes charlists and binaries and refuses an atom,
+    // so this failed for every type it was ever asked for, including the default.
     std::string type;
-    if (!erlang::nif::get(env, as_type_term, type)) {
-        return erlang::nif::error(env, "cannot get value of parameter 'type' in nif");
+    if (!erlang::nif::get_atom(env, as_type_term, type)) {
+        return erlang::nif::error(env,
+            "expecting `type` to be one of the atoms nil, u8, u16, u32, u64, "
+            "s8, s16, s32, s64, f32 or f64");
     }
 
     auto interpreter = interpreter_res->val;
