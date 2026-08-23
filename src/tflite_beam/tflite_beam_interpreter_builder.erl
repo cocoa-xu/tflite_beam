@@ -129,7 +129,11 @@ validate_delegate_opts(Opts) ->
 
 %% @doc
 %% Sets the number of CPU threads to use for the interpreter.
-%% Returns `true' on success, `{error, reason}' on error.
--spec set_num_threads(reference(), pos_integer()) -> ok | {error, binary}.
+%% Returns `ok' on success, `{error, Reason}' on error.
+%%
+%% `NumThreads' follows TfLite: `-1' asks the runtime to choose, `0' means the
+%% same as `1', and anything below `-1' is refused. The spec said
+%% `pos_integer()', which excluded both of the first two.
+-spec set_num_threads(reference(), integer()) -> ok | {error, binary()}.
 set_num_threads(Builder, NumThreads) when is_reference(Builder) and is_integer(NumThreads) ->
     tflite_beam_nif:interpreter_builder_set_num_threads(Builder, NumThreads).

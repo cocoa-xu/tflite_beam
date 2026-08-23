@@ -335,6 +335,9 @@ invoke(Self) when is_reference(Self) ->
 %% tflite_beam_interpreter_builder:set_num_threads(Builder, NumThreads),
 %% tflite_beam_interpreter_builder:build(Builder, Interpreter)
 %% '''
+%%
+%% `NumThreads' follows TfLite: `-1' asks the runtime to choose, `0' means the
+%% same as `1', and anything below `-1' is refused.
 -spec set_num_threads(reference(), integer()) -> ok | {error, binary()}.
 set_num_threads(Self, NumThreads) when is_reference(Self) and is_integer(NumThreads) ->
     tflite_beam_nif:interpreter_set_num_threads(Self, NumThreads).

@@ -35,7 +35,8 @@
     an_unnamed_tensor_reads_as_empty_rather_than_dereferencing_null/1,
     a_truncated_model_is_refused_rather_than_walked_off_the_end/1,
     a_nested_cache_subdirectory_is_created_not_refused/1,
-    the_delegate_width_is_reportable_rather_than_a_hidden_rule/1
+    the_delegate_width_is_reportable_rather_than_a_hidden_rule/1,
+    num_threads_follows_tflites_own_contract/1
 ]).
 
 %% every tensor in multi_add.bin is a [1, 8, 8, 3] float32
@@ -70,7 +71,8 @@ all() ->
         an_unnamed_tensor_reads_as_empty_rather_than_dereferencing_null,
         a_truncated_model_is_refused_rather_than_walked_off_the_end,
         a_nested_cache_subdirectory_is_created_not_refused,
-        the_delegate_width_is_reportable_rather_than_a_hidden_rule
+        the_delegate_width_is_reportable_rather_than_a_hidden_rule,
+        num_threads_follows_tflites_own_contract
     ].
 
 model_from_file(_Config) ->
@@ -608,3 +610,24 @@ the_delegate_width_is_reportable_rather_than_a_hidden_rule(_Config) ->
             ?assertMatch({error, _}, tflite_beam_interpreter:resize_input_tensor(
                                          Interpreter, Input, AtBound ++ [1]))
     end.
+
+%% TfLite says "num_threads should be >= 0 or just -1 to let TFLite runtime set
+%% the value". The interpreter refused everything below 1, so it turned away the
+%% one value that asks TfLite to choose, and disagreed with the builder next to
+%% it, which passes the integer straight through.
+num_threads_follows_tflites_own_contract(_Config) ->
+    Interpreter = tflite_beam_test_models:interpreter("add.bin"),
+
+    %% -1 is how TfLite is asked to decide, and 0 means the same as 1
+    lists:foreach(fun(N) ->
+        ?assertEqual(ok, tflite_beam_interpreter:set_num_threads(Interpreter, N))
+    end, [-1, 0, 1, 2]),
+
+    %% below -1 is the only thing TfLite itself refuses
+    ?assertMatch({error, _}, tflite_beam_interpreter:set_num_threads(Interpreter, -2)),
+
+    %% and the builder, which was always right, still agrees
+    {Builder, _} = tflite_beam_test_models:builder("add.bin"),
+    lists:foreach(fun(N) ->
+        ?assertEqual(ok, tflite_beam_interpreter_builder:set_num_threads(Builder, N))
+    end, [-1, 0, 1]).

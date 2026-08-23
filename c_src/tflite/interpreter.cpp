@@ -971,8 +971,15 @@ ERL_NIF_TERM interpreter_set_num_threads(ErlNifEnv *env, int argc, const ERL_NIF
 
     TFLITE_BEAM_INTERPRETER_IN_USE(self_res);
 
-    if (!enif_get_int(env, num_threads_nif, &num_threads) || num_threads < 1) {
-        return erlang::nif::error(env, "expecting num_threads to be an positive integer");
+    // TfLite's own contract is ">= 0, or just -1 to let TFLite runtime set the
+    // value": -1 is how a caller asks it to choose, and 0 means the same as 1.
+    // Refusing both left this narrower than the thing it binds, and narrower
+    // than interpreter_builder_set_num_threads next door, which passes the
+    // integer straight through.
+    if (!enif_get_int(env, num_threads_nif, &num_threads) || num_threads < -1) {
+        return erlang::nif::error(env,
+            "expecting num_threads to be -1, which lets TfLite choose, "
+            "or a non-negative integer");
     }
 
     auto status = self_res->val->SetNumThreads(num_threads);
