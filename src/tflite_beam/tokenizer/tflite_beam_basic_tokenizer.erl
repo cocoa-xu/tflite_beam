@@ -179,7 +179,9 @@ is_ascii(CodePoint) ->
 is_alphanumeric(CodePoint) ->
     ((CodePoint >= 16#0041) andalso (CodePoint =< 16#005A)) orelse 
     ((CodePoint >= 16#0061) andalso (CodePoint =< 16#007A)) orelse
-    ((CodePoint >= 49) andalso (CodePoint =< 58)).
+    %% $0 is 48 and $9 is 57. This read 49 to 58, which is $1 to $:, so a zero
+    %% was split off as punctuation and a colon was kept inside a word.
+    ((CodePoint >= $0) andalso (CodePoint =< $9)).
 
 format_list() ->
     [

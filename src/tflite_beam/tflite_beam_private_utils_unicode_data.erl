@@ -26,8 +26,14 @@ get_running_instance(CreateIfNotRunning) ->
         undefined ->
             if 
                 CreateIfNotRunning ->
-                    {ok, Pid} = gen_server:start_link({local, ?MODULE}, ?MODULE, [], []),
-                    Pid;
+                    %% Two first callers can both see undefined here. The loser
+                    %% used to crash on {error, {already_started, Pid}}, and the
+                    %% winner left the server linked to whichever process
+                    %% happened to arrive first.
+                    case gen_server:start({local, ?MODULE}, ?MODULE, [], []) of
+                        {ok, Pid} -> Pid;
+                        {error, {already_started, Pid}} -> Pid
+                    end;
                 true ->
                     undefined
             end;
@@ -41,9 +47,25 @@ init(_) ->
 handle_call({get_puncuation_list, UnicodeDataFile}, _From, State) ->
     case State#state.puncuation_list of
         [] ->
-            {ok, FileDescriptor} = file:open(UnicodeDataFile, [read, raw]),
-            PuncuationList = read_from_unicode_data(FileDescriptor, #{}),
-            {reply, PuncuationList, State#state{puncuation_list = PuncuationList}};
+            %% A missing file used to kill the server through the badmatch, and
+            %% the descriptor was never closed on the way out either.
+            case file:open(UnicodeDataFile, [read, raw]) of
+                {ok, FileDescriptor} ->
+                    Result = read_from_unicode_data(FileDescriptor, #{}),
+                    _ = file:close(FileDescriptor),
+                    case Result of
+                        {ok, PuncuationList} ->
+                            {reply, PuncuationList,
+                             State#state{puncuation_list = PuncuationList}};
+                        {error, Reason} ->
+                            %% and a read error partway through used to be taken
+                            %% for the end of the file, so a truncated table was
+                            %% cached and every later caller got it
+                            {reply, {error, Reason}, State}
+                    end;
+                {error, Reason} ->
+                    {reply, {error, Reason}, State}
+            end;
         PuncuationList when is_list(PuncuationList) ->
             {reply, PuncuationList, State}        
     end.
@@ -55,8 +77,10 @@ read_from_unicode_data(FileDescriptor, TypeAcc) ->
     case file:read_line(FileDescriptor) of
         {ok, Line} ->
             read_from_unicode_data(FileDescriptor, process_unicode_data_line(Line, TypeAcc));
-        _ ->
-            lists:flatten(maps:values(TypeAcc))
+        eof ->
+            {ok, lists:flatten(maps:values(TypeAcc))};
+        {error, Reason} ->
+            {error, Reason}
     end.
 
 process_unicode_data_line(Line, TypeAcc) ->

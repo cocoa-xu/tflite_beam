@@ -15,6 +15,8 @@
     associated_files_one_and_many/1,
     set_data_takes_the_whole_tensor_or_nothing/1,
     a_download_cannot_be_aimed_outside_the_cache/1,
+    a_digit_is_part_of_the_word_it_sits_in/1,
+    associated_files_by_string_and_by_list/1,
     predict_reports_a_bad_input_instead_of_crashing/1,
     predict_does_not_answer_from_a_failed_invoke/1,
     the_server_is_the_concurrency_safe_path/1,
@@ -42,6 +44,8 @@ all() ->
         associated_files_one_and_many,
         set_data_takes_the_whole_tensor_or_nothing,
         a_download_cannot_be_aimed_outside_the_cache,
+        a_digit_is_part_of_the_word_it_sits_in,
+        associated_files_by_string_and_by_list,
         predict_reports_a_bad_input_instead_of_crashing,
         predict_does_not_answer_from_a_failed_invoke,
         the_server_is_the_concurrency_safe_path,
@@ -345,3 +349,31 @@ a_download_cannot_be_aimed_outside_the_cache(_Config) ->
     %% and an ordinary name is still allowed through to the request itself
     ?assertMatch({error, _}, tflite_beam_utils_downloader:download(
                                "https://example.invalid/x", "models", "fine.bin", true)).
+
+%% The alphanumeric test read 49 to 58 where it meant 48 to 57, so it was off by
+%% one at both ends: a zero counted as punctuation and was split out of the word
+%% around it, and a colon counted as alphanumeric and was kept inside one.
+a_digit_is_part_of_the_word_it_sits_in(_Config) ->
+    ?assertEqual([<<"a0b">>], tflite_beam_basic_tokenizer:tokenize(<<"a0b">>, true)),
+    ?assertEqual([<<"2026">>], tflite_beam_basic_tokenizer:tokenize(<<"2026">>, true)),
+    ?assertEqual([<<"v0">>, <<".">>, <<"4">>],
+                 tflite_beam_basic_tokenizer:tokenize(<<"v0.4">>, true)),
+    %% and the other end: a colon is punctuation and splits
+    ?assertEqual([<<"a">>, <<":">>, <<"b">>],
+                 tflite_beam_basic_tokenizer:tokenize(<<"a:b">>, true)).
+
+%% get_associated_file/2 takes one name or a list of them, and told them apart
+%% with is_list/1. An Erlang string is a list, so "labels.txt" went down the
+%% many-files branch, which walked it one character at a time and raised badarg
+%% formatting the integer $l into an error message.
+associated_files_by_string_and_by_list(_Config) ->
+    Labels = <<"robin\nparrot\n">>,
+    {ok, {_Name, Zip}} = zip:create("model.zip", [{"labels.txt", Labels}], [memory]),
+
+    ?assertEqual(Labels, tflite_beam_flatbuffer_model:get_associated_file(Zip, <<"labels.txt">>)),
+    ?assertEqual(Labels, tflite_beam_flatbuffer_model:get_associated_file(Zip, "labels.txt")),
+    ?assertEqual(#{<<"labels.txt">> => Labels},
+                 tflite_beam_flatbuffer_model:get_associated_file(Zip, [<<"labels.txt">>])),
+
+    %% a name that is not there is still an error rather than a crash
+    ?assertMatch({error, _}, tflite_beam_flatbuffer_model:get_associated_file(Zip, "nope.txt")).

@@ -245,6 +245,15 @@ list_associated_files(Buffer) when is_binary(Buffer) ->
             {error, Reason}
     end.
 
+%% is_list/1 cannot tell "labels.txt" from [<<"labels.txt">>]: an Erlang string
+%% is a list, so the many-files branch used to walk it character by character and
+%% raise badarg formatting the integer $l into a message. A string is one name.
+is_list_of_names(Names) when is_list(Names) ->
+    lists:all(fun(N) -> is_binary(N) orelse (is_list(N) andalso io_lib:printable_unicode_list(N)) end,
+              Names) andalso not io_lib:printable_unicode_list(Names);
+is_list_of_names(_) ->
+    false.
+
 %% @doc Get associated file(s) from a FlatBuffer model
 %% TODO: support `list(list())' as `Filename', accepts a list of Erlang strings
 -spec get_associated_file(binary(), list(binary()) | binary()) -> map() | binary() | {error, binary()}.
@@ -253,7 +262,7 @@ get_associated_file(Buffer, Filename) when is_binary(Buffer) and (is_binary(File
         AssociatedFiles when is_list(AssociatedFiles) ->
             case zip:zip_open(Buffer, [memory]) of 
                 {ok, Z} ->
-                    FileContent = case is_list(Filename) of
+                    FileContent = case is_list_of_names(Filename) of
                         true ->
                             MapItems = lists:map(
                                 fun(F) ->
@@ -269,11 +278,15 @@ get_associated_file(Buffer, Filename) when is_binary(Buffer) and (is_binary(File
                             ),
                             maps:from_list(MapItems);
                         false ->
-                            case lists:member(Filename, AssociatedFiles) of
+                            One = case is_list(Filename) of
+                                true -> unicode:characters_to_binary(Filename);
+                                false -> Filename
+                            end,
+                            case lists:member(One, AssociatedFiles) of
                                 true ->
-                                    get_associated_file_impl(Z, Filename);
+                                    get_associated_file_impl(Z, One);
                                 false ->
-                                    Reason = io_lib:format("cannot find associated file `~s`", [Filename]),
+                                    Reason = io_lib:format("cannot find associated file `~ts`", [One]),
                                     {error, unicode:characters_to_binary(Reason)}
                             end
                     end,
