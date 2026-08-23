@@ -35,12 +35,24 @@ tokenize(BinaryText, VocabularyID) ->
 tokenize_impl([], _VocabularyID, OutputTokens) -> lists:flatten(OutputTokens);
 tokenize_impl([Token | Rest], VocabularyID, OutputTokens) ->
     TokenLength = byte_size(Token),
+    %% The limit counts characters, and this measured bytes, so a word in any
+    %% script that does not fit one character to a byte was cut short well before
+    %% two hundred of them. An over-long word also used to vanish from the output
+    %% entirely, where the reference implementation this follows, and the example
+    %% in the doc above, both say [UNK].
+    CharacterCount = length(unicode_characters(Token)),
     if
-        TokenLength > ?MAX_INPUT_CHARS_PER_WORD ->
-            tokenize_impl(Rest, VocabularyID, OutputTokens);
+        CharacterCount > ?MAX_INPUT_CHARS_PER_WORD ->
+            tokenize_impl(Rest, VocabularyID, OutputTokens ++ [[<<"[UNK]">>]]);
         true ->
             Subwords = find_subwords(0, 0, TokenLength, Token, VocabularyID, []),
             tokenize_impl(Rest, VocabularyID, OutputTokens ++ [Subwords])
+    end.
+
+unicode_characters(Token) ->
+    case unicode:characters_to_list(Token) of
+        Characters when is_list(Characters) -> Characters;
+        _ -> binary_to_list(Token)
     end.
 
 find_subwords(_OriginalStart, Start, End, _Token, _VocabularyID, Subwords) when Start >= End ->

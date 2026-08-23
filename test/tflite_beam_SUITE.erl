@@ -16,6 +16,7 @@
     set_data_takes_the_whole_tensor_or_nothing/1,
     a_download_cannot_be_aimed_outside_the_cache/1,
     a_digit_is_part_of_the_word_it_sits_in/1,
+    an_overlong_word_becomes_unknown_rather_than_nothing/1,
     associated_files_by_string_and_by_list/1,
     predict_reports_a_bad_input_instead_of_crashing/1,
     predict_does_not_answer_from_a_failed_invoke/1,
@@ -45,6 +46,7 @@ all() ->
         set_data_takes_the_whole_tensor_or_nothing,
         a_download_cannot_be_aimed_outside_the_cache,
         a_digit_is_part_of_the_word_it_sits_in,
+        an_overlong_word_becomes_unknown_rather_than_nothing,
         associated_files_by_string_and_by_list,
         predict_reports_a_bad_input_instead_of_crashing,
         predict_does_not_answer_from_a_failed_invoke,
@@ -377,3 +379,24 @@ associated_files_by_string_and_by_list(_Config) ->
 
     %% a name that is not there is still an error rather than a crash
     ?assertMatch({error, _}, tflite_beam_flatbuffer_model:get_associated_file(Zip, "nope.txt")).
+
+%% The word-piece limit counts characters and the check measured bytes, so a word
+%% in any script that does not fit one character to a byte was cut short well
+%% before two hundred of them. Whatever was cut then vanished from the output
+%% rather than becoming [UNK], which is what this module's own documentation and
+%% the implementation it is ported from both say.
+an_overlong_word_becomes_unknown_rather_than_nothing(_Config) ->
+    Vocabulary = #{<<"una">> => 1, <<"##ffa">> => 2, <<"##ble">> => 3},
+
+    ?assertEqual([<<"una">>, <<"##ffa">>, <<"##ble">>],
+                 tflite_beam_wordpiece_tokenizer:tokenize(<<"unaffable">>, Vocabulary)),
+
+    %% past the limit in characters, so [UNK] rather than silence
+    Overlong = binary:copy(<<"a">>, 201),
+    ?assertEqual([<<"[UNK]">>],
+                 tflite_beam_wordpiece_tokenizer:tokenize(Overlong, Vocabulary)),
+
+    %% and a hundred characters that happen to occupy three hundred bytes is
+    %% under the limit, where counting bytes put it over and dropped it
+    Wide = unicode:characters_to_binary(lists:duplicate(100, 16#4E00)),
+    ?assertNotEqual([], tflite_beam_wordpiece_tokenizer:tokenize(Wide, Vocabulary)).
