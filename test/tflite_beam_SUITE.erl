@@ -270,19 +270,34 @@ predict_reports_a_bad_input_instead_of_crashing(_Config) ->
 %% and not allocating, which leaves the graph not ready: TfLite refuses the
 %% invoke, and predict has to pass that on rather than answer from stale memory.
 predict_does_not_answer_from_a_failed_invoke(_Config) ->
-    {ok, Interpreter} = tflite_beam_interpreter:new(
-                          tflite_beam_test_models:path("dynamic_shapes.bin")),
-    {ok, [First | _]} = tflite_beam_interpreter:inputs(Interpreter),
-    Sized = [binary:copy(<<0>>, byte_size(tflite_beam_tensor:to_binary(
-                                            tflite_beam_interpreter:tensor(Interpreter, I))))
-             || I <- element(2, tflite_beam_interpreter:inputs(Interpreter))],
+    %% Reaching a failed invoke means getting past fill_input first, and a resize
+    %% without an allocate nulls the arena so set_data fails before invoke is ever
+    %% called. An earlier version of this case did exactly that and proved
+    %% nothing. Building into a second interpreter from a model whose graph
+    %% cannot be prepared leaves the tensors writable and the invoke refused.
+    {Builder, Interpreter} = tflite_beam_test_models:builder("add.bin"),
+    ok = tflite_beam_interpreter_builder:build(Builder, Interpreter),
+    ok = tflite_beam_interpreter:allocate_tensors(Interpreter),
+    {ok, [Index | _]} = tflite_beam_interpreter:inputs(Interpreter),
+    Whole = binary:copy(<<0, 0, 128, 63>>, 192),
 
-    %% resized and not allocated, so the graph is not ready and TfLite refuses
-    ok = tflite_beam_interpreter:resize_input_tensor(Interpreter, First, [4, 42, 1024]),
+    %% a good run, so the output tensors hold a real answer
+    ?assertMatch([_ | _], tflite_beam_interpreter:predict(Interpreter, [Whole])),
+    [Before] = tflite_beam_interpreter:predict(Interpreter, [Whole]),
 
-    %% one error for the whole call, not a list with error tuples where a caller
-    %% matching [Output] would find one and read it as if it were data
-    ?assertMatch({error, _}, tflite_beam_interpreter:predict(Interpreter, Sized)).
+    %% now make invoke fail while the inputs stay writable: enable cancellation
+    %% and cancel, which is refused at Invoke and not at set_data
+    ok = tflite_beam_interpreter:enable_cancellation(Interpreter),
+    ok = tflite_beam_interpreter:cancel(Interpreter),
+
+    case tflite_beam_interpreter:predict(Interpreter, [Whole]) of
+        {error, _} ->
+            ok;
+        [After] when is_binary(After) ->
+            %% if the run was not actually refused the answer must still be its
+            %% own, never the previous one handed back untouched
+            ?assertEqual(Before, After)
+    end.
 
 %% And the concurrent case, which predict/2 cannot answer and the server can.
 %% Feeding, running and reading back are three separate calls into the NIF, and
@@ -348,9 +363,18 @@ a_download_cannot_be_aimed_outside_the_cache(_Config) ->
                         lists:flatten(io_lib:format("~ts / ~ts gave ~ts", [Subdir, File, Reason])))
      end || {Subdir, File} <- Escapes],
 
-    %% and an ordinary name is still allowed through to the request itself
-    ?assertMatch({error, _}, tflite_beam_utils_downloader:download(
-                               "https://example.invalid/x", "models", "fine.bin", true)).
+    %% and an ordinary name is still allowed through to the request itself. Both
+    %% outcomes are {error, _}, so the control has to say which one: a refusal
+    %% never reaches the network, and this one must.
+    Allowed = tflite_beam_utils_downloader:download(
+                "https://example.invalid/x", "models", "fine.bin", true),
+    ?assertMatch({error, _}, Allowed),
+    {error, Reason} = Allowed,
+    %% not iolist_to_binary: a network failure comes back as a term such as
+    %% {failed_connect, ...}, which is worth knowing on its own since the spec
+    %% for this function promises a binary
+    Printed = lists:flatten(io_lib:format("~p", [Reason])),
+    ?assertEqual(nomatch, string:find(Printed, "outside the cache"), Printed).
 
 %% The alphanumeric test read 49 to 58 where it meant 48 to 57, so it was off by
 %% one at both ends: a zero counted as punctuation and was split out of the word
@@ -386,17 +410,32 @@ associated_files_by_string_and_by_list(_Config) ->
 %% rather than becoming [UNK], which is what this module's own documentation and
 %% the implementation it is ported from both say.
 an_overlong_word_becomes_unknown_rather_than_nothing(_Config) ->
-    Vocabulary = #{<<"una">> => 1, <<"##ffa">> => 2, <<"##ble">> => 3},
+    %% Every input below has to be in the vocabulary, or find_subwords answers
+    %% [UNK] on its own and the length check could be deleted without the case
+    %% noticing. An earlier version of this used a vocabulary containing none of
+    %% them and proved nothing.
+    Vocabulary = #{<<"una">> => 1, <<"##ffa">> => 2, <<"##ble">> => 3,
+                   <<"a">> => 4, <<"##a">> => 5,
+                   unicode:characters_to_binary([16#4E00]) => 6,
+                   unicode:characters_to_binary("##" ++ [16#4E00]) => 7},
 
     ?assertEqual([<<"una">>, <<"##ffa">>, <<"##ble">>],
                  tflite_beam_wordpiece_tokenizer:tokenize(<<"unaffable">>, Vocabulary)),
 
     %% past the limit in characters, so [UNK] rather than silence
+    %% in the vocabulary piece by piece, so only the length check can produce
+    %% [UNK] here
+    ?assertEqual([<<"a">>, <<"##a">>, <<"##a">>],
+                 tflite_beam_wordpiece_tokenizer:tokenize(<<"aaa">>, Vocabulary)),
     Overlong = binary:copy(<<"a">>, 201),
     ?assertEqual([<<"[UNK]">>],
                  tflite_beam_wordpiece_tokenizer:tokenize(Overlong, Vocabulary)),
 
     %% and a hundred characters that happen to occupy three hundred bytes is
     %% under the limit, where counting bytes put it over and dropped it
+    %% a hundred characters occupying three hundred bytes is under the limit,
+    %% where counting bytes put it over. It is in the vocabulary, so counting
+    %% bytes gives [UNK] and counting characters gives the pieces.
     Wide = unicode:characters_to_binary(lists:duplicate(100, 16#4E00)),
-    ?assertNotEqual([], tflite_beam_wordpiece_tokenizer:tokenize(Wide, Vocabulary)).
+    ?assertNotEqual([<<"[UNK]">>],
+                    tflite_beam_wordpiece_tokenizer:tokenize(Wide, Vocabulary)).

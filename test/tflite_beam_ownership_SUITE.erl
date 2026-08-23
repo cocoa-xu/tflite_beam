@@ -13,6 +13,7 @@
 
 -export([all/0]).
 -export([
+    a_handle_answers_to_the_controlling_process/1,
     shared_by_default/1,
     controlled_use_from_the_controlling_process/1,
     refused_from_another_process/1,
@@ -35,6 +36,7 @@
 
 all() ->
     [
+        a_handle_answers_to_the_controlling_process,
         shared_by_default,
         controlled_use_from_the_controlling_process,
         refused_from_another_process,
@@ -240,3 +242,30 @@ server_with_runs_inside_the_owner(_Config) ->
     end),
     ?assertEqual({7, {ok, [0, 1, 2, 3]}}, Sizes),
     ok = tflite_beam_interpreter_server:stop(Server).
+
+%% The guard was on the door and not on the window. interpreter:tensor/2 refused
+%% a process that did not control the interpreter, and a handle that process
+%% already held read and wrote through it regardless, with the owner seeing the
+%% foreign write. tflite_beam_interpreter_server hands out exactly such a handle
+%% from with/2, so its isolation was undone by its own escape hatch.
+a_handle_answers_to_the_controlling_process(_Config) ->
+    Interpreter = tflite_beam_test_models:interpreter("add.bin"),
+    ok = tflite_beam_interpreter:controlling_process(Interpreter, self()),
+    {ok, [Index | _]} = tflite_beam_interpreter:inputs(Interpreter),
+    Handle = tflite_beam_interpreter:tensor(Interpreter, Index),
+    Mine = binary:copy(<<0>>, 768),
+    ok = tflite_beam_tensor:set_data(Handle, Mine),
+
+    Parent = self(),
+    spawn(fun() ->
+        Parent ! {read, tflite_beam_tensor:to_binary(Handle)},
+        Parent ! {write, tflite_beam_tensor:set_data(Handle, binary:copy(<<3>>, 768))}
+    end),
+    Read = receive {read, R} -> R after 30000 -> timeout end,
+    Write = receive {write, W} -> W after 30000 -> timeout end,
+
+    ?assertMatch({error, _}, Read),
+    ?assertMatch({error, _}, Write),
+
+    %% and the owner still sees what the owner wrote
+    ?assertEqual(Mine, tflite_beam_tensor:to_binary(Handle)).

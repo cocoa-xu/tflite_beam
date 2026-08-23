@@ -509,6 +509,19 @@ NifResTfLiteTensor * NifResTfLiteTensor::get_resource(ErlNifEnv * env, ERL_NIF_T
         return nullptr;
     }
 
+    // A handle is a way into its interpreter's arena, so it answers to whoever
+    // controls that interpreter, exactly as the interpreter and its signature
+    // runners do. Without this the guard was on the door and not on the window:
+    // interpreter:tensor/2 refused a process that did not own the interpreter,
+    // and a handle that process already held read and wrote through it anyway,
+    // with the owner seeing the foreign write. tflite_beam_interpreter_server
+    // hands out such a handle from with/2, so its isolation was undone by its
+    // own escape hatch.
+    if (!caller_may_use(env, self_res->interpreter)) {
+        error = erlang::nif::error(env, "interpreter belongs to another process");
+        return nullptr;
+    }
+
     return self_res;
 }
 
