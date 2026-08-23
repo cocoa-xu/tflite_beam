@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.4.0-rc6 (2026-08-23)
+## v0.4.0-rc6 (2026-08-24)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.4.0-rc6) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.4.0-rc6)
 
 Eleven faults on the path a caller actually takes, three of which end the
