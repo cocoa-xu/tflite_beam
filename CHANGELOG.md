@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- A model path that is not there says so. Routing the loader through the
+  verifier in v0.4.0-rc6 made every failure report "not a valid flatbuffer",
+  including a path with a typo in it, which is both the commonest way to get
+  here and the least accurate thing to say about it. A missing or unreadable
+  file now names the reason the operating system gave, and the test that covers
+  it no longer settles for `{error, _}`.
+
 ## v0.4.0-rc6 (2026-08-24)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v0.4.0-rc6) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v0.4.0-rc6)
 

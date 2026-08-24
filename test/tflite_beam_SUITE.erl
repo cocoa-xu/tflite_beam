@@ -89,10 +89,27 @@ model_from_buffer(_Config) ->
     ?assertMatch(#tflite_beam_flatbuffer_model{initialized = true},
                  tflite_beam_flatbuffer_model:verify_and_build_from_buffer(Buffer)).
 
-model_from_missing_file(_Config) ->
-    ?assertMatch({error, _},
-                 tflite_beam_flatbuffer_model:build_from_file(
-                     tflite_beam_test_models:path("no_such_model.bin"))).
+%% Both of these answer {error, _}, and asserting only that is what let the
+%% loader spend a release telling anyone with a typo in their path that their
+%% model was not a valid flatbuffer. The two have to be told apart.
+model_from_missing_file(Config) ->
+    Missing = tflite_beam_flatbuffer_model:build_from_file(
+                  tflite_beam_test_models:path("no_such_model.bin")),
+    ?assertMatch({error, _}, Missing),
+    {error, MissingReason} = Missing,
+    ?assertNotEqual(nomatch, binary:match(MissingReason, <<"cannot read model file">>),
+                    MissingReason),
+
+    %% a file that is there but holds something else is the other answer
+    NotAModel = filename:join(?config(priv_dir, Config), "not_a_model.bin"),
+    ok = file:write_file(NotAModel, <<"this is not a flatbuffer, it is a sentence">>),
+    Malformed = tflite_beam_flatbuffer_model:build_from_file(NotAModel),
+    ?assertMatch({error, _}, Malformed),
+    {error, MalformedReason} = Malformed,
+    ?assertNotEqual(nomatch, binary:match(MalformedReason, <<"not a valid flatbuffer">>),
+                    MalformedReason),
+
+    ?assertNotEqual(MissingReason, MalformedReason).
 
 model_from_invalid_buffer(_Config) ->
     ?assertEqual(invalid,

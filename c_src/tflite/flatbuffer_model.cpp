@@ -2,6 +2,9 @@
 #include <map>
 
 #include <erl_nif.h>
+#include <cstring>
+#include <cstdio>
+#include <cerrno>
 #include "../nif_utils.hpp"
 #include "../erlang_nif_resource.h"
 #include "../helper.h"
@@ -34,6 +37,17 @@ ERL_NIF_TERM flatbuffer_model_build_from_file(ErlNifEnv *env, int argc, const ER
     if (!_get_error_reporter(env, error_reporter_term, error_reporter_res, error_reporter, ret)) {
         return ret;
     }
+
+    // A path that is not there is not a malformed model, and saying so is the
+    // difference between checking a typo and hunting a corrupt download. The
+    // verifier below cannot tell them apart, so ask first.
+    FILE * probe = fopen(filename.c_str(), "rb");
+    if (probe == nullptr) {
+        char message[256];
+        snprintf(message, sizeof(message), "cannot read model file: %s", strerror(errno));
+        return erlang::nif::error(env, message);
+    }
+    fclose(probe);
 
     // Verify even though the name does not say so. The unverified constructor
     // segfaults on a truncated or corrupt file rather than reporting one, and a
