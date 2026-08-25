@@ -3,11 +3,11 @@
 #include "../erlang_nif_resource.h"
 #include "../helper.h"
 
-#include "tensorflow/lite/c/c_api.h"
-#include "tensorflow/lite/c/common.h"
-#include "tensorflow/lite/core/api/tensor_utils.h"
-#include "tensorflow/lite/interpreter.h"
-#include "tensorflow/lite/optional_debug_tools.h"
+#include "tflite/c/c_api.h"
+#include "tflite/c/common.h"
+#include "tflite/core/api/tensor_utils.h"
+#include "tflite/interpreter.h"
+#include "tflite/optional_debug_tools.h"
 
 #include "status.h"
 #include "../xnnpack_limits.h"

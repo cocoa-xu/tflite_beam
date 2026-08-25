@@ -3,8 +3,8 @@
 #include "../nif_utils.hpp"
 #include "../helper.h"
 
-#include "tensorflow/lite/c/c_api.h"
-#include "tensorflow/lite/c/common.h"
+#include "tflite/c/c_api.h"
+#include "tflite/c/common.h"
 
 #include "tflitetensor.h"
 

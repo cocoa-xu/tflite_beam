@@ -9,11 +9,11 @@
 
 #include "delegate.h"
 
-#include "tensorflow/lite/shared_library.h"
-#include "tensorflow/lite/delegates/external/external_delegate_interface.h"
+#include "tflite/shared_library.h"
+#include "tflite/delegates/external/external_delegate_interface.h"
 
 #ifdef TFLITE_BEAM_XNNPACK_ENABLED
-#include "tensorflow/lite/delegates/xnnpack/xnnpack_delegate.h"
+#include "tflite/delegates/xnnpack/xnnpack_delegate.h"
 #endif
 
 // What was compiled in, not what the machine has: whether a device is present is

@@ -7,8 +7,8 @@
 #include "../nif_utils.hpp"
 
 #include "tflite/public/edgetpu.h"
-#include "tensorflow/lite/interpreter.h"
-#include "tensorflow/lite/model.h"
+#include "tflite/interpreter.h"
+#include "tflite/model.h"
 
 #pragma once
 

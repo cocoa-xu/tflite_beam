@@ -1,7 +1,7 @@
 #include "helper.h"
 #include <erl_nif.h>
-#include "tensorflow/lite/c/c_api.h"
-#include "tensorflow/lite/c/common.h"
+#include "tflite/c/c_api.h"
+#include "tflite/c/common.h"
 #include "nif_utils.hpp"
 
 bool tensor_type_to_erl_term(const TfLiteType in_type, ErlNifEnv *env, ERL_NIF_TERM &out_term) {

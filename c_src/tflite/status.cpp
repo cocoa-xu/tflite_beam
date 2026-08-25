@@ -1,7 +1,7 @@
 #include <erl_nif.h>
 #include "../nif_utils.hpp"
 
-#include "tensorflow/lite/c/c_api_types.h"
+#include "tflite/c/c_api_types.h"
 
 #include "status.h"
 

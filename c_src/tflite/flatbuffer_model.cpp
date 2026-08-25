@@ -9,8 +9,8 @@
 #include "../erlang_nif_resource.h"
 #include "../helper.h"
 
-#include "tensorflow/lite/core/api/verifier.h"
-#include "tensorflow/lite/model.h"
+#include "tflite/core/api/verifier.h"
+#include "tflite/model.h"
 
 #include "flatbuffer_model.h"
 #include "error_reporter.h"

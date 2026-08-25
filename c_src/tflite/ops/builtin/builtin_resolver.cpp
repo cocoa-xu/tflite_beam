@@ -3,8 +3,8 @@
 #include "../../../erlang_nif_resource.h"
 #include "../../../helper.h"
 
-#include "tensorflow/lite/kernels/register.h"
-#include "tensorflow/lite/kernels/builtin_op_kernels.h"
+#include "tflite/kernels/register.h"
+#include "tflite/kernels/builtin_op_kernels.h"
 
 #include "builtin_resolver.h"
 

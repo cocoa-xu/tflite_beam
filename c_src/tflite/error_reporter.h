@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "tensorflow/lite/core/api/error_reporter.h"
+#include "tflite/core/api/error_reporter.h"
 #include "../erlang_nif_resource.h"
 
 // --------------------- nif api --------------------

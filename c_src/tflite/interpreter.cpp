@@ -7,9 +7,9 @@
 #include "../erlang_nif_resource.h"
 #include "../helper.h"
 
-#include "tensorflow/lite/interpreter.h"
-#include "tensorflow/lite/kernels/register.h"
-#include "tensorflow/lite/model.h"
+#include "tflite/interpreter.h"
+#include "tflite/kernels/register.h"
+#include "tflite/model.h"
 
 #include "interpreter.h"
 #include "tflitetensor.h"

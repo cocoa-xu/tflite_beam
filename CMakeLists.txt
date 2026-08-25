@@ -128,8 +128,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" CACHE STRING "Override CXX FLAGS")
 # reset CLOG_SOURCE_DIR so that cpuinfo won't complain
 unset(CLOG_SOURCE_DIR CACHE)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "NO shared library")
+# Name the binary directory rather than letting CMake derive one. LiteRT's tflite
+# subtree lives outside this project, and add_subdirectory refuses an out-of-tree
+# source without somewhere to put its build.
 add_subdirectory(
     "${TFLITE_ROOT_DIR}"
+    "${CMAKE_CURRENT_BINARY_DIR}/tflite_runtime"
     EXCLUDE_FROM_ALL
 )
 

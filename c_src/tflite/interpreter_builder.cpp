@@ -7,10 +7,10 @@
 #include "../fault_inject.hpp"
 #include "../helper.h"
 
-#include "tensorflow/lite/model_builder.h"
-#include "tensorflow/lite/kernels/register.h"
-#include "tensorflow/lite/interpreter_builder.h"
-#include "tensorflow/lite/core/interpreter.h"
+#include "tflite/model_builder.h"
+#include "tflite/kernels/register.h"
+#include "tflite/interpreter_builder.h"
+#include "tflite/core/interpreter.h"
 
 #include "interpreter_builder.h"
 #include "delegate.h"

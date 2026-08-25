@@ -9,16 +9,16 @@
 #include <vector>
 #include <erl_nif.h>
 
-#include "tensorflow/lite/c/c_api.h"
-#include "tensorflow/lite/c/common.h"
-#include "tensorflow/lite/core/api/error_reporter.h"
-#include "tensorflow/lite/interpreter_builder.h"
-#include "tensorflow/lite/interpreter.h"
-#include "tensorflow/lite/signature_runner.h"
-#include "tensorflow/lite/kernels/register.h"
-#include "tensorflow/lite/kernels/builtin_op_kernels.h"
-#include "tensorflow/lite/model.h"
-#include "tensorflow/lite/stderr_reporter.h"
+#include "tflite/c/c_api.h"
+#include "tflite/c/common.h"
+#include "tflite/core/api/error_reporter.h"
+#include "tflite/interpreter_builder.h"
+#include "tflite/interpreter.h"
+#include "tflite/signature_runner.h"
+#include "tflite/kernels/register.h"
+#include "tflite/kernels/builtin_op_kernels.h"
+#include "tflite/model.h"
+#include "tflite/stderr_reporter.h"
 
 // enif_alloc_resource hands back a resource carrying one reference, and that
 // reference belongs to nobody until enif_make_resource passes it to a term.

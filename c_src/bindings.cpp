@@ -14,11 +14,11 @@ limitations under the License.
 ==============================================================================*/
 #include <cstdio>
 #include <erl_nif.h>
-#include "tensorflow/lite/c/c_api.h"
-#include "tensorflow/lite/c/common.h"
-#include "tensorflow/lite/interpreter.h"
-#include "tensorflow/lite/kernels/register.h"
-#include "tensorflow/lite/model.h"
+#include "tflite/c/c_api.h"
+#include "tflite/c/common.h"
+#include "tflite/interpreter.h"
+#include "tflite/kernels/register.h"
+#include "tflite/model.h"
 #include "nif_utils.hpp"
 #include "nif_guard.hpp"
 #include "helper.h"

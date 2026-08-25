@@ -3,8 +3,8 @@
 #include "../erlang_nif_resource.h"
 #include "../helper.h"
 
-#include "tensorflow/lite/core/api/error_reporter.h"
-#include "tensorflow/lite/stderr_reporter.h"
+#include "tflite/core/api/error_reporter.h"
+#include "tflite/stderr_reporter.h"
 
 #include "error_reporter.h"
 

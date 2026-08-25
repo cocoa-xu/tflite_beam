@@ -1,8 +1,8 @@
 #include <erl_nif.h>
 #include "nif_utils.hpp"
 
-#include "tensorflow/lite/c/c_api.h"
-#include "tensorflow/lite/c/common.h"
+#include "tflite/c/c_api.h"
+#include "tflite/c/common.h"
 
 #include "erlang_nif_resource.h"
 #include "fault_inject.hpp"

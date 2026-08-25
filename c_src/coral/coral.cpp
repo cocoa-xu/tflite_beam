@@ -7,7 +7,7 @@
 #include "../helper.h"
 
 #include "coral/tflite_utils.h"
-#include "tensorflow/lite/interpreter.h"
+#include "tflite/interpreter.h"
 #include "tflite/public/edgetpu.h"
 #include "tflite/public/edgetpu_c.h"
 
