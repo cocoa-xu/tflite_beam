@@ -44,12 +44,17 @@ jobs:
               otp: "25.x"
               arch_name: x86_64
               cmake_toolchain_file: ""
-              c_compiler: gcc
-              cpp_compiler: g++
+              # gcc-10, not focal's default 9: the abseil LiteRT pins refuses
+              # anything below 10. Staying on focal is what keeps this artifact
+              # asking for no more than glibc 2.29, which it has since v0.3.12.
+              c_compiler: gcc-10
+              cpp_compiler: g++-10
               libedgetpu_library: "x86_64"
               target_arch: "x86_64"
               target_os: "linux"
               target_abi: "gnu"
+              cc: "/usr/bin/gcc-10"
+              cxx: "/usr/bin/g++-10"
           - pair:
               otp: "25.x"
               arch_name: aarch64
@@ -66,14 +71,17 @@ jobs:
               otp: "25.x"
               arch_name: armv7l
               cmake_toolchain_file: cc_toolchain/armv7l-linux-gnueabihf.cmake
-              c_compiler: gcc-arm-linux-gnueabihf
-              cpp_compiler: g++-arm-linux-gnueabihf
+              # see the note on x86_64 above. The Nerves armv7 toolchain would
+              # also satisfy abseil but links against glibc 2.38, and Raspberry
+              # Pi OS Bookworm has 2.36.
+              c_compiler: gcc-10-arm-linux-gnueabihf
+              cpp_compiler: g++-10-arm-linux-gnueabihf
               libedgetpu_library: "armv7l"
               target_arch: "armv7l"
               target_os: "linux"
               target_abi: "gnueabihf"
-              cc: "/usr/bin/arm-linux-gnueabihf-gcc"
-              cxx: "/usr/bin/arm-linux-gnueabihf-g++"
+              cc: "/usr/bin/arm-linux-gnueabihf-gcc-10"
+              cxx: "/usr/bin/arm-linux-gnueabihf-g++-10"
           - pair:
               otp: "25.x"
               arch_name: armv6
@@ -84,8 +92,8 @@ jobs:
               target_arch: "armv6"
               target_os: "linux"
               target_abi: "gnueabihf"
-              cc: "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-14.2.0/bin/armv6-nerves-linux-gnueabihf-gcc"
-              cxx: "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-14.2.0/bin/armv6-nerves-linux-gnueabihf-g++"
+              cc: "armv6-nerves-linux-gnueabihf-gcc"
+              cxx: "armv6-nerves-linux-gnueabihf-g++"
           - pair:
               otp: "25.x"
               arch_name: riscv64
@@ -96,8 +104,8 @@ jobs:
               target_arch: "riscv64"
               target_os: "linux"
               target_abi: "gnu"
-              cc: "/usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-14.2.0/bin/riscv64-nerves-linux-gnu-gcc"
-              cxx: "/usr/local/bin/nerves_toolchain_riscv64_nerves_linux_gnu-linux_x86_64-14.2.0/bin/riscv64-nerves-linux-gnu-g++"
+              cc: "riscv64-nerves-linux-gnu-gcc"
+              cxx: "riscv64-nerves-linux-gnu-g++"
 
     steps:
       - name: Checkout
@@ -141,10 +149,17 @@ jobs:
       - name: Create precompiled library
         run: |
           export NIF_VERSION="$(erl -noshell -eval "io:format('~ts', [erlang:system_info(nif_version)])." -s erlang halt)"
-          if [ "${{ matrix.pair.cmake_toolchain_file }}" != "" ]; then
-            export CMAKE_TOOLCHAIN_FILE="$(pwd)/${{ matrix.pair.cmake_toolchain_file }}"
+          # x86_64 has no toolchain file, and CC/CXX used to be exported only
+          # for the targets that did. It therefore built with whatever gcc the
+          # image called default, which on focal is 9, below what the abseil
+          # LiteRT pins accepts.
+          if [ "${{ matrix.pair.cc }}" != "" ]; then
             export CC="${{ matrix.pair.cc }}"
             export CXX="${{ matrix.pair.cxx }}"
+          fi
+
+          if [ "${{ matrix.pair.cmake_toolchain_file }}" != "" ]; then
+            export CMAKE_TOOLCHAIN_FILE="$(pwd)/${{ matrix.pair.cmake_toolchain_file }}"
             export TARGET_ARCH="${{ matrix.pair.target_arch }}"
             export TARGET_OS="${{ matrix.pair.target_os }}"
             export TARGET_ABI="${{ matrix.pair.target_abi }}"

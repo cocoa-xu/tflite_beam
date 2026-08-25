@@ -220,6 +220,35 @@ there before.
 
 Documentation is published on [HexDocs](https://hexdocs.pm/tflite_beam).
 
+### What the precompiled binaries need
+
+Installing pulls a precompiled shared object rather than building one, so what
+matters is what that object was linked against, not what your machine could
+compile. These have held since v0.3.12:
+
+| Target | Needs |
+| --- | --- |
+| `x86_64-linux-gnu` | glibc 2.29 (Ubuntu 20.04, Debian 11) |
+| `armv7l-linux-gnueabihf` | glibc 2.29 (Raspberry Pi OS Bullseye) |
+| `aarch64-linux-gnu` | glibc 2.34 (Ubuntu 22.04, Debian 12) |
+| `armv6-linux-gnueabihf` | glibc 2.38 (Debian 13, or a Nerves system) |
+| `riscv64-linux-gnu` | glibc 2.38 (Debian 13, or a Nerves system) |
+| `aarch64-apple-darwin` | macOS 14 |
+| `x86_64-apple-darwin` | macOS 15 |
+
+The figure is a floor, not a pin: anything newer works. Check yours with
+`ldd --version`, or read it off a downloaded object with
+`readelf -V priv/tflite_beam.so | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -1`.
+
+`armv6` and `riscv64` sit higher than the rest because they are built with the
+Nerves toolchains, which carry their own glibc. That suits a Nerves system, which
+ships a matching one. It does not suit Raspberry Pi OS Bookworm, which has 2.36,
+so on that combination build from source:
+
+```
+export TFLITE_BEAM_PREFER_PRECOMPILED=false
+```
+
 ## Tests
 
 ```shell
