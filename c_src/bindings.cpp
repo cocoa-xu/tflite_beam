@@ -220,6 +220,7 @@ static ErlNifFunc nif_functions[] = {
     F_CPU(tflitetensor_to_binary, 2),
     F_CPU(tflitetensor_set_data, 2),
 
+    F(tflite_source_tree, 0),
     F(tflite_version, 0),
     F(tflite_runtime_version, 0),
     F(tflite_extension_apis_version, 0),

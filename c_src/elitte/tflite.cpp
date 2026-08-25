@@ -10,11 +10,34 @@
 #include "tflite/optional_debug_tools.h"
 
 #include "status.h"
+
+#include "tflite/schema/schema_generated.h"
 #include "../xnnpack_limits.h"
 
 #ifndef TFLITE_BEAM_TFLITE_VERSION
 #define TFLITE_BEAM_TFLITE_VERSION "unknown"
 #endif
+
+// MultiAxisQuantization is in the schema LiteRT carries and in no TensorFlow
+// release this library has ever built against. Naming the type is what makes
+// source_tree/0 below a fact rather than a claim: a binary compiled against the
+// wrong tree fails here, so it never exists to answer otherwise.
+//
+// This matters because the wrong tree does not announce itself. LiteRT's CMake
+// puts TensorFlow on the include path for its own reasons, so an include of
+// tensorflow/lite/interpreter.h resolves, compiles, links, and passes most of a
+// test suite while holding a different definition of the class the library was
+// built from.
+static_assert(sizeof(tflite::MultiAxisQuantization) > 0,
+              "this build did not come from LiteRT's tflite subtree");
+
+// Which source tree the shared object in front of you was built from. A release
+// that predates the move has no such function, so asking is enough to tell a
+// stale precompiled artifact from a current one.
+ERL_NIF_TERM tflite_source_tree(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 0) return enif_make_badarg(env);
+    return erlang::nif::atom(env, "litert");
+}
 
 // The version of the TfLite sources this was built from. TfLiteVersion() below
 // cannot answer that: lite/version.h holds a hand-maintained number that upstream

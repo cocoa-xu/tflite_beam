@@ -165,7 +165,8 @@ install_libedgetpu_runtime: prepare_priv_dir
 				rm -rf "$(LIBCORAL_SRC)" && \
 				git clone --depth 1 https://github.com/cocoa-xu/libcoral.git "$(LIBCORAL_SRC)" ; \
 			fi && \
-			cd "$(LIBCORAL_SRC)" && git submodule update --init libedgetpu && cd ../.. ; \
+			cd "$(LIBCORAL_SRC)" && git submodule update --init libedgetpu && cd ../.. && \
+			python3 "$(shell pwd)/scripts/retarget_includes_to_litert.py" "$(LIBCORAL_SRC)" ; \
 		fi \
 	fi
 

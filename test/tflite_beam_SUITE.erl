@@ -37,7 +37,8 @@
     a_nested_cache_subdirectory_is_created_not_refused/1,
     the_delegate_width_is_reportable_rather_than_a_hidden_rule/1,
     num_threads_follows_tflites_own_contract/1,
-    metadata_reaches_the_corners_of_its_own_schema/1
+    metadata_reaches_the_corners_of_its_own_schema/1,
+    the_loaded_object_came_from_litert/1
 ]).
 
 %% every tensor in multi_add.bin is a [1, 8, 8, 3] float32
@@ -74,7 +75,8 @@ all() ->
         a_nested_cache_subdirectory_is_created_not_refused,
         the_delegate_width_is_reportable_rather_than_a_hidden_rule,
         num_threads_follows_tflites_own_contract,
-        metadata_reaches_the_corners_of_its_own_schema
+        metadata_reaches_the_corners_of_its_own_schema,
+        the_loaded_object_came_from_litert
     ].
 
 model_from_file(_Config) ->
@@ -696,3 +698,23 @@ metadata_reaches_the_corners_of_its_own_schema(_Config) ->
     ?assertMatch(#{custom_metadata := [#{name := <<"beam_test">>,
                                          data := <<1, 2, 3, 4>>}]},
                  Subgraph).
+
+%% Nothing about a shared object says which source tree it came from, and the
+%% ways to end up holding the wrong one are quiet: a precompiled artifact
+%% downloaded because priv/ happened to be empty, a stale copy left in _build, a
+%% local build that resolved its includes against TensorFlow because that tree is
+%% on the path for LiteRT's own reasons. Each of those builds, links, and passes
+%% most of what follows.
+%%
+%% So ask. source_tree/0 exists only in an object built from LiteRT, and the C++
+%% behind it names a type only LiteRT's schema defines, so neither the question
+%% nor the answer can be satisfied by anything else. A release from before the
+%% move fails this with undef rather than with a wrong answer.
+the_loaded_object_came_from_litert(_Config) ->
+    ?assertEqual(litert, tflite_beam:source_tree()),
+
+    %% and the pieces that would be read out of the wrong tree still work, which
+    %% is what went wrong the first time this was attempted
+    Interpreter = tflite_beam_test_models:interpreter("multi_add.bin"),
+    ?assertEqual([<<"serving_default">>],
+                 tflite_beam_interpreter:signature_keys(Interpreter)).

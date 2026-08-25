@@ -6,7 +6,8 @@
     tflite_runtime_version/0,
     tflite_extension_apis_version/0,
     tflite_schema_version/0,
-    xnnpack_max_tensor_dims/0
+    xnnpack_max_tensor_dims/0,
+    source_tree/0
 ]).
 
 %% @doc The version of the TfLite sources this library was built from, e.g.
@@ -69,3 +70,16 @@ tflite_schema_version() ->
 -spec xnnpack_max_tensor_dims() -> integer() | nil.
 xnnpack_max_tensor_dims() ->
     tflite_beam_nif:xnnpack_max_tensor_dims().
+
+%% @doc Which source tree this shared object was built from.
+%%
+%% Answers `litert\'. There is no other answer: the C++ side names a type that
+%% only LiteRT\'s schema defines, so a binary built against anything else does
+%% not compile, and a release from before the move has no such function at all.
+%%
+%% Worth asking in a test rather than trusting the build, because the wrong tree
+%% does not announce itself and a stale precompiled artifact looks exactly like a
+%% fresh one from the outside.
+-spec source_tree() -> litert.
+source_tree() ->
+    tflite_beam_nif:tflite_source_tree().

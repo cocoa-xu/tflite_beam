@@ -248,6 +248,9 @@ tflitetensor_set_data(_self, _data) ->
     not_loaded(?LINE).
 
 
+tflite_source_tree() ->
+    not_loaded(?LINE).
+
 tflite_version() ->
     not_loaded(?LINE).
 

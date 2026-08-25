@@ -5,6 +5,7 @@
 
 #include <erl_nif.h>
 
+ERL_NIF_TERM tflite_source_tree(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 ERL_NIF_TERM tflite_version(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 ERL_NIF_TERM tflite_runtime_version(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 ERL_NIF_TERM tflite_extension_apis_version(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
