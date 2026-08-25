@@ -38,7 +38,8 @@
     the_delegate_width_is_reportable_rather_than_a_hidden_rule/1,
     num_threads_follows_tflites_own_contract/1,
     metadata_reaches_the_corners_of_its_own_schema/1,
-    the_loaded_object_came_from_litert/1
+    the_loaded_object_came_from_litert/1,
+    the_two_eight_bit_floats_are_told_apart/1
 ]).
 
 %% every tensor in multi_add.bin is a [1, 8, 8, 3] float32
@@ -76,7 +77,8 @@ all() ->
         the_delegate_width_is_reportable_rather_than_a_hidden_rule,
         num_threads_follows_tflites_own_contract,
         metadata_reaches_the_corners_of_its_own_schema,
-        the_loaded_object_came_from_litert
+        the_loaded_object_came_from_litert,
+        the_two_eight_bit_floats_are_told_apart
     ].
 
 model_from_file(_Config) ->
@@ -732,3 +734,25 @@ the_loaded_object_came_from_litert(_Config) ->
     Interpreter = tflite_beam_test_models:interpreter("multi_add.bin"),
     ?assertEqual([<<"serving_default">>],
                  tflite_beam_interpreter:signature_keys(Interpreter)).
+
+%% Two 8 bit float types, and the width they share says nothing about which is
+%% which: E5M2 spends five bits on the exponent and has infinities, E4M3FN
+%% spends four and has none. Reading one as the other does not fail, it answers
+%% a different number, so 0x78 is 32768 under E5M2 and 256 under E4M3FN. Neither
+%% is only distinguishable by name. Nothing in the corpus carries one, so
+%% test/models/fp8_types.bin is built for them by scripts/make_fp8_fixture.cpp.
+the_two_eight_bit_floats_are_told_apart(_Config) ->
+    Interpreter = tflite_beam_test_models:interpreter("fp8_types.bin"),
+    Type = fun(Index) ->
+        Tensor = tflite_beam_interpreter:tensor(Interpreter, Index),
+        ?assertMatch(#tflite_beam_tensor{}, Tensor),
+        Tensor#tflite_beam_tensor.type
+    end,
+
+    %% the names are Nx's, so nothing downstream has to translate them
+    ?assertEqual({f8_e4m3fn, 8}, Type(0)),
+    ?assertEqual({f, 8}, Type(1)),
+    ?assertNotEqual(Type(0), Type(1)),
+
+    %% a float whose width does say which it is still reads as it always did
+    ?assertEqual({f, 32}, Type(2)).
