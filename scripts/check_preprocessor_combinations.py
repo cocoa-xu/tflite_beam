@@ -35,9 +35,21 @@ def main():
     defines, includes = cmake_var(text, "CXX_DEFINES"), cmake_var(text, "CXX_INCLUDES")
     base_flags = cmake_var(text, "CXX_FLAGS")
 
+    # The flags are lifted from a build that already happened, so they describe
+    # whatever tree that build used. One from before the runtime moved to LiteRT
+    # resolves none of the includes here, and the failure reads as "c_api.h file
+    # not found" rather than as a stale build directory.
+    if "/litert/" not in includes:
+        print(
+            f"{FLAGS_MAKE} was written by a build that did not use LiteRT.\n"
+            "Rebuild from source in this tree before checking:\n"
+            "  rm -f priv/tflite_beam.so && TFLITE_BEAM_PREFER_PRECOMPILED=false make"
+        )
+        return 1
+
     sources = sorted(
         glob.glob("c_src/*.cpp")
-        + glob.glob("c_src/tflite/**/*.cpp", recursive=True)
+        + glob.glob("c_src/elitte/**/*.cpp", recursive=True)
     )
     # CMakeLists only compiles this one when Coral support is on
     coral_only = sorted(glob.glob("c_src/coral/*.cpp"))

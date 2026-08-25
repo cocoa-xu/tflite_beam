@@ -1,6 +1,52 @@
 # Changelog
 
-## Unreleased
+## v1.0.0-rc1 (2026-08-26)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v1.0.0-rc1) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v1.0.0-rc1)
+
+The runtime now comes from LiteRT rather than from TensorFlow. That is the whole
+of why this is 1.0.0 and not 0.4.0: `~>` treats a two part 0.x requirement as
+everything below 1.0.0, so shipping this as 0.4.0 would have moved every existing
+`~> 0.3` user onto a different upstream on their next `deps.update`, without
+their asking. Under 1.0.0 they stay where they are until they say otherwise. The
+0.4.0 release candidates carried the memory safety work and no 0.4.0 final was
+published; everything in them is here.
+
+Nothing in the Erlang API was removed or renamed, the seven precompiled targets
+are the same seven, and each one asks for exactly the glibc it asked for in
+v0.3.12. What did change is one answer, described first below.
+
+### Changed
+- `tflite_version/0` answers LiteRT's version, which is `<<"2.2.0">>`, where it
+  used to answer TensorFlow's `<<"2.21.0">>`. The two are separate version lines
+  and the numbers are not comparable: LiteRT's 2.2.0 is newer than TensorFlow's
+  2.21.0, not older. **A delegate plugin loaded through
+  `tflite_beam_delegate:external/1` must match this number**, and upstream
+  offers no binary stable delegate interface, so a mismatch is undefined
+  behaviour rather than an error. Rebuild plugins against LiteRT 2.2.0.
+- TfLite is built from `tflite/` in the LiteRT tree instead of `tensorflow/lite/`
+  in TensorFlow's. TensorFlow is still fetched, because LiteRT's own build reaches
+  into it for `compiler/mlir/lite`, TSL and XLA, but it is a build dependency now
+  rather than the source of the runtime. See `tensorflow_version/0` for which
+  release that is.
+
+### Added
+- `tflite_beam:source_tree/0` answers `litert`. It exists because nothing about a
+  shared object says which sources it came from, and the ways to end up holding
+  the wrong one are quiet: a precompiled artifact fetched because `priv/` happened
+  to be empty, a stale copy in `_build`, a local build whose includes resolved
+  against TensorFlow because that tree is on the path for LiteRT's own reasons.
+  Each of those links, builds, and passes most of a test suite. The C++ behind
+  this function names a type only LiteRT's schema defines, so a binary built from
+  anything else does not compile, and a release from before the move has no such
+  function to ask.
+- `tflite_beam:tensorflow_version/0` answers the TensorFlow release the build
+  pulled in, `<<"2.21.0-rc0">>`. Worth having when something reads wrong, not for
+  matching a plugin against.
+- The two 8 bit float types are reported, under the names Nx uses: `{f, 8}` for
+  E5M2 and `{f8_e4m3fn, 8}` for E4M3FN. Neither goes out as a bare width, because
+  the width is the one thing they share: reading E4M3FN bytes as E5M2 does not
+  fail, it answers a different number, and `16#78` is 32768 under one and 256
+  under the other.
 
 ### Fixed
 - A model path that is not there says so. Routing the loader through the

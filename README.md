@@ -200,23 +200,32 @@ Add `tflite_beam` to your list of dependencies in `rebar.config`:
 ]}
 ```
 
-The 0.4.0 release candidates carry the memory-safety work described above and are
-worth using if any of it applies to you. Hex never resolves a pre-release from a
-range, so name it exactly:
+The 1.0.0 release candidates carry the memory-safety work described above and
+build the runtime from LiteRT rather than from TensorFlow. Hex never resolves a
+pre-release from a range, so name it exactly:
 
 ```erlang
 {deps, [
-  {tflite_beam, "0.4.0-rc6"}
+  {tflite_beam, "1.0.0-rc1"}
 ]}
 ```
 
-Two behaviours changed in that line, both turning something silent into an error.
-A tensor handle stops working once `allocate_tensors/1`, a resize or a second
-`build/2` has moved what it points at, instead of reading memory that has been
-given to something else; fetch it again afterwards. And writing to a tensor now
-takes exactly its size, where a short binary used to be written as far as it went
-and reported as success, leaving the rest of the tensor holding whatever was
-there before.
+`~> 0.3` will not reach it, which is deliberate: a two part 0.x requirement means
+everything below 1.0.0, so releasing this work as 0.4.0 would have moved every
+existing user onto a different upstream without their asking. Nothing in the
+Erlang API was removed or renamed on the way, and the precompiled binaries ask
+for exactly the glibc they asked for in 0.3.12.
+
+Three things behave differently, each turning something silent into something you
+can see. A tensor handle stops working once `allocate_tensors/1`, a resize or a
+second `build/2` has moved what it points at, instead of reading memory that has
+been given to something else; fetch it again afterwards. Writing to a tensor takes
+exactly its size, where a short binary used to be written as far as it went and
+reported as success, leaving the rest of the tensor holding whatever was there
+before. And `tflite_version/0` now answers LiteRT's version rather than
+TensorFlow's, which matters if you load a delegate plugin: it has to be built from
+the same release, and the two version lines are not comparable, so LiteRT's 2.2.0
+is newer than TensorFlow's 2.21.0 rather than older.
 
 Documentation is published on [HexDocs](https://hexdocs.pm/tflite_beam).
 
