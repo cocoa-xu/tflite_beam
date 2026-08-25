@@ -74,7 +74,7 @@ CMAKE_TFLITE_BUILD_DIR = $(MIX_APP_PATH)/cmake_tflite_$(TFLITE_VER)
 # KleidiAI is fetched by XNNPACK for arm64 targets, but gitlab.arm.com blocks
 # GitHub runners. Mirror the commit XNNPACK pins (matches this TFLITE_VER) from
 # github.com and hand the local copy to XNNPACK via KLEIDIAI_SOURCE_DIR.
-KLEIDIAI_COMMIT ?= 63205aa90afa6803d8f58bc3081b69288e9f1906
+KLEIDIAI_COMMIT ?= dce86647385ab2638aa5abebcb652f3e4271970d
 KLEIDIAI_SOURCE_URL = https://github.com/ARM-software/kleidiai/archive/$(KLEIDIAI_COMMIT).tar.gz
 KLEIDIAI_SOURCE_ARCHIVE = $(TFLITE_BEAM_CACHE_DIR)/kleidiai-$(KLEIDIAI_COMMIT).tar.gz
 KLEIDIAI_SOURCE_DIR = $(THIRD_PARTY_DIR)/kleidiai-$(KLEIDIAI_COMMIT)

@@ -137,6 +137,27 @@ add_subdirectory(
     EXCLUDE_FROM_ALL
 )
 
+# KleidiAI is fetched by XNNPACK from gitlab.arm.com, which GitHub's runners
+# cannot reach, so a mirrored copy is handed over instead. The commit has to be
+# the one XNNPACK asks for: an older one is missing headers the newer
+# microkernels include, and the build says so two thirds of the way in as a file
+# that does not exist rather than as a version that does not match. Say it here.
+if(KLEIDIAI_SOURCE_DIR)
+    set(_kleidiai_recipe "${CMAKE_BINARY_DIR}/xnnpack/cmake/DownloadKleidiAI.cmake")
+    if(EXISTS "${_kleidiai_recipe}")
+        file(STRINGS "${_kleidiai_recipe}" _kleidiai_url REGEX "kleidiai-[0-9a-f]+")
+        string(REGEX MATCH "[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]+" _kleidiai_wanted "${_kleidiai_url}")
+        get_filename_component(_kleidiai_have "${KLEIDIAI_SOURCE_DIR}" NAME)
+        string(REGEX MATCH "[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]+" _kleidiai_have "${_kleidiai_have}")
+        if(_kleidiai_wanted AND _kleidiai_have AND NOT _kleidiai_wanted STREQUAL _kleidiai_have)
+            message(FATAL_ERROR
+                "the mirrored KleidiAI is ${_kleidiai_have} and this XNNPACK "
+                "wants ${_kleidiai_wanted}. Set KLEIDIAI_COMMIT in the Makefile "
+                "to the latter.")
+        endif()
+    endif()
+endif()
+
 if(${TFLITE_BEAM_CORAL_SUPPORT})
     if(NOT GFLAGS_ROOT_DIR)
         message(FATAL_ERROR "GFLAGS_ROOT_DIR is not set.")
