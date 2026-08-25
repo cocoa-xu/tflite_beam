@@ -32,16 +32,16 @@ extern ERL_NIF_TERM nif_arm_fault(ErlNifEnv *env, int argc, const ERL_NIF_TERM a
 #  pragma GCC diagnostic ignored "-Wunused-function"
 #endif
 
-#include "tflite/error_reporter.h"
-#include "tflite/flatbuffer_model.h"
-#include "tflite/ops/builtin/builtin_resolver.h"
-#include "tflite/delegate.h"
-#include "tflite/interpreter_builder.h"
-#include "tflite/interpreter.h"
-#include "tflite/signature_runner.h"
-#include "tflite/status.h"
-#include "tflite/tflite.h"
-#include "tflite/tflitetensor.h"
+#include "elitte/error_reporter.h"
+#include "elitte/flatbuffer_model.h"
+#include "elitte/ops/builtin/builtin_resolver.h"
+#include "elitte/delegate.h"
+#include "elitte/interpreter_builder.h"
+#include "elitte/interpreter.h"
+#include "elitte/signature_runner.h"
+#include "elitte/status.h"
+#include "elitte/tflite.h"
+#include "elitte/tflitetensor.h"
 
 ErlNifResourceType * NifResBuiltinOpResolver::type = nullptr;
 ErlNifResourceType * NifResInterpreterBuilder::type = nullptr;
