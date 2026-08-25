@@ -125,6 +125,17 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_CXX_COMPILER_ID STREQUAL
 endif()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" CACHE STRING "Override CXX FLAGS")
 
+# LiteRT fetches Eigen by cloning gitlab.com, which throttles under load and has
+# refused this build twice. The mirror is a plain copy carrying the same commit,
+# so the pin still decides which Eigen is used and only the host changes.
+# OverridableFetchContent reads this name for the content it calls "eigen"; see
+# tflite/tools/cmake/modules/OverridableFetchContent.cmake.
+if(NOT OVERRIDABLE_FETCH_CONTENT_eigen_GIT_REPOSITORY)
+    set(OVERRIDABLE_FETCH_CONTENT_eigen_GIT_REPOSITORY
+        "https://github.com/cocoa-xu/eigen.git" CACHE STRING
+        "Where to fetch Eigen from; the commit is still pinned by LiteRT")
+endif()
+
 # reset CLOG_SOURCE_DIR so that cpuinfo won't complain
 unset(CLOG_SOURCE_DIR CACHE)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "NO shared library")
