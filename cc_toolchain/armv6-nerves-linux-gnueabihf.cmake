@@ -8,8 +8,29 @@
 set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_SYSTEM_PROCESSOR armv6)
 
-set(CMAKE_C_COMPILER "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-14.2.0/bin/armv6-nerves-linux-gnueabihf-gcc")
-set(CMAKE_CXX_COMPILER "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-linux_x86_64-14.2.0/bin/armv6-nerves-linux-gnueabihf-g++")
+# Nerves ships this toolchain for x86_64 and aarch64 hosts alike, so the host
+# name belongs in a variable rather than in the path. Hardcoding x86_64 meant an
+# arm64 machine could not run this build at all, which is the machine most likely
+# to be reproducing an armv6 CI failure without waiting for CI.
+if(NOT NERVES_TOOLCHAIN_HOST)
+    if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
+        set(NERVES_TOOLCHAIN_HOST "linux_aarch64")
+    else()
+        set(NERVES_TOOLCHAIN_HOST "linux_x86_64")
+    endif()
+endif()
+if(NOT NERVES_TOOLCHAIN_ROOT)
+    set(NERVES_TOOLCHAIN_ROOT
+        "/usr/local/bin/nerves_toolchain_armv6_nerves_linux_gnueabihf-${NERVES_TOOLCHAIN_HOST}-14.2.0")
+endif()
+if(NOT EXISTS "${NERVES_TOOLCHAIN_ROOT}/bin/armv6-nerves-linux-gnueabihf-gcc")
+    message(FATAL_ERROR
+        "no armv6 Nerves toolchain at ${NERVES_TOOLCHAIN_ROOT}. Set "
+        "NERVES_TOOLCHAIN_ROOT, or NERVES_TOOLCHAIN_HOST if only the host part "
+        "is wrong.")
+endif()
+set(CMAKE_C_COMPILER "${NERVES_TOOLCHAIN_ROOT}/bin/armv6-nerves-linux-gnueabihf-gcc")
+set(CMAKE_CXX_COMPILER "${NERVES_TOOLCHAIN_ROOT}/bin/armv6-nerves-linux-gnueabihf-g++")
 
 set(CMAKE_FIND_ROOT_PATH /usr/arm-linux-gnueabihf)
 
