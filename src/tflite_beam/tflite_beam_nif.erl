@@ -251,6 +251,9 @@ tflitetensor_set_data(_self, _data) ->
 tflite_source_tree() ->
     not_loaded(?LINE).
 
+tensorflow_version() ->
+    not_loaded(?LINE).
+
 tflite_version() ->
     not_loaded(?LINE).
 

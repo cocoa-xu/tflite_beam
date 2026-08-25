@@ -41,7 +41,15 @@ endif
 # Tensorflow
 TFLITE_USE_GIT_HEAD ?= false
 TFLITE_GIT_REPO ?= "https://github.com/tensorflow/tensorflow.git"
-TFLITE_VER ?= 2.21.0
+# The runtime comes from LiteRT's tflite subtree. LITERT_VER is therefore the
+# version a delegate plugin has to match, and it is what tflite_beam:tflite_version/0
+# answers.
+LITERT_GIT_REPO ?= "https://github.com/google-ai-edge/LiteRT.git"
+LITERT_VER ?= 2.2.0
+# TensorFlow is still a build dependency rather than the source of the runtime:
+# LiteRT's CMake reaches into it for compiler/mlir/lite, TSL and XLA. The version
+# is the one LiteRT pins, and mismatching it silently mixes two schemas.
+TFLITE_VER ?= 2.21.0-rc0
 TFLITE_VER_V = v$(TFLITE_VER)
 ifneq ($(TFLITE_USE_GIT_HEAD), false)
 	TFLITE_VER_V=$(TFLITE_USE_GIT_BRANCH)
@@ -52,7 +60,12 @@ TFLITE_SOURCE_URL = "https://github.com/tensorflow/tensorflow/archive/refs/tags/
 TFLITE_SOURCE_ZIP = $(TFLITE_BEAM_CACHE_DIR)/tensorflow-$(TFLITE_VER_V).zip
 UNZIP_TARGET_DIR = $(THIRD_PARTY_DIR)/tensorflow
 TENSORFLOW_ROOT_DIR = $(UNZIP_TARGET_DIR)/tensorflow-$(TFLITE_VER)
-TFLITE_ROOT_DIR = $(TENSORFLOW_ROOT_DIR)/tensorflow/lite
+LITERT_VER_V = v$(LITERT_VER)
+LITERT_SOURCE_URL = "https://github.com/google-ai-edge/LiteRT/archive/refs/tags/$(LITERT_VER_V).zip"
+LITERT_SOURCE_ZIP = $(TFLITE_BEAM_CACHE_DIR)/litert-$(LITERT_VER_V).zip
+LITERT_UNZIP_TARGET_DIR = $(THIRD_PARTY_DIR)/litert
+LITERT_ROOT_DIR = $(LITERT_UNZIP_TARGET_DIR)/LiteRT-$(LITERT_VER)
+TFLITE_ROOT_DIR = $(LITERT_ROOT_DIR)/tflite
 GFLAGS_ROOT_DIR = $(THIRD_PARTY_DIR)/gflags
 GLOG_ROOT_DIR = $(THIRD_PARTY_DIR)/glog
 TFLITE_CMAKELISTS_TXT = $(TFLITE_ROOT_DIR)/CMakeLists.txt
@@ -157,6 +170,33 @@ unarchive_source_code: $(TFLITE_SOURCE_ZIP)
 		fi \
 	fi
 
+$(LITERT_SOURCE_ZIP): create_cache_dir
+	@ if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true" ]; then \
+		if [ ! -e "$(LITERT_SOURCE_ZIP)" ]; then \
+			if [ -e "$(shell which curl)" ]; then \
+				curl -fSL "$(LITERT_SOURCE_URL)" -o $(LITERT_SOURCE_ZIP) ; \
+			elif [ -e "$(shell which wget)" ]; then \
+				wget "$(LITERT_SOURCE_URL)" -O $(LITERT_SOURCE_ZIP) ; \
+			else \
+				echo "cannot find curl or wget, cannot download LiteRT source code" ; \
+				exit 1 ; \
+			fi \
+		fi \
+	fi
+
+unarchive_litert_source_code: $(LITERT_SOURCE_ZIP)
+	@ if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true" ]; then \
+		if [ ! -d "$(LITERT_ROOT_DIR)" ]; then \
+			rm -rf "$(LITERT_ROOT_DIR)" ; \
+			mkdir -p "$(LITERT_UNZIP_TARGET_DIR)" ; \
+			unzip -qq -o "$(LITERT_SOURCE_ZIP)" -d "$(LITERT_UNZIP_TARGET_DIR)" ; \
+		fi ; \
+		if [ ! -e "$(TFLITE_CMAKELISTS_TXT)" ]; then \
+			echo "no CMakeLists.txt at $(TFLITE_CMAKELISTS_TXT); is LITERT_VER=$(LITERT_VER) right?" ; \
+			exit 1 ; \
+		fi \
+	fi
+
 install_libedgetpu_runtime: prepare_priv_dir
 	@ if [ "$(TFLITE_BEAM_CORAL_SUPPORT)" = "true" ]; then \
 		bash scripts/copy_libedgetpu_runtime.sh "$(LIBEDGETPU_RUNTIME_PRIV)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_UNZIPPED_DIR)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_TRIPLET)" "$(TFLITE_BEAM_CORAL_USB_THROTTLE)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_URL)" "$(TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME)" "$(TFLITE_BEAM_CACHE_DIR)" && \
@@ -186,7 +226,7 @@ $(UNICODE_DATA): prepare_priv_dir
 		cp -f "$(UNICODEDATA)/unicode_data.txt" "$(UNICODE_DATA)" ; \
 	fi
 
-$(NATIVE_BINDINGS_SO): $(UNICODE_DATA) unarchive_source_code install_libedgetpu_runtime libusb fetch_kleidiai
+$(NATIVE_BINDINGS_SO): $(UNICODE_DATA) unarchive_source_code unarchive_litert_source_code install_libedgetpu_runtime libusb fetch_kleidiai
 	@ if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" = "true" ]; then \
 		{ \
 			cd "$(shell pwd)" && \
@@ -220,6 +260,7 @@ $(NATIVE_BINDINGS_SO): $(UNICODE_DATA) unarchive_source_code install_libedgetpu_
 			-D GLOG_ROOT_DIR="$(GLOG_ROOT_DIR)" \
 			-D TFLITE_BEAM_CORAL_SUPPORT="$(TFLITE_BEAM_CORAL_SUPPORT)" \
 			-D TFLITE_BEAM_TFLITE_VERSION="$(TFLITE_VER)" \
+			-D TFLITE_BEAM_LITERT_VERSION="$(LITERT_VER)" \
 			-D TFLITE_HOST_TOOLS_DIR="$(TFLITE_HOST_TOOLS_DIR)" \
 			-D LIBUSB_INSTALL_DIR="$(LIBUSB_INSTALL_DIR)" \
 			-D MIX_APP_PATH="$(MIX_APP_PATH)" \

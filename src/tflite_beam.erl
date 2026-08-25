@@ -7,11 +7,17 @@
     tflite_extension_apis_version/0,
     tflite_schema_version/0,
     xnnpack_max_tensor_dims/0,
-    source_tree/0
+    source_tree/0,
+    tensorflow_version/0
 ]).
 
 %% @doc The version of the TfLite sources this library was built from, e.g.
-%% `<<"2.21.0">>'.
+%% `<<"2.2.0">>'.
+%%
+%% Since the runtime moved to LiteRT's `tflite' subtree this is LiteRT's version,
+%% because that is where the sources come from. It is not the same number as
+%% {@link tensorflow_version/0}, and the two are not comparable: LiteRT versions
+%% independently, so its 2.2.0 is newer than TensorFlow's 2.21.0, not older.
 %%
 %% **This is the one to compare a delegate plugin against.** Open-source TfLite
 %% offers no binary-stable delegate interface: a plugin loaded through
@@ -83,3 +89,15 @@ xnnpack_max_tensor_dims() ->
 -spec source_tree() -> litert.
 source_tree() ->
     tflite_beam_nif:tflite_source_tree().
+
+%% @doc The TensorFlow release this build pulled in, e.g. `<<"2.21.0-rc0">>'.
+%%
+%% TensorFlow is no longer where the runtime comes from. LiteRT reaches into it
+%% for `compiler/mlir/lite', TSL and XLA, and pins a release whose schema its own
+%% is meant to agree with. Building against a different one links two definitions
+%% of the same flatbuffer tables, which does not fail: it reads the wrong fields.
+%% So this is a number to check when something comes back wrong, not one to match
+%% a plugin against. For that, see {@link tflite_version/0}.
+-spec tensorflow_version() -> binary().
+tensorflow_version() ->
+    tflite_beam_nif:tensorflow_version().

@@ -222,6 +222,7 @@ static ErlNifFunc nif_functions[] = {
 
     F(tflite_source_tree, 0),
     F(tflite_version, 0),
+    F(tensorflow_version, 0),
     F(tflite_runtime_version, 0),
     F(tflite_extension_apis_version, 0),
     F(tflite_schema_version, 0),

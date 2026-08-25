@@ -158,23 +158,37 @@ tensor_accessors_take_the_record(_Config) ->
 %% the whole path -- Makefile to cmake to macro to NIF -- because every link in
 %% it is silent when it breaks: a stale or missing value still returns a string.
 build_version_is_injected(_Config) ->
+    %% tflite_version/0 answers LiteRT's version now, because that is where the
+    %% runtime comes from, and tensorflow_version/0 answers the release LiteRT
+    %% pins for the pieces it borrows. Both are read back from the Makefile so a
+    %% build that injected nothing, or injected the wrong one into the wrong
+    %% place, is caught rather than reported as a version.
     Version = tflite_beam:tflite_version(),
     ?assertNotEqual(<<"unknown">>, Version),
-    ?assertEqual(makefile_tflite_ver(), Version),
+    ?assertEqual(makefile_var(<<"LITERT_VER">>), Version),
+
+    TensorFlow = tflite_beam:tensorflow_version(),
+    ?assertNotEqual(<<"unknown">>, TensorFlow),
+    ?assertEqual(makefile_var(<<"TFLITE_VER">>), TensorFlow),
+
+    %% the two are different numbers, and swapping them would pass every check
+    %% above that did not compare them
+    ?assertNotEqual(Version, TensorFlow),
+
     ?assert(is_binary(tflite_beam:tflite_runtime_version())),
     ?assert(is_binary(tflite_beam:tflite_extension_apis_version())),
     ?assert(tflite_beam:tflite_schema_version() > 0).
 
-makefile_tflite_ver() ->
+makefile_var(Name) ->
     Root = filename:join(code:lib_dir(tflite_beam), filename:join(lists:duplicate(4, ".."))),
     Makefile = case filelib:is_regular(filename:join(Root, "Makefile")) of
         true -> filename:join(Root, "Makefile");
         false -> "Makefile"
     end,
     {ok, Contents} = file:read_file(Makefile),
-    [_, Rest] = binary:split(Contents, <<"\nTFLITE_VER ?= ">>),
-    [Version | _] = binary:split(Rest, <<"\n">>),
-    Version.
+    [_, Rest] = binary:split(Contents, <<"\n", Name/binary, " ?= ">>),
+    [Value | _] = binary:split(Rest, <<"\n">>),
+    Value.
 
 interpreter_invoke(_Config) ->
     Interpreter = tflite_beam_test_models:interpreter("multi_add.bin"),

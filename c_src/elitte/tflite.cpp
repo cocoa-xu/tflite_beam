@@ -18,6 +18,10 @@
 #define TFLITE_BEAM_TFLITE_VERSION "unknown"
 #endif
 
+#ifndef TFLITE_BEAM_LITERT_VERSION
+#define TFLITE_BEAM_LITERT_VERSION "unknown"
+#endif
+
 // MultiAxisQuantization is in the schema LiteRT carries and in no TensorFlow
 // release this library has ever built against. Naming the type is what makes
 // source_tree/0 below a fact rather than a claim: a binary compiled against the
@@ -39,12 +43,23 @@ ERL_NIF_TERM tflite_source_tree(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
     return erlang::nif::atom(env, "litert");
 }
 
-// The version of the TfLite sources this was built from. TfLiteVersion() below
-// cannot answer that: lite/version.h holds a hand-maintained number that upstream
-// forgets to bump, so a 2.21.0 tree reports 2.19.0, and two builds from different
-// releases are indistinguishable through it. Delegate plugins must match the
-// source version, so this is the one to compare.
+// The version of the TfLite sources this was built from, which since the move
+// means LiteRT's, because that is where the runtime lives now. TfLiteVersion()
+// below cannot answer this: version.h holds a hand-maintained number that
+// upstream forgets to bump, so the tree here reports 2.19.0, and two builds from
+// different releases are indistinguishable through it. Delegate plugins must
+// match the source version, so this is the one to compare.
 ERL_NIF_TERM tflite_version(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 0) return enif_make_badarg(env);
+    return erlang::nif::make_binary(env, TFLITE_BEAM_LITERT_VERSION);
+}
+
+// The TensorFlow release the build pulled in. TensorFlow is not where the
+// runtime comes from any more: LiteRT reaches into it for compiler/mlir/lite,
+// TSL and XLA, and pins a version whose schema its own is meant to agree with.
+// Mismatching it links two different definitions of the same tables, so the
+// number is worth having on hand when something reads wrong.
+ERL_NIF_TERM tensorflow_version(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 0) return enif_make_badarg(env);
     return erlang::nif::make_binary(env, TFLITE_BEAM_TFLITE_VERSION);
 }
