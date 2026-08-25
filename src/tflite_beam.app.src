@@ -16,7 +16,7 @@
     "c_src/*.cpp",
     "c_src/*.hpp",
     "c_src/coral",
-    "c_src/tflite",
+    "c_src/elitte",
     "cc_toolchain",
     "scripts",
     "patches",
