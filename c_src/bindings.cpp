@@ -23,6 +23,9 @@ limitations under the License.
 #include "nif_guard.hpp"
 #include "helper.h"
 
+#ifdef TFLITE_BEAM_LITERT_API_ENABLED
+extern ERL_NIF_TERM litert_api_status_string(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
+#endif
 extern ERL_NIF_TERM nif_arm_fault(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 
 #ifdef __GNUC__
@@ -152,6 +155,9 @@ static ErlNifFunc nif_functions[] = {
     F(interpreter_builder_add_delegate, 3),
     F(interpreter_builder_state, 1),
 
+#ifdef TFLITE_BEAM_LITERT_API_ENABLED
+    F(litert_api_status_string, 1),
+#endif
     F(delegate_available, 0),
     F_IO(delegate_external_new, 2),
 #ifdef TFLITE_BEAM_XNNPACK_ENABLED
