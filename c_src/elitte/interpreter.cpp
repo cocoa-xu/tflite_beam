@@ -833,6 +833,11 @@ ERL_NIF_TERM interpreter_get_signature_defs(ErlNifEnv *env, int argc, const ERL_
         return ret;
     }
 
+    // Every other accessor takes this. Without it a rebuild running in another
+    // process can replace the interpreter while this one is walking its
+    // signature vectors, which is the collision the lock exists to answer.
+    TFLITE_BEAM_INTERPRETER_IN_USE(self_res);
+
     auto interpreter_ = self_res->val;
     ERL_NIF_TERM result;
 

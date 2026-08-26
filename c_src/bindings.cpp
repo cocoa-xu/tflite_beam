@@ -236,12 +236,14 @@ static ErlNifFunc nif_functions[] = {
     F(coral_contains_edgetpu_custom_op, 1),
     F_IO(coral_edgetpu_devices, 0),
     F(coral_get_edgetpu_context, 2),
+    F(coral_get_edgetpu_context_options, 1),
     F_IO(coral_make_edgetpu_interpreter, 2),
     F_CPU(coral_dequantize_tensor, 3)
 #else
     F_NOT_COMPILED(coral_contains_edgetpu_custom_op, 1),
     F_NOT_COMPILED(coral_edgetpu_devices, 0),
     F_NOT_COMPILED(coral_get_edgetpu_context, 2),
+    F_NOT_COMPILED(coral_get_edgetpu_context_options, 1),
     F_NOT_COMPILED(coral_make_edgetpu_interpreter, 2),
     F_NOT_COMPILED(coral_dequantize_tensor, 3)
 #endif

@@ -99,8 +99,11 @@ ERL_NIF_TERM tflite_print_interpreter_state(ErlNifEnv *env, int argc, const ERL_
     ERL_NIF_TERM interpreter_nif = argv[0];
     NifResInterpreter * interpreter_res;
 
-    if (!enif_get_resource(env, interpreter_nif, NifResInterpreter::type, (void **)&interpreter_res) || interpreter_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    {
+        ERL_NIF_TERM owner_error;
+        if (!(interpreter_res = NifResInterpreter::get_resource(env, interpreter_nif, owner_error))) {
+            return owner_error;
+        }
     }
 
     // walks the whole interpreter, so it cannot do so while a rebuild is

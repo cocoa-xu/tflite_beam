@@ -285,6 +285,9 @@ coral_edgetpu_devices() ->
 coral_get_edgetpu_context(_device, _options) ->
     not_loaded(?LINE).
 
+coral_get_edgetpu_context_options(_context) ->
+    not_loaded(?LINE).
+
 coral_make_edgetpu_interpreter(_model, _context) ->
     not_loaded(?LINE).
 

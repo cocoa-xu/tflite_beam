@@ -160,8 +160,15 @@ ERL_NIF_TERM interpreter_builder_build(ErlNifEnv *env, int argc, const ERL_NIF_T
         return erlang::nif::error(env, "cannot access NifResInterpreterBuilder resource");
     }
 
-    if (!enif_get_resource(env, interpreter_nif, NifResInterpreter::type, (void **)&interpreter_res) || interpreter_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    // Through get_resource, so this asks whether the caller may use the
+    // interpreter at all. Reaching past it let a process that does not own one
+    // delete and replace it, which is the promise the ownership check exists to
+    // keep and the most damaging of the three places that skipped it.
+    {
+        ERL_NIF_TERM owner_error;
+        if (!(interpreter_res = NifResInterpreter::get_resource(env, interpreter_nif, owner_error))) {
+            return owner_error;
+        }
     }
 
     // This is the one operation that deletes the whole tflite::Interpreter and

@@ -27,7 +27,9 @@
     server_predicts/1,
     server_is_atomic_under_concurrency/1,
     server_keeps_its_interpreter_to_itself/1,
-    server_with_runs_inside_the_owner/1
+    server_with_runs_inside_the_owner/1,
+    three_more_ways_past_the_owner_are_closed/1,
+    signature_defs_takes_the_interpreter_while_it_reads/1
 ]).
 
 -define(FILLED(V), binary:copy(<<V:32/float-native>>, 1 * 8 * 8 * 3)).
@@ -50,7 +52,9 @@ all() ->
         server_predicts,
         server_is_atomic_under_concurrency,
         server_keeps_its_interpreter_to_itself,
-        server_with_runs_inside_the_owner
+        server_with_runs_inside_the_owner,
+        three_more_ways_past_the_owner_are_closed,
+        signature_defs_takes_the_interpreter_while_it_reads
     ].
 
 %% The regression guard. An interpreter belongs to nobody until someone says
@@ -269,3 +273,58 @@ a_handle_answers_to_the_controlling_process(_Config) ->
 
     %% and the owner still sees what the owner wrote
     ?assertEqual(Mine, tflite_beam_tensor:to_binary(Handle)).
+
+%% get_resource carries the ownership check for every call site, and the comment
+%% on it says as much: one check rather than thirty-three chances to forget. Three
+%% call sites reached past it to enif_get_resource and got the resource without
+%% the check. Rebuild is the one that matters: it deletes and replaces the whole
+%% interpreter, so any process holding the reference could void the owner's graph.
+three_more_ways_past_the_owner_are_closed(_Config) ->
+    {ok, Server} = tflite_beam_interpreter_server:start(
+                     tflite_beam_test_models:path("multi_add.bin")),
+    Interpreter = tflite_beam_interpreter_server:with(Server, fun(I) -> I end),
+
+    {ok, Resolver} = tflite_beam_ops_builtin_builtin_resolver:new(),
+    #tflite_beam_flatbuffer_model{ref = Model} =
+        tflite_beam_flatbuffer_model:build_from_file(
+          tflite_beam_test_models:path("multi_add.bin")),
+    {ok, Builder} = tflite_beam_interpreter_builder:new(Model, Resolver),
+
+    Refused = fun(Answer) ->
+        ?assertMatch({error, _}, Answer),
+        {error, Reason} = Answer,
+        ?assertNotEqual(nomatch, binary:match(Reason, <<"another process">>))
+    end,
+    Refused(tflite_beam_interpreter_builder:build(Builder, Interpreter)),
+    Refused(tflite_beam_nif:tflite_print_interpreter_state(Interpreter)),
+    Refused(tflite_beam_coral:dequantize_tensor(Interpreter, 0)),
+
+    %% and the owner is untouched by all three
+    ?assertEqual([?FILLED(6.0), ?FILLED(9.0)],
+                 tflite_beam_interpreter_server:predict(Server, ?INPUTS)),
+    ok = tflite_beam_interpreter_server:stop(Server).
+
+%% Every other accessor takes the in-use lock; this one walked the signature
+%% vectors without it, so a rebuild in another process could replace what it was
+%% reading. With the lock some of a concurrent burst is refused, which is the
+%% collision being reported rather than run into.
+signature_defs_takes_the_interpreter_while_it_reads(_Config) ->
+    {ok, Interpreter} = tflite_beam_interpreter:new(tflite_beam_test_models:path("add.bin")),
+    ok = tflite_beam_interpreter:allocate_tensors(Interpreter),
+    ?assertMatch({ok, _}, tflite_beam_interpreter:get_signature_defs(Interpreter)),
+
+    %% Held at the gate and let go together, so the calls really do overlap.
+    %% Without the lock every one of them walks the signature vectors at once and
+    %% none is refused, which is what this counts.
+    Parent = self(),
+    Readers = [spawn(fun() ->
+                    receive go -> ok end,
+                    Parent ! {self(), tflite_beam_interpreter:get_signature_defs(Interpreter)}
+                end) || _ <- lists:seq(1, 256)],
+    [Pid ! go || Pid <- Readers],
+    Answers = [receive {Pid, A} -> A after 30000 -> timeout end || Pid <- Readers],
+
+    ?assertEqual([], [A || A <- Answers, A =:= timeout]),
+    Refused = [R || {error, R} <- Answers, binary:match(R, <<"already in use">>) =/= nomatch],
+    ?assertNotEqual([], Refused),
+    ?assertMatch({ok, _}, tflite_beam_interpreter:get_signature_defs(Interpreter)).

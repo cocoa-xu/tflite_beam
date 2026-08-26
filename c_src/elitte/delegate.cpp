@@ -194,6 +194,10 @@ ERL_NIF_TERM delegate_external_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM 
     auto destroy = reinterpret_cast<decltype(&tflite_plugin_destroy_delegate)>(
         tflite::SharedLibrary::GetLibrarySymbol(handle, "tflite_plugin_destroy_delegate"));
     if (create == nullptr || destroy == nullptr) {
+        // Keeping the handle is deliberate once a delegate exists, for the reason
+        // above. Here none does and none can, so the loader reference is only a
+        // reference to a library nothing will ever call: close it.
+        tflite::SharedLibrary::UnLoadLibrary(handle);
         return erlang::nif::error(env, "library is not a TfLite delegate plugin: it exports no tflite_plugin_create_delegate/tflite_plugin_destroy_delegate");
     }
 
@@ -215,6 +219,8 @@ ERL_NIF_TERM delegate_external_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM 
         if (!external_delegate_error.empty()) {
             reason += ": " + external_delegate_error;
         }
+        // same as above: the plugin refused, so nothing from it is in use
+        tflite::SharedLibrary::UnLoadLibrary(handle);
         return erlang::nif::error(env, reason.c_str());
     }
 
@@ -222,6 +228,7 @@ ERL_NIF_TERM delegate_external_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM 
     ERL_NIF_TERM ret;
     if (!(res = NifResDelegate::allocate_resource(env, ret))) {
         destroy(delegate);
+        tflite::SharedLibrary::UnLoadLibrary(handle);
         return ret;
     }
     ResourceRef<NifResDelegate> hold(res);

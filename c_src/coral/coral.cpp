@@ -87,6 +87,58 @@ ERL_NIF_TERM coral_edgetpu_devices(ErlNifEnv *env, int argc, const ERL_NIF_TERM 
     return devices;
 }
 
+
+// The Erlang side hands these over as a map, and edgetpu wants an
+// unordered_map<string, string>. Both halves of every pair have to be a string:
+// anything else is a request this cannot carry, and carrying it silently is what
+// this function exists to stop.
+static bool read_device_options(ErlNifEnv *env, ERL_NIF_TERM term,
+                                edgetpu::EdgeTpuManager::DeviceOptions &options) {
+    if (!enif_is_map(env, term)) return false;
+
+    ErlNifMapIterator iter;
+    if (!enif_map_iterator_create(env, term, &iter, ERL_NIF_MAP_ITERATOR_FIRST)) return false;
+
+    bool ok = true;
+    ERL_NIF_TERM key, value;
+    while (ok && enif_map_iterator_get_pair(env, &iter, &key, &value)) {
+        std::string k, v;
+        if (!erlang::nif::get(env, key, k) || !erlang::nif::get(env, value, v)) {
+            ok = false;
+            break;
+        }
+        options[k] = v;
+        enif_map_iterator_next(env, &iter);
+    }
+
+    enif_map_iterator_destroy(env, &iter);
+    return ok;
+}
+
+// Reading back what the device was actually asked for. Without this the options
+// argument can be dropped on the floor and nothing on the BEAM side can tell,
+// which is how it came to be dropped for as long as it was.
+ERL_NIF_TERM coral_get_edgetpu_context_options(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+
+    NifResEdgeTpuContext * context_res;
+    if (!enif_get_resource(env, argv[0], NifResEdgeTpuContext::type, (void **)&context_res) ||
+        context_res->val == nullptr) {
+        return erlang::nif::error(env, "cannot access NifResEdgeTpuContext resource");
+    }
+
+    auto options = context_res->val->GetDeviceOptions();
+    ERL_NIF_TERM map = enif_make_new_map(env);
+    for (const auto &pair : options) {
+        ERL_NIF_TERM key = erlang::nif::make_binary(env, pair.first.c_str());
+        ERL_NIF_TERM value = erlang::nif::make_binary(env, pair.second.c_str());
+        if (!enif_make_map_put(env, map, key, value, &map)) {
+            return erlang::nif::error(env, "cannot build the device options map");
+        }
+    }
+    return erlang::nif::ok(env, map);
+}
+
 ERL_NIF_TERM coral_get_edgetpu_context(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 2) return enif_make_badarg(env);
 
@@ -95,10 +147,19 @@ ERL_NIF_TERM coral_get_edgetpu_context(ErlNifEnv *env, int argc, const ERL_NIF_T
         return erlang::nif::error(env, "invalid device name");
     }
 
+    // argv[1] was accepted and never read, so every option the Erlang side
+    // documents, and passes, was dropped here while the caller was handed a
+    // context and an ok. Performance, DFU and queue length all took their
+    // defaults no matter what was asked for.
+    edgetpu::EdgeTpuManager::DeviceOptions options;
+    if (!read_device_options(env, argv[1], options)) {
+        return erlang::nif::error(env, "expecting options to be a map of string keys to string values");
+    }
+
     NifResEdgeTpuContext * res = nullptr;
     ERL_NIF_TERM ret;
 
-    auto c = coral::GetEdgeTpuContext(device);
+    auto c = coral::GetEdgeTpuContext(device, options);
     if (c.get() == nullptr) {
         return erlang::nif::error(env, "cannot find any available TPU");
     }
@@ -176,8 +237,11 @@ ERL_NIF_TERM coral_dequantize_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TER
 
     NifResInterpreter * interpreter_res;
 
-    if (!enif_get_resource(env, interpreter_term, NifResInterpreter::type, (void **)&interpreter_res) || interpreter_res->val == nullptr) {
-        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    {
+        ERL_NIF_TERM owner_error;
+        if (!(interpreter_res = NifResInterpreter::get_resource(env, interpreter_term, owner_error))) {
+            return owner_error;
+        }
     }
 
     // reads a tensor out of the interpreter and copies from it, so a rebuild

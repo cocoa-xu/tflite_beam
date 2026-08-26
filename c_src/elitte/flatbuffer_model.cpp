@@ -127,7 +127,13 @@ ERL_NIF_TERM flatbuffer_model_verify_and_build_from_buffer(ErlNifEnv *env, int a
         return ret;
     }
 
+    // enif_alloc reports failure by answering null, which the C++ exception guard
+    // around this function cannot see. Copying into it took the emulator down for
+    // any model big enough to be worth refusing.
     char * copied_buffer = (char *)enif_alloc(sizeof(char) * data.size);
+    if (copied_buffer == nullptr) {
+        return erlang::nif::error(env, "cannot allocate enough memory for the model buffer");
+    }
     memcpy((void *)copied_buffer, data.data, data.size);
 
     auto m = tflite::FlatBufferModel::VerifyAndBuildFromBuffer(copied_buffer, data.size, verifier, error_reporter);
@@ -161,7 +167,13 @@ ERL_NIF_TERM flatbuffer_model_build_from_buffer(ErlNifEnv *env, int argc, const 
         return ret;
     }
 
+    // enif_alloc reports failure by answering null, which the C++ exception guard
+    // around this function cannot see. Copying into it took the emulator down for
+    // any model big enough to be worth refusing.
     char * copied_buffer = (char *)enif_alloc(sizeof(char) * data.size);
+    if (copied_buffer == nullptr) {
+        return erlang::nif::error(env, "cannot allocate enough memory for the model buffer");
+    }
     memcpy((void *)copied_buffer, data.data, data.size);
 
     // As above: the unverified constructor walks straight off the end of a
