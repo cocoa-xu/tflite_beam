@@ -32,7 +32,10 @@ tokenize(BinaryText, VocabularyID) ->
     SplittedByWhitespace = tflite_beam_basic_tokenizer:split_by_whitespace(BinaryText),
     tokenize_impl(SplittedByWhitespace, VocabularyID, []).
 
-tokenize_impl([], _VocabularyID, OutputTokens) -> lists:flatten(OutputTokens);
+%% Built back to front. Appending each word's pieces to the end of the
+%% accumulator copied everything gathered so far, once per word, which is
+%% quadratic in the word count: 16k words took 332ms against 4.7ms for 2k.
+tokenize_impl([], _VocabularyID, OutputTokens) -> lists:flatten(lists:reverse(OutputTokens));
 tokenize_impl([Token | Rest], VocabularyID, OutputTokens) ->
     TokenLength = byte_size(Token),
     %% The limit counts characters, and this measured bytes, so a word in any
@@ -43,10 +46,10 @@ tokenize_impl([Token | Rest], VocabularyID, OutputTokens) ->
     CharacterCount = length(unicode_characters(Token)),
     if
         CharacterCount > ?MAX_INPUT_CHARS_PER_WORD ->
-            tokenize_impl(Rest, VocabularyID, OutputTokens ++ [[<<"[UNK]">>]]);
+            tokenize_impl(Rest, VocabularyID, [[<<"[UNK]">>] | OutputTokens]);
         true ->
             Subwords = find_subwords(0, 0, TokenLength, Token, VocabularyID, []),
-            tokenize_impl(Rest, VocabularyID, OutputTokens ++ [Subwords])
+            tokenize_impl(Rest, VocabularyID, [Subwords | OutputTokens])
     end.
 
 unicode_characters(Token) ->

@@ -17,6 +17,10 @@
     a_download_cannot_be_aimed_outside_the_cache/1,
     a_digit_is_part_of_the_word_it_sits_in/1,
     an_overlong_word_becomes_unknown_rather_than_nothing/1,
+    word_pieces_come_back_in_the_order_they_were_read/1,
+    punctuation_membership_matches_the_table_it_came_from/1,
+    releasing_the_unicode_table_lets_it_be_rebuilt/1,
+    a_wrong_unicode_table_is_reported_not_matched_against/1,
     associated_files_by_string_and_by_list/1,
     predict_reports_a_bad_input_instead_of_crashing/1,
     predict_does_not_answer_from_a_failed_invoke/1,
@@ -56,6 +60,10 @@ all() ->
         a_download_cannot_be_aimed_outside_the_cache,
         a_digit_is_part_of_the_word_it_sits_in,
         an_overlong_word_becomes_unknown_rather_than_nothing,
+        word_pieces_come_back_in_the_order_they_were_read,
+        punctuation_membership_matches_the_table_it_came_from,
+        releasing_the_unicode_table_lets_it_be_rebuilt,
+        a_wrong_unicode_table_is_reported_not_matched_against,
         associated_files_by_string_and_by_list,
         predict_reports_a_bad_input_instead_of_crashing,
         predict_does_not_answer_from_a_failed_invoke,
@@ -756,3 +764,83 @@ the_two_eight_bit_floats_are_told_apart(_Config) ->
 
     %% a float whose width does say which it is still reads as it always did
     ?assertEqual({f, 32}, Type(2)).
+
+%% The accumulator was turned back to front to stop it being quadratic in the
+%% word count, so the thing worth pinning is that the pieces still come out in
+%% reading order, across the word, the subword and the unknown paths at once.
+word_pieces_come_back_in_the_order_they_were_read(_Config) ->
+    Vocabulary = #{
+        <<"una">> => 1, <<"##ffa">> => 2, <<"##ble">> => 3,
+        <<"the">> => 4, <<"dog">> => 5, <<"[UNK]">> => 6
+    },
+    ?assertEqual(
+        [<<"the">>, <<"una">>, <<"##ffa">>, <<"##ble">>, <<"[UNK]">>, <<"dog">>],
+        tflite_beam_wordpiece_tokenizer:tokenize(<<"the unaffable unaffableX dog">>, Vocabulary)
+    ),
+    Words = lists:duplicate(50, <<"the">>),
+    ?assertEqual(
+        Words,
+        tflite_beam_wordpiece_tokenizer:tokenize(
+            iolist_to_binary(lists:join(<<" ">>, Words)), Vocabulary)
+    ).
+
+%% is_punctuation/1 reads a set now rather than calling into the table's process
+%% once per code point. The set has to answer exactly what the list answered.
+punctuation_membership_matches_the_table_it_came_from(_Config) ->
+    File = filename:join(code:priv_dir(tflite_beam), "unicode_data.txt"),
+    List = tflite_beam_private_utils_unicode_data:get_puncuation_list_from_unicode_data(File),
+    Set = tflite_beam_private_utils_unicode_data:punctuation_set(fun() -> File end),
+    ?assertEqual(length(List), maps:size(Set)),
+    Disagreements =
+        [CodePoint || CodePoint <- lists:seq(0, 16#3000),
+                      lists:member(CodePoint, List) =/= maps:is_key(CodePoint, Set)],
+    ?assertEqual([], Disagreements).
+
+releasing_the_unicode_table_lets_it_be_rebuilt(_Config) ->
+    Key = {tflite_beam_private_utils_unicode_data, punctuation_set},
+    ?assertEqual([<<"before">>, <<".">>], tflite_beam_basic_tokenizer:tokenize(<<"before.">>, true)),
+    ?assertNotEqual(absent, persistent_term:get(Key, absent)),
+
+    ok = tflite_beam_private_utils_unicode_data:release_memory(),
+    %% both halves have to go: the process holding the parse, and the set that
+    %% was lifted out of it. Leaving the set behind is memory that release_memory
+    %% was asked for and did not give back.
+    ?assertEqual(undefined, erlang:whereis(tflite_beam_private_utils_unicode_data)),
+    ?assertEqual(absent, persistent_term:get(Key, absent)),
+
+    ?assertEqual([<<"after">>, <<".">>], tflite_beam_basic_tokenizer:tokenize(<<"after.">>, true)),
+    ?assertNotEqual(absent, persistent_term:get(Key, absent)),
+    ok = tflite_beam_private_utils_unicode_data:release_memory(),
+    ok = tflite_beam_private_utils_unicode_data:release_memory().
+
+%% Each of these used to destructure a line that had no fields to give and take
+%% the table's process down, so the caller saw an exit from a process it never
+%% started rather than a reason.
+a_wrong_unicode_table_is_reported_not_matched_against(Config) ->
+    Dir = proplists:get_value(priv_dir, Config),
+    Row = <<"0021;EXCLAMATION MARK;Po;0;ON;;;;;N;;;;;\n">>,
+    Check =
+        fun(Name, Content, Expected) ->
+            File = filename:join(Dir, Name),
+            ok = file:write_file(File, Content),
+            ok = tflite_beam_private_utils_unicode_data:release_memory(),
+            Answer = tflite_beam_private_utils_unicode_data:
+                         get_puncuation_list_from_unicode_data(File),
+            case Expected of
+                {ok, Count} -> ?assertEqual(Count, length(Answer));
+                error -> ?assertMatch({error, _}, Answer)
+            end,
+            ?assertNotEqual(undefined, whereis(tflite_beam_private_utils_unicode_data))
+        end,
+    %% a blank line is nothing to report, including the one every file ends with
+    Check("blank_line.txt", <<Row/binary, "\n", Row/binary>>, {ok, 2}),
+    Check("empty.txt", <<>>, {ok, 0}),
+    %% content without the fields a row is made of means the table is not the table
+    Check("no_semicolons.txt", <<Row/binary, "garbage line here\n">>, error),
+    Check("too_few_fields.txt", <<"0021;EXCLAMATION MARK\n">>, error),
+    Check("binary_junk.txt", <<0, 1, 2, 3, 255, 254>>, error),
+    ok = tflite_beam_private_utils_unicode_data:release_memory(),
+    %% and the table that ships still reads
+    Shipped = filename:join(code:priv_dir(tflite_beam), "unicode_data.txt"),
+    ?assertEqual(842, length(
+        tflite_beam_private_utils_unicode_data:get_puncuation_list_from_unicode_data(Shipped))).

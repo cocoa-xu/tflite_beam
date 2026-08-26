@@ -127,7 +127,7 @@ is_punctuation(CodePoint) ->
         NonAlphaNumericASCII ->
             true;
         true ->
-            lists:member(CodePoint, punctuation_list())
+            maps:is_key(CodePoint, punctuation_set())
     end.
 
 is_whilespace(CodePoint) ->
@@ -155,8 +155,8 @@ is_format(CodePoint) ->
 should_be_removed_for_bert(CodePoint) ->
     ((CodePoint == 0) or (CodePoint == 16#FFFD)).
 
-punctuation_list() ->
-    tflite_beam_private_utils_unicode_data:get_puncuation_list_from_unicode_data(unicode_data_file()).
+punctuation_set() ->
+    tflite_beam_private_utils_unicode_data:punctuation_set(fun unicode_data_file/0).
 
 unicode_data_file() ->
     case code:priv_dir(?APPNAME) of
