@@ -69,7 +69,7 @@ build_from_file(Filename, Opts) when is_binary(Filename), is_list(Opts) ->
 %% @param Filename Path to the .tflite file.
 %%
 %% @return `invalid' in case of failure.
--spec verify_and_build_from_file(list() | binary()) -> #tflite_beam_flatbuffer_model{} | {error, binary()}.
+-spec verify_and_build_from_file(list() | binary()) -> #tflite_beam_flatbuffer_model{} | invalid | {error, binary()}.
 verify_and_build_from_file(Filename) when is_list(Filename) ->
     verify_and_build_from_file(unicode:characters_to_binary(Filename), []);
 verify_and_build_from_file(Filename) when is_binary(Filename) ->

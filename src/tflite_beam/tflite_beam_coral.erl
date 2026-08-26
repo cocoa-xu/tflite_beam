@@ -202,7 +202,7 @@ make_edge_tpu_interpreter(Model, EdgeTPUContext) when is_reference(Model) and is
 
 %% @doc
 %% Returns a dequantized version of the given tensor.
--spec dequantize_tensor(reference(), non_neg_integer()) -> list(number()) | {error, binary()}.
+-spec dequantize_tensor(reference(), non_neg_integer()) -> {ok, list(number())} | {error, binary()}.
 dequantize_tensor(Interpreter, TensorIndex) when is_reference(Interpreter) and is_integer(TensorIndex) ->
     dequantize_tensor(Interpreter, TensorIndex, nil).
 
