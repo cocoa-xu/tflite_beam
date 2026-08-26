@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <cerrno>
 #include "../nif_utils.hpp"
+#include "../fault_inject.hpp"
 #include "../erlang_nif_resource.h"
 #include "../helper.h"
 
@@ -130,7 +131,10 @@ ERL_NIF_TERM flatbuffer_model_verify_and_build_from_buffer(ErlNifEnv *env, int a
     // enif_alloc reports failure by answering null, which the C++ exception guard
     // around this function cannot see. Copying into it took the emulator down for
     // any model big enough to be worth refusing.
-    char * copied_buffer = (char *)enif_alloc(sizeof(char) * data.size);
+    char * copied_buffer =
+        erlang::nif::fault_armed(erlang::nif::kFaultModelBufferCopy)
+            ? nullptr
+            : (char *)enif_alloc(sizeof(char) * data.size);
     if (copied_buffer == nullptr) {
         return erlang::nif::error(env, "cannot allocate enough memory for the model buffer");
     }
@@ -170,7 +174,10 @@ ERL_NIF_TERM flatbuffer_model_build_from_buffer(ErlNifEnv *env, int argc, const 
     // enif_alloc reports failure by answering null, which the C++ exception guard
     // around this function cannot see. Copying into it took the emulator down for
     // any model big enough to be worth refusing.
-    char * copied_buffer = (char *)enif_alloc(sizeof(char) * data.size);
+    char * copied_buffer =
+        erlang::nif::fault_armed(erlang::nif::kFaultModelBufferCopy)
+            ? nullptr
+            : (char *)enif_alloc(sizeof(char) * data.size);
     if (copied_buffer == nullptr) {
         return erlang::nif::error(env, "cannot allocate enough memory for the model buffer");
     }

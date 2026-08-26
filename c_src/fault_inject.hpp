@@ -26,6 +26,7 @@ enum FaultPoint {
     kFaultDelegateTransfer,
     kFaultInterpreterContainers,
     kFaultBuilderContainers,
+    kFaultModelBufferCopy,
 };
 
 extern std::atomic<int> armed_fault_point;
@@ -39,13 +40,14 @@ inline const char * const * fault_point_names() {
         "delegate_transfer",
         "interpreter_containers",
         "builder_containers",
+        "model_buffer_copy",
     };
     return names;
 }
 
 inline int fault_point_from_name(const char * name) {
     const char * const * names = fault_point_names();
-    for (int i = kFaultNone; i <= kFaultBuilderContainers; i++) {
+    for (int i = kFaultNone; i <= kFaultModelBufferCopy; i++) {
         if (std::strcmp(names[i], name) == 0) return i;
     }
     return -1;
@@ -59,6 +61,15 @@ inline void fault_point(FaultPoint point) {
     if (armed_fault_point.compare_exchange_strong(expected, kFaultNone, std::memory_order_relaxed)) {
         throw std::bad_alloc();
     }
+}
+
+// enif_alloc reports failure by answering null rather than by throwing, so a
+// point standing in for it has to be asked rather than to interrupt. One shot,
+// like the throwing one.
+inline bool fault_armed(FaultPoint point) {
+    if (armed_fault_point.load(std::memory_order_relaxed) != point) return false;
+    int expected = point;
+    return armed_fault_point.compare_exchange_strong(expected, kFaultNone, std::memory_order_relaxed);
 }
 
 }  // namespace nif

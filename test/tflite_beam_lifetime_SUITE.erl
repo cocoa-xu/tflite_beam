@@ -30,7 +30,8 @@
     builder_allocation_failure_is_reported_not_leaked/1,
     add_delegate_failure_strands_no_delegate/1,
     delegate_transfer_failure_leaves_the_interpreter_untouched/1,
-    a_server_that_cannot_allocate_says_why/1
+    a_server_that_cannot_allocate_says_why/1,
+    a_model_buffer_that_cannot_be_copied_is_reported/1
 ]).
 
 all() ->
@@ -52,7 +53,8 @@ all() ->
         builder_allocation_failure_is_reported_not_leaked,
         add_delegate_failure_strands_no_delegate,
         delegate_transfer_failure_leaves_the_interpreter_untouched,
-        a_server_that_cannot_allocate_says_why
+        a_server_that_cannot_allocate_says_why,
+        a_model_buffer_that_cannot_be_copied_is_reported
     ].
 
 %% Arming a fault point is a global switch that crosses processes, so the NIF
@@ -67,7 +69,8 @@ init_per_testcase(Case, Config) when
         Case =:= builder_allocation_failure_is_reported_not_leaked;
         Case =:= add_delegate_failure_strands_no_delegate;
         Case =:= delegate_transfer_failure_leaves_the_interpreter_untouched;
-        Case =:= a_server_that_cannot_allocate_says_why ->
+        Case =:= a_server_that_cannot_allocate_says_why;
+        Case =:= a_model_buffer_that_cannot_be_copied_is_reported ->
     case tflite_beam_nif:nif_arm_fault(none) of
         ok -> Config;
         {error, _} ->
@@ -463,3 +466,32 @@ a_server_that_cannot_allocate_says_why(_Config) ->
     end),
     {ok, Server} = tflite_beam_interpreter_server:start(Model, [{num_threads, 2}]),
     ok = tflite_beam_interpreter_server:stop(Server).
+
+%% Both buffer constructors copied into whatever enif_alloc answered without
+%% looking at it. enif_alloc reports failure by answering null, which the C++
+%% exception guard around these functions cannot see, so the memcpy that followed
+%% went through a null pointer and took the emulator with it for any model large
+%% enough to be worth refusing.
+a_model_buffer_that_cannot_be_copied_is_reported(_Config) ->
+    {ok, Buffer} = file:read_file(tflite_beam_test_models:path("add.bin")),
+
+    arm(model_buffer_copy),
+    ?assertMatch({error, _}, tflite_beam_flatbuffer_model:verify_and_build_from_buffer(Buffer)),
+
+    arm(model_buffer_copy),
+    ?assertMatch({error, _}, tflite_beam_flatbuffer_model:build_from_buffer(Buffer)),
+
+    disarm(),
+    ?assertMatch(#tflite_beam_flatbuffer_model{initialized = true},
+                 tflite_beam_flatbuffer_model:build_from_buffer(Buffer)),
+
+    %% and nothing is left behind by a run of them
+    Fail = fun() ->
+        [begin arm(model_buffer_copy),
+               catch tflite_beam_flatbuffer_model:build_from_buffer(Buffer)
+         end || _ <- lists:seq(1, 20000)]
+    end,
+    Growth = grew_by(Fail),
+    disarm(),
+    ?assert(Growth < 1024 * 1024,
+            lists:flatten(io_lib:format("~p bytes left behind by 20000 failures", [Growth]))).
