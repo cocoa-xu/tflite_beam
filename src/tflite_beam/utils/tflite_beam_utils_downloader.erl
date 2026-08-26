@@ -65,18 +65,25 @@ inside_cache(Component) ->
     %% comparing against the string ".." found nothing in it. Every component
     %% arriving from Elixir is a binary, which is to say the check only ever ran
     %% for callers writing Erlang string literals. Flatten first, then compare.
-    case unicode:characters_to_list(Component) of
-        Flat when is_list(Flat) ->
-            case filename:pathtype(Flat) =:= relative andalso
-                 not lists:member("..", filename:split(Flat)) of
-                true -> ok;
-                false -> {error, lists:flatten(io_lib:fwrite(
-                             "~ts would write outside the cache directory", [Flat]))}
-            end;
-        _ ->
-            {error, lists:flatten(io_lib:fwrite(
-                        "~p is not a usable path component", [Component]))}
+    Flat = flatten_component(Component),
+    case filename:pathtype(Flat) =:= relative andalso
+         not lists:member("..", filename:split(Flat)) of
+        true -> ok;
+        false -> {error, lists:flatten(io_lib:fwrite(
+                     "~ts would write outside the cache directory", [Flat]))}
     end.
+
+%% A binary that is not UTF-8 is still a filename. Erlang uses raw binaries for
+%% exactly that where the filesystem promises no encoding, so refusing them would
+%% have turned a check about where a name points into a rule about how it is
+%% spelled.
+flatten_component(Component) when is_binary(Component) ->
+    case unicode:characters_to_list(Component) of
+        Flat when is_list(Flat) -> Flat;
+        _NotUnicode -> binary_to_list(Component)
+    end;
+flatten_component(Component) ->
+    Component.
 
 cache_path(CacheSubdir, CacheFilename, ForceDownload) ->
     case [E || C <- [CacheSubdir, CacheFilename], {error, E} <- [inside_cache(C)]] of
@@ -89,6 +96,29 @@ cache_path(CacheSubdir, CacheFilename, ForceDownload) ->
 cache_path_checked(CacheSubdir, CacheFilename, ForceDownload) ->
     case cache_basepath() of
         {ok, BaseDir} ->
+            case leads_outside(BaseDir, CacheSubdir, CacheFilename) of
+                {error, Escape} -> {error, Escape};
+                ok -> cache_path_under(BaseDir, CacheSubdir, CacheFilename, ForceDownload)
+            end;
+        {error, Err} ->
+            {error, Err}
+    end.
+
+%% inside_cache/1 reads the name; this reads where the name lands. A component
+%% with no ".." in it still reaches outside when something along the way is a
+%% symlink pointing there, and only resolving against the cache root shows that.
+leads_outside(BaseDir, CacheSubdir, CacheFilename) ->
+    Relative = filename:join(flatten_component(CacheSubdir),
+                             flatten_component(CacheFilename)),
+    case filelib:safe_relative_path(Relative, BaseDir) of
+        unsafe ->
+            {error, lists:flatten(io_lib:fwrite(
+                        "~ts would write outside the cache directory", [Relative]))};
+        _Safe ->
+            ok
+    end.
+
+cache_path_under(BaseDir, CacheSubdir, CacheFilename, ForceDownload) ->
             CacheDir = filename:join(BaseDir, CacheSubdir),
             case mkdir_dir_p(CacheDir) of
                 ok ->
@@ -100,10 +130,7 @@ cache_path_checked(CacheSubdir, CacheFilename, ForceDownload) ->
                     {ok, FileExists,CacheDir,CacheFile};
                 _ ->
                     {error, lists:flatten(io_lib:fwrite("Cannot create cache directory ~s", [CacheDir]))}
-            end;
-        {error, Err} ->
-            {error, Err}
-    end.
+            end.
 
 certificate_store() ->
     PossibleLocations = [

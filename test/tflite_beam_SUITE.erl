@@ -25,6 +25,7 @@
     ideographs_are_split_the_way_bert_splits_them/1,
     an_unreadable_unicode_table_names_itself/1,
     releasing_the_table_beats_a_populate_already_running/1,
+    a_symlink_out_of_the_cache_is_refused_and_a_raw_name_is_not/1,
     associated_files_by_string_and_by_list/1,
     predict_reports_a_bad_input_instead_of_crashing/1,
     predict_does_not_answer_from_a_failed_invoke/1,
@@ -72,6 +73,7 @@ all() ->
         ideographs_are_split_the_way_bert_splits_them,
         an_unreadable_unicode_table_names_itself,
         releasing_the_table_beats_a_populate_already_running,
+        a_symlink_out_of_the_cache_is_refused_and_a_raw_name_is_not,
         associated_files_by_string_and_by_list,
         predict_reports_a_bad_input_instead_of_crashing,
         predict_does_not_answer_from_a_failed_invoke,
@@ -996,3 +998,39 @@ releasing_the_table_beats_a_populate_already_running(_Config) ->
     ?assertEqual([], [P || P <- Alive, P]),
     ok = tflite_beam_private_utils_unicode_data:release_memory(),
     ?assertEqual([<<"ok">>, <<".">>], tflite_beam_basic_tokenizer:tokenize(<<"ok.">>, true)).
+
+%% Two halves of the same check. inside_cache/1 reads the name and cannot see a
+%% symlink; a component with no ".." in it still lands outside when something on
+%% the way points there. And the flattening that made the name check work for
+%% binaries must not turn into a rule that a filename has to be UTF-8, because
+%% on a filesystem that promises no encoding a raw binary is how Erlang spells
+%% a perfectly ordinary name.
+a_symlink_out_of_the_cache_is_refused_and_a_raw_name_is_not(Config) ->
+    Cache = filename:join(proplists:get_value(priv_dir, Config), "cache"),
+    ok = filelib:ensure_dir(filename:join(Cache, "keep")),
+    Previous = os:getenv("TFLITE_BEAM_CACHE_DIR"),
+    true = os:putenv("TFLITE_BEAM_CACHE_DIR", Cache),
+    try
+        Escape = filename:join(Cache, "escapehatch"),
+        _ = file:delete(Escape),
+        ok = file:make_symlink("/etc", Escape),
+        ?assertMatch({error, _},
+                     tflite_beam_utils_downloader:download(
+                       "ftp://example.invalid/x", <<"escapehatch">>, <<"passwd">>, false)),
+        {error, Reason} = tflite_beam_utils_downloader:download(
+                            "ftp://example.invalid/x", <<"escapehatch">>, <<"passwd">>, false),
+        ?assertNotEqual(nomatch,
+                        binary:match(iolist_to_binary(Reason), <<"outside the cache">>)),
+
+        %% a name that is not UTF-8 is a name, not an escape: it must get past the
+        %% check and fail later on the invalid URL like any other ordinary name
+        {error, RawReason} = tflite_beam_utils_downloader:download(
+                               "ftp://example.invalid/x", <<"models">>, <<"mo", 16#FF, "del">>, false),
+        ?assertEqual(nomatch,
+                     binary:match(iolist_to_binary(RawReason), <<"outside the cache">>))
+    after
+        case Previous of
+            false -> os:unsetenv("TFLITE_BEAM_CACHE_DIR");
+            _ -> os:putenv("TFLITE_BEAM_CACHE_DIR", Previous)
+        end
+    end.
