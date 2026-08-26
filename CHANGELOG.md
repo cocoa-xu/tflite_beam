@@ -1,5 +1,70 @@
 # Changelog
 
+## v1.0.0-rc2 (2026-08-26)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v1.0.0-rc2) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v1.0.0-rc2)
+
+Everything here came out of going back over rc1 looking for defects rather than
+waiting for them to arrive. Nothing in it changes what the runtime computes.
+
+**One answer changed shape.** `get_signature_defs/1` returned the names it read
+out of the model as atoms. Atoms are never reclaimed, so a node that kept loading
+models with names of their own grew the atom table until it came down. They are
+binaries now, which is what `signature_keys/1`, `signature_inputs/2` and
+`signature_outputs/2` next door have always answered. Code that matched
+`#{serving_default := _}` wants `#{<<"serving_default">> := _}`.
+
+**Chinese was being thrown away.** BERT spaces out CJK ideographs before
+splitting on whitespace. The Swift file this tokenizer was ported from skips
+that step, which it can afford to because it serves one English model. Here a
+whole sentence arrived as a single word, ran past wordpiece's two hundred
+character limit and came back as `[UNK]`: a sentence whose every character was in
+the vocabulary was answered as nothing at all. `tflite_beam_basic_tokenizer` now
+does what BERT does, kana and hangul left alone for BERT's stated reason.
+
+**Tokenizing was paying for a process round trip per character.** `is_punctuation/1`
+called into the table's process for every code point, and that call plus the path
+lookup feeding it was 5.6us of the 5.6us a character cost: the tokenizing itself
+did not register. The table is read once per call now, from a `persistent_term`.
+Ordinary text went from 5.56us to 0.21us a character; the wordpiece accumulator
+and the two in the basic tokenizer were quadratic in their input and are not.
+24,000 characters of Chinese went from 923ms and one wrong token to 13ms and
+24,000 right ones.
+
+**Five ways to end a process that should have been answers.** A malformed unicode
+table, a `predict/2` input that was not binary data, an input element inside a
+list or map that was not, a table the punctuation set could not read, and an
+interpreter server that could not allocate: each of these matched against data it
+had not checked and took the caller, or the server, with it.
+
+**Four native guards that were being skipped.** `get_signature_defs/1` read the
+signature vectors without the in-use lock every other accessor takes. Three call
+sites reached past `get_resource` to `enif_get_resource` and so skipped the
+ownership check with it, one of them the rebuild that deletes and replaces the
+whole interpreter. Both buffer model constructors copied into whatever
+`enif_alloc` answered without looking at it, and it answers null. A rebuild that
+threw partway left the resource holding an interpreter LiteRT had already
+destroyed.
+
+**Downloads.** A path component that arrived as a binary, which is every
+component arriving from Elixir, was not checked for `..` at all: the comparison
+was against a string and `filename:split/1` keeps the representation it is given.
+A component that lands outside the cache through a symlink is refused too, and a
+name that is not UTF-8 is accepted, because on a filesystem that promises no
+encoding that is a name and not an escape. An https download that cannot be
+verified is now refused rather than made without verifying: `TFLITE_BEAM_CACERT`
+names a store and is honoured or reported, and `TFLITE_BEAM_UNSAFE_HTTPS` is how
+someone asks for the old behaviour.
+
+**Edge TPU options were read and discarded.** `get_edge_tpu_context/1` accepted
+the options map and never looked at it, so performance, DFU and queue length all
+took their defaults while the caller was handed a context and an `ok`. They are
+read and checked now, and `coral_get_edgetpu_context_options/1` reads back what
+the device was actually asked for. libcoral only forwards them for a device named
+with an index, so `"usb:0"` carries options where `""` does not.
+
+The suite went from 113 cases to 131. Every fix here has one, and every one of
+them was checked by putting the defect back.
+
 ## v1.0.0-rc1 (2026-08-26)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v1.0.0-rc1) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v1.0.0-rc1)
 
