@@ -29,7 +29,8 @@
     interpreter_allocation_failure_is_reported_not_leaked/1,
     builder_allocation_failure_is_reported_not_leaked/1,
     add_delegate_failure_strands_no_delegate/1,
-    delegate_transfer_failure_leaves_the_interpreter_untouched/1
+    delegate_transfer_failure_leaves_the_interpreter_untouched/1,
+    a_server_that_cannot_allocate_says_why/1
 ]).
 
 all() ->
@@ -50,7 +51,8 @@ all() ->
         interpreter_allocation_failure_is_reported_not_leaked,
         builder_allocation_failure_is_reported_not_leaked,
         add_delegate_failure_strands_no_delegate,
-        delegate_transfer_failure_leaves_the_interpreter_untouched
+        delegate_transfer_failure_leaves_the_interpreter_untouched,
+        a_server_that_cannot_allocate_says_why
     ].
 
 %% Arming a fault point is a global switch that crosses processes, so the NIF
@@ -430,3 +432,27 @@ skip_without_xnnpack(Body) ->
         true -> Body();
         false -> {skip, "XNNPACK is not compiled into this build"}
     end.
+
+%% start/2 with num_threads reads three of its steps for {error, Reason} and used
+%% to match against the other four, so the two failures that land on a matched
+%% step came back as {error, {{badmatch, {error, Reason}}, Stack}}: the reason
+%% was in there, one layer past anywhere a caller would look for it.
+a_server_that_cannot_allocate_says_why(_Config) ->
+    Model = tflite_beam_test_models:path("add.bin"),
+    Start = fun(Point) ->
+        arm(Point),
+        Answer = tflite_beam_interpreter_server:start(Model, [{num_threads, 2}]),
+        disarm(),
+        Answer
+    end,
+    lists:foreach(
+        fun(Point) ->
+            case Start(Point) of
+                {error, Reason} when is_binary(Reason) ->
+                    ok;
+                Other ->
+                    ct:fail({Point, expected_a_reason, Other})
+            end
+        end,
+        [interpreter_containers, builder_containers, add_delegate_registry, delegate_transfer]),
+    ?assertMatch({ok, _}, tflite_beam_interpreter_server:start(Model, [{num_threads, 2}])).

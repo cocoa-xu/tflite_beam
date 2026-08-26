@@ -125,10 +125,33 @@ build_with_threads(ModelPath, NumThreads) ->
         {error, Reason} ->
             {error, Reason};
         Model ->
-            {ok, Resolver} = tflite_beam_ops_builtin_builtin_resolver:new(),
-            {ok, Builder} = tflite_beam_interpreter_builder:new(element(4, Model), Resolver),
-            ok = tflite_beam_interpreter_builder:set_num_threads(Builder, NumThreads),
-            {ok, Interpreter} = tflite_beam_interpreter:new(),
+            with_resolver(Model, NumThreads)
+    end.
+
+%% Every one of these answers {error, Reason} when it cannot allocate, and three
+%% of them were read that way while four were matched against instead. Under
+%% memory pressure the caller got {error, {{badmatch, {error, Reason}}, Stack}}
+%% from a function whose whole shape says it hands back {error, Reason}.
+with_resolver(Model, NumThreads) ->
+    case tflite_beam_ops_builtin_builtin_resolver:new() of
+        {ok, Resolver} -> with_builder(Model, Resolver, NumThreads);
+        {error, Reason} -> {error, Reason}
+    end.
+
+with_builder(Model, Resolver, NumThreads) ->
+    case tflite_beam_interpreter_builder:new(element(4, Model), Resolver) of
+        {ok, Builder} ->
+            case tflite_beam_interpreter_builder:set_num_threads(Builder, NumThreads) of
+                ok -> with_interpreter(Builder);
+                {error, Reason} -> {error, Reason}
+            end;
+        {error, Reason} ->
+            {error, Reason}
+    end.
+
+with_interpreter(Builder) ->
+    case tflite_beam_interpreter:new() of
+        {ok, Interpreter} ->
             case tflite_beam_interpreter_builder:build(Builder, Interpreter) of
                 {error, Reason} ->
                     {error, Reason};
@@ -137,5 +160,7 @@ build_with_threads(ModelPath, NumThreads) ->
                         ok -> {ok, Interpreter};
                         {error, Reason} -> {error, Reason}
                     end
-            end
+            end;
+        {error, Reason} ->
+            {error, Reason}
     end.
