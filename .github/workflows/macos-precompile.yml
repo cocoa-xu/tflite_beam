@@ -81,4 +81,10 @@ jobs:
           # Without this every tag publishes as a full release and takes over
           # "Latest", so /releases/latest answered with a release candidate
           # while the README told people to install the stable one.
-          prerelease: ${{ contains(github.ref_name, '-rc') }}
+          #
+          # Testing for '-rc' was not enough: the throwaway tags this workflow is
+          # dry-run with, precompile-test and friends, carry no '-rc' either, so
+          # each one published as a full release and took "Latest" with it. One
+          # from August is still sitting there holding it. Only a bare vX.Y.Z is
+          # a release now; everything else, rc or dry run, is a pre-release.
+          prerelease: ${{ !startsWith(github.ref_name, 'v') || contains(github.ref_name, '-') }}
