@@ -84,5 +84,28 @@ to_binary_impl(Self, MaxBytes) ->
         {ok, BinaryData} ->
             BinaryData;
         {error, Reason} ->
-            {error, Reason}
+            {error, explain_empty(Self, Reason)}
     end.
+
+%% The NIF sees a null data pointer and guesses out loud that allocate_tensors
+%% was not called. That is one way to get here and it is not this one: a shape
+%% carrying a zero gets no buffer either, which is what resizing an input to
+%% something the operators after it cannot follow leaves behind. allocate_tensors
+%% answers ok, invoke answers ok, and then the read tells the caller to go and do
+%% the one thing they have already done. Only the failing read pays for this.
+explain_empty(Self, <<"tensor is not allocated yet?", _/binary>> = Reason) ->
+    case tflite_beam_nif:tflitetensor_dims(Self) of
+        {ok, Dims} when is_list(Dims) ->
+            case lists:member(0, Dims) of
+                true ->
+                    iolist_to_binary(io_lib:format(
+                        "this tensor has no data to read: its shape is ~p, which is the shape "
+                        "the graph answered rather than a missing allocate_tensors", [Dims]));
+                false ->
+                    Reason
+            end;
+        _ ->
+            Reason
+    end;
+explain_empty(_Self, Reason) ->
+    Reason.

@@ -21,6 +21,7 @@
     punctuation_membership_matches_the_table_it_came_from/1,
     releasing_the_unicode_table_lets_it_be_rebuilt/1,
     a_wrong_unicode_table_is_reported_not_matched_against/1,
+    an_empty_tensor_says_so_rather_than_blaming_allocate_tensors/1,
     associated_files_by_string_and_by_list/1,
     predict_reports_a_bad_input_instead_of_crashing/1,
     predict_does_not_answer_from_a_failed_invoke/1,
@@ -64,6 +65,7 @@ all() ->
         punctuation_membership_matches_the_table_it_came_from,
         releasing_the_unicode_table_lets_it_be_rebuilt,
         a_wrong_unicode_table_is_reported_not_matched_against,
+        an_empty_tensor_says_so_rather_than_blaming_allocate_tensors,
         associated_files_by_string_and_by_list,
         predict_reports_a_bad_input_instead_of_crashing,
         predict_does_not_answer_from_a_failed_invoke,
@@ -844,3 +846,23 @@ a_wrong_unicode_table_is_reported_not_matched_against(Config) ->
     Shipped = filename:join(code:priv_dir(tflite_beam), "unicode_data.txt"),
     ?assertEqual(842, length(
         tflite_beam_private_utils_unicode_data:get_puncuation_list_from_unicode_data(Shipped))).
+
+%% A tensor with a zero in its shape gets no buffer, and the null data pointer
+%% that leaves behind reads exactly like one from an interpreter whose tensors
+%% were never allocated. The NIF guessed the second and said so, which sent a
+%% caller who had just called allocate_tensors back to call it again.
+an_empty_tensor_says_so_rather_than_blaming_allocate_tensors(_Config) ->
+    {Builder, Interpreter} = tflite_beam_test_models:builder("add.bin"),
+    _ = tflite_beam_interpreter_builder:build(Builder, Interpreter),
+    ok = tflite_beam_interpreter:allocate_tensors(Interpreter),
+    {ok, [Input | _]} = tflite_beam_interpreter:inputs(Interpreter),
+
+    Readable = tflite_beam_interpreter:tensor(Interpreter, Input),
+    ?assert(is_binary(tflite_beam_tensor:to_binary(Readable))),
+
+    ok = tflite_beam_interpreter:resize_input_tensor(Interpreter, Input, [0, 8, 8, 3]),
+    ok = tflite_beam_interpreter:allocate_tensors(Interpreter),
+    Empty = tflite_beam_interpreter:tensor(Interpreter, Input),
+    {error, Reason} = tflite_beam_tensor:to_binary(Empty),
+    ?assertNotEqual(nomatch, binary:match(Reason, <<"[0,8,8,3]">>)),
+    ?assertEqual(nomatch, binary:match(Reason, <<"Please call">>)).
