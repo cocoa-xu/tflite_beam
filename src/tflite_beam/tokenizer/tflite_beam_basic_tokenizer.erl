@@ -25,6 +25,7 @@ tokenize(Text, IsCaseInsensitive) when is_binary(Text) and is_boolean(IsCaseInse
     end,
     ProcessedBinaryText = unicode:characters_to_binary(space_out_ideographs(ProcessedText)),
     SplittedByWhitespace = split_by_whitespace(ProcessedBinaryText),
+    PunctuationSet = punctuation_set(),
     TokenizedWithPunctuation = lists:map(
         fun(BinaryText) ->
             lists:map(
@@ -36,7 +37,7 @@ tokenize(Text, IsCaseInsensitive) when is_binary(Text) and is_boolean(IsCaseInse
                             unicode:characters_to_binary([X])
                     end
                 end,
-                tokenized_with_punctuation(BinaryText)
+                tokenized_with_punctuation(BinaryText, PunctuationSet)
             )
         end,
         SplittedByWhitespace
@@ -92,20 +93,23 @@ split_by_whitespace_impl(BinaryText, Acc) ->
             lists:reverse(UpdatedAcc)
     end.
 
-tokenized_with_punctuation(BinaryText) ->
+%% The table is fetched once for the whole call and carried down. Reaching for
+%% it per code point cost a path lookup each time even with the set cached, and
+%% that lookup was most of what tokenizing a character cost.
+tokenized_with_punctuation(BinaryText, PunctuationSet) ->
     NfcText = normalize_to_nfc(BinaryText),
     UnicodeScalars = unicode:characters_to_list(NfcText),
-    tokenized_with_punctuation_impl(UnicodeScalars, [], nil).
+    tokenized_with_punctuation_impl(UnicodeScalars, [], nil, PunctuationSet).
 
 %% Both accumulators are built back to front. Growing them at the end copied
 %% what was already there once per character, so one run of text between two
 %% spaces cost time squared in its own length: 8000 characters took 92ms against
 %% 1.3ms for 1000. Text without spaces in it is the ordinary case for CJK.
-tokenized_with_punctuation_impl([], Tokens, CurrentToken) ->
+tokenized_with_punctuation_impl([], Tokens, CurrentToken, _PunctuationSet) ->
     lists:reverse(emit(CurrentToken, Tokens));
-tokenized_with_punctuation_impl([CodePoint | RestUnicodeScalars], Tokens, CurrentToken) ->
+tokenized_with_punctuation_impl([CodePoint | RestUnicodeScalars], Tokens, CurrentToken, PunctuationSet) ->
     {UpdatedTokens, UpdatedCurrentToken} =
-        case is_punctuation(CodePoint) of
+        case is_punctuation(CodePoint, PunctuationSet) of
             true ->
                 {[CodePoint | emit(CurrentToken, Tokens)], nil};
             false when CurrentToken =:= nil ->
@@ -113,7 +117,7 @@ tokenized_with_punctuation_impl([CodePoint | RestUnicodeScalars], Tokens, Curren
             false ->
                 {Tokens, [CodePoint | CurrentToken]}
         end,
-    tokenized_with_punctuation_impl(RestUnicodeScalars, UpdatedTokens, UpdatedCurrentToken).
+    tokenized_with_punctuation_impl(RestUnicodeScalars, UpdatedTokens, UpdatedCurrentToken, PunctuationSet).
 
 emit(nil, Tokens) -> Tokens;
 emit(CurrentToken, Tokens) -> [lists:reverse(CurrentToken) | Tokens].
@@ -151,7 +155,7 @@ is_ideograph(CodePoint) ->
     (CodePoint >= 16#2B820 andalso CodePoint =< 16#2CEAF) orelse
     (CodePoint >= 16#2F800 andalso CodePoint =< 16#2FA1F).
 
-is_punctuation(CodePoint) ->
+is_punctuation(CodePoint, PunctuationSet) ->
     IsASCII = is_ascii(CodePoint),
     IsAlphaNumeric = is_alphanumeric(CodePoint),
     NonAlphaNumericASCII = IsASCII andalso (CodePoint > 32) andalso (not IsAlphaNumeric),
@@ -159,7 +163,7 @@ is_punctuation(CodePoint) ->
         NonAlphaNumericASCII ->
             true;
         true ->
-            maps:is_key(CodePoint, punctuation_set())
+            maps:is_key(CodePoint, PunctuationSet)
     end.
 
 is_whilespace(CodePoint) ->

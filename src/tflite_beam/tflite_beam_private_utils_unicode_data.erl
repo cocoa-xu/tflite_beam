@@ -8,6 +8,7 @@
 -behaviour(gen_server).
 -export([init/1, handle_call/3, handle_cast/2]).
 -record(state, {
+    unicode_data_file = undefined,
     puncuation_list = []
 }).
 
@@ -28,9 +29,14 @@ get_puncuation_list_from_unicode_data(UnicodeDataFile) ->
 %% character took to tokenize: the tokenizing itself did not register.
 -spec punctuation_set(fun(() -> file:name_all())) -> map().
 punctuation_set(UnicodeDataFileFun) when is_function(UnicodeDataFileFun, 0) ->
+    File = UnicodeDataFileFun(),
+    %% Keyed by the file it was read from. Answering from the cache whatever file
+    %% the caller named would make the argument a decoration, and a caller asking
+    %% for a different table would silently get this one.
     case persistent_term:get(?PUNCTUATION_SET, undefined) of
-        undefined ->
-            File = UnicodeDataFileFun(),
+        {File, Set} ->
+            Set;
+        _ ->
             case get_puncuation_list_from_unicode_data(File) of
                 {error, Reason} ->
                     %% is_punctuation/1 answers a boolean and has nowhere to put a
@@ -42,11 +48,9 @@ punctuation_set(UnicodeDataFileFun) when is_function(UnicodeDataFileFun, 0) ->
                     erlang:error({unicode_data_unavailable, File, Reason});
                 List when is_list(List) ->
                     Set = maps:from_list([{CodePoint, []} || CodePoint <- List]),
-                    persistent_term:put(?PUNCTUATION_SET, Set),
+                    persistent_term:put(?PUNCTUATION_SET, {File, Set}),
                     Set
-            end;
-        Set ->
-            Set
+            end
     end.
 
 release_memory() ->
@@ -81,9 +85,13 @@ get_running_instance(CreateIfNotRunning) ->
 init(_) ->
     {ok, #state{}}.
 
+%% Keyed by the file, like the set above it. Once this had parsed anything it
+%% answered with that for every later file it was handed, so a caller naming a
+%% different table was given the first one without being told.
 handle_call({get_puncuation_list, UnicodeDataFile}, _From, State) ->
+    Cached = State#state.unicode_data_file =:= UnicodeDataFile,
     case State#state.puncuation_list of
-        [] ->
+        _ when not Cached ->
             %% A missing file used to kill the server through the badmatch, and
             %% the descriptor was never closed on the way out either.
             case file:open(UnicodeDataFile, [read, raw]) of
@@ -93,7 +101,8 @@ handle_call({get_puncuation_list, UnicodeDataFile}, _From, State) ->
                     case Result of
                         {ok, PuncuationList} ->
                             {reply, PuncuationList,
-                             State#state{puncuation_list = PuncuationList}};
+                             State#state{unicode_data_file = UnicodeDataFile,
+                                         puncuation_list = PuncuationList}};
                         {error, Reason} ->
                             %% and a read error partway through used to be taken
                             %% for the end of the file, so a truncated table was

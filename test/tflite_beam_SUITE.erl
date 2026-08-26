@@ -940,4 +940,18 @@ an_unreadable_unicode_table_names_itself(Config) ->
                  tflite_beam_private_utils_unicode_data:punctuation_set(fun() -> Malformed end)),
 
     ok = tflite_beam_private_utils_unicode_data:release_memory(),
-    ?assertEqual([<<"ok">>, <<".">>], tflite_beam_basic_tokenizer:tokenize(<<"ok.">>, true)).
+    ?assertEqual([<<"ok">>, <<".">>], tflite_beam_basic_tokenizer:tokenize(<<"ok.">>, true)),
+
+    %% both caches are keyed by the file. Answering from either of them whatever
+    %% file was named would hand a caller asking for one table the other one.
+    OneRow = filename:join(Dir, "one_row.txt"),
+    ok = file:write_file(OneRow, <<"0021;EXCLAMATION MARK;Po;0;ON;;;;;N;;;;;\n">>),
+    Shipped = filename:join(code:priv_dir(tflite_beam), "unicode_data.txt"),
+    ok = tflite_beam_private_utils_unicode_data:release_memory(),
+    ?assertEqual(842, maps:size(tflite_beam_private_utils_unicode_data:punctuation_set(
+                                   fun() -> Shipped end))),
+    ?assertEqual(1, maps:size(tflite_beam_private_utils_unicode_data:punctuation_set(
+                                  fun() -> OneRow end))),
+    ?assertEqual(842, maps:size(tflite_beam_private_utils_unicode_data:punctuation_set(
+                                    fun() -> Shipped end))),
+    ok = tflite_beam_private_utils_unicode_data:release_memory().
