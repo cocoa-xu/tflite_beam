@@ -26,6 +26,7 @@
     an_unreadable_unicode_table_names_itself/1,
     releasing_the_table_beats_a_populate_already_running/1,
     a_symlink_out_of_the_cache_is_refused_and_a_raw_name_is_not/1,
+    signature_defs_names_are_binaries_not_atoms/1,
     associated_files_by_string_and_by_list/1,
     predict_reports_a_bad_input_instead_of_crashing/1,
     predict_does_not_answer_from_a_failed_invoke/1,
@@ -74,6 +75,7 @@ all() ->
         an_unreadable_unicode_table_names_itself,
         releasing_the_table_beats_a_populate_already_running,
         a_symlink_out_of_the_cache_is_refused_and_a_raw_name_is_not,
+        signature_defs_names_are_binaries_not_atoms,
         associated_files_by_string_and_by_list,
         predict_reports_a_bad_input_instead_of_crashing,
         predict_does_not_answer_from_a_failed_invoke,
@@ -1034,3 +1036,28 @@ a_symlink_out_of_the_cache_is_refused_and_a_raw_name_is_not(Config) ->
             _ -> os:putenv("TFLITE_BEAM_CACHE_DIR", Previous)
         end
     end.
+
+%% Every name in here comes out of the model file, and an atom is never
+%% reclaimed: a node that keeps loading models with names of their own used to
+%% grow the atom table until it came down. The neighbours signature_keys/1,
+%% signature_inputs/2 and signature_outputs/2 always answered binaries; this one
+%% did not, so the same name had two types depending on which call you asked.
+signature_defs_names_are_binaries_not_atoms(_Config) ->
+    {ok, Interpreter} = tflite_beam_interpreter:new(tflite_beam_test_models:path("add.bin")),
+    ok = tflite_beam_interpreter:allocate_tensors(Interpreter),
+
+    {ok, Defs} = tflite_beam_interpreter:get_signature_defs(Interpreter),
+    [SignatureName] = maps:keys(Defs),
+    ?assert(is_binary(SignatureName)),
+
+    %% and the same name as the neighbour that always answered a binary
+    ?assertEqual(tflite_beam_interpreter:signature_keys(Interpreter), [SignatureName]),
+
+    #{inputs := Inputs, outputs := Outputs} = maps:get(SignatureName, Defs),
+    ?assertEqual([], [K || K <- maps:keys(Inputs), not is_binary(K)]),
+    ?assertEqual([], [K || K <- maps:keys(Outputs), not is_binary(K)]),
+
+    %% reading it again makes no new atoms
+    Before = erlang:system_info(atom_count),
+    [tflite_beam_interpreter:get_signature_defs(Interpreter) || _ <- lists:seq(1, 500)],
+    ?assertEqual(Before, erlang:system_info(atom_count)).

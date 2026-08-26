@@ -858,6 +858,11 @@ ERL_NIF_TERM interpreter_get_signature_defs(ErlNifEnv *env, int argc, const ERL_
 
     size_t sig_key_index = 0;
     ERL_NIF_TERM signature_def_keys[2];
+    // `inputs' and `outputs' are this function's own words, so they stay atoms.
+    // The names inside them are the model's, and an atom is never reclaimed:
+    // loading models with names of their own used to grow the atom table until
+    // the node came down. signature_keys/1 and signature_inputs/2 next door have
+    // always answered binaries, so this now agrees with them.
     signature_def_keys[0] = erlang::nif::atom(env, "inputs");
     signature_def_keys[1] = erlang::nif::atom(env, "outputs");
     for (const auto& sig_key : interpreter_->signature_keys()) {
@@ -883,7 +888,7 @@ ERL_NIF_TERM interpreter_get_signature_defs(ErlNifEnv *env, int argc, const ERL_
         size_t input_item_index = 0;
         for (const auto& input : signature_def_inputs) {
             if (input.first.length() > 0) {
-                inputs_keys[input_item_index] = erlang::nif::atom(env, input.first.c_str());
+                inputs_keys[input_item_index] = erlang::nif::make_binary(env, input.first.c_str());
                 inputs_vals[input_item_index] = erlang::nif::make(env, (long)input.second);
                 input_item_index++;
             }
@@ -915,7 +920,7 @@ ERL_NIF_TERM interpreter_get_signature_defs(ErlNifEnv *env, int argc, const ERL_
         size_t output_item_index = 0;
         for (const auto& output : signature_def_outputs) {
             if (output.first.length()) {
-                outputs_keys[output_item_index] = erlang::nif::atom(env, output.first.c_str());
+                outputs_keys[output_item_index] = erlang::nif::make_binary(env, output.first.c_str());
                 outputs_vals[output_item_index] = erlang::nif::make(env, (long)output.second);
                 output_item_index++;
             }
@@ -930,7 +935,7 @@ ERL_NIF_TERM interpreter_get_signature_defs(ErlNifEnv *env, int argc, const ERL_
         enif_free(outputs_keys);
         enif_free(outputs_vals);
 
-        keys[sig_key_index] = erlang::nif::atom(env, sig_key->c_str());
+        keys[sig_key_index] = erlang::nif::make_binary(env, sig_key->c_str());
         enif_make_map_from_arrays(env, signature_def_keys, signature_def_vals, 2, &vals[sig_key_index]);
         sig_key_index++;
     }
