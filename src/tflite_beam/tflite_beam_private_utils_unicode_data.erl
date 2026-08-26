@@ -37,7 +37,8 @@ punctuation_set(UnicodeDataFileFun) when is_function(UnicodeDataFileFun, 0) ->
         {File, Set} ->
             Set;
         _ ->
-            case get_puncuation_list_from_unicode_data(File) of
+            case gen_server:call(get_running_instance(true),
+                                 {get_puncuation_set, File}, ?PARSE_TIMEOUT) of
                 {error, Reason} ->
                     %% is_punctuation/1 answers a boolean and has nowhere to put a
                     %% reason, and guessing false would quietly move word boundaries
@@ -46,21 +47,23 @@ punctuation_set(UnicodeDataFileFun) when is_function(UnicodeDataFileFun, 0) ->
                     %% reason rather than letting the comprehension below raise
                     %% bad_generator over the error tuple.
                     erlang:error({unicode_data_unavailable, File, Reason});
-                List when is_list(List) ->
-                    Set = maps:from_list([{CodePoint, []} || CodePoint <- List]),
-                    persistent_term:put(?PUNCTUATION_SET, {File, Set}),
+                Set when is_map(Set) ->
                     Set
             end
     end.
 
+%% The server goes first. gen_server:stop/1 waits for the call in flight, and
+%% that call is the only thing that publishes, so nothing can put the table back
+%% after the erase below.
 release_memory() ->
-    _ = persistent_term:erase(?PUNCTUATION_SET),
     case get_running_instance(false) of
         undefined ->
             ok;
         ServerPid when is_pid(ServerPid) ->
             gen_server:stop(ServerPid)
-    end.
+    end,
+    _ = persistent_term:erase(?PUNCTUATION_SET),
+    ok.
 
 get_running_instance(CreateIfNotRunning) ->
     case erlang:whereis(?MODULE) of
@@ -88,6 +91,19 @@ init(_) ->
 %% Keyed by the file, like the set above it. Once this had parsed anything it
 %% answered with that for every later file it was handed, so a caller naming a
 %% different table was given the first one without being told.
+%% Built and published from inside this process, so release_memory/0 cannot land
+%% between a caller reading the table and putting it away. A caller doing its own
+%% put could be descheduled after the erase and bring the cache back from the
+%% dead, with release_memory/0 having already answered ok.
+handle_call({get_puncuation_set, UnicodeDataFile}, From, State) ->
+    case handle_call({get_puncuation_list, UnicodeDataFile}, From, State) of
+        {reply, {error, Reason}, NewState} ->
+            {reply, {error, Reason}, NewState};
+        {reply, List, NewState} when is_list(List) ->
+            Set = maps:from_list([{CodePoint, []} || CodePoint <- List]),
+            persistent_term:put(?PUNCTUATION_SET, {UnicodeDataFile, Set}),
+            {reply, Set, NewState}
+    end;
 handle_call({get_puncuation_list, UnicodeDataFile}, _From, State) ->
     Cached = State#state.unicode_data_file =:= UnicodeDataFile,
     case State#state.puncuation_list of

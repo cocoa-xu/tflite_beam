@@ -24,6 +24,7 @@
     an_empty_tensor_says_so_rather_than_blaming_allocate_tensors/1,
     ideographs_are_split_the_way_bert_splits_them/1,
     an_unreadable_unicode_table_names_itself/1,
+    releasing_the_table_beats_a_populate_already_running/1,
     associated_files_by_string_and_by_list/1,
     predict_reports_a_bad_input_instead_of_crashing/1,
     predict_does_not_answer_from_a_failed_invoke/1,
@@ -70,6 +71,7 @@ all() ->
         an_empty_tensor_says_so_rather_than_blaming_allocate_tensors,
         ideographs_are_split_the_way_bert_splits_them,
         an_unreadable_unicode_table_names_itself,
+        releasing_the_table_beats_a_populate_already_running,
         associated_files_by_string_and_by_list,
         predict_reports_a_bad_input_instead_of_crashing,
         predict_does_not_answer_from_a_failed_invoke,
@@ -967,3 +969,30 @@ an_unreadable_unicode_table_names_itself(Config) ->
     ?assertEqual(842, maps:size(tflite_beam_private_utils_unicode_data:punctuation_set(
                                     fun() -> Shipped end))),
     ok = tflite_beam_private_utils_unicode_data:release_memory().
+
+%% release_memory/0 used to erase and then stop, and the caller did its own put,
+%% so a populate that had already read the table could put it back after the
+%% erase and after release_memory/0 had answered ok. 26 of 80 rounds brought the
+%% cache back that way. The publish now happens inside the process that
+%% gen_server:stop/1 drains, and the stop happens first.
+releasing_the_table_beats_a_populate_already_running(_Config) ->
+    Key = {tflite_beam_private_utils_unicode_data, punctuation_set},
+    File = filename:join(code:priv_dir(tflite_beam), "unicode_data.txt"),
+    Alive =
+        [begin
+            ok = tflite_beam_private_utils_unicode_data:release_memory(),
+            Populate = spawn(fun() ->
+                catch tflite_beam_private_utils_unicode_data:punctuation_set(fun() -> File end)
+            end),
+            case Round rem 3 of
+                0 -> timer:sleep(1);
+                _ -> ok
+            end,
+            ok = tflite_beam_private_utils_unicode_data:release_memory(),
+            Present = persistent_term:get(Key, absent) =/= absent,
+            exit(Populate, kill),
+            Present
+         end || Round <- lists:seq(1, 80)],
+    ?assertEqual([], [P || P <- Alive, P]),
+    ok = tflite_beam_private_utils_unicode_data:release_memory(),
+    ?assertEqual([<<"ok">>, <<".">>], tflite_beam_basic_tokenizer:tokenize(<<"ok.">>, true)).
