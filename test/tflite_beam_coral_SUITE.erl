@@ -14,6 +14,7 @@
     dequantize_tensor_accepts_the_types_it_documents/1,
     dequantize_tensor_returns_real_numbers_by_default/1,
     dequantize_tensor_refuses_what_it_cannot_undo/1,
+    device_options_are_read_and_checked/1,
     edge_tpu_delegate_inference/1,
     edge_tpu_delegate_composes/1
 ]).
@@ -25,7 +26,8 @@ all() ->
         edge_tpu_absent_device,
         dequantize_tensor_accepts_the_types_it_documents,
         dequantize_tensor_returns_real_numbers_by_default,
-        dequantize_tensor_refuses_what_it_cannot_undo
+        dequantize_tensor_refuses_what_it_cannot_undo,
+        device_options_are_read_and_checked
     ].
 
 groups() ->
@@ -191,3 +193,27 @@ dequantize_tensor_refuses_what_it_cannot_undo(_Config) ->
                  tflite_beam_coral:dequantize_tensor(Interpreter, 4294967296, f32)),
 
     ?assert(is_integer(tflite_beam_interpreter:tensors_size(Interpreter))).
+
+%% argv[1] was accepted and never read: every option the docs describe was
+%% dropped while the caller was handed a context and an ok. The shape check runs
+%% without hardware; whether the device received them needs a device, so that
+%% half reads the options back off the context and skips when there is none.
+device_options_are_read_and_checked(_Config) ->
+    Ask = fun(Device, Options) ->
+        tflite_beam_coral:get_edge_tpu_context([{device, Device}, {options, Options}])
+    end,
+
+    ?assertMatch({error, _}, Ask("", not_a_map)),
+    ?assertMatch({error, _}, Ask("", #{<<"Performance">> => 1})),
+    ?assertMatch({error, _}, Ask("", #{1 => <<"Max">>})),
+
+    case tflite_beam_coral:edge_tpu_devices() of
+        Devices when is_list(Devices), Devices =/= [] ->
+            %% libcoral only forwards options when the device is named with an
+            %% index: for "", "usb" and "pci" it calls OpenDevice() with none.
+            {ok, Four} = Ask("usb:0", #{<<"Usb.MaxBulkInQueueLength">> => <<"4">>}),
+            {ok, Reported} = tflite_beam_nif:coral_get_edgetpu_context_options(Four),
+            ?assertEqual(<<"4">>, maps:get(<<"Usb.MaxBulkInQueueLength">>, Reported, undefined));
+        _ ->
+            {skip, "no Edge TPU attached"}
+    end.
