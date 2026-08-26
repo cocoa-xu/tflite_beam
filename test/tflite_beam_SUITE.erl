@@ -399,6 +399,21 @@ the_server_survives_a_malformed_request(_Config) ->
     ?assertMatch({error, _}, catch tflite_beam_interpreter_server:predict(Server, [<<0, 0>>])),
     timer:sleep(100),
     ?assert(is_process_alive(Server)),
+    ?assertMatch([_ | _], tflite_beam_interpreter_server:predict(Server, [Good])),
+
+    %% the wrong size was answered; the wrong type was not. A list or map the
+    %% outer guard accepts, holding something that is not binary data, matched
+    %% no clause further in and took the server down with the interpreter on it.
+    Malformed = [[not_binary], [123], [nil], #{<<"input">> => not_binary},
+                 #{<<"input">> => 123}, #{<<"input">> => [1, 2, 3]}],
+    lists:foreach(
+        fun(Bad) ->
+            ?assertMatch({error, _},
+                         catch tflite_beam_interpreter_server:predict(Server, Bad)),
+            timer:sleep(20),
+            ?assert(is_process_alive(Server), Bad)
+        end,
+        Malformed),
     ?assertMatch([_ | _], tflite_beam_interpreter_server:predict(Server, [Good])).
 
 %% Both halves of the cache path come from the caller, and

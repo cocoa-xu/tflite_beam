@@ -438,6 +438,13 @@ fill_input(Self, InputTensorIndex, InputData) when is_reference(Self) and is_int
         {error, Reason} ->
             {error, Reason}
     end;
+%% predict/2 takes any list or map at its outer guard, so an element that is not
+%% binary data reached here and matched none of the clauses above. The caller got
+%% function_clause, and a caller going through the server took the server down
+%% with it, losing the interpreter it had loaded.
+fill_input(Self, InputTensorIndex, InputData)
+  when is_reference(Self) and is_integer(InputTensorIndex) ->
+    {error, not_binary_reason(InputTensorIndex, InputData)};
 fill_input(Self, InputTensors, InputMap) when is_reference(Self) and is_list(InputTensors) and is_map(InputMap) ->
     FillResults = lists:map(
         fun(InputTensorIndex) ->
@@ -446,8 +453,12 @@ fill_input(Self, InputTensors, InputMap) when is_reference(Self) and is_list(Inp
                     HasInput = maps:is_key(Name, InputMap),
                     if 
                         HasInput ->
-                            InputData = maps:get(Name, InputMap),
-                            tflite_beam_tensor:set_data(Tensor, InputData);
+                            case maps:get(Name, InputMap) of
+                                InputData when is_binary(InputData) ->
+                                    tflite_beam_tensor:set_data(Tensor, InputData);
+                                InputData ->
+                                    not_binary_reason(InputTensorIndex, InputData)
+                            end;
                         true ->
                             Reason = io_lib:format("missing input data for tensor `~ts`, tensor index: ~w", [Name, InputTensorIndex]),
                             unicode:characters_to_binary(Reason)
@@ -459,6 +470,12 @@ fill_input(Self, InputTensors, InputMap) when is_reference(Self) and is_list(Inp
         InputTensors
     ),
     not_ok_to_reason(FillResults).
+
+not_binary_reason(InputTensorIndex, InputData) ->
+    Reason = io_lib:format(
+        "input for tensor index ~w is ~p, which is not binary data",
+        [InputTensorIndex, InputData]),
+    unicode:characters_to_binary(Reason).
 
 fetch_output(Self, OutputTensors) when is_reference(Self) and is_list(OutputTensors) ->
     lists:map(
