@@ -297,6 +297,10 @@ endif()
 option(TFLITE_BEAM_ENABLE_LITERT_API "Build LiteRT's C API alongside the tflite one" OFF)
 if(TFLITE_BEAM_ENABLE_LITERT_API)
     set(LITERT_SOURCE_DIR "${LITERT_ROOT_DIR}" CACHE PATH "LiteRT source root")
+    # litert/core/model reads the converter schema out of this; normally set by
+    # litert's top level, which also uses it to add tflite
+    set(TFLITE_SOURCE_DIR "${TFLITE_ROOT_DIR}" CACHE PATH "TFLite source directory")
+    set(TFLITE_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/tflite_runtime" CACHE PATH "TFLite build directory")
     # All three of these come from litert's own top level CMakeLists, which is not
     # used here because it would add the tflite subtree a second time.
     find_package(Threads REQUIRED)
@@ -306,6 +310,11 @@ if(TFLITE_BEAM_ENABLE_LITERT_API)
     set(LITERT_GENERATED_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/litert_generated")
     set(LITERT_BUILD_COMMON_GENERATED_DIR "${LITERT_GENERATED_INCLUDE_DIR}/litert/build_common")
     file(MAKE_DIRECTORY "${LITERT_BUILD_COMMON_GENERATED_DIR}")
+    # GPU and NPU off to start with: the runtime reaches for CL/cl.h and vendor
+    # SDKs otherwise, and neither is what the first pass is after. The GPU path
+    # is what litert/runtime/accelerators exists for and is worth its own look.
+    option(LITERT_ENABLE_GPU "Enable GPU acceleration support" OFF)
+    option(LITERT_ENABLE_NPU "Enable NPU acceleration support" OFF)
     set(LITERT_BUILD_CONFIG_DISABLE_GPU 1)
     set(LITERT_BUILD_CONFIG_DISABLE_NPU 1)
     configure_file(
@@ -313,11 +322,48 @@ if(TFLITE_BEAM_ENABLE_LITERT_API)
         "${LITERT_BUILD_COMMON_GENERATED_DIR}/build_config.h"
     )
     include_directories("${LITERT_GENERATED_INCLUDE_DIR}" "${LITERT_ROOT_DIR}")
+
+    # litert/runtime compiles open_cl_memory.cc and open_cl_sync.cc unconditionally,
+    # with no option gating them, so CL/cl.h is needed whether or not the GPU is
+    # wanted. TFLite ships the module that fetches those headers; this borrows it.
+    list(APPEND CMAKE_MODULE_PATH "${TFLITE_ROOT_DIR}/tools/cmake/modules")
+    include(opencl_headers)
+
+    # and those files reach delegates/gpu/common/types.h, which wants fp16.h.
+    # XNNPACK already fetched FP16 into this build, so point at it rather than
+    # fetching a second copy.
+    if(EXISTS "${CMAKE_CURRENT_BINARY_DIR}/FP16-source/include")
+        include_directories("${CMAKE_CURRENT_BINARY_DIR}/FP16-source/include")
+    endif()
+    # The C API sits on cc/internal, which sits on core. litert's own top level
+    # adds these in the same order; only its add_subdirectory of tflite is left
+    # out, since this build already has one.
+    add_subdirectory(
+        "${LITERT_ROOT_DIR}/litert/core"
+        "${CMAKE_CURRENT_BINARY_DIR}/litert_core"
+        EXCLUDE_FROM_ALL
+    )
+    add_subdirectory(
+        "${LITERT_ROOT_DIR}/litert/compiler"
+        "${CMAKE_CURRENT_BINARY_DIR}/litert_compiler"
+        EXCLUDE_FROM_ALL
+    )
+    add_subdirectory(
+        "${LITERT_ROOT_DIR}/litert/runtime"
+        "${CMAKE_CURRENT_BINARY_DIR}/litert_runtime"
+        EXCLUDE_FROM_ALL
+    )
+    add_subdirectory(
+        "${LITERT_ROOT_DIR}/litert/cc"
+        "${CMAKE_CURRENT_BINARY_DIR}/litert_cc"
+        EXCLUDE_FROM_ALL
+    )
     add_subdirectory(
         "${LITERT_ROOT_DIR}/litert/c"
         "${CMAKE_CURRENT_BINARY_DIR}/litert_c"
         EXCLUDE_FROM_ALL
     )
+    target_sources(tflite_beam PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/c_src/elitte/litert_api.cpp")
     list(APPEND TFLITE_BEAM_LINK_LIBRARIES litert_c_api)
     add_compile_definitions(TFLITE_BEAM_LITERT_API_ENABLED=1)
 endif()

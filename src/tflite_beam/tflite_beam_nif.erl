@@ -31,6 +31,9 @@ not_loaded(Line) ->
 nif_arm_fault(_point) ->
     not_loaded(?LINE).
 
+litert_api_status_string(_status) ->
+    not_loaded(?LINE).
+
 
 error_reporter_default_error_reporter() ->
     not_loaded(?LINE).
