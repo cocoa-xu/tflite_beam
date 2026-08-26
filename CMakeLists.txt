@@ -291,6 +291,37 @@ if(${TFLITE_BEAM_CORAL_SUPPORT})
     list(APPEND TFLITE_BEAM_LINK_LIBRARIES "glog")
 endif()
 
+# LiteRT's own C API, the layer it adds above the tflite subtree we bind. Its
+# top level CMakeLists adds tflite itself, which would be the second time in this
+# build, so the c directory is added on its own once tensorflow-lite exists.
+option(TFLITE_BEAM_ENABLE_LITERT_API "Build LiteRT's C API alongside the tflite one" OFF)
+if(TFLITE_BEAM_ENABLE_LITERT_API)
+    set(LITERT_SOURCE_DIR "${LITERT_ROOT_DIR}" CACHE PATH "LiteRT source root")
+    # All three of these come from litert's own top level CMakeLists, which is not
+    # used here because it would add the tflite subtree a second time.
+    find_package(Threads REQUIRED)
+
+    # build_config.h is generated from a template and reached as
+    # "litert/build_common/build_config.h", so the generated tree needs that shape.
+    set(LITERT_GENERATED_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/litert_generated")
+    set(LITERT_BUILD_COMMON_GENERATED_DIR "${LITERT_GENERATED_INCLUDE_DIR}/litert/build_common")
+    file(MAKE_DIRECTORY "${LITERT_BUILD_COMMON_GENERATED_DIR}")
+    set(LITERT_BUILD_CONFIG_DISABLE_GPU 1)
+    set(LITERT_BUILD_CONFIG_DISABLE_NPU 1)
+    configure_file(
+        "${LITERT_ROOT_DIR}/litert/build_common/build_config.h.in"
+        "${LITERT_BUILD_COMMON_GENERATED_DIR}/build_config.h"
+    )
+    include_directories("${LITERT_GENERATED_INCLUDE_DIR}" "${LITERT_ROOT_DIR}")
+    add_subdirectory(
+        "${LITERT_ROOT_DIR}/litert/c"
+        "${CMAKE_CURRENT_BINARY_DIR}/litert_c"
+        EXCLUDE_FROM_ALL
+    )
+    list(APPEND TFLITE_BEAM_LINK_LIBRARIES litert_c_api)
+    add_compile_definitions(TFLITE_BEAM_LITERT_API_ENABLED=1)
+endif()
+
 target_link_libraries(tflite_beam
     ${TFLITE_BEAM_LINK_LIBRARIES}
     ${CMAKE_DL_LIBS}
