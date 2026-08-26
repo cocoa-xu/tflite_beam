@@ -27,6 +27,7 @@
     releasing_the_table_beats_a_populate_already_running/1,
     a_symlink_out_of_the_cache_is_refused_and_a_raw_name_is_not/1,
     signature_defs_names_are_binaries_not_atoms/1,
+    an_https_download_without_a_ca_store_is_refused_not_downgraded/1,
     associated_files_by_string_and_by_list/1,
     predict_reports_a_bad_input_instead_of_crashing/1,
     predict_does_not_answer_from_a_failed_invoke/1,
@@ -76,6 +77,7 @@ all() ->
         releasing_the_table_beats_a_populate_already_running,
         a_symlink_out_of_the_cache_is_refused_and_a_raw_name_is_not,
         signature_defs_names_are_binaries_not_atoms,
+        an_https_download_without_a_ca_store_is_refused_not_downgraded,
         associated_files_by_string_and_by_list,
         predict_reports_a_bad_input_instead_of_crashing,
         predict_does_not_answer_from_a_failed_invoke,
@@ -1061,3 +1063,37 @@ signature_defs_names_are_binaries_not_atoms(_Config) ->
     Before = erlang:system_info(atom_count),
     [tflite_beam_interpreter:get_signature_defs(Interpreter) || _ <- lists:seq(1, 500)],
     ?assertEqual(Before, erlang:system_info(atom_count)).
+
+%% Asking for a secure download and getting an unverified one is the failure this
+%% guards. The certificate paths are hard coded and none of them is guaranteed to
+%% exist on the small systems this library ships binaries for, and what used to
+%% happen there was a warning followed by verify_none: the download proceeded,
+%% unauthenticated, for a caller who never asked for that. TFLITE_BEAM_UNSAFE_HTTPS
+%% is how someone asks.
+an_https_download_without_a_ca_store_is_refused_not_downgraded(_Config) ->
+    Cacert = os:getenv("TFLITE_BEAM_CACERT"),
+    Unsafe = os:getenv("TFLITE_BEAM_UNSAFE_HTTPS"),
+    Restore = fun() ->
+        case Cacert of false -> os:unsetenv("TFLITE_BEAM_CACERT"); _ -> os:putenv("TFLITE_BEAM_CACERT", Cacert) end,
+        case Unsafe of false -> os:unsetenv("TFLITE_BEAM_UNSAFE_HTTPS"); _ -> os:putenv("TFLITE_BEAM_UNSAFE_HTTPS", Unsafe) end
+    end,
+    try
+        true = os:putenv("TFLITE_BEAM_CACERT", "/tflite_beam_no_such_ca_store.pem"),
+        os:unsetenv("TFLITE_BEAM_UNSAFE_HTTPS"),
+        {error, Reason} = tflite_beam_utils_downloader:download(
+                            "https://example.invalid/x", "models", "a.bin", true),
+        Flat = iolist_to_binary(Reason),
+        ?assertNotEqual(nomatch, binary:match(Flat, <<"cannot be verified">>)),
+        %% and it names both ways out rather than only complaining
+        ?assertNotEqual(nomatch, binary:match(Flat, <<"TFLITE_BEAM_CACERT">>)),
+        ?assertNotEqual(nomatch, binary:match(Flat, <<"TFLITE_BEAM_UNSAFE_HTTPS">>)),
+
+        %% asked for explicitly, it goes ahead and fails on the address instead
+        true = os:putenv("TFLITE_BEAM_UNSAFE_HTTPS", "false"),
+        {error, Other} = tflite_beam_utils_downloader:download(
+                           "https://example.invalid/x", "models", "a.bin", true),
+        ?assertEqual(nomatch, binary:match(iolist_to_binary(io_lib:format("~p", [Other])),
+                                           <<"cannot be verified">>))
+    after
+        Restore()
+    end.

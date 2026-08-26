@@ -132,11 +132,25 @@ cache_path_under(BaseDir, CacheSubdir, CacheFilename, ForceDownload) ->
                     {error, lists:flatten(io_lib:fwrite("Cannot create cache directory ~s", [CacheDir]))}
             end.
 
+%% A path named here is a decision, not a suggestion. Falling through to the
+%% next candidate when it is not there means verifying against a store the
+%% caller did not choose, or against none, while the setting they made says
+%% otherwise.
 certificate_store() ->
-    PossibleLocations = [
-        %% Configured cacertfile
-        os:getenv("TFLITE_BEAM_CACERT"),
+    case os:getenv("TFLITE_BEAM_CACERT") of
+        false -> certificate_store_default();
+        "" -> certificate_store_default();
+        Named ->
+            case filelib:is_file(Named) of
+                true -> Named;
+                false ->
+                    io:fwrite("[WARNING] TFLITE_BEAM_CACERT names ~ts, which is not a file~n", [Named]),
+                    nil
+            end
+    end.
 
+certificate_store_default() ->
+    PossibleLocations = [
         %% Debian/Ubuntu/Gentoo etc.
         "/etc/ssl/certs/ca-certificates.crt",
 
@@ -215,9 +229,19 @@ secure_ssl() ->
         _ -> true
     end.
 
+%% The unsafe branch below is where a caller lands who asked for it with
+%% TFLITE_BEAM_UNSAFE_HTTPS. It used to be where a caller landed who asked for
+%% nothing of the sort and merely had no CA bundle at one of the hard coded
+%% paths, which is the ordinary state of the small systems this library ships
+%% binaries for. Warning and then not verifying is not a warning, it is the
+%% thing the flag exists to make deliberate.
 https_opts(Hostname) ->
     CertFile = certificate_store(),
     case {secure_ssl(), is_list(CertFile)} of
+        {true, false} ->
+            {error, "no CA certificate store was found, so an https download "
+                    "cannot be verified. Set TFLITE_BEAM_CACERT to one, or "
+                    "TFLITE_BEAM_UNSAFE_HTTPS=false to download without checking"};
         {true, true} ->
             [
                 {
@@ -272,7 +296,10 @@ do_download(URL, DestionationFilename) ->
             {ok, nil};
         #{scheme := "https", host := Host} ->
             ssl:start(),
-            {ok, https_opts(Host)};
+            case https_opts(Host) of
+                {error, Why} -> {cannot_verify, Why};
+                Opts -> {ok, Opts}
+            end;
         _ ->
             {error, "Unsupported URL scheme"}
     end,
@@ -299,6 +326,8 @@ do_download(URL, DestionationFilename) ->
                 Err ->
                     {error, lists:flatten(io_lib:fwrite("Cannot download file from ~s: ~p", [URL, Err]))}
             end;
+        cannot_verify ->
+            {error, HttpOpts};
         error ->
             {error, lists:flatten(io_lib:fwrite("Cannot parse URL ~s", [URL]))}
     end.
