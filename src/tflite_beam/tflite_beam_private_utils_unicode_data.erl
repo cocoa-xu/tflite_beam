@@ -30,10 +30,21 @@ get_puncuation_list_from_unicode_data(UnicodeDataFile) ->
 punctuation_set(UnicodeDataFileFun) when is_function(UnicodeDataFileFun, 0) ->
     case persistent_term:get(?PUNCTUATION_SET, undefined) of
         undefined ->
-            List = get_puncuation_list_from_unicode_data(UnicodeDataFileFun()),
-            Set = maps:from_list([{CodePoint, []} || CodePoint <- List]),
-            persistent_term:put(?PUNCTUATION_SET, Set),
-            Set;
+            File = UnicodeDataFileFun(),
+            case get_puncuation_list_from_unicode_data(File) of
+                {error, Reason} ->
+                    %% is_punctuation/1 answers a boolean and has nowhere to put a
+                    %% reason, and guessing false would quietly move word boundaries
+                    %% instead of failing. The table ships with the library, so one
+                    %% that cannot be read is a broken install: name the file and the
+                    %% reason rather than letting the comprehension below raise
+                    %% bad_generator over the error tuple.
+                    erlang:error({unicode_data_unavailable, File, Reason});
+                List when is_list(List) ->
+                    Set = maps:from_list([{CodePoint, []} || CodePoint <- List]),
+                    persistent_term:put(?PUNCTUATION_SET, Set),
+                    Set
+            end;
         Set ->
             Set
     end.

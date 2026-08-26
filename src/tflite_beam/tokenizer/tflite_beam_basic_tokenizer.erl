@@ -23,7 +23,7 @@ tokenize(Text, IsCaseInsensitive) when is_binary(Text) and is_boolean(IsCaseInse
         true ->
             CleanedText
     end,
-    ProcessedBinaryText = unicode:characters_to_binary(ProcessedText),
+    ProcessedBinaryText = unicode:characters_to_binary(space_out_ideographs(ProcessedText)),
     SplittedByWhitespace = split_by_whitespace(ProcessedBinaryText),
     TokenizedWithPunctuation = lists:map(
         fun(BinaryText) ->
@@ -97,27 +97,59 @@ tokenized_with_punctuation(BinaryText) ->
     UnicodeScalars = unicode:characters_to_list(NfcText),
     tokenized_with_punctuation_impl(UnicodeScalars, [], nil).
 
-tokenized_with_punctuation_impl([], Tokens, CurrentToken) -> 
-    case CurrentToken of
-        nil ->
-            Tokens;
-        _ ->
-            Tokens ++ [CurrentToken]
-    end;
+%% Both accumulators are built back to front. Growing them at the end copied
+%% what was already there once per character, so one run of text between two
+%% spaces cost time squared in its own length: 8000 characters took 92ms against
+%% 1.3ms for 1000. Text without spaces in it is the ordinary case for CJK.
+tokenized_with_punctuation_impl([], Tokens, CurrentToken) ->
+    lists:reverse(emit(CurrentToken, Tokens));
 tokenized_with_punctuation_impl([CodePoint | RestUnicodeScalars], Tokens, CurrentToken) ->
-    IsPuncuation = is_punctuation(CodePoint),
-    {UpdatedTokens, UpdatedCurrentToken} = 
-        case {IsPuncuation, CurrentToken} of
-            {true, nil} ->
-                {Tokens ++ [CodePoint], nil};
-            {true, _} ->
-                {Tokens ++ [CurrentToken, CodePoint], nil};
-            {false, nil} ->
+    {UpdatedTokens, UpdatedCurrentToken} =
+        case is_punctuation(CodePoint) of
+            true ->
+                {[CodePoint | emit(CurrentToken, Tokens)], nil};
+            false when CurrentToken =:= nil ->
                 {Tokens, [CodePoint]};
-            {false, _} ->
-                {Tokens, CurrentToken ++ [CodePoint]}
+            false ->
+                {Tokens, [CodePoint | CurrentToken]}
         end,
     tokenized_with_punctuation_impl(RestUnicodeScalars, UpdatedTokens, UpdatedCurrentToken).
+
+emit(nil, Tokens) -> Tokens;
+emit(CurrentToken, Tokens) -> [lists:reverse(CurrentToken) | Tokens].
+
+
+%% BERT puts a space either side of every CJK ideograph before splitting on
+%% whitespace, because Chinese is written without spaces and would otherwise
+%% arrive as one word. Skipping that step did not merely glue the characters
+%% together: the joined run runs past wordpiece's two hundred character limit
+%% and comes back as [UNK], so a sentence whose every character is in the
+%% vocabulary was answered as nothing at all.
+%%
+%% The ranges are the ones BERT uses, which are the ideographs alone. Kana and
+%% Hangul are deliberately not here: BERT treats those as ordinary words, and
+%% they are written with spacing that makes that work.
+space_out_ideographs(Text) ->
+    lists:foldr(
+        fun(CodePoint, Acc) ->
+            case is_ideograph(CodePoint) of
+                true -> [$\s, CodePoint, $\s | Acc];
+                false -> [CodePoint | Acc]
+            end
+        end,
+        [],
+        unicode:characters_to_list(Text)).
+
+-spec is_ideograph(integer()) -> boolean().
+is_ideograph(CodePoint) ->
+    (CodePoint >= 16#4E00 andalso CodePoint =< 16#9FFF) orelse
+    (CodePoint >= 16#3400 andalso CodePoint =< 16#4DBF) orelse
+    (CodePoint >= 16#F900 andalso CodePoint =< 16#FAFF) orelse
+    (CodePoint >= 16#20000 andalso CodePoint =< 16#2A6DF) orelse
+    (CodePoint >= 16#2A700 andalso CodePoint =< 16#2B73F) orelse
+    (CodePoint >= 16#2B740 andalso CodePoint =< 16#2B81F) orelse
+    (CodePoint >= 16#2B820 andalso CodePoint =< 16#2CEAF) orelse
+    (CodePoint >= 16#2F800 andalso CodePoint =< 16#2FA1F).
 
 is_punctuation(CodePoint) ->
     IsASCII = is_ascii(CodePoint),

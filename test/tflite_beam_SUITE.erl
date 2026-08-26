@@ -22,6 +22,8 @@
     releasing_the_unicode_table_lets_it_be_rebuilt/1,
     a_wrong_unicode_table_is_reported_not_matched_against/1,
     an_empty_tensor_says_so_rather_than_blaming_allocate_tensors/1,
+    ideographs_are_split_the_way_bert_splits_them/1,
+    an_unreadable_unicode_table_names_itself/1,
     associated_files_by_string_and_by_list/1,
     predict_reports_a_bad_input_instead_of_crashing/1,
     predict_does_not_answer_from_a_failed_invoke/1,
@@ -66,6 +68,8 @@ all() ->
         releasing_the_unicode_table_lets_it_be_rebuilt,
         a_wrong_unicode_table_is_reported_not_matched_against,
         an_empty_tensor_says_so_rather_than_blaming_allocate_tensors,
+        ideographs_are_split_the_way_bert_splits_them,
+        an_unreadable_unicode_table_names_itself,
         associated_files_by_string_and_by_list,
         predict_reports_a_bad_input_instead_of_crashing,
         predict_does_not_answer_from_a_failed_invoke,
@@ -866,3 +870,49 @@ an_empty_tensor_says_so_rather_than_blaming_allocate_tensors(_Config) ->
     {error, Reason} = tflite_beam_tensor:to_binary(Empty),
     ?assertNotEqual(nomatch, binary:match(Reason, <<"[0,8,8,3]">>)),
     ?assertEqual(nomatch, binary:match(Reason, <<"Please call">>)).
+
+%% Chinese is written without spaces, so without this every sentence arrived as
+%% one word, ran past wordpiece's two hundred character limit, and came back as
+%% [UNK]. A sentence whose every character was in the vocabulary was answered as
+%% nothing at all.
+ideographs_are_split_the_way_bert_splits_them(_Config) ->
+    ?assertEqual([<<"这"/utf8>>, <<"是"/utf8>>, <<"中"/utf8>>, <<"文"/utf8>>],
+                 tflite_beam_basic_tokenizer:tokenize(<<"这是中文"/utf8>>, true)),
+
+    %% and it stays split once it is next to words that are already spaced
+    ?assertEqual([<<"hello">>, <<"这"/utf8>>, <<"是"/utf8>>, <<"world">>],
+                 tflite_beam_basic_tokenizer:tokenize(<<"hello 这是 world"/utf8>>, true)),
+
+    %% kana is not an ideograph and BERT does not split it, so neither do we
+    ?assertEqual([<<"日"/utf8>>, <<"本"/utf8>>, <<"語"/utf8>>, <<"のテキスト"/utf8>>,
+                  <<"、"/utf8>>, <<"句"/utf8>>, <<"読"/utf8>>, <<"点"/utf8>>, <<"。"/utf8>>],
+                 tflite_beam_basic_tokenizer:tokenize(<<"日本語のテキスト、句読点。"/utf8>>, true)),
+
+    %% every character in the vocabulary, so the whole sentence resolves
+    Vocabulary = #{<<"这"/utf8>> => 1, <<"是"/utf8>> => 2, <<"中"/utf8>> => 3,
+                   <<"文"/utf8>> => 4, <<"[UNK]">> => 0},
+    ?assertEqual([<<"这"/utf8>>, <<"是"/utf8>>, <<"中"/utf8>>, <<"文"/utf8>>],
+                 tflite_beam_full_tokenizer:tokenize(<<"这是中文"/utf8>>, true, Vocabulary)),
+
+    %% latin text is untouched by any of this
+    ?assertEqual([<<"hello">>, <<"world">>, <<"!">>],
+                 tflite_beam_basic_tokenizer:tokenize(<<"Hello World!">>, true)).
+
+%% punctuation_set/1 fed the parser's {error, Reason} straight into a list
+%% comprehension, so a table that could not be read raised bad_generator instead
+%% of naming the file or the reason.
+an_unreadable_unicode_table_names_itself(Config) ->
+    Dir = proplists:get_value(priv_dir, Config),
+    Missing = filename:join(Dir, "not_here.txt"),
+    ok = tflite_beam_private_utils_unicode_data:release_memory(),
+    ?assertError({unicode_data_unavailable, Missing, _},
+                 tflite_beam_private_utils_unicode_data:punctuation_set(fun() -> Missing end)),
+
+    Malformed = filename:join(Dir, "not_a_table.txt"),
+    ok = file:write_file(Malformed, <<"garbage line here\n">>),
+    ok = tflite_beam_private_utils_unicode_data:release_memory(),
+    ?assertError({unicode_data_unavailable, Malformed, _},
+                 tflite_beam_private_utils_unicode_data:punctuation_set(fun() -> Malformed end)),
+
+    ok = tflite_beam_private_utils_unicode_data:release_memory(),
+    ?assertEqual([<<"ok">>, <<".">>], tflite_beam_basic_tokenizer:tokenize(<<"ok.">>, true)).
