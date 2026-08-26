@@ -425,11 +425,21 @@ the_server_survives_a_malformed_request(_Config) ->
 %% caller's choosing. Refused before the request is made, so none of these reach
 %% the network.
 a_download_cannot_be_aimed_outside_the_cache(_Config) ->
+    %% Every one of these was written as an Erlang string, and the check only
+    %% ever worked for those: filename:split/1 keeps the representation it was
+    %% given, so a binary component split into binaries and the comparison
+    %% against ".." matched nothing. Elixir strings are binaries, which is to say
+    %% the guard was off for the callers this library mostly has.
     Escapes = [
         {"/etc", "evil"},
         {"models", "/etc/evil"},
         {"../../..", "evil"},
-        {"models", "../../../evil"}
+        {"models", "../../../evil"},
+        {<<"/etc">>, <<"evil">>},
+        {<<"models">>, <<"/etc/evil">>},
+        {<<"../../..">>, <<"evil">>},
+        {<<"models">>, <<"../../../evil">>},
+        {<<"a/../../b">>, <<"evil">>}
     ],
     [begin
         Result = tflite_beam_utils_downloader:download(

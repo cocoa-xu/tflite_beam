@@ -60,12 +60,22 @@ cache_basepath() ->
 %% arrive from the caller: tflite_beam_contrib_huggingface passes a repository
 %% name and a filename straight through from whatever asked for the model.
 inside_cache(Component) ->
-    Parts = filename:split(Component),
-    case filename:pathtype(Component) =:= relative andalso
-         not lists:member("..", Parts) of
-        true -> ok;
-        false -> {error, lists:flatten(io_lib:fwrite(
-                     "~ts would write outside the cache directory", [Component]))}
+    %% filename:split/1 hands back parts in whatever representation it was
+    %% given, so a binary component splits into binaries and lists:member/2
+    %% comparing against the string ".." found nothing in it. Every component
+    %% arriving from Elixir is a binary, which is to say the check only ever ran
+    %% for callers writing Erlang string literals. Flatten first, then compare.
+    case unicode:characters_to_list(Component) of
+        Flat when is_list(Flat) ->
+            case filename:pathtype(Flat) =:= relative andalso
+                 not lists:member("..", filename:split(Flat)) of
+                true -> ok;
+                false -> {error, lists:flatten(io_lib:fwrite(
+                             "~ts would write outside the cache directory", [Flat]))}
+            end;
+        _ ->
+            {error, lists:flatten(io_lib:fwrite(
+                        "~p is not a usable path component", [Component]))}
     end.
 
 cache_path(CacheSubdir, CacheFilename, ForceDownload) ->
