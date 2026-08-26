@@ -66,7 +66,8 @@ init_per_testcase(Case, Config) when
         Case =:= interpreter_allocation_failure_is_reported_not_leaked;
         Case =:= builder_allocation_failure_is_reported_not_leaked;
         Case =:= add_delegate_failure_strands_no_delegate;
-        Case =:= delegate_transfer_failure_leaves_the_interpreter_untouched ->
+        Case =:= delegate_transfer_failure_leaves_the_interpreter_untouched;
+        Case =:= a_server_that_cannot_allocate_says_why ->
     case tflite_beam_nif:nif_arm_fault(none) of
         ok -> Config;
         {error, _} ->
@@ -445,7 +446,7 @@ a_server_that_cannot_allocate_says_why(_Config) ->
         disarm(),
         Answer
     end,
-    lists:foreach(
+    Expect =
         fun(Point) ->
             case Start(Point) of
                 {error, Reason} when is_binary(Reason) ->
@@ -454,5 +455,11 @@ a_server_that_cannot_allocate_says_why(_Config) ->
                     ct:fail({Point, expected_a_reason, Other})
             end
         end,
-        [interpreter_containers, builder_containers, add_delegate_registry, delegate_transfer]),
-    ?assertMatch({ok, _}, tflite_beam_interpreter_server:start(Model, [{num_threads, 2}])).
+    %% these two are on the path every build takes
+    lists:foreach(Expect, [interpreter_containers, builder_containers]),
+    %% and these two only exist where a delegate can be attached at all
+    skip_without_xnnpack(fun() ->
+        lists:foreach(Expect, [add_delegate_registry, delegate_transfer])
+    end),
+    {ok, Server} = tflite_beam_interpreter_server:start(Model, [{num_threads, 2}]),
+    ok = tflite_beam_interpreter_server:stop(Server).

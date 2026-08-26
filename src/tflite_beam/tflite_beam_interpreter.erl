@@ -373,7 +373,7 @@ get_signature_runner(Self, SignatureKey) when is_reference(Self), is_binary(Sign
 %% call `tflite_beam_interpreter:invoke/1' and return output tensor(s).
 %% fetch_output/2 reads each output with tflite_beam_tensor:to_binary/1, so what
 %% comes back is the bytes, not the records this used to promise.
--spec predict(reference(), list(binary()) | binary() | map()) -> list(binary() | {error, binary()}) | binary() | {error, binary()}.
+-spec predict(reference(), list(binary()) | binary() | map()) -> list(binary() | {error, binary()}) | {error, binary()}.
 predict(Self, Input) when is_reference(Self) and (is_binary(Input) or is_list(Input) or is_map(Input)) ->
     case tflite_beam_interpreter:inputs(Self) of
         {ok, InputTensors} ->
@@ -404,7 +404,15 @@ predict(Self, Input) when is_reference(Self) and (is_binary(Input) or is_list(In
             end;
         {error, Reason} ->
             {error, Reason}
-    end.
+    end;
+
+%% Anything that is not one of those three shapes matched no clause and raised
+%% from in here, which through the server took the server down. The elements
+%% inside a list or a map are checked further in; this is the outer shape.
+predict(Self, Input) when is_reference(Self) ->
+    {error, unicode:characters_to_binary(
+        io_lib:format("input must be a binary, a list of them, or a map, and this is ~p",
+                      [Input]))}.
 
 fill_input(Self, InputTensors, Input) when is_reference(Self) and is_list(InputTensors) and is_binary(Input) ->
     fill_input(Self, InputTensors, [Input]);

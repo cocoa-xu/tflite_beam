@@ -127,7 +127,7 @@ read_from_unicode_data(FileDescriptor, TypeAcc) ->
                 {error, Reason} -> {error, Reason}
             end;
         eof ->
-            {ok, lists:flatten(maps:values(TypeAcc))};
+            {ok, lists:flatten([lists:reverse(V) || V <- maps:values(TypeAcc)])};
         {error, Reason} ->
             {error, Reason}
     end.
@@ -144,7 +144,14 @@ process_unicode_data_line(Line, TypeAcc) ->
     BinaryLine = unicode:characters_to_binary(Line),
     case binary:split(BinaryLine, <<";">>, [global]) of
         [CodePoint, _Name, Type | _Rest] ->
-            {ok, accumlate_type(CodePoint, Type, TypeAcc)};
+            case accumlate_type(CodePoint, Type, TypeAcc) of
+                {error, Field} ->
+                    {error, iolist_to_binary(
+                        ["unicode data row has no code point in its first field: ",
+                         io_lib:format("~p", [Field])])};
+                Updated ->
+                    {ok, Updated}
+            end;
         _Short ->
             case string:trim(BinaryLine) of
                 <<>> -> {ok, TypeAcc};
@@ -154,18 +161,31 @@ process_unicode_data_line(Line, TypeAcc) ->
             end
     end.
 
+%% The first field is read as hexadecimal, and a row whose first field is not
+%% hexadecimal, or is empty, ended the process through list_to_integer/2. Having
+%% the right number of fields was checked; having a code point in the first one
+%% was not, so the check stopped one layer short of the data it was guarding.
 accumlate_type(CodePoint, Type, TypeAcc) ->
     case Type of
         <<"P", _>> ->
-            Value = erlang:list_to_integer(unicode:characters_to_list(CodePoint), 16),
-            IsKey = maps:is_key(Type, TypeAcc),
-            if
-                IsKey ->
-                    SameTypeValues = maps:get(Type, TypeAcc),
-                    maps:update(Type, SameTypeValues ++ [Value], TypeAcc);
-                true ->
-                    maps:put(Type, [Value], TypeAcc)
+            case code_point_of(CodePoint) of
+                {ok, Value} -> accumlate_value(Value, Type, TypeAcc);
+                error -> {error, CodePoint}
             end;
         _ ->
             TypeAcc
+    end.
+
+code_point_of(Field) ->
+    try erlang:list_to_integer(unicode:characters_to_list(Field), 16) of
+        Value when Value >= 0, Value =< 16#10FFFF -> {ok, Value};
+        _OutOfRange -> error
+    catch
+        error:badarg -> error
+    end.
+
+accumlate_value(Value, Type, TypeAcc) ->
+    case maps:is_key(Type, TypeAcc) of
+        true -> maps:update(Type, [Value | maps:get(Type, TypeAcc)], TypeAcc);
+        false -> maps:put(Type, [Value], TypeAcc)
     end.

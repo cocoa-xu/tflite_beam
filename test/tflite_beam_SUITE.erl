@@ -404,8 +404,11 @@ the_server_survives_a_malformed_request(_Config) ->
     %% the wrong size was answered; the wrong type was not. A list or map the
     %% outer guard accepts, holding something that is not binary data, matched
     %% no clause further in and took the server down with the interpreter on it.
+    %% and the outer shape too: a scalar matched none of predict/2's clauses and
+    %% raised before any of the element checks were reached.
     Malformed = [[not_binary], [123], [nil], #{<<"input">> => not_binary},
-                 #{<<"input">> => 123}, #{<<"input">> => [1, 2, 3]}],
+                 #{<<"input">> => 123}, #{<<"input">> => [1, 2, 3]},
+                 not_binary, 123, nil, {1, 2}, 1.5],
     lists:foreach(
         fun(Bad) ->
             ?assertMatch({error, _},
@@ -894,7 +897,16 @@ an_empty_tensor_says_so_rather_than_blaming_allocate_tensors(_Config) ->
     Empty = tflite_beam_interpreter:tensor(Interpreter, Input),
     {error, Reason} = tflite_beam_tensor:to_binary(Empty),
     ?assertNotEqual(nomatch, binary:match(Reason, <<"[0,8,8,3]">>)),
-    ?assertEqual(nomatch, binary:match(Reason, <<"Please call">>)).
+    ?assertEqual(nomatch, binary:match(Reason, <<"Please call">>)),
+
+    %% the same shape without allocate_tensors reaches the same null pointer, and
+    %% the answer must not claim to know which of the two it was
+    {FreshBuilder, Fresh} = tflite_beam_test_models:builder("add.bin"),
+    _ = tflite_beam_interpreter_builder:build(FreshBuilder, Fresh),
+    ok = tflite_beam_interpreter:resize_input_tensor(Fresh, Input, [0, 8, 8, 3]),
+    {error, Unallocated} =
+        tflite_beam_tensor:to_binary(tflite_beam_interpreter:tensor(Fresh, Input)),
+    ?assertEqual(nomatch, binary:match(Unallocated, <<"Please call">>)).
 
 %% Chinese is written without spaces, so without this every sentence arrived as
 %% one word, ran past wordpiece's two hundred character limit, and came back as
