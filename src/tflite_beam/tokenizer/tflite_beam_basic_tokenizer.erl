@@ -1,7 +1,22 @@
 %% @doc
 %% Runs basic tokenization such as punctuation spliting, lower casing.
 %%
-%% Related link: https://github.com/tensorflow/examples/blob/master/lite/examples/bert_qa/ios/BertQACore/Models/Tokenizers/BasicTokenizer.swift
+%% Ported from BasicTokenizer.swift in the iOS BertQA example:
+%% https://github.com/tensorflow/examples/blob/master/lite/examples/bert_qa/ios/BertQACore/Models/Tokenizers/BasicTokenizer.swift
+%%
+%% It departs from that file in one place, deliberately. BERT itself spaces out
+%% CJK ideographs before splitting on whitespace, and the Swift file skips that
+%% step, which it can afford to: it exists to serve one English QA model. This is
+%% a tokenizer anyone can point at any BERT vocabulary, and a multilingual one
+%% holds Chinese a character at a time precisely because the tokenizer is
+%% expected to split it. Without the step a whole sentence arrives as one word,
+%% runs past wordpiece's limit, and comes back as [UNK], so the content is not
+%% merely tokenized differently, it is gone. The vocabulary decides what is
+%% correct here, not the file this was ported from.
+%%
+%% The ranges in space_out_ideographs/1 are BERT's, kana and hangul excluded for
+%% BERT's stated reason: those are written with spaces already.
+%% https://github.com/google-research/bert/blob/master/tokenization.py
 
 -module(tflite_beam_basic_tokenizer).
 -export([
