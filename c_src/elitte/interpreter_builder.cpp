@@ -210,7 +210,21 @@ ERL_NIF_TERM interpreter_builder_build(ErlNifEnv *env, int argc, const ERL_NIF_T
     }
 
     std::unique_ptr<tflite::Interpreter> pretend(interpreter_res->val);
+
+    // Reserving above covers what this function allocates. It does not cover
+    // what operator() allocates: LiteRT's first line is interpreter->reset(),
+    // which destroys the old one, and the long body after it allocates freely.
+    // A throw in there unwinds past the release below, and the resource would
+    // still be holding the address of the interpreter that reset() destroyed.
+    // Emptied here, so anything that goes wrong from this line to the release
+    // leaves a null, which is the state every accessor already answers for.
+    interpreter_res->val = nullptr;
+
     TfLiteStatus status = self_res->val->operator()(&pretend);
+
+    // for the test suite: stands in for a throw out of operator() after it has
+    // destroyed the old interpreter. See c_src/fault_inject.hpp.
+    erlang::nif::fault_point(erlang::nif::kFaultRebuildHandover);
 
     // the retry builds from the model and resolver this builder was made with, so
     // it is only on the table while both are still there

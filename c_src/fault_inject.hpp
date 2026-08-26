@@ -27,6 +27,7 @@ enum FaultPoint {
     kFaultInterpreterContainers,
     kFaultBuilderContainers,
     kFaultModelBufferCopy,
+    kFaultRebuildHandover,
 };
 
 extern std::atomic<int> armed_fault_point;
@@ -41,13 +42,14 @@ inline const char * const * fault_point_names() {
         "interpreter_containers",
         "builder_containers",
         "model_buffer_copy",
+        "rebuild_handover",
     };
     return names;
 }
 
 inline int fault_point_from_name(const char * name) {
     const char * const * names = fault_point_names();
-    for (int i = kFaultNone; i <= kFaultModelBufferCopy; i++) {
+    for (int i = kFaultNone; i <= kFaultRebuildHandover; i++) {
         if (std::strcmp(names[i], name) == 0) return i;
     }
     return -1;

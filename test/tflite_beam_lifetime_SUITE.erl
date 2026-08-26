@@ -31,7 +31,8 @@
     add_delegate_failure_strands_no_delegate/1,
     delegate_transfer_failure_leaves_the_interpreter_untouched/1,
     a_server_that_cannot_allocate_says_why/1,
-    a_model_buffer_that_cannot_be_copied_is_reported/1
+    a_model_buffer_that_cannot_be_copied_is_reported/1,
+    a_rebuild_that_throws_leaves_no_freed_pointer_behind/1
 ]).
 
 all() ->
@@ -54,7 +55,8 @@ all() ->
         add_delegate_failure_strands_no_delegate,
         delegate_transfer_failure_leaves_the_interpreter_untouched,
         a_server_that_cannot_allocate_says_why,
-        a_model_buffer_that_cannot_be_copied_is_reported
+        a_model_buffer_that_cannot_be_copied_is_reported,
+        a_rebuild_that_throws_leaves_no_freed_pointer_behind
     ].
 
 %% Arming a fault point is a global switch that crosses processes, so the NIF
@@ -70,7 +72,8 @@ init_per_testcase(Case, Config) when
         Case =:= add_delegate_failure_strands_no_delegate;
         Case =:= delegate_transfer_failure_leaves_the_interpreter_untouched;
         Case =:= a_server_that_cannot_allocate_says_why;
-        Case =:= a_model_buffer_that_cannot_be_copied_is_reported ->
+        Case =:= a_model_buffer_that_cannot_be_copied_is_reported;
+        Case =:= a_rebuild_that_throws_leaves_no_freed_pointer_behind ->
     case tflite_beam_nif:nif_arm_fault(none) of
         ok -> Config;
         {error, _} ->
@@ -495,3 +498,33 @@ a_model_buffer_that_cannot_be_copied_is_reported(_Config) ->
     disarm(),
     ?assert(Growth < 1024 * 1024,
             lists:flatten(io_lib:format("~p bytes left behind by 20000 failures", [Growth]))).
+
+%% LiteRT's InterpreterBuilder::operator() destroys the old interpreter on its
+%% first line and then allocates its way through a long body. A throw in there
+%% unwinds past the line that hands the new pointer back, and the resource was
+%% left holding the address of the one that was already destroyed: the next call
+%% on it, or its collection, read freed memory. Emptying the resource across that
+%% window turns the same failure into a null, which every accessor answers for.
+%%
+%% The fault point stands where such a throw lands, since a test cannot ask
+%% LiteRT to run out of memory at one exact line.
+a_rebuild_that_throws_leaves_no_freed_pointer_behind(_Config) ->
+    {Builder, Interpreter} = tflite_beam_test_models:builder("add.bin"),
+
+    arm(rebuild_handover),
+    ?assertMatch({error, _}, tflite_beam_interpreter_builder:build(Builder, Interpreter)),
+    disarm(),
+
+    %% every one of these used to read an interpreter that had been destroyed
+    ?assertMatch({error, _}, tflite_beam_interpreter:tensors_size(Interpreter)),
+    ?assertMatch({error, _}, tflite_beam_interpreter:allocate_tensors(Interpreter)),
+    ?assertMatch({error, _}, tflite_beam_interpreter:inputs(Interpreter)),
+    ?assertMatch({error, _}, tflite_beam_interpreter:invoke(Interpreter)),
+
+    %% and letting it go must not read it either
+    erlang:garbage_collect(),
+
+    %% a rebuild that is allowed to finish still works
+    {Again, Fresh} = tflite_beam_test_models:builder("add.bin"),
+    ?assertEqual(ok, tflite_beam_interpreter_builder:build(Again, Fresh)),
+    ?assertEqual(ok, tflite_beam_interpreter:allocate_tensors(Fresh)).
