@@ -64,6 +64,12 @@ predict(Server, Input) ->
     predict(Server, Input, ?DEFAULT_TIMEOUT).
 
 %% @doc Feed, run and read back, with a call timeout.
+%%
+%% The timeout gives up on the answer; it does not stop the work. When it runs
+%% out this exits the calling process, which is `gen_server:call/3' behaviour and
+%% not in the return type above, and the server carries on with the inference it
+%% was given. Anything queued behind it still waits for it to finish. Raise the
+%% timeout rather than retry: a retry joins the queue behind the call it replaced.
 -spec predict(pid(), binary() | list() | map(), timeout()) -> list(binary()) | {error, binary()}.
 predict(Server, Input, Timeout) ->
     gen_server:call(Server, {predict, Input}, Timeout).
@@ -80,6 +86,9 @@ with(Server, Fun) ->
     with(Server, Fun, ?DEFAULT_TIMEOUT).
 
 %% @doc Run a function against the interpreter inside the owning process.
+%%
+%% Same as `predict/3' on the timeout: it ends the wait, not the work. A callback
+%% that outlives its timeout keeps the interpreter to itself until it returns.
 -spec with(pid(), fun((reference()) -> Result), timeout()) -> Result | {error, binary()}.
 with(Server, Fun, Timeout) when is_function(Fun, 1) ->
     gen_server:call(Server, {with, Fun}, Timeout).

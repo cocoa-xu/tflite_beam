@@ -28,6 +28,7 @@
     a_symlink_out_of_the_cache_is_refused_and_a_raw_name_is_not/1,
     signature_defs_names_are_binaries_not_atoms/1,
     an_https_download_without_a_ca_store_is_refused_not_downgraded/1,
+    a_timeout_ends_the_wait_and_not_the_work/1,
     associated_files_by_string_and_by_list/1,
     predict_reports_a_bad_input_instead_of_crashing/1,
     predict_does_not_answer_from_a_failed_invoke/1,
@@ -78,6 +79,7 @@ all() ->
         a_symlink_out_of_the_cache_is_refused_and_a_raw_name_is_not,
         signature_defs_names_are_binaries_not_atoms,
         an_https_download_without_a_ca_store_is_refused_not_downgraded,
+        a_timeout_ends_the_wait_and_not_the_work,
         associated_files_by_string_and_by_list,
         predict_reports_a_bad_input_instead_of_crashing,
         predict_does_not_answer_from_a_failed_invoke,
@@ -1097,3 +1099,32 @@ an_https_download_without_a_ca_store_is_refused_not_downgraded(_Config) ->
     after
         Restore()
     end.
+
+%% Pinning what the docs now say, because it is the opposite of what a timeout
+%% usually suggests: the caller stops waiting, the server does not stop working,
+%% and whoever asks next waits out the remainder of a call nobody is listening to.
+a_timeout_ends_the_wait_and_not_the_work(_Config) ->
+    {ok, Server} = tflite_beam_interpreter_server:start_link(
+                     tflite_beam_test_models:path("add.bin"), []),
+    Parent = self(),
+    Caller = spawn(fun() ->
+        Answer = (catch tflite_beam_interpreter_server:with(
+                          Server, fun(_) -> timer:sleep(1500), slow end, 200)),
+        Parent ! {gave_up, Answer}
+    end),
+    receive
+        {gave_up, GaveUp} ->
+            ?assertMatch({'EXIT', {timeout, _}}, GaveUp)
+    after 5000 ->
+            exit(Caller, kill),
+            ct:fail(the_caller_never_gave_up)
+    end,
+
+    %% the server is still busy with the call the caller walked away from
+    ?assert(is_process_alive(Server)),
+    Started = erlang:monotonic_time(millisecond),
+    ?assertEqual(second, tflite_beam_interpreter_server:with(Server, fun(_) -> second end, 10000)),
+    Waited = erlang:monotonic_time(millisecond) - Started,
+    ?assert(Waited > 500,
+            lists:flatten(io_lib:format("the next caller waited only ~pms", [Waited]))),
+    ok = tflite_beam_interpreter_server:stop(Server).
