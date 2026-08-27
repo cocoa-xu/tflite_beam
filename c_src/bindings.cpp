@@ -37,6 +37,7 @@ extern ERL_NIF_TERM litert_compiled_model_reset_profile(ErlNifEnv *env, int argc
 extern ERL_NIF_TERM litert_compiled_model_io_sizes(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 extern ERL_NIF_TERM litert_model_signatures(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 extern ERL_NIF_TERM litert_compiled_model_metrics(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
+extern ERL_NIF_TERM litert_platform_support(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 #endif
 extern ERL_NIF_TERM nif_arm_fault(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 
@@ -195,6 +196,7 @@ static ErlNifFunc nif_functions[] = {
     F(litert_compiled_model_io_sizes, 1),
     F_CPU(litert_model_signatures, 2),
     F_CPU(litert_compiled_model_metrics, 2),
+    F(litert_platform_support, 0),
 #endif
     F(delegate_available, 0),
     F_IO(delegate_external_new, 2),

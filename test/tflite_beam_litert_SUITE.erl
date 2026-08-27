@@ -12,6 +12,7 @@
     compiled_model_runs/1,
     compiled_model_refuses_a_wrong_sized_input/1,
     compiled_model_refuses_the_wrong_number_of_inputs/1,
+    platform_support_is_reported/1,
     signatures_are_listed/1,
     a_signature_can_be_named/1,
     an_unknown_signature_is_refused/1,
@@ -32,6 +33,7 @@ all() ->
         compiled_model_runs,
         compiled_model_refuses_a_wrong_sized_input,
         compiled_model_refuses_the_wrong_number_of_inputs,
+        platform_support_is_reported,
         signatures_are_listed,
         a_signature_can_be_named,
         an_unknown_signature_is_refused,
@@ -98,6 +100,23 @@ compiled_model_refuses_the_wrong_number_of_inputs(Config) ->
     ?assertMatch({ok, _}, ?A:run(Model, Right)),
     ?assertMatch({error, _}, ?A:run(Model, tl(Right))),
     ?assertMatch({error, _}, ?A:run(Model, Right ++ [hd(Right)])).
+
+%% Compile-time capabilities, so this asserts the shape and the one answer the
+%% platform fixes rather than a value that varies by machine.
+platform_support_is_reported(_Config) ->
+    Support = ?A:platform_support(),
+    ?assert(is_map(Support)),
+    Expected = [opencl, opengl, metal, ahwb, ion, dmabuf, fastrpc, sync_fence],
+    ?assertEqual(lists:sort(Expected), lists:sort(maps:keys(Support))),
+    ?assert(lists:all(fun is_boolean/1, maps:values(Support))),
+    %% LiteRT fixes these two by platform, whatever is installed
+    case os:type() of
+        {unix, darwin} ->
+            ?assertEqual(true, maps:get(metal, Support)),
+            ?assertEqual(false, maps:get(opencl, Support));
+        _ ->
+            ?assertEqual(false, maps:get(metal, Support))
+    end.
 
 signatures_are_listed(Config) ->
     Env = proplists:get_value(env, Config),
