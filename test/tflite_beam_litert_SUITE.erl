@@ -26,7 +26,8 @@
     an_unclaimed_model_is_open_to_every_process/1,
     a_claimed_model_refuses_other_processes/1,
     a_claim_dies_with_its_process/1,
-    the_server_claims_what_with_hands_out/1
+    the_server_claims_what_with_hands_out/1,
+    a_bad_detail_level_does_not_take_the_server_down/1
 ]).
 
 -define(A, tflite_beam_litert_compiled_model).
@@ -53,7 +54,8 @@ all() ->
         an_unclaimed_model_is_open_to_every_process,
         a_claimed_model_refuses_other_processes,
         a_claim_dies_with_its_process,
-        the_server_claims_what_with_hands_out
+        the_server_claims_what_with_hands_out,
+        a_bad_detail_level_does_not_take_the_server_down
     ].
 
 %% The Erlang stubs exist whatever the library was built with; what is missing
@@ -461,8 +463,10 @@ a_claim_dies_with_its_process(Config) ->
     Ref = monitor(process, Owner),
     Owner ! stop,
     receive {'DOWN', Ref, process, _, _} -> ok after 5000 -> ct:fail(owner_timeout) end,
-    ?assertMatch({ok, _}, run_here(Model, Inputs)),
-    ?assertEqual(undefined, ?A:controlling_process(Model)).
+    %% the getter notices the death by itself, without a guarded operation
+    %% having to run first and clear the claim
+    ?assertEqual(undefined, ?A:controlling_process(Model)),
+    ?assertMatch({ok, _}, run_here(Model, Inputs)).
 
 %% with/2 hands the reference to a callback, and a callback that keeps it must
 %% not be able to use it from elsewhere afterwards.
@@ -516,3 +520,29 @@ release_owner(Pid) ->
     Ref = monitor(process, Pid),
     Pid ! release,
     receive {'DOWN', Ref, process, _, _} -> ok after 5000 -> ok end.
+
+
+%% An argument the direct module refuses with a guard would, if it reached the
+%% server's handle_call, raise there and take the model down with the server. A
+%% caller mistake must cost the call and nothing else.
+a_bad_detail_level_does_not_take_the_server_down(Config) ->
+    Env = proplists:get_value(env, Config),
+    {ok, Server} = ?B:start(Env, tflite_beam_test_models:path(?MODEL),
+                            #{accelerators => [cpu]}),
+    try
+        {ok, {Ins, _}} = ?B:io_sizes(Server),
+        Inputs = [filled(1.0, N) || N <- Ins],
+        ?assertMatch({ok, {_, []}}, ?B:run_with_metrics(Server, Inputs)),
+
+        [?assertError(function_clause, ?B:run_with_metrics(Server, Inputs, Bad))
+         || Bad <- [-1, 4294967296, not_a_number]],
+
+        %% the server survived every one of them and still works
+        ?assert(is_process_alive(Server)),
+        ?assertMatch({ok, _}, ?B:run(Server, Inputs))
+    after
+        case is_process_alive(Server) of
+            true -> ?B:stop(Server);
+            false -> ok
+        end
+    end.

@@ -9,12 +9,13 @@
 %% compiled model and to nothing else, and it reports every operator, how long
 %% it took, and whether an accelerator or the CPU ran it.
 %%
-%% A model owns its input and output buffers, allocated once when it is built.
-%% `run/2' writes into those buffers, runs, and reads back out of them, so two
-%% processes calling `run/2' on the same model overwrite each other's inputs
-%% and can read each other's outputs. Nothing here prevents that, on purpose:
-%% see `tflite_beam_litert_compiled_model_server' for a version that does, and
-%% keep this one if you would rather serialise access yourself.
+%% A model owns its input and output buffers, allocated once when it is built,
+%% so `run/2' writes into those buffers, runs, and reads back out of them. LiteRT
+%% does not promise its compiled model API is safe to enter from two threads, so
+%% a second caller arriving while one is inside the model is **refused** with
+%% `{error, <<"compiled model is in use by another caller">>}' rather than
+%% admitted. That is a refusal, not a queue: callers who would rather wait their
+%% turn want `tflite_beam_litert_compiled_model_server'.
 -module(tflite_beam_litert_compiled_model).
 
 -export([
@@ -37,6 +38,8 @@
 %% The signature index crosses into the NIF through enif_get_int, so the range
 %% is the C int range and not every non_neg_integer().
 -type signature_index() :: 0..2147483647.
+%% Same range and for the same reason: it crosses into the NIF as a C int.
+-type detail_level() :: 0..2147483647.
 -type operator_kind() :: operator | delegate_operator | delegate_profiled.
 -type opts() :: #{
     accelerators => [accelerator()],
@@ -44,7 +47,8 @@
     profile => boolean(),
     signature => signature_index() | binary() | string()
 }.
--export_type([accelerator/0, precision/0, opts/0, signature_index/0, operator_kind/0]).
+-export_type([accelerator/0, precision/0, opts/0, signature_index/0,
+              detail_level/0, operator_kind/0]).
 
 %% @doc
 %% What this build of the library can reach.
@@ -114,9 +118,20 @@ new(Env, Path) ->
 %% is `[cpu]'. Naming `gpu' does not promise a GPU: if no accelerator plugin is
 %% found the compile fails rather than quietly running on the CPU, so check the
 %% result rather than assuming.
-%% @param precision What a GPU accelerator should compute in. `fp32' is the
-%% default and agrees with the CPU answer to within rounding; `fp16' is faster
-%% and does not. Ignored by the CPU.
+%% @param precision What a GPU accelerator should compute in.
+%%
+%% `default' asks for nothing and lets the accelerator decide, which is not the
+%% same as asking for `fp32'. Measured against the plugins in
+%% `tflite_delegate_plugins', `default' does come out as float32, because those
+%% pass the delegate's own default and TFLite's GPU delegates keep float32; a
+%% different accelerator may well choose float16 when it can. Name `fp32' if
+%% the accuracy matters rather than relying on the default to mean it.
+%%
+%% `fp32' agrees with the CPU answer to within rounding. `fp16' is faster and
+%% does not; on an M4 Max the largest element-wise difference against the CPU
+%% went from 3.02e-6 to 2.01e-2. `fp16_with_fp32_accum' asks for float16
+%% arithmetic accumulated in float32 where the backend offers it. All of them
+%% are ignored by the CPU.
 %% @param signature Which signature this model runs, as an index or a key. The
 %% buffers are allocated for that one signature and `run/2' runs it, so a model
 %% with several signatures needs one of these per signature rather than one that
@@ -167,9 +182,12 @@ run(Model, Inputs) when is_list(Inputs) ->
     tflite_beam_nif:litert_compiled_model_run(Model, Inputs).
 
 %% @doc
-%% Whether one accelerator claimed the whole graph.
+%% Whether anything is left for the ordinary interpreter to run.
 %%
-%% False means the graph was split, and `profile/1' says where.
+%% True means no undelegated operations remain, which several accelerators
+%% between them can satisfy just as well as one. False does not have to mean a
+%% split between accelerators either: it means at least one operation is running
+%% the ordinary way. `profile/1' is what says which.
 -spec fully_accelerated(reference()) -> {ok, boolean()} | {error, binary()}.
 fully_accelerated(Model) ->
     tflite_beam_nif:litert_compiled_model_fully_accelerated(Model).
@@ -186,10 +204,11 @@ io_sizes(Model) ->
 %% of `tag', `us', `type' and `source'. Telemetry events are included and carry
 %% a sentinel in place of a duration; `summarise_profile/1' drops them.
 %%
-%% The buffer behind this holds a fixed number of events, 10240 in LiteRT 2.2.0,
-%% so a long-lived model does not accumulate for ever and a busy one loses the
-%% oldest. Read it, or `reset_profile/1' it, on a cadence that suits how many
-%% operators your model has.
+%% The buffer behind this is fixed and large: a compiled model asks for
+%% 512 * 1024 entries in LiteRT 2.2.0, not the 10240 a bare profiler defaults
+%% to. So a long-lived model does not grow without bound, but neither will it
+%% overflow soon. Reset it when you want to measure a change rather than to keep
+%% it in check.
 -spec profile(reference()) -> {ok, [map()]} | {error, binary()}.
 profile(Model) ->
     tflite_beam_nif:litert_compiled_model_profile(Model).
@@ -213,10 +232,11 @@ run_with_metrics(Model, Inputs) ->
 %% because a backend asked to report on an interval containing no inference has
 %% nothing to report on. Use `profile/1' for timings; this is for counters a
 %% backend chooses to expose.
--spec run_with_metrics(reference(), [binary()], signature_index()) ->
+-spec run_with_metrics(reference(), [binary()], detail_level()) ->
     {ok, {[binary()], [{binary(), term()}]}} | {error, binary()}.
 run_with_metrics(Model, Inputs, DetailLevel)
-        when is_list(Inputs), is_integer(DetailLevel), DetailLevel >= 0 ->
+        when is_list(Inputs), is_integer(DetailLevel),
+             DetailLevel >= 0, DetailLevel =< 2147483647 ->
     tflite_beam_nif:litert_compiled_model_run_with_metrics(Model, Inputs, DetailLevel).
 
 %% @doc Which process this model belongs to, or `undefined' if nobody has
