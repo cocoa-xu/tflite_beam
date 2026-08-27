@@ -13,6 +13,7 @@
     compiled_model_refuses_a_wrong_sized_input/1,
     compiled_model_refuses_the_wrong_number_of_inputs/1,
     platform_support_is_reported/1,
+    hostile_arguments_are_refused_not_survived/1,
     signatures_are_listed/1,
     a_signature_can_be_named/1,
     each_signature_runs_its_own_function/1,
@@ -39,6 +40,7 @@ all() ->
         compiled_model_refuses_a_wrong_sized_input,
         compiled_model_refuses_the_wrong_number_of_inputs,
         platform_support_is_reported,
+        hostile_arguments_are_refused_not_survived,
         signatures_are_listed,
         a_signature_can_be_named,
         each_signature_runs_its_own_function,
@@ -129,6 +131,38 @@ platform_support_is_reported(_Config) ->
         _ ->
             ?assertEqual(false, maps:get(metal, Support))
     end.
+
+%% Degenerate and hostile arguments from Erlang. Every one of these has to be
+%% refused with something a caller can act on, and the model has to still work
+%% afterwards: a refusal that leaves the resource unusable is only half a
+%% refusal. A zero byte matters more than it looks, because every string here
+%% reaches C as a NUL terminated one and would otherwise name something shorter
+%% than what was asked for.
+hostile_arguments_are_refused_not_survived(Config) ->
+    Env = proplists:get_value(env, Config),
+    Path = tflite_beam_test_models:path(?MODEL),
+    Model = model(Config, #{accelerators => [cpu]}),
+    {ok, {Ins, _}} = ?A:io_sizes(Model),
+    Good = [filled(1.0, N) || N <- Ins],
+
+    ?assertMatch({error, _}, ?A:environment(<<"/tmp/a", 0, "b">>)),
+    ?assertMatch({error, _}, ?A:new(Env, <<"a", 0, "b">>, #{})),
+    ?assertMatch({error, _}, ?A:signatures(Env, <<"a", 0, "b">>)),
+    ?assertMatch({error, _}, ?A:new(Env, Path, #{signature => <<"a", 0, "b">>})),
+
+    %% an empty accelerator set selects nothing to run on
+    ?assertMatch({error, _}, ?A:new(Env, Path, #{accelerators => []})),
+    %% and an index the NIF cannot take is named here rather than there
+    ?assertMatch({error, _}, ?A:new(Env, Path, #{signature => 4294967296})),
+
+    ?assertMatch({error, _}, ?A:run(Model, [])),
+    ?assertMatch({error, _}, ?A:run(Model, [improper | Good])),
+    ?assertMatch({error, _}, ?A:run(Model, [1, 2, 3, 4])),
+    ?assertMatch({error, _}, ?A:run(Model, lists:duplicate(1000, hd(Good)))),
+    ?assertMatch({error, _}, ?A:run(Model, [binary:copy(<<0>>, 1000000) | tl(Good)])),
+
+    %% and after all of that the model still runs
+    ?assertMatch({ok, _}, ?A:run(Model, Good)).
 
 signatures_are_listed(Config) ->
     Env = proplists:get_value(env, Config),

@@ -81,7 +81,10 @@ environment() ->
 environment(Dir) when is_list(Dir) ->
     environment(list_to_binary(Dir));
 environment(Dir) when is_binary(Dir) ->
-    tflite_beam_nif:litert_environment_new(Dir).
+    case check_no_nul(Dir, <<"runtime library directory">>) of
+        ok -> tflite_beam_nif:litert_environment_new(Dir);
+        Error -> Error
+    end.
 
 %% @doc
 %% The signature keys of a model, in index order.
@@ -93,7 +96,10 @@ environment(Dir) when is_binary(Dir) ->
 signatures(Env, Path) when is_list(Path) ->
     signatures(Env, list_to_binary(Path));
 signatures(Env, Path) when is_binary(Path) ->
-    tflite_beam_nif:litert_model_signatures(Env, Path).
+    case check_no_nul(Path, <<"model path">>) of
+        ok -> tflite_beam_nif:litert_model_signatures(Env, Path);
+        Error -> Error
+    end.
 
 %% @doc A compiled model on the CPU, with no profiling.
 -spec new(reference(), binary() | string()) -> {ok, reference()} | {error, binary()}.
@@ -127,9 +133,23 @@ new(Env, Path) ->
 new(Env, Path, Opts) when is_list(Path) ->
     new(Env, list_to_binary(Path), Opts);
 new(Env, Path, Opts) when is_binary(Path), is_map(Opts) ->
+    case check_no_nul(Path, <<"model path">>) of
+        ok -> new_checked(Env, Path, Opts);
+        Error -> Error
+    end.
+
+new_checked(Env, Path, Opts) ->
     Accel = accelerator_set(maps:get(accelerators, Opts, [cpu])),
     Prec = precision_value(maps:get(precision, Opts, default)),
     Profile = case maps:get(profile, Opts, false) of true -> 1; false -> 0 end,
+    case Accel of
+        0 ->
+            {error, <<"name at least one accelerator; [] selects nothing to run on">>};
+        _ ->
+            new_with_signature(Env, Path, Accel, Prec, Profile, Opts)
+    end.
+
+new_with_signature(Env, Path, Accel, Prec, Profile, Opts) ->
     case signature_index(Env, Path, maps:get(signature, Opts, 0)) of
         {ok, Index} ->
             tflite_beam_nif:litert_compiled_model_new(Env, Path, Accel, Prec, Profile, Index);
@@ -280,11 +300,24 @@ accelerator_bit(cpu) -> 1;
 accelerator_bit(gpu) -> 2;
 accelerator_bit(npu) -> 4.
 
-signature_index(_Env, _Path, Index) when is_integer(Index), Index >= 0 ->
+%% The index crosses into the NIF through enif_get_int, so anything outside the
+%% C int range is refused here where it can be named rather than there where it
+%% looks like a parse failure.
+signature_index(_Env, _Path, Index) when is_integer(Index), Index >= 0,
+                                         Index =< 2147483647 ->
     {ok, Index};
+signature_index(_Env, _Path, Index) when is_integer(Index) ->
+    {error, iolist_to_binary(
+        io_lib:format("signature index ~p is outside 0..2147483647", [Index]))};
 signature_index(Env, Path, Key) when is_list(Key) ->
     signature_index(Env, Path, list_to_binary(Key));
 signature_index(Env, Path, Key) when is_binary(Key) ->
+    case check_no_nul(Key, <<"signature key">>) of
+        ok -> signature_index_by_key(Env, Path, Key);
+        Error -> Error
+    end.
+
+signature_index_by_key(Env, Path, Key) ->
     case tflite_beam_nif:litert_model_signatures(Env, Path) of
         {ok, Keys} ->
             case index_of(Key, Keys, 0) of
@@ -296,6 +329,14 @@ signature_index(Env, Path, Key) when is_binary(Key) ->
             end;
         Error ->
             Error
+    end.
+
+%% Everything here reaches C as a NUL terminated string, so a NUL inside one
+%% would not be rejected, it would silently shorten it and name something else.
+check_no_nul(Binary, What) ->
+    case binary:match(Binary, <<0>>) of
+        nomatch -> ok;
+        _ -> {error, iolist_to_binary([<<"the ">>, What, <<" contains a zero byte">>])}
     end.
 
 index_of(_Key, [], _N) -> not_found;
