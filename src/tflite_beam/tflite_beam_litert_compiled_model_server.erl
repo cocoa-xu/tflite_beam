@@ -28,9 +28,8 @@
 %% The profile is per model, not per call, so `summarise_profile/1' here reports
 %% the runs since the last `reset_profile/1' rather than the last one. That is
 %% usually what you want from a server: a shape over many calls rather than one
-%% sample. It is not unbounded, though: the buffer under it holds a fixed number
-%% of events, so a busy model loses the oldest. Reset on a cadence, and reset
-%% when you want to measure a change.
+%% sample. The buffer under it is fixed at 512 * 1024 entries, so it is bounded
+%% but not tight. Reset when you want to measure a change.
 -module(tflite_beam_litert_compiled_model_server).
 -behaviour(gen_server).
 
@@ -41,7 +40,7 @@
     with/2, with/3,
     fully_accelerated/1,
     io_sizes/1,
-    run_with_metrics/2, run_with_metrics/3,
+    run_with_metrics/2, run_with_metrics/3, run_with_metrics/4,
     profile/1,
     summarise_profile/1,
     reset_profile/1,
@@ -103,9 +102,16 @@ run(Server, Inputs, Timeout) when is_list(Inputs) ->
 %% Run a function against the compiled model inside the owning process.
 %%
 %% For the sequences `run/2' does not cover, such as resetting the profile and
-%% running a measured batch as one uninterrupted step. The function runs in this
-%% process, so nothing else touches the model while it does, and it should
-%% return promptly for the same reason.
+%% running a measured batch as one uninterrupted step.
+%%
+%% What this guarantees is narrow and worth stating exactly: the function runs
+%% in this process, so the server handles no other message while it does. It
+%% does not sandbox the function. A callback that raises takes the server, and
+%% the model, down with it. A callback that keeps the reference and hands the
+%% model to another process with
+%% `tflite_beam_litert_compiled_model:controlling_process/2' leaves this server
+%% alive and unable to use its own model. And a timeout on `with/3' ends the
+%% wait, not the callback, which carries on holding the server.
 -spec with(pid(), fun((reference()) -> Result)) -> Result | {error, binary()}.
 with(Server, Fun) ->
     with(Server, Fun, ?DEFAULT_TIMEOUT).
@@ -129,13 +135,27 @@ io_sizes(Server) ->
 -spec run_with_metrics(pid(), [binary()]) ->
     {ok, {[binary()], [{binary(), term()}]}} | {error, binary()}.
 run_with_metrics(Server, Inputs) ->
-    run_with_metrics(Server, Inputs, 0).
+    run_with_metrics(Server, Inputs, 0, ?DEFAULT_TIMEOUT).
 
 %% @doc Run the model with metrics collection bracketing the inference.
--spec run_with_metrics(pid(), [binary()], non_neg_integer()) ->
+-spec run_with_metrics(pid(), [binary()], ?M:detail_level()) ->
     {ok, {[binary()], [{binary(), term()}]}} | {error, binary()}.
-run_with_metrics(Server, Inputs, DetailLevel) when is_list(Inputs) ->
-    with(Server, fun(M) -> ?M:run_with_metrics(M, Inputs, DetailLevel) end).
+run_with_metrics(Server, Inputs, DetailLevel) ->
+    run_with_metrics(Server, Inputs, DetailLevel, ?DEFAULT_TIMEOUT).
+
+%% @doc
+%% Run the model with metrics, with a call timeout.
+%%
+%% The guard is here as well as in the direct module on purpose: an argument the
+%% direct module refuses with `function_clause' would raise inside this server's
+%% `handle_call' and take the server down with it, so a caller mistake would
+%% cost the model rather than the call.
+-spec run_with_metrics(pid(), [binary()], ?M:detail_level(), timeout()) ->
+    {ok, {[binary()], [{binary(), term()}]}} | {error, binary()}.
+run_with_metrics(Server, Inputs, DetailLevel, Timeout)
+        when is_list(Inputs), is_integer(DetailLevel),
+             DetailLevel >= 0, DetailLevel =< 2147483647 ->
+    gen_server:call(Server, {run_with_metrics, Inputs, DetailLevel}, Timeout).
 
 %% @doc Every profiling event recorded since the last reset.
 -spec profile(pid()) -> {ok, [map()]} | {error, binary()}.
@@ -175,6 +195,8 @@ init({Env, ModelPath, Opts}) ->
 
 handle_call({run, Inputs}, _From, State = #{model := Model}) ->
     {reply, ?M:run(Model, Inputs), State};
+handle_call({run_with_metrics, Inputs, DetailLevel}, _From, State = #{model := Model}) ->
+    {reply, ?M:run_with_metrics(Model, Inputs, DetailLevel), State};
 handle_call({with, Fun}, _From, State = #{model := Model}) ->
     {reply, Fun(Model), State};
 handle_call(_Request, _From, State) ->
