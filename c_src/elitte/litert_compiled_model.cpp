@@ -58,6 +58,101 @@ ERL_NIF_TERM litert_error(ErlNifEnv *env, const char *what, LiteRtStatus st) {
     return erlang::nif::error(env, (std::string(what) + ": " + LiteRtGetStatusString(st)).c_str());
 }
 
+// A metrics object and the collection interval it covers, both released on the
+// way out however that happens. Collection is started by the constructor and
+// stopped by the destructor, so an exception between them, or an early return,
+// cannot leave a backend collecting for the rest of the process's life.
+class MetricsCollection {
+public:
+    MetricsCollection(LiteRtCompiledModel model, int detail) : model_(model) {
+        create_status_ = LiteRtCreateMetrics(&metrics_);
+        if (create_status_ != kLiteRtStatusOk) return;
+        start_status_ = LiteRtCompiledModelStartMetricsCollection(model_, detail);
+        // LiteRT starts delegates in turn, so a failure part way through may
+        // leave earlier ones collecting; stopping is the only way to be sure.
+        collecting_ = true;
+    }
+
+    ~MetricsCollection() {
+        if (collecting_) (void)LiteRtCompiledModelStopMetricsCollection(model_, metrics_);
+        if (metrics_) LiteRtDestroyMetrics(metrics_);
+    }
+
+    MetricsCollection(const MetricsCollection &) = delete;
+    MetricsCollection & operator=(const MetricsCollection &) = delete;
+
+    LiteRtStatus create_status() const { return create_status_; }
+    LiteRtStatus start_status() const { return start_status_; }
+
+    // Stops explicitly so the caller can see whether it worked; after this the
+    // destructor only destroys.
+    LiteRtStatus stop() {
+        if (!collecting_) return kLiteRtStatusOk;
+        collecting_ = false;
+        return LiteRtCompiledModelStopMetricsCollection(model_, metrics_);
+    }
+
+    LiteRtMetrics get() const { return metrics_; }
+
+private:
+    LiteRtCompiledModel model_;
+    LiteRtMetrics metrics_ = nullptr;
+    LiteRtStatus create_status_ = kLiteRtStatusOk;
+    LiteRtStatus start_status_ = kLiteRtStatusOk;
+    bool collecting_ = false;
+};
+
+// A locked tensor buffer, unlocked when this goes out of scope.
+//
+// LiteRT sets the buffer's locked flag before it waits on any event or maps the
+// memory, and does not clear it when either fails, so a buffer whose lock failed
+// once answers "already locked" for the rest of its life. Unlocking after a
+// failed lock is what keeps a model usable, and a mapper that reports success
+// with a null address is a failure this has to name rather than dereference.
+class TensorBufferLock {
+public:
+    TensorBufferLock(LiteRtTensorBuffer buffer, LiteRtTensorBufferLockMode mode)
+        : buffer_(buffer) {
+        status_ = LiteRtLockTensorBuffer(buffer_, &addr_, mode);
+        if (status_ == kLiteRtStatusOk && addr_ == nullptr) {
+            status_ = kLiteRtStatusErrorRuntimeFailure;
+            null_address_ = true;
+        }
+        if (status_ == kLiteRtStatusOk) {
+            held_ = true;
+        } else {
+            // best effort: the flag is set even on the paths that failed
+            (void)LiteRtUnlockTensorBuffer(buffer_);
+        }
+    }
+
+    ~TensorBufferLock() { if (held_) (void)LiteRtUnlockTensorBuffer(buffer_); }
+
+    TensorBufferLock(const TensorBufferLock &) = delete;
+    TensorBufferLock & operator=(const TensorBufferLock &) = delete;
+
+    bool ok() const { return status_ == kLiteRtStatusOk; }
+    bool null_address() const { return null_address_; }
+    LiteRtStatus status() const { return status_; }
+    void * address() const { return addr_; }
+
+    // Unlocking a device buffer is where an upload happens, so a caller that
+    // wrote through this has to know whether it worked rather than find out
+    // from a wrong answer later.
+    LiteRtStatus release() {
+        if (!held_) return kLiteRtStatusOk;
+        held_ = false;
+        return LiteRtUnlockTensorBuffer(buffer_);
+    }
+
+private:
+    LiteRtTensorBuffer buffer_;
+    void * addr_ = nullptr;
+    LiteRtStatus status_ = kLiteRtStatusOk;
+    bool held_ = false;
+    bool null_address_ = false;
+};
+
 // Resolving a compiled model for use: the handle, then the lock, then the
 // ownership check under it, and the lock is held until this goes out of scope.
 // Trying rather than waiting, because a NIF that blocks blocks a scheduler, and
@@ -278,13 +373,23 @@ ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_T
         }
     }
 
+    // Which tensor and which call, because "tensor buffer" on its own leaves a
+    // caller with a model that will not build and nothing to go on.
+    char buffer_error[128];
+    auto fail = [&](bool input, LiteRtParamIndex i, const char *what, LiteRtStatus st) -> const char * {
+        snprintf(buffer_error, sizeof(buffer_error), "%s %llu: %s: %s",
+                 input ? "input" : "output", (unsigned long long)i, what,
+                 LiteRtGetStatusString(st));
+        return buffer_error;
+    };
+
     auto make_buffers = [&](bool input, LiteRtParamIndex count) -> const char * {
         for (LiteRtParamIndex i = 0; i < count; i++) {
             LiteRtTensorBufferRequirements req = nullptr;
             LiteRtStatus s = input
                 ? LiteRtGetCompiledModelInputBufferRequirements(res->val, res->signature, i, &req)
                 : LiteRtGetCompiledModelOutputBufferRequirements(res->val, res->signature, i, &req);
-            if (s != kLiteRtStatusOk) return input ? "input requirements" : "output requirements";
+            if (s != kLiteRtStatusOk) return fail(input, i, "buffer requirements", s);
 
             // The tensor's own type, not a fabricated one. Declaring every buffer
             // as UInt8 worked only while we allocated the memory ourselves and
@@ -295,23 +400,20 @@ ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_T
             LiteRtTensor tensor = nullptr;
             s = input ? LiteRtGetSignatureInputTensorByIndex(sig, i, &tensor)
                       : LiteRtGetSignatureOutputTensorByIndex(sig, i, &tensor);
-            if (s != kLiteRtStatusOk) return "signature tensor";
+            if (s != kLiteRtStatusOk) return fail(input, i, "signature tensor", s);
 
             LiteRtRankedTensorType type;
             memset(&type, 0, sizeof(type));
-            if (LiteRtGetRankedTensorType(tensor, &type) != kLiteRtStatusOk) {
-                return "ranked tensor type";
-            }
+            s = LiteRtGetRankedTensorType(tensor, &type);
+            if (s != kLiteRtStatusOk) return fail(input, i, "ranked tensor type", s);
 
             // Only the layout is replaced: the compiled model knows the shape it
             // settled on, which a dynamic model's tensor does not carry.
             LiteRtLayout layout;
             memset(&layout, 0, sizeof(layout));
             if (input) {
-                if (LiteRtGetCompiledModelInputTensorLayout(res->val, res->signature, i, &layout)
-                    != kLiteRtStatusOk) {
-                    return "input tensor layout";
-                }
+                s = LiteRtGetCompiledModelInputTensorLayout(res->val, res->signature, i, &layout);
+                if (s != kLiteRtStatusOk) return fail(input, i, "tensor layout", s);
             } else {
                 layout = out_layouts[i];
             }
@@ -320,16 +422,18 @@ ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_T
             LiteRtTensorBuffer buf = nullptr;
             s = LiteRtCreateManagedTensorBufferFromRequirements(
                     env_res->val, &type, req, &buf);
-            if (s != kLiteRtStatusOk || buf == nullptr) return "tensor buffer";
+            if (s != kLiteRtStatusOk) return fail(input, i, "create tensor buffer", s);
+            if (buf == nullptr) return fail(input, i, "create tensor buffer", kLiteRtStatusErrorRuntimeFailure);
 
             // The requirements size is what the hardware allocation needs, which
             // strides and padding can make larger than the bytes a caller reads
             // and writes. The packed size is the second, and it is the one this
             // library's contract is stated in.
             size_t packed = 0;
-            if (LiteRtGetTensorBufferPackedSize(buf, &packed) != kLiteRtStatusOk) {
+            s = LiteRtGetTensorBufferPackedSize(buf, &packed);
+            if (s != kLiteRtStatusOk) {
                 LiteRtDestroyTensorBuffer(buf);
-                return "packed buffer size";
+                return fail(input, i, "packed buffer size", s);
             }
 
             if (input) {
@@ -387,16 +491,14 @@ static ERL_NIF_TERM run_locked(ErlNifEnv *env, NifResLiteRtCompiledModel *res,
                      i, res->input_sizes->at(i), bin.size);
             return erlang::nif::error(env, msg);
         }
-        void *addr = nullptr;
-        LiteRtStatus ls = LiteRtLockTensorBuffer(res->inputs->at(i), &addr,
-                                                 kLiteRtTensorBufferLockModeWrite);
-        if (ls != kLiteRtStatusOk || addr == nullptr) {
-            return litert_error(env, "lock input buffer", ls);
+        TensorBufferLock lock(res->inputs->at(i), kLiteRtTensorBufferLockModeWrite);
+        if (!lock.ok()) {
+            return lock.null_address()
+                ? erlang::nif::error(env, "an input buffer locked to a null address")
+                : litert_error(env, "lock input buffer", lock.status());
         }
-        memcpy(addr, bin.data, bin.size);
-        // Unlocking a device buffer is where the upload happens, so a failure
-        // here means the model would run against whatever was there before.
-        ls = LiteRtUnlockTensorBuffer(res->inputs->at(i));
+        memcpy(lock.address(), bin.data, bin.size);
+        LiteRtStatus ls = lock.release();
         if (ls != kLiteRtStatusOk) return litert_error(env, "unlock input buffer", ls);
     }
 
@@ -410,22 +512,21 @@ static ERL_NIF_TERM run_locked(ErlNifEnv *env, NifResLiteRtCompiledModel *res,
 
     ERL_NIF_TERM outputs = enif_make_list(env, 0);
     for (size_t i = res->outputs->size(); i-- > 0; ) {
-        void *addr = nullptr;
-        LiteRtStatus ls = LiteRtLockTensorBuffer(res->outputs->at(i), &addr,
-                                                 kLiteRtTensorBufferLockModeRead);
-        if (ls != kLiteRtStatusOk || addr == nullptr) {
-            return litert_error(env, "lock output buffer", ls);
+        TensorBufferLock lock(res->outputs->at(i), kLiteRtTensorBufferLockModeRead);
+        if (!lock.ok()) {
+            return lock.null_address()
+                ? erlang::nif::error(env, "an output buffer locked to a null address")
+                : litert_error(env, "lock output buffer", lock.status());
         }
         ERL_NIF_TERM bin_term;
         unsigned char *out = enif_make_new_binary(env, res->output_sizes->at(i), &bin_term);
         if (out == nullptr) {
-            // cleanup path: the allocation failure is what the caller needs to
-            // hear, so an unlock failure here does not replace it
-            (void)LiteRtUnlockTensorBuffer(res->outputs->at(i));
+            // the allocation failure is what the caller needs to hear, and the
+            // destructor unlocks on the way out
             return erlang::nif::error(env, "cannot allocate the output binary");
         }
-        memcpy(out, addr, res->output_sizes->at(i));
-        ls = LiteRtUnlockTensorBuffer(res->outputs->at(i));
+        memcpy(out, lock.address(), res->output_sizes->at(i));
+        LiteRtStatus ls = lock.release();
         if (ls != kLiteRtStatusOk) return litert_error(env, "unlock output buffer", ls);
         outputs = enif_make_list_cell(env, bin_term, outputs);
     }
@@ -471,28 +572,27 @@ ERL_NIF_TERM litert_compiled_model_run_with_metrics(ErlNifEnv *env, int argc, co
         erlang::nif::litert_call_counter.fetch_add(1, std::memory_order_relaxed);
     }
 
-    // The metrics object first: creating it allocates, and an allocation that
-    // throws between starting and stopping collection would leave the backend
-    // collecting for ever.
-    LiteRtMetrics metrics = nullptr;
-    LiteRtStatus st = LiteRtCreateMetrics(&metrics);
-    if (st != kLiteRtStatusOk) return litert_error(env, "create metrics", st);
-
-    st = LiteRtCompiledModelStartMetricsCollection(res->val, detail);
-    if (st != kLiteRtStatusOk) { LiteRtDestroyMetrics(metrics); return litert_error(env, "start metrics", st); }
+    MetricsCollection collection(res->val, detail);
+    if (collection.create_status() != kLiteRtStatusOk) {
+        return litert_error(env, "create metrics", collection.create_status());
+    }
+    if (collection.start_status() != kLiteRtStatusOk) {
+        // the destructor stops whatever did start before it failed
+        return litert_error(env, "start metrics", collection.start_status());
+    }
 
     ERL_NIF_TERM outputs;
     ERL_NIF_TERM run_failure = run_locked(env, res.get(), argv[1], &outputs);
 
     // stop first whatever happened, so a failed inference never leaves the
-    // backend collecting
-    st = LiteRtCompiledModelStopMetricsCollection(res->val, metrics);
-    if (run_failure != 0) { LiteRtDestroyMetrics(metrics); return run_failure; }
-    if (st != kLiteRtStatusOk) { LiteRtDestroyMetrics(metrics); return litert_error(env, "stop metrics", st); }
+    // backend collecting, and report the inference failure ahead of a stop one
+    // because it is the one the caller asked about
+    LiteRtStatus stop_status = collection.stop();
+    if (run_failure != 0) return run_failure;
+    if (stop_status != kLiteRtStatusOk) return litert_error(env, "stop metrics", stop_status);
 
     ERL_NIF_TERM collected;
-    ERL_NIF_TERM failure = read_metrics(env, metrics, &collected);
-    LiteRtDestroyMetrics(metrics);
+    ERL_NIF_TERM failure = read_metrics(env, collection.get(), &collected);
     if (failure != 0) return failure;
 
     return erlang::nif::ok(env, enif_make_tuple2(env, outputs, collected));
@@ -729,6 +829,13 @@ ERL_NIF_TERM litert_compiled_model_get_controlling_process(ErlNifEnv *env, int a
     MutexTryLock held(res->lock);
     if (!held.acquired()) {
         return erlang::nif::error(env, "compiled model is in use by another caller");
+    }
+
+    // A claim whose process has died is released here as well as on the guarded
+    // paths, so this never reports an owner that no longer exists and then has
+    // the next operation disagree with it.
+    if (res->is_controlled && !enif_is_process_alive(env, &res->controlling_process)) {
+        res->is_controlled = false;
     }
     if (!res->is_controlled) return erlang::nif::atom(env, "undefined");
     return erlang::nif::ok(env, enif_make_pid(env, &res->controlling_process));
