@@ -88,8 +88,11 @@ public:
     // destructor only destroys.
     LiteRtStatus stop() {
         if (!collecting_) return kLiteRtStatusOk;
-        collecting_ = false;
-        return LiteRtCompiledModelStopMetricsCollection(model_, metrics_);
+        LiteRtStatus st = LiteRtCompiledModelStopMetricsCollection(model_, metrics_);
+        // the obligation is only discharged by a stop that worked; a failed one
+        // leaves the destructor to try again rather than assuming it is done
+        if (st == kLiteRtStatusOk) collecting_ = false;
+        return st;
     }
 
     LiteRtMetrics get() const { return metrics_; }
@@ -307,11 +310,16 @@ ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_T
     enif_keep_resource(env_res);
 
     if (profile) {
+        // A model asked for profiling and given none would answer profile/1
+        // with an empty list for ever, which reads as "nothing happened"
+        // rather than as "this was never recording".
         LiteRtProfiler prof = nullptr;
-        if (LiteRtCompiledModelGetProfiler(res->val, &prof) == kLiteRtStatusOk && prof != nullptr) {
-            res->profiler = prof;
-            LiteRtStartProfiler(prof);
+        TRY(LiteRtCompiledModelGetProfiler(res->val, &prof), "get profiler")
+        if (prof == nullptr) {
+            return erlang::nif::error(env, "profiling was asked for and this model has no profiler");
         }
+        TRY(LiteRtStartProfiler(prof), "start profiler")
+        res->profiler = prof;
     }
 
     res->inputs       = new std::vector<LiteRtTensorBuffer>();
@@ -596,8 +604,13 @@ ERL_NIF_TERM litert_compiled_model_run_with_metrics(ErlNifEnv *env, int argc, co
     // backend collecting, and report the inference failure ahead of a stop one
     // because it is the one the caller asked about
     LiteRtStatus stop_status = collection.stop();
+    if (stop_status != kLiteRtStatusOk) {
+        // said ahead of the inference failure when both happen: an inference
+        // that failed is this call's problem, a backend still collecting is
+        // every later call's
+        return litert_error(env, "stop metrics", stop_status);
+    }
     if (run_failure != 0) return run_failure;
-    if (stop_status != kLiteRtStatusOk) return litert_error(env, "stop metrics", stop_status);
 
     ERL_NIF_TERM collected;
     ERL_NIF_TERM failure = read_metrics(env, collection.get(), &collected);
