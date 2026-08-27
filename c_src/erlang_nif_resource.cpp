@@ -681,9 +681,10 @@ void NifResLiteRtCompiledModel::destruct_resource(ErlNifEnv *, void *args) {
     auto res = (NifResLiteRtCompiledModel *)args;
     if (!res) return;
 
-    // buffers first: they name the compiled model's tensors, so they cannot
-    // outlive it, and the host memory behind them is released by the
-    // deallocator LiteRtCreateTensorBufferFromHostMemory was given
+    // Buffers first: they name the compiled model's tensors, so they cannot
+    // outlive it. The memory behind them belongs to LiteRT, which allocated it
+    // from the tensor's requirements and may not have put it in host memory at
+    // all, so destroying the buffer is the whole of releasing it.
     auto destroy = [](std::vector<LiteRtTensorBuffer> * bufs) {
         if (!bufs) return;
         for (auto b : *bufs) if (b) LiteRtDestroyTensorBuffer(b);
@@ -694,9 +695,6 @@ void NifResLiteRtCompiledModel::destruct_resource(ErlNifEnv *, void *args) {
     res->inputs = nullptr;
     res->outputs = nullptr;
 
-    // the host memory behind the buffers is not freed here: it was handed to
-    // LiteRT with the deallocator that frees it, and destroying the buffer above
-    // is what calls it
     delete res->input_sizes;  res->input_sizes = nullptr;
     delete res->output_sizes; res->output_sizes = nullptr;
 

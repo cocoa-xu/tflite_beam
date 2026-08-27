@@ -160,21 +160,30 @@ private:
 // about it; waiting would only hide that two processes are sharing one.
 class CompiledModelUse {
 public:
-    CompiledModelUse(ErlNifEnv *env, ERL_NIF_TERM term) : env_(env) {
-        res_ = NifResLiteRtCompiledModel::get_resource(env, term, error_);
-        if (res_ == nullptr) return;
+    CompiledModelUse(ErlNifEnv *env, ERL_NIF_TERM term) {
+        auto res = NifResLiteRtCompiledModel::get_resource(env, term, error_);
+        if (res == nullptr) return;
 
-        held_ = std::unique_ptr<MutexTryLock>(new MutexTryLock(res_->lock));
-        if (!held_->acquired()) {
-            res_ = nullptr;
+        // The lock is held directly rather than through MutexTryLock, because
+        // that would mean a heap allocation on the way into every operation,
+        // inside the path that is supposed to be cheap enough to try.
+        if (res->lock == nullptr || enif_mutex_trylock(res->lock) != 0) {
             error_ = erlang::nif::error(env, "compiled model is in use by another caller");
             return;
         }
-        if (!compiled_model_caller_may_use(env, res_)) {
-            res_ = nullptr;
+        lock_ = res->lock;
+
+        if (!compiled_model_caller_may_use(env, res)) {
             error_ = erlang::nif::error(env, "compiled model belongs to another process");
+            return;
         }
+        res_ = res;
     }
+
+    ~CompiledModelUse() { if (lock_) enif_mutex_unlock(lock_); }
+
+    CompiledModelUse(const CompiledModelUse &) = delete;
+    CompiledModelUse & operator=(const CompiledModelUse &) = delete;
 
     explicit operator bool() const { return res_ != nullptr; }
     NifResLiteRtCompiledModel * operator->() const { return res_; }
@@ -182,10 +191,9 @@ public:
     ERL_NIF_TERM error() const { return error_; }
 
 private:
-    ErlNifEnv *env_;
     NifResLiteRtCompiledModel *res_ = nullptr;
+    ErlNifMutex *lock_ = nullptr;
     ERL_NIF_TERM error_{};
-    std::unique_ptr<MutexTryLock> held_;
 };
 
 // Handed to LiteRT for the TOML payloads this file strdups.
