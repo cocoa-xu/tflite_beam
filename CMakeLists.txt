@@ -315,8 +315,16 @@ if(TFLITE_BEAM_ENABLE_LITERT_API)
     # is what litert/runtime/accelerators exists for and is worth its own look.
     option(LITERT_ENABLE_GPU "Enable GPU acceleration support" OFF)
     option(LITERT_ENABLE_NPU "Enable NPU acceleration support" OFF)
-    set(LITERT_BUILD_CONFIG_DISABLE_GPU 1)
-    set(LITERT_BUILD_CONFIG_DISABLE_NPU 1)
+    if(LITERT_ENABLE_GPU)
+        set(LITERT_BUILD_CONFIG_DISABLE_GPU 0)
+    else()
+        set(LITERT_BUILD_CONFIG_DISABLE_GPU 1)
+    endif()
+    if(LITERT_ENABLE_NPU)
+        set(LITERT_BUILD_CONFIG_DISABLE_NPU 0)
+    else()
+        set(LITERT_BUILD_CONFIG_DISABLE_NPU 1)
+    endif()
     configure_file(
         "${LITERT_ROOT_DIR}/litert/build_common/build_config.h.in"
         "${LITERT_BUILD_COMMON_GENERATED_DIR}/build_config.h"
@@ -364,7 +372,10 @@ if(TFLITE_BEAM_ENABLE_LITERT_API)
         EXCLUDE_FROM_ALL
     )
     target_sources(tflite_beam PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/c_src/elitte/litert_api.cpp")
-    list(APPEND TFLITE_BEAM_LINK_LIBRARIES litert_c_api)
+    # the compiled model path reaches absl's CHECK macros, which live in
+    # absl::log_internal_check_op and are not among the absl targets the tflite
+    # side needs
+    list(APPEND TFLITE_BEAM_LINK_LIBRARIES litert_c_api absl::log_internal_check_op absl::log)
     add_compile_definitions(TFLITE_BEAM_LITERT_API_ENABLED=1)
 endif()
 
