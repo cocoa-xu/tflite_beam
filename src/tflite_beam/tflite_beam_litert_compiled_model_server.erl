@@ -10,11 +10,13 @@
 %%
 %% Two processes doing that at once mostly fail loudly, and sometimes do not.
 %% Measured with four processes running twenty-five inferences each against one
-%% shared model, every one checking the answer to its own input: 74 of the 100
-%% calls were refused with a runtime failure, 14 were right, and **12 came back
-%% holding another process's answer**. The refusals are survivable. Those 12
-%% are why this module exists, because nothing tells the caller about them.
-%% Through this module the same measurement gives 100 right out of 100.
+%% shared model, every one checking the answer to its own input, three times
+%% over: about 72 of the 100 calls were refused with a runtime failure, most of
+%% the rest were right, and **0, 5 and 1 of them came back holding another
+%% process's answer**. The refusals are survivable and the count of wrong
+%% answers moves between runs, which is the point: it is not zero and nothing
+%% tells the caller which calls it was. Through this module the same
+%% measurement gives 100 right out of 100, every time.
 %%
 %% This is a different hazard from the one
 %% `tflite_beam_interpreter_server' answers. There the danger is a three-step

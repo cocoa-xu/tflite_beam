@@ -110,8 +110,10 @@ LiteRT::Run[buffer registration]      21 x    197 us
 LiteRT::Run[Buffer sync]              21 x     96 us
 ```
 
-Profiling costs between 1.1x and 1.4x on the CPU and nothing measurable on the
-GPU, where there is no per-operator boundary left to time.
+Profiling cost at most 1.05x on the CPU here and nothing measurable on the GPU,
+where the whole graph is one delegate node and there is no per-operator boundary
+left to time. A graph an accelerator splits into many nodes has many more
+boundaries, so measure your own.
 
 The directory handed to `environment/1` is where LiteRT looks for a GPU
 accelerator plugin. Without one, asking for `[gpu]` fails rather than quietly
@@ -124,9 +126,10 @@ answer both this and the delegate interface above from one file.
 
 A compiled model owns one set of input and output buffers for its whole life,
 so `run/2` on a shared one races. Four processes running twenty-five inferences
-each against one model, every one checking the answer to its own input: 74 of
-the 100 calls were refused with a runtime failure, 14 were right, and **12 came
-back holding another process's answer**. Through
+each against one model, every one checking the answer to its own input, three
+times over: about 72 of the 100 calls were refused with a runtime failure, most
+of the rest were right, and **0, 5 and 1 of them came back holding another
+process's answer**. Through
 `tflite_beam_litert_compiled_model_server`, which keeps the model in one
 process, the same measurement gives 100 right out of 100:
 
