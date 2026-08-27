@@ -83,6 +83,10 @@ static ERL_NIF_TERM not_compiled(ErlNifEnv *env, int argc, const ERL_NIF_TERM ar
     return erlang::nif::error(env, "Coral support is disabled when compiling this library. Please enable Coral support and recompile this library.");
 }
 
+static ERL_NIF_TERM not_compiled_litert(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    return erlang::nif::error(env, "the LiteRT API was not compiled into this build. Rebuild with TFLITE_BEAM_ENABLE_LITERT_API=ON to use it.");
+}
+
 static ERL_NIF_TERM not_compiled_delegate(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     return erlang::nif::error(env, "this delegate was not compiled into this build. tflite_beam_delegate:available/0 lists the ones that were.");
 }
@@ -157,6 +161,10 @@ static int on_upgrade(ErlNifEnv*, void**, void**, ERL_NIF_TERM) {
 #define F_IO(NAME, ARITY) {#NAME, ARITY, erlang::nif::guarded<NAME>, ERL_NIF_DIRTY_JOB_IO_BOUND}
 #define F_NOT_COMPILED(FAKE_AS, ARITY) {#FAKE_AS, ARITY, not_compiled, 0}
 #define F_NOT_COMPILED_DELEGATE(FAKE_AS, ARITY) {#FAKE_AS, ARITY, not_compiled_delegate, 0}
+// Without these the Erlang stubs stay unregistered and raise, so on the default
+// build every LiteRT call throws where its siblings return {error, Binary}. A
+// wrapper cannot tell "not built" from "broken" then, and neither can a user.
+#define F_NOT_COMPILED_LITERT(FAKE_AS, ARITY) {#FAKE_AS, ARITY, not_compiled_litert, 0}
 
 static ErlNifFunc nif_functions[] = {
     // For the test suite; see fault_inject.hpp.
@@ -185,11 +193,11 @@ static ErlNifFunc nif_functions[] = {
     F(interpreter_builder_state, 1),
 
 #ifdef TFLITE_BEAM_LITERT_API_ENABLED
-    F(litert_environment_new, 1),
+    F_IO(litert_environment_new, 1),
     F_CPU(litert_compiled_model_new, 6),
     F_CPU(litert_compiled_model_run, 2),
     F(litert_compiled_model_fully_accelerated, 1),
-    F(litert_compiled_model_profile, 1),
+    F_CPU(litert_compiled_model_profile, 1),
     F(litert_compiled_model_reset_profile, 1),
     F(litert_compiled_model_io_sizes, 1),
     F_CPU(litert_model_signatures, 2),
@@ -197,6 +205,19 @@ static ErlNifFunc nif_functions[] = {
     F(litert_platform_support, 0),
     F(litert_compiled_model_set_controlling_process, 2),
     F(litert_compiled_model_get_controlling_process, 1),
+#else
+    F_NOT_COMPILED_LITERT(litert_environment_new, 1),
+    F_NOT_COMPILED_LITERT(litert_compiled_model_new, 6),
+    F_NOT_COMPILED_LITERT(litert_compiled_model_run, 2),
+    F_NOT_COMPILED_LITERT(litert_compiled_model_fully_accelerated, 1),
+    F_NOT_COMPILED_LITERT(litert_compiled_model_profile, 1),
+    F_NOT_COMPILED_LITERT(litert_compiled_model_reset_profile, 1),
+    F_NOT_COMPILED_LITERT(litert_compiled_model_io_sizes, 1),
+    F_NOT_COMPILED_LITERT(litert_model_signatures, 2),
+    F_NOT_COMPILED_LITERT(litert_compiled_model_run_with_metrics, 3),
+    F_NOT_COMPILED_LITERT(litert_platform_support, 0),
+    F_NOT_COMPILED_LITERT(litert_compiled_model_set_controlling_process, 2),
+    F_NOT_COMPILED_LITERT(litert_compiled_model_get_controlling_process, 1),
 #endif
     F(delegate_available, 0),
     F_IO(delegate_external_new, 2),
