@@ -28,6 +28,13 @@ extern ERL_NIF_TERM litert_api_status_string(ErlNifEnv *env, int argc, const ERL
 extern ERL_NIF_TERM litert_api_binary_alignment(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 extern ERL_NIF_TERM litert_api_host_buffer_roundtrip(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 extern ERL_NIF_TERM litert_api_compiled_model_bench(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
+extern ERL_NIF_TERM litert_environment_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
+extern ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
+extern ERL_NIF_TERM litert_compiled_model_run(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
+extern ERL_NIF_TERM litert_compiled_model_fully_accelerated(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
+extern ERL_NIF_TERM litert_compiled_model_profile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
+extern ERL_NIF_TERM litert_compiled_model_reset_profile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
+extern ERL_NIF_TERM litert_compiled_model_io_sizes(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 #endif
 extern ERL_NIF_TERM nif_arm_fault(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 
@@ -57,6 +64,10 @@ ErlNifResourceType * NifResErrorReporter::type = nullptr;
 ErlNifResourceType * NifResSignatureRunner::type = nullptr;
 ErlNifResourceType * NifResTfLiteTensor::type = nullptr;
 ErlNifResourceType * NifResDelegate::type = nullptr;
+#ifdef TFLITE_BEAM_LITERT_API_ENABLED
+ErlNifResourceType * NifResLiteRtEnvironment::type = nullptr;
+ErlNifResourceType * NifResLiteRtCompiledModel::type = nullptr;
+#endif
 
 #ifdef CORAL_SUPPORT_ENABLED
 
@@ -97,6 +108,16 @@ on_load(ErlNifEnv* env, void**, ERL_NIF_TERM) {
     rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "SignatureRunner", NifResSignatureRunner::destruct_resource, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
     NifResSignatureRunner::type = rt;
+
+#ifdef TFLITE_BEAM_LITERT_API_ENABLED
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "LiteRtEnvironment", NifResLiteRtEnvironment::destruct_resource, ERL_NIF_RT_CREATE, NULL);
+    if (!rt) return -1;
+    NifResLiteRtEnvironment::type = rt;
+
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "LiteRtCompiledModel", NifResLiteRtCompiledModel::destruct_resource, ERL_NIF_RT_CREATE, NULL);
+    if (!rt) return -1;
+    NifResLiteRtCompiledModel::type = rt;
+#endif
 
     rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "TfLiteTensor", NifResTfLiteTensor::destruct_resource, ERL_NIF_RT_CREATE, NULL);
     if (!rt) return -1;
@@ -163,6 +184,13 @@ static ErlNifFunc nif_functions[] = {
     F(litert_api_binary_alignment, 1),
     F(litert_api_host_buffer_roundtrip, 1),
     F_CPU(litert_api_compiled_model_bench, 6),
+    F(litert_environment_new, 1),
+    F_CPU(litert_compiled_model_new, 5),
+    F_CPU(litert_compiled_model_run, 2),
+    F(litert_compiled_model_fully_accelerated, 1),
+    F(litert_compiled_model_profile, 1),
+    F(litert_compiled_model_reset_profile, 1),
+    F(litert_compiled_model_io_sizes, 1),
 #endif
     F(delegate_available, 0),
     F_IO(delegate_external_new, 2),

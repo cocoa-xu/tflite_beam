@@ -589,3 +589,103 @@ void NifResEdgeTpuContext::destruct_resource(ErlNifEnv *env, void *args) {
 }
 
 #endif
+
+#ifdef TFLITE_BEAM_LITERT_API_ENABLED
+
+NifResLiteRtEnvironment * NifResLiteRtEnvironment::allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error) {
+    auto res = (NifResLiteRtEnvironment *)enif_alloc_resource(
+        NifResLiteRtEnvironment::type, sizeof(NifResLiteRtEnvironment));
+    if (res == nullptr) {
+        error = erlang::nif::error(env, "cannot allocate NifResLiteRtEnvironment resource");
+        return res;
+    }
+    res->val = nullptr;
+    return res;
+}
+
+NifResLiteRtEnvironment * NifResLiteRtEnvironment::get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error) {
+    NifResLiteRtEnvironment * self_res = nullptr;
+    if (!enif_get_resource(env, term, NifResLiteRtEnvironment::type, (void **)&self_res) ||
+        self_res == nullptr || self_res->val == nullptr) {
+        error = erlang::nif::error(env, "cannot access NifResLiteRtEnvironment resource");
+        return nullptr;
+    }
+    return self_res;
+}
+
+void NifResLiteRtEnvironment::destruct_resource(ErlNifEnv *, void *args) {
+    auto res = (NifResLiteRtEnvironment *)args;
+    if (res && res->val) {
+        LiteRtDestroyEnvironment(res->val);
+        res->val = nullptr;
+    }
+}
+
+NifResLiteRtCompiledModel * NifResLiteRtCompiledModel::allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error) {
+    auto res = (NifResLiteRtCompiledModel *)enif_alloc_resource(
+        NifResLiteRtCompiledModel::type, sizeof(NifResLiteRtCompiledModel));
+    if (res == nullptr) {
+        error = erlang::nif::error(env, "cannot allocate NifResLiteRtCompiledModel resource");
+        return res;
+    }
+    res->val = nullptr;
+    res->model = nullptr;
+    res->options = nullptr;
+    res->environment = nullptr;
+    res->inputs = nullptr;
+    res->outputs = nullptr;
+    res->input_sizes = nullptr;
+    res->output_sizes = nullptr;
+    res->input_mem = nullptr;
+    res->output_mem = nullptr;
+    res->profiler = nullptr;
+    return res;
+}
+
+NifResLiteRtCompiledModel * NifResLiteRtCompiledModel::get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error) {
+    NifResLiteRtCompiledModel * self_res = nullptr;
+    if (!enif_get_resource(env, term, NifResLiteRtCompiledModel::type, (void **)&self_res) ||
+        self_res == nullptr || self_res->val == nullptr) {
+        error = erlang::nif::error(env, "cannot access NifResLiteRtCompiledModel resource");
+        return nullptr;
+    }
+    return self_res;
+}
+
+void NifResLiteRtCompiledModel::destruct_resource(ErlNifEnv *, void *args) {
+    auto res = (NifResLiteRtCompiledModel *)args;
+    if (!res) return;
+
+    // buffers first: they name the compiled model's tensors, so they cannot
+    // outlive it, and the host memory behind them is released by the
+    // deallocator LiteRtCreateTensorBufferFromHostMemory was given
+    auto destroy = [](std::vector<LiteRtTensorBuffer> * bufs) {
+        if (!bufs) return;
+        for (auto b : *bufs) if (b) LiteRtDestroyTensorBuffer(b);
+        delete bufs;
+    };
+    destroy(res->inputs);
+    destroy(res->outputs);
+    res->inputs = nullptr;
+    res->outputs = nullptr;
+
+    delete res->input_sizes;  res->input_sizes = nullptr;
+    delete res->output_sizes; res->output_sizes = nullptr;
+    // the memory itself is not freed here; the deallocator handed to LiteRT owns it
+    delete res->input_mem;    res->input_mem = nullptr;
+    delete res->output_mem;   res->output_mem = nullptr;
+
+    // borrowed from the compiled model, so it is dropped rather than destroyed
+    res->profiler = nullptr;
+
+    if (res->val)     { LiteRtDestroyCompiledModel(res->val); res->val = nullptr; }
+    if (res->options) { LiteRtDestroyOptions(res->options);   res->options = nullptr; }
+    if (res->model)   { LiteRtDestroyModel(res->model);       res->model = nullptr; }
+
+    if (res->environment) {
+        enif_release_resource(res->environment);
+        res->environment = nullptr;
+    }
+}
+
+#endif  // TFLITE_BEAM_LITERT_API_ENABLED
