@@ -230,7 +230,13 @@ io_sizes(Model) ->
 %% Every profiling event recorded so far, oldest first.
 %%
 %% Empty unless the model was built with `profile => true'. Each event is a map
-%% of `tag', `us', `type' and `source'. Telemetry events are included and carry
+%% of `tag', `us', `type' and `source'.
+%%
+%% **Provisional.** `type' and `source' are LiteRT's own enumeration numbers,
+%% passed through rather than named, so they can change with an upstream bump
+%% and mean something different without this function changing. Build on
+%% `summarise_profile/1', which speaks in atoms, unless you specifically need an
+%% event this does not fold. Telemetry events are included and carry
 %% a sentinel in place of a duration; `summarise_profile/1' drops them.
 %%
 %% The buffer behind this is fixed and large: a compiled model asks for
@@ -298,6 +304,11 @@ reset_profile(Model) ->
 %%
 %% Returns `{Tag, Kind, Count, MicrosecondsTotal}' sorted slowest first, over
 %% operator events only.
+%%
+%% **Provisional.** The tuple is anonymous and positional, which is the wrong
+%% shape to be stuck with: a map with named keys is where this should end up,
+%% and adding a field to a tuple breaks every caller that matched on it. Treat
+%% the shape as unsettled until 1.0.0 says otherwise.
 %%
 %% The events LiteRT records are nested. An `Invoke' encloses the operators it
 %% ran, and `AllocateTensors' and LiteRT's own buffer handling sit beside them,
