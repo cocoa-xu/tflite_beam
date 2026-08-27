@@ -145,8 +145,10 @@ stop(Server) ->
 init({Env, ModelPath, Opts}) ->
     case ?M:new(Env, ModelPath, Opts) of
         {ok, Model} ->
-            %% the reference never leaves this process except inside `with/2',
-            %% which runs its function here rather than handing the model out
+            %% belt as well as braces: `with/2' runs its function here rather
+            %% than handing the model out, but a function that captures the
+            %% reference and uses it later from somewhere else is refused too
+            ok = ?M:controlling_process(Model, self()),
             {ok, #{model => Model}};
         {error, Reason} ->
             {stop, Reason}

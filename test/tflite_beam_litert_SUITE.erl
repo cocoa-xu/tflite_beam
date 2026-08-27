@@ -20,7 +20,11 @@
     profile_is_empty_unless_asked_for/1,
     profile_names_the_operators/1,
     reset_profile_needs_profiling_on/1,
-    server_serialises_what_sharing_gets_wrong/1
+    server_serialises_what_sharing_gets_wrong/1,
+    an_unclaimed_model_is_open_to_every_process/1,
+    a_claimed_model_refuses_other_processes/1,
+    a_claim_dies_with_its_process/1,
+    the_server_claims_what_with_hands_out/1
 ]).
 
 -define(A, tflite_beam_litert_compiled_model).
@@ -41,7 +45,11 @@ all() ->
         profile_is_empty_unless_asked_for,
         profile_names_the_operators,
         reset_profile_needs_profiling_on,
-        server_serialises_what_sharing_gets_wrong
+        server_serialises_what_sharing_gets_wrong,
+        an_unclaimed_model_is_open_to_every_process,
+        a_claimed_model_refuses_other_processes,
+        a_claim_dies_with_its_process,
+        the_server_claims_what_with_hands_out
     ].
 
 %% The Erlang stubs exist whatever the library was built with; what is missing
@@ -237,3 +245,71 @@ count(Run, In, Want, Rounds) ->
             _          -> {Ok, Wrong, Err + 1}
         end
     end, {0, 0, 0}, lists:seq(1, Rounds)).
+
+
+%% Ownership is opt-in, so an unclaimed model has to stay usable from anywhere.
+%% Without this the next two tests would pass on a resource that refused
+%% everybody.
+an_unclaimed_model_is_open_to_every_process(Config) ->
+    Model = model(Config, #{accelerators => [cpu]}),
+    Inputs = inputs_for(Model),
+    ?assertEqual(undefined, ?A:controlling_process(Model)),
+    ?assertMatch({ok, _}, run_in_another_process(Model, Inputs)).
+
+a_claimed_model_refuses_other_processes(Config) ->
+    Model = model(Config, #{accelerators => [cpu]}),
+    Inputs = inputs_for(Model),
+    ?assertMatch({ok, _}, run_in_another_process(Model, Inputs)),
+    ok = ?A:controlling_process(Model, self()),
+    ?assertEqual({ok, self()}, ?A:controlling_process(Model)),
+    %% the owner still runs it
+    ?assertMatch({ok, _}, run_here(Model, Inputs)),
+    %% and nobody else does
+    ?assertMatch({error, _}, run_in_another_process(Model, Inputs)).
+
+%% A model whose owner has died would otherwise be unusable for ever.
+a_claim_dies_with_its_process(Config) ->
+    Model = model(Config, #{accelerators => [cpu]}),
+    Inputs = inputs_for(Model),
+    Self = self(),
+    Owner = spawn(fun() ->
+        ok = ?A:controlling_process(Model, self()),
+        Self ! claimed,
+        receive stop -> ok end
+    end),
+    receive claimed -> ok after 5000 -> ct:fail(claim_timeout) end,
+    ?assertMatch({error, _}, run_here(Model, Inputs)),
+    Ref = monitor(process, Owner),
+    Owner ! stop,
+    receive {'DOWN', Ref, process, _, _} -> ok after 5000 -> ct:fail(owner_timeout) end,
+    ?assertMatch({ok, _}, run_here(Model, Inputs)),
+    ?assertEqual(undefined, ?A:controlling_process(Model)).
+
+%% with/2 hands the reference to a callback, and a callback that keeps it must
+%% not be able to use it from elsewhere afterwards.
+the_server_claims_what_with_hands_out(Config) ->
+    Env = proplists:get_value(env, Config),
+    {ok, Server} = ?B:start(Env, tflite_beam_test_models:path(?MODEL),
+                            #{accelerators => [cpu]}),
+    try
+        {Escaped, Inputs} = ?B:with(Server, fun(M) -> {M, inputs_for(M)} end),
+        ?assertEqual({ok, Server}, ?A:controlling_process(Escaped)),
+        ?assertMatch({error, _}, run_here(Escaped, Inputs))
+    after
+        ?B:stop(Server)
+    end.
+
+%% The sizes are read while this process may still read them, because io_sizes
+%% goes through the same ownership check that run does: a non-owner is refused
+%% everything, not only the run.
+inputs_for(Model) ->
+    {ok, {Ins, _}} = ?A:io_sizes(Model),
+    [filled(1.0, N) || N <- Ins].
+
+run_here(Model, Inputs) ->
+    ?A:run(Model, Inputs).
+
+run_in_another_process(Model, Inputs) ->
+    Self = self(),
+    spawn(fun() -> Self ! {result, ?A:run(Model, Inputs)} end),
+    receive {result, R} -> R after 30000 -> {error, <<"timeout">>} end.

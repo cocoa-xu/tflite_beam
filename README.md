@@ -140,6 +140,17 @@ Same split as `tflite_beam_interpreter` and `tflite_beam_interpreter_server`:
 the direct module stays exactly as it is for callers who would rather serialise
 access themselves.
 
+The server claims the model with
+`tflite_beam_litert_compiled_model:controlling_process/2`, so the promise is
+enforced rather than conventional: a `with/2` callback that keeps the reference
+and uses it from somewhere else afterwards is refused. Claiming is opt-in and
+available to anyone building their own owner, and a claim whose process has
+died is released rather than stranding the model.
+
+Concurrency is unsafe but not unsound in the crashing sense: 1440 concurrent
+calls against one shared model across three runs produced refusals and wrong
+answers, and never took the VM down.
+
 ## Threading
 
 An interpreter, and any delegate attached to it, belongs to one process at a time.

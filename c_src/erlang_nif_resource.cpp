@@ -638,7 +638,24 @@ NifResLiteRtCompiledModel * NifResLiteRtCompiledModel::allocate_resource(ErlNifE
     res->output_sizes = nullptr;
     res->signature = 0;
     res->profiler = nullptr;
+    res->is_controlled = false;
     return res;
+}
+
+// Same rule as caller_may_use for an interpreter: unclaimed is open to all, a
+// claim binds the model to one process, and a claim whose process has died is
+// released rather than stranding the model.
+static bool compiled_model_caller_may_use(ErlNifEnv * env, NifResLiteRtCompiledModel * res) {
+    if (res == nullptr || !res->is_controlled) return true;
+
+    ErlNifPid caller;
+    if (enif_self(env, &caller) == nullptr) return false;
+    if (enif_compare_pids(&caller, &res->controlling_process) == 0) return true;
+
+    if (enif_is_process_alive(env, &res->controlling_process)) return false;
+
+    res->is_controlled = false;
+    return true;
 }
 
 NifResLiteRtCompiledModel * NifResLiteRtCompiledModel::get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error) {
@@ -648,6 +665,12 @@ NifResLiteRtCompiledModel * NifResLiteRtCompiledModel::get_resource(ErlNifEnv * 
         error = erlang::nif::error(env, "cannot access NifResLiteRtCompiledModel resource");
         return nullptr;
     }
+
+    if (!compiled_model_caller_may_use(env, self_res)) {
+        error = erlang::nif::error(env, "compiled model belongs to another process");
+        return nullptr;
+    }
+
     return self_res;
 }
 
