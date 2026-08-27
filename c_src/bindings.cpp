@@ -25,6 +25,9 @@ limitations under the License.
 
 #ifdef TFLITE_BEAM_LITERT_API_ENABLED
 extern ERL_NIF_TERM litert_api_status_string(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
+extern ERL_NIF_TERM litert_api_binary_alignment(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
+extern ERL_NIF_TERM litert_api_host_buffer_roundtrip(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
+extern ERL_NIF_TERM litert_api_compiled_model_bench(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 #endif
 extern ERL_NIF_TERM nif_arm_fault(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 
@@ -157,6 +160,9 @@ static ErlNifFunc nif_functions[] = {
 
 #ifdef TFLITE_BEAM_LITERT_API_ENABLED
     F(litert_api_status_string, 1),
+    F(litert_api_binary_alignment, 1),
+    F(litert_api_host_buffer_roundtrip, 1),
+    F_CPU(litert_api_compiled_model_bench, 4),
 #endif
     F(delegate_available, 0),
     F_IO(delegate_external_new, 2),
