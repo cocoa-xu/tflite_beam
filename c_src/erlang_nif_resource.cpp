@@ -639,13 +639,20 @@ NifResLiteRtCompiledModel * NifResLiteRtCompiledModel::allocate_resource(ErlNifE
     res->signature = 0;
     res->profiler = nullptr;
     res->is_controlled = false;
+    res->lock = enif_mutex_create(const_cast<char *>("litert_compiled_model"));
+    if (res->lock == nullptr) {
+        error = erlang::nif::error(env, "cannot create the compiled model lock");
+        enif_release_resource(res);
+        return nullptr;
+    }
     return res;
 }
 
 // Same rule as caller_may_use for an interpreter: unclaimed is open to all, a
 // claim binds the model to one process, and a claim whose process has died is
-// released rather than stranding the model.
-static bool compiled_model_caller_may_use(ErlNifEnv * env, NifResLiteRtCompiledModel * res) {
+// released rather than stranding the model. Called with the resource lock held,
+// so the flag and the pid are read together rather than one at a time.
+bool compiled_model_caller_may_use(ErlNifEnv * env, NifResLiteRtCompiledModel * res) {
     if (res == nullptr || !res->is_controlled) return true;
 
     ErlNifPid caller;
@@ -658,6 +665,8 @@ static bool compiled_model_caller_may_use(ErlNifEnv * env, NifResLiteRtCompiledM
     return true;
 }
 
+// Only resolves the handle. The ownership check needs the lock, and the lock
+// has to stay held for the whole operation, so both live in CompiledModelUse.
 NifResLiteRtCompiledModel * NifResLiteRtCompiledModel::get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error) {
     NifResLiteRtCompiledModel * self_res = nullptr;
     if (!enif_get_resource(env, term, NifResLiteRtCompiledModel::type, (void **)&self_res) ||
@@ -665,12 +674,6 @@ NifResLiteRtCompiledModel * NifResLiteRtCompiledModel::get_resource(ErlNifEnv * 
         error = erlang::nif::error(env, "cannot access NifResLiteRtCompiledModel resource");
         return nullptr;
     }
-
-    if (!compiled_model_caller_may_use(env, self_res)) {
-        error = erlang::nif::error(env, "compiled model belongs to another process");
-        return nullptr;
-    }
-
     return self_res;
 }
 
@@ -707,6 +710,13 @@ void NifResLiteRtCompiledModel::destruct_resource(ErlNifEnv *, void *args) {
     if (res->environment) {
         enif_release_resource(res->environment);
         res->environment = nullptr;
+    }
+
+    // last, because everything above ran without contention only by virtue of
+    // this being the final reference
+    if (res->lock) {
+        enif_mutex_destroy(res->lock);
+        res->lock = nullptr;
     }
 }
 
