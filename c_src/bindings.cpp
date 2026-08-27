@@ -32,7 +32,7 @@ extern ERL_NIF_TERM litert_compiled_model_profile(ErlNifEnv *env, int argc, cons
 extern ERL_NIF_TERM litert_compiled_model_reset_profile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 extern ERL_NIF_TERM litert_compiled_model_io_sizes(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 extern ERL_NIF_TERM litert_model_signatures(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
-extern ERL_NIF_TERM litert_compiled_model_metrics(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
+extern ERL_NIF_TERM litert_compiled_model_run_with_metrics(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 extern ERL_NIF_TERM litert_platform_support(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 extern ERL_NIF_TERM nif_litert_call_count(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 extern ERL_NIF_TERM litert_compiled_model_set_controlling_process(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
@@ -161,7 +161,9 @@ static int on_upgrade(ErlNifEnv*, void**, void**, ERL_NIF_TERM) {
 static ErlNifFunc nif_functions[] = {
     // For the test suite; see fault_inject.hpp.
     F(nif_arm_fault, 1),
+#ifdef TFLITE_BEAM_LITERT_API_ENABLED
     F(nif_litert_call_count, 0),
+#endif
 
     F(error_reporter_default_error_reporter, 0),
 
@@ -191,7 +193,7 @@ static ErlNifFunc nif_functions[] = {
     F(litert_compiled_model_reset_profile, 1),
     F(litert_compiled_model_io_sizes, 1),
     F_CPU(litert_model_signatures, 2),
-    F_CPU(litert_compiled_model_metrics, 2),
+    F_CPU(litert_compiled_model_run_with_metrics, 3),
     F(litert_platform_support, 0),
     F(litert_compiled_model_set_controlling_process, 2),
     F(litert_compiled_model_get_controlling_process, 1),

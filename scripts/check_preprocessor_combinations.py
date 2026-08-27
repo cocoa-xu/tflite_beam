@@ -57,28 +57,36 @@ def main():
     failed = False
     for coral in (True, False):
         for xnnpack in (True, False):
-            flags = base_flags
-            if not coral:
-                flags = flags.replace("-DCORAL_SUPPORT_ENABLED=1", "")
-            if not xnnpack:
-                flags = flags.replace("-DTFLITE_BEAM_XNNPACK_ENABLED=1", "")
+            # The LiteRT API is off by default, so that is the shape a plain
+            # source build produces and the one a defect in it reaches first.
+            # It was missing, and a declaration gated on it whose function
+            # table entry was not gated compiled in all four other shapes
+            # and broke the default build.
+            for litert in (True, False):
+                flags = base_flags
+                if not coral:
+                    flags = flags.replace("-DCORAL_SUPPORT_ENABLED=1", "")
+                if not xnnpack:
+                    flags = flags.replace("-DTFLITE_BEAM_XNNPACK_ENABLED=1", "")
 
-            checking = sources + (coral_only if coral else [])
-            label = f"CORAL={'on ' if coral else 'off'} XNNPACK={'on ' if xnnpack else 'off'}"
-            bad = []
-            for source in checking:
-                result = subprocess.run(
-                    f"c++ {defines} {includes} {flags} -fsyntax-only {source}",
-                    shell=True, capture_output=True, text=True,
-                )
-                if result.returncode != 0:
-                    error = next((l for l in result.stderr.splitlines() if " error: " in l), "(see stderr)")
-                    bad.append((source, error.strip()))
+                checking = sources + (coral_only if coral else [])
+                label = (f"CORAL={'on ' if coral else 'off'} "
+                         f"XNNPACK={'on ' if xnnpack else 'off'} "
+                         f"LITERT={'on ' if litert else 'off'}")
+                bad = []
+                for source in checking:
+                    result = subprocess.run(
+                        f"c++ {defines} {includes} {flags} -fsyntax-only {source}",
+                        shell=True, capture_output=True, text=True,
+                    )
+                    if result.returncode != 0:
+                        error = next((l for l in result.stderr.splitlines() if " error: " in l), "(see stderr)")
+                        bad.append((source, error.strip()))
 
-            print(f"{label}: {len(checking) - len(bad)}/{len(checking)} compile")
-            for source, error in bad:
-                print(f"    {source}: {error[:150]}")
-                failed = True
+                print(f"{label}: {len(checking) - len(bad)}/{len(checking)} compile")
+                for source, error in bad:
+                    print(f"    {source}: {error[:150]}")
+                    failed = True
 
     return 1 if failed else 0
 
