@@ -351,6 +351,16 @@ if(TFLITE_BEAM_ENABLE_LITERT_API)
         add_compile_options(-Wno-changes-meaning)
     endif()
 
+    # litert/runtime's event.cc, gpu_environment.cc and open_cl_memory.cc call
+    # TFLite's own OpenCL layer, which no target here builds, so off Apple the
+    # .so links with 22 symbols missing and fails to load. That layer exists so
+    # LiteRT can pass CL buffers around itself, and nothing here asks it to: the
+    # GPU accelerator is a plugin that brings its own OpenCL. Compiling it out
+    # keeps the host free of a dependency it does not use, and the accelerator is
+    # still found, because the name the registry tries first,
+    # libLiteRtGpuAccelerator, is not one of the ones this gates.
+    add_compile_definitions(LITERT_DISABLE_OPENCL_SUPPORT)
+
     # The C API sits on cc/internal, which sits on core. litert's own top level
     # adds these in the same order; only its add_subdirectory of tflite is left
     # out, since this build already has one.
