@@ -104,11 +104,13 @@ new(Env, Path) ->
 %% with several signatures needs one of these per signature rather than one that
 %% switches. Defaults to the first.
 %% @param profile Whether to record per-operator timings, readable with
-%% `profile/1'. Measured on `mobilenet_v2_1.0_224', 50 runs: on the CPU it cost
-%% between 1.1x and 1.4x, and on the GPU nothing measurable, because there the
-%% whole graph is one delegate node and there is no per-operator boundary to
-%% time. Cheap enough to turn on when you want the answer; the events also
-%% accumulate, so `reset_profile/1' is what keeps a long-lived model bounded.
+%% `profile/1'. Measured on `mobilenet_v2_1.0_224', 50 runs, three times each:
+%% at most 1.05x on the CPU and nothing measurable on the GPU, where the whole
+%% graph is one delegate node and there is no per-operator boundary left to
+%% time. That is one model on one machine and not a promise; a graph the
+%% accelerator splits into many nodes has many more boundaries to time.
+%% The events accumulate across runs, so `reset_profile/1' is what keeps a
+%% long-lived model bounded.
 -spec new(reference(), binary() | list(), opts()) -> {ok, reference()} | {error, binary()}.
 new(Env, Path, Opts) when is_list(Path) ->
     new(Env, list_to_binary(Path), Opts);
