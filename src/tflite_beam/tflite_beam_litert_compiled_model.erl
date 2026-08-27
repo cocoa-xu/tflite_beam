@@ -83,7 +83,10 @@ environment() ->
 %% only a line in the log to say why.
 -spec environment(binary() | string()) -> {ok, reference()} | {error, binary()}.
 environment(Dir) when is_list(Dir) ->
-    environment(list_to_binary(Dir));
+    case to_binary(Dir) of
+        {ok, Binary} -> environment(Binary);
+        Error -> Error
+    end;
 environment(Dir) when is_binary(Dir) ->
     case check_no_nul(Dir, <<"runtime library directory">>) of
         ok -> tflite_beam_nif:litert_environment_new(Dir);
@@ -98,7 +101,10 @@ environment(Dir) when is_binary(Dir) ->
 %% cheap way to find out what `new/3' can be asked for.
 -spec signatures(reference(), binary() | string()) -> {ok, [binary()]} | {error, binary()}.
 signatures(Env, Path) when is_list(Path) ->
-    signatures(Env, list_to_binary(Path));
+    case to_binary(Path) of
+        {ok, Binary} -> signatures(Env, Binary);
+        Error -> Error
+    end;
 signatures(Env, Path) when is_binary(Path) ->
     case check_no_nul(Path, <<"model path">>) of
         ok -> tflite_beam_nif:litert_model_signatures(Env, Path);
@@ -146,23 +152,46 @@ new(Env, Path) ->
 %% long-lived model bounded.
 -spec new(reference(), binary() | string(), opts()) -> {ok, reference()} | {error, binary()}.
 new(Env, Path, Opts) when is_list(Path) ->
-    new(Env, list_to_binary(Path), Opts);
+    case to_binary(Path) of
+        {ok, Binary} -> new(Env, Binary, Opts);
+        Error -> Error
+    end;
 new(Env, Path, Opts) when is_binary(Path), is_map(Opts) ->
     case check_no_nul(Path, <<"model path">>) of
         ok -> new_checked(Env, Path, Opts);
         Error -> Error
     end.
 
+%% Every option value is checked here rather than left to a guard, because a
+%% wrong value in an options map is an ordinary mistake and the caller of a
+%% function whose siblings all answer {error, Binary} should not have to catch
+%% one of them instead.
 new_checked(Env, Path, Opts) ->
-    Accel = accelerator_set(maps:get(accelerators, Opts, [cpu])),
-    Prec = precision_value(maps:get(precision, Opts, default)),
-    Profile = case maps:get(profile, Opts, false) of true -> 1; false -> 0 end,
-    case Accel of
-        0 ->
-            {error, <<"name at least one accelerator; [] selects nothing to run on">>};
-        _ ->
-            new_with_signature(Env, Path, Accel, Prec, Profile, Opts)
+    with_result([
+        fun() -> accelerator_set(maps:get(accelerators, Opts, [cpu])) end,
+        fun() -> precision_value(maps:get(precision, Opts, default)) end,
+        fun() -> profile_flag(maps:get(profile, Opts, false)) end
+    ], fun([Accel, Prec, Profile]) ->
+        new_with_signature(Env, Path, Accel, Prec, Profile, Opts)
+    end).
+
+%% Runs each check, stops at the first {error, _}, and hands the values on.
+with_result(Checks, Continue) ->
+    with_result(Checks, [], Continue).
+
+with_result([], Acc, Continue) ->
+    Continue(lists:reverse(Acc));
+with_result([Check | Rest], Acc, Continue) ->
+    case Check() of
+        {ok, Value} -> with_result(Rest, [Value | Acc], Continue);
+        {error, _} = Error -> Error
     end.
+
+profile_flag(true) -> {ok, 1};
+profile_flag(false) -> {ok, 0};
+profile_flag(Other) ->
+    {error, iolist_to_binary(
+        io_lib:format("profile must be true or false, got ~p", [Other]))}.
 
 new_with_signature(Env, Path, Accel, Prec, Profile, Opts) ->
     case signature_index(Env, Path, maps:get(signature, Opts, 0)) of
@@ -313,12 +342,27 @@ operator_kind(4) -> delegate_operator;
 operator_kind(8) -> delegate_profiled;
 operator_kind(_) -> not_an_operator.
 
+accelerator_set([]) ->
+    {error, <<"name at least one accelerator; [] selects nothing to run on">>};
 accelerator_set(List) when is_list(List) ->
-    lists:foldl(fun(A, Acc) -> Acc bor accelerator_bit(A) end, 0, List).
+    lists:foldl(
+        fun(_, {error, _} = Error) -> Error;
+           (A, {ok, Acc}) ->
+               case accelerator_bit(A) of
+                   {ok, Bit} -> {ok, Acc bor Bit};
+                   Error -> Error
+               end
+        end, {ok, 0}, List);
+accelerator_set(Other) ->
+    {error, iolist_to_binary(
+        io_lib:format("accelerators must be a list, got ~p", [Other]))}.
 
-accelerator_bit(cpu) -> 1;
-accelerator_bit(gpu) -> 2;
-accelerator_bit(npu) -> 4.
+accelerator_bit(cpu) -> {ok, 1};
+accelerator_bit(gpu) -> {ok, 2};
+accelerator_bit(npu) -> {ok, 4};
+accelerator_bit(Other) ->
+    {error, iolist_to_binary(
+        io_lib:format("~p is not an accelerator; expecting cpu, gpu or npu", [Other]))}.
 
 %% The index crosses into the NIF through enif_get_int, so anything outside the
 %% C int range is refused here where it can be named rather than there where it
@@ -330,7 +374,10 @@ signature_index(_Env, _Path, Index) when is_integer(Index) ->
     {error, iolist_to_binary(
         io_lib:format("signature index ~p is outside 0..2147483647", [Index]))};
 signature_index(Env, Path, Key) when is_list(Key) ->
-    signature_index(Env, Path, list_to_binary(Key));
+    case to_binary(Key) of
+        {ok, Binary} -> signature_index(Env, Path, Binary);
+        Error -> Error
+    end;
 signature_index(Env, Path, Key) when is_binary(Key) ->
     case check_no_nul(Key, <<"signature key">>) of
         ok -> signature_index_by_key(Env, Path, Key);
@@ -351,6 +398,14 @@ signature_index_by_key(Env, Path, Key) ->
             Error
     end.
 
+%% list_to_binary/1 raises on anything outside a byte range, so a perfectly
+%% ordinary Unicode string would throw where every sibling returns an error.
+to_binary(List) ->
+    case unicode:characters_to_binary(List) of
+        Binary when is_binary(Binary) -> {ok, Binary};
+        _ -> {error, <<"expecting text, which this is not">>}
+    end.
+
 %% Everything here reaches C as a NUL terminated string, so a NUL inside one
 %% would not be rejected, it would silently shorten it and name something else.
 check_no_nul(Binary, What) ->
@@ -363,7 +418,11 @@ index_of(_Key, [], _N) -> not_found;
 index_of(Key, [Key | _], N) -> N;
 index_of(Key, [_ | Rest], N) -> index_of(Key, Rest, N + 1).
 
-precision_value(default) -> 0;
-precision_value(fp16) -> 1;
-precision_value(fp32) -> 2;
-precision_value(fp16_with_fp32_accum) -> 3.
+precision_value(default) -> {ok, 0};
+precision_value(fp16) -> {ok, 1};
+precision_value(fp32) -> {ok, 2};
+precision_value(fp16_with_fp32_accum) -> {ok, 3};
+precision_value(Other) ->
+    {error, iolist_to_binary(
+        io_lib:format("~p is not a precision; expecting default, fp16, fp32 or "
+                      "fp16_with_fp32_accum", [Other]))}.
