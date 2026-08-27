@@ -170,8 +170,8 @@ struct NifResLiteRtCompiledModel {
     // race, not merely crossed outputs, so every operation takes this lock and
     // holds it across the ownership check as well. enif_alloc_resource hands
     // back raw storage and runs no constructor, hence a mutex handle rather
-    // than a std::mutex, and hence the ownership state being plain fields this
-    // lock covers rather than an atomic nothing constructed.
+    // than a std::mutex, and hence plain fields under this lock rather than a
+    // std::atomic that nothing would have constructed.
     ErlNifMutex * lock;
     bool is_controlled;
     ErlNifPid controlling_process;
