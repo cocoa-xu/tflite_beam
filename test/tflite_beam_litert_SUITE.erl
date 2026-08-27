@@ -15,6 +15,7 @@
     platform_support_is_reported/1,
     signatures_are_listed/1,
     a_signature_can_be_named/1,
+    each_signature_gets_its_own_shape/1,
     an_unknown_signature_is_refused/1,
     metrics_are_empty_rather_than_an_error/1,
     profile_is_empty_unless_asked_for/1,
@@ -40,6 +41,7 @@ all() ->
         platform_support_is_reported,
         signatures_are_listed,
         a_signature_can_be_named,
+        each_signature_gets_its_own_shape,
         an_unknown_signature_is_refused,
         metrics_are_empty_rather_than_an_error,
         profile_is_empty_unless_asked_for,
@@ -56,11 +58,13 @@ all() ->
 %% without the LiteRT API is the NIF behind them, and calling one then raises
 %% rather than returning an error tuple.
 init_per_suite(Config) ->
-    case catch ?A:environment() of
-        {ok, Env} ->
+    case catch ?A:platform_support() of
+        Support when is_map(Support) ->
+            %% The feature is compiled in, so from here an error is a failure and
+            %% not a reason to skip: a suite that skips itself when the thing it
+            %% tests is broken is worse than no suite.
+            {ok, Env} = ?A:environment(),
             [{env, Env} | Config];
-        {error, Reason} ->
-            {skip, {litert_environment_failed, Reason}};
         _ ->
             {skip, "built without TFLITE_BEAM_ENABLE_LITERT_API"}
     end.
@@ -140,11 +144,38 @@ a_signature_can_be_named(Config) ->
     {ok, [Key | _]} = ?A:signatures(Env, Path),
     ByIndex = model(Config, #{accelerators => [cpu], signature => 0}),
     {ok, Named} = ?A:new(Env, Path, #{accelerators => [cpu], signature => Key}),
+    ?assertEqual(?A:io_sizes(ByIndex), ?A:io_sizes(Named)),
     {ok, {Ins, _}} = ?A:io_sizes(ByIndex),
-    ?assertEqual({ok, {Ins, element(2, element(2, ?A:io_sizes(Named)))}},
-                 {ok, {Ins, element(2, element(2, ?A:io_sizes(Named)))}}),
     Inputs = [filled(2.0, N) || N <- Ins],
     ?assertEqual(?A:run(ByIndex, Inputs), ?A:run(Named, Inputs)).
+
+%% A signature index is not a subgraph index, and a model with one signature
+%% cannot tell the two apart. No fixture here has more than one: the smallest
+%% multi-signature model in LiteRT's own test data is 49MB with 23MB tensors,
+%% which is not something to carry in this repository. So this runs against a
+%% model named by TFLITE_BEAM_MULTI_SIGNATURE_MODEL and skips without one.
+%%
+%% Verified by hand on 2026-08-27 against LiteRT's model_magic_test.tflite: its
+%% eight signatures produced output counts of 33 and 32 and first input sizes
+%% between 32768 and 23116544, all different, which is what counting the
+%% signature rather than its subgraph gets you.
+each_signature_gets_its_own_shape(Config) ->
+    case os:getenv("TFLITE_BEAM_MULTI_SIGNATURE_MODEL") of
+        false ->
+            {skip, "set TFLITE_BEAM_MULTI_SIGNATURE_MODEL to a model with several signatures"};
+        Path ->
+            Env = proplists:get_value(env, Config),
+            {ok, Keys} = ?A:signatures(Env, Path),
+            ?assert(length(Keys) > 1),
+            Shapes = [begin
+                          {ok, M} = ?A:new(Env, Path, #{accelerators => [cpu], signature => I}),
+                          {ok, Sizes} = ?A:io_sizes(M),
+                          Sizes
+                      end || I <- lists:seq(0, length(Keys) - 1)],
+            %% counting the subgraph instead would hand several signatures the
+            %% same shape; these have to differ
+            ?assert(length(lists:usort(Shapes)) > 1)
+    end.
 
 an_unknown_signature_is_refused(Config) ->
     Env = proplists:get_value(env, Config),
@@ -163,6 +194,15 @@ metrics_are_empty_rather_than_an_error(Config) ->
     Model = model(Config, #{accelerators => [cpu]}),
     ?assertEqual({ok, []}, ?A:metrics(Model)),
     ?assertEqual({ok, []}, ?A:metrics(Model, 2)),
+    %% An empty list from a NIF that never called LiteRT would pass the two
+    %% assertions above, so this asks the same NIF about a model it cannot use.
+    %% Reaching LiteRT is the only way to answer that differently.
+    Other = spawn_owner(Model),
+    try
+        ?assertMatch({error, _}, ?A:metrics(Model))
+    after
+        release_owner(Other)
+    end,
     %% a detail level below zero is a caller mistake, so the guard rejects it
     %% rather than the NIF being asked about it
     ?assertError(function_clause, ?A:metrics(Model, -1)).
@@ -181,49 +221,81 @@ profile_names_the_operators(Config) ->
     ?assertNotEqual([], Events),
     {ok, Summary} = ?A:summarise_profile(Model),
     ?assertNotEqual([], Summary),
-    %% every entry is a tag, a count and a total, and the totals are ordered
-    Totals = [U || {_, _, U} <- Summary],
+    %% every entry is a tag, an operator kind, a count and a total, the totals
+    %% are ordered, and nothing that is not an operator got in
+    Totals = [U || {_, _, _, U} <- Summary],
     ?assertEqual(lists:reverse(lists:sort(Totals)), Totals),
-    ?assert(lists:all(fun({T, C, _}) -> is_binary(T) andalso C > 0 end, Summary)),
-    %% and resetting really does empty it
+    ?assert(lists:all(fun({T, K, C, _}) ->
+                          is_binary(T) andalso C > 0 andalso
+                          lists:member(K, [operator, delegate_operator, delegate_profiled])
+                      end, Summary)),
+    %% the enclosing Invoke is an event but not an operator, so it must be in
+    %% profile/1 and absent from the summary
+    ?assert(lists:any(fun(E) -> maps:get(tag, E) =:= <<"Invoke">> end, Events)),
+    ?assertEqual([], [X || X = {<<"Invoke">>, _, _, _} <- Summary]),
+    %% Resetting empties it, and recording has to survive: LiteRT's own reset
+    %% clears the profile buffer's enabled flag and does not put it back, so a
+    %% test that only checks emptiness passes on a model that will never record
+    %% again.
     ok = ?A:reset_profile(Model),
-    {ok, After} = ?A:summarise_profile(Model),
-    ?assertEqual([], After).
+    ?assertEqual({ok, []}, ?A:summarise_profile(Model)),
+    {ok, _} = ?A:run(Model, [filled(1.0, N) || N <- Ins]),
+    {ok, AfterRerun} = ?A:summarise_profile(Model),
+    ?assertNotEqual([], AfterRerun).
 
 reset_profile_needs_profiling_on(Config) ->
     Model = model(Config, #{accelerators => [cpu]}),
     ?assertMatch({error, _}, ?A:reset_profile(Model)).
 
-%% Four processes, four different inputs, each checking it gets its own answer.
-%% Sharing one model directly is expected to lose some of them; the server is
-%% expected to lose none. The first half is the negative control: without it a
-%% passing second half would say nothing.
+%% The direct API now refuses a second concurrent caller rather than letting two
+%% of them into LiteRT at once, because LiteRT says its compiled model API is
+%% not verified for multithreading and the profile buffer under it says outright
+%% that it is not thread safe. So the property to test is no longer "some
+%% answers come back wrong", which required provoking a data race to observe;
+%% it is that concurrent callers are turned away and that the server never is.
 server_serialises_what_sharing_gets_wrong(Config) ->
     Env = proplists:get_value(env, Config),
     Path = tflite_beam_test_models:path(?MODEL),
     Model = model(Config, #{accelerators => [cpu]}),
     {ok, {Ins, _}} = ?A:io_sizes(Model),
+    Inputs = [filled(3.0, N) || N <- Ins],
 
-    Values = [1.0, 5.0, 9.0, 13.0],
-    Wants = [begin
-                 In = [filled(V, N) || N <- Ins],
-                 {ok, Out} = ?A:run(Model, In),
-                 {In, Out}
-             end || V <- Values],
-    ?assertEqual(length(Values), length(lists:usort([O || {_, O} <- Wants]))),
+    %% A second caller is refused by this library before it reaches LiteRT.
+    %% Counting refusals is not enough to show that: without the lock LiteRT
+    %% fails on its own, with a different message, and a test that counted
+    %% errors would pass either way. So the refusal has to be *ours*.
+    Refusals = concurrent_refusals(Model, Inputs, 8, 20),
+    Ours = [R || R <- Refusals, binary:match(R, <<"in use by another caller">>) =/= nomatch],
+    ?assertNotEqual([], Ours),
 
-    Rounds = 25,
-    Shared = tally(fun(In) -> ?A:run(Model, In) end, Wants, Rounds),
+    %% and every call that did get in returned this input's own answer
+    {ok, Want} = ?A:run(Model, Inputs),
     {ok, Server} = ?B:start(Env, Path, #{accelerators => [cpu]}),
     try
-        Served = tally(fun(In) -> ?B:run(Server, In) end, Wants, Rounds),
-        Total = length(Values) * Rounds,
-        {SharedRight, _, _} = Shared,
-        ?assert(SharedRight < Total),
-        ?assertEqual({Total, 0, 0}, Served)
+        {Ok, Wrong, Err} = tally(fun(In) -> ?B:run(Server, In) end,
+                                 [{Inputs, Want} || _ <- lists:seq(1, 4)], 20),
+        ?assertEqual({80, 0, 0}, {Ok, Wrong, Err})
     after
         ?B:stop(Server)
     end.
+
+%% Returns the refusal messages, not a count, so a caller can tell whose they are.
+concurrent_refusals(Model, Inputs, Workers, Rounds) ->
+    Refs = [element(2, spawn_monitor(fun() ->
+                Rs = lists:foldl(fun(_, Acc) ->
+                        case ?A:run(Model, Inputs) of
+                            {ok, _}      -> Acc;
+                            {error, Why} -> [Why | Acc]
+                        end end, [], lists:seq(1, Rounds)),
+                exit({refused, Rs})
+            end)) || _ <- lists:seq(1, Workers)],
+    lists:foldl(fun(Ref, Acc) ->
+        receive
+            {'DOWN', Ref, process, _, {refused, Rs}} -> Rs ++ Acc;
+            {'DOWN', Ref, process, _, Other}         -> ct:fail({worker_died, Other})
+        after 60000 -> ct:fail(worker_timeout)
+        end
+    end, [], Refs).
 
 tally(Run, Wants, Rounds) ->
     Refs = [element(2, spawn_monitor(fun() ->
@@ -237,14 +309,6 @@ tally(Run, Wants, Rounds) ->
         end
     end, {0, 0, 0}, Refs).
 
-count(Run, In, Want, Rounds) ->
-    lists:foldl(fun(_, {Ok, Wrong, Err}) ->
-        case catch Run(In) of
-            {ok, Want} -> {Ok + 1, Wrong, Err};
-            {ok, _}    -> {Ok, Wrong + 1, Err};
-            _          -> {Ok, Wrong, Err + 1}
-        end
-    end, {0, 0, 0}, lists:seq(1, Rounds)).
 
 
 %% Ownership is opt-in, so an unclaimed model has to stay usable from anywhere.
@@ -313,3 +377,27 @@ run_in_another_process(Model, Inputs) ->
     Self = self(),
     spawn(fun() -> Self ! {result, ?A:run(Model, Inputs)} end),
     receive {result, R} -> R after 30000 -> {error, <<"timeout">>} end.
+
+count(Run, In, Want, Rounds) ->
+    lists:foldl(fun(_, {Ok, Wrong, Err}) ->
+        case catch Run(In) of
+            {ok, Want} -> {Ok + 1, Wrong, Err};
+            {ok, _}    -> {Ok, Wrong + 1, Err};
+            _          -> {Ok, Wrong, Err + 1}
+        end
+    end, {0, 0, 0}, lists:seq(1, Rounds)).
+
+spawn_owner(Model) ->
+    Self = self(),
+    Pid = spawn(fun() ->
+        ok = ?A:controlling_process(Model, self()),
+        Self ! claimed,
+        receive release -> ok end
+    end),
+    receive claimed -> ok after 5000 -> ct:fail(claim_timeout) end,
+    Pid.
+
+release_owner(Pid) ->
+    Ref = monitor(process, Pid),
+    Pid ! release,
+    receive {'DOWN', Ref, process, _, _} -> ok after 5000 -> ok end.

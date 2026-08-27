@@ -8,15 +8,16 @@
 %% built rather than per call. `run/2' writes the caller's input into those
 %% buffers, runs, and reads the outputs back out of them.
 %%
-%% Two processes doing that at once mostly fail loudly, and sometimes do not.
-%% Measured with four processes running twenty-five inferences each against one
-%% shared model, every one checking the answer to its own input, three times
-%% over: about 72 of the 100 calls were refused with a runtime failure, most of
-%% the rest were right, and **0, 5 and 1 of them came back holding another
-%% process's answer**. The refusals are survivable and the count of wrong
-%% answers moves between runs, which is the point: it is not zero and nothing
-%% tells the caller which calls it was. Through this module the same
-%% measurement gives 100 right out of 100, every time.
+%% LiteRT states that its compiled model API is not verified for multithreading,
+%% and the profile buffer underneath says outright that it is not thread safe,
+%% so two callers inside one model at once is a data race and not merely crossed
+%% outputs. The direct module therefore refuses a second concurrent caller
+%% rather than admitting it, and before it did, four processes running
+%% twenty-five inferences each against one shared model got a handful of answers
+%% belonging to a different process, with nothing to say which ones.
+%%
+%% Refusal is honest but it is not a queue. This module is the queue: callers
+%% wait their turn instead of being told to come back.
 %%
 %% This is a different hazard from the one
 %% `tflite_beam_interpreter_server' answers. There the danger is a three-step
@@ -25,9 +26,11 @@
 %% the model in one process is the same answer to both.
 %%
 %% The profile is per model, not per call, so `summarise_profile/1' here reports
-%% every run since the last `reset_profile/1' rather than the last one. That is
+%% the runs since the last `reset_profile/1' rather than the last one. That is
 %% usually what you want from a server: a shape over many calls rather than one
-%% sample. Reset it when you want to measure a change.
+%% sample. It is not unbounded, though: the buffer under it holds a fixed number
+%% of events, so a busy model loses the oldest. Reset on a cadence, and reset
+%% when you want to measure a change.
 -module(tflite_beam_litert_compiled_model_server).
 -behaviour(gen_server).
 

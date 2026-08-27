@@ -86,6 +86,11 @@ the GPU land in the same band, because underneath they are the same delegate:
 | compiled model, CPU | 2186 to 2212 |
 | compiled model, GPU | 1076 to 1394 |
 
+The GPU rows do not overlap: over three runs the interpreter with a plugin was
+the faster of the two. Both reach the GPU through the same delegate, so read
+this as "a compiled model buys no speed" rather than as a ranking of two
+different engines.
+
 What it has and the interpreter does not is a profiler. It reports every
 operator, how long it took, and which of them an accelerator claimed:
 
@@ -97,18 +102,25 @@ operator, how long it took, and which of them an accelerator claimed:
 {ok, Slow}  = tflite_beam_litert_compiled_model:summarise_profile(Model).
 ```
 
-On the CPU that names XNNPACK's kernels, and on the GPU it shows the whole
-graph collapsed into one delegate node, with LiteRT's own buffer handling
-broken out beside it:
+On the CPU `summarise_profile/1` names XNNPACK's kernels, and on the GPU it
+shows the whole graph collapsed into one delegate node. LiteRT's own buffer
+handling is not an operator and is not in that summary; it is in `profile/1`,
+and is shown here beside them because it is what the overhead looks like:
 
-```
-Convolution (NHWC, F32) DWConv       357 x  23831 us
-Fully Connected (NC, PF32) GEMM      735 x  18527 us
+```erlang
+%% summarise_profile/1, on the CPU
+{<<"Convolution (NHWC, F32) DWConv">>,  delegate_profiled, 357, 23831}
+{<<"Fully Connected (NC, PF32) GEMM">>, delegate_profiled, 735, 18527}
 
-TfLiteMetalDelegate                   21 x  24722 us
-LiteRT::Run[buffer registration]      21 x    197 us
-LiteRT::Run[Buffer sync]              21 x     96 us
+%% and on the GPU
+{<<"TfLiteMetalDelegate">>,             operator,           21, 24722}
 ```
+
+`Kind` is in the tuple because the categories can nest: a `delegate_operator`
+runs inside a delegate and its time may already be counted in the enclosing
+`delegate_profiled` entry. Totals within one kind add up; totals across kinds do
+not. LiteRT's own buffer handling, which cost 197 and 96 microseconds over those
+21 runs, is not an operator and is in `profile/1` rather than the summary.
 
 Profiling cost at most 1.05x on the CPU here and nothing measurable on the GPU,
 where the whole graph is one delegate node and there is no per-operator boundary
@@ -150,9 +162,12 @@ and uses it from somewhere else afterwards is refused. Claiming is opt-in and
 available to anyone building their own owner, and a claim whose process has
 died is released rather than stranding the model.
 
-Concurrency is unsafe but not unsound in the crashing sense: 1440 concurrent
-calls against one shared model across three runs produced refusals and wrong
-answers, and never took the VM down.
+Concurrent use of one model is refused rather than attempted. LiteRT states its
+compiled model API is not verified for multithreading and the profile buffer
+under it is documented as not thread safe, so a second caller is turned away at
+the door with `{error, <<"compiled model is in use by another caller">>}`
+instead of being let into a data race. The server is the way to have callers
+wait their turn instead.
 
 ## Threading
 
