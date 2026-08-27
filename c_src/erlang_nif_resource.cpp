@@ -638,6 +638,7 @@ NifResLiteRtCompiledModel * NifResLiteRtCompiledModel::allocate_resource(ErlNifE
     res->output_sizes = nullptr;
     res->input_mem = nullptr;
     res->output_mem = nullptr;
+    res->signature = 0;
     res->profiler = nullptr;
     return res;
 }

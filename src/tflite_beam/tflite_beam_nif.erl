@@ -46,7 +46,7 @@ litert_api_compiled_model_bench(_path, _iters, _accelerators, _accel_dir, _preci
 litert_environment_new(_runtime_library_dir) ->
     not_loaded(?LINE).
 
-litert_compiled_model_new(_env, _path, _accelerators, _precision, _profile) ->
+litert_compiled_model_new(_env, _path, _accelerators, _precision, _profile, _signature) ->
     not_loaded(?LINE).
 
 litert_compiled_model_run(_model, _inputs) ->
@@ -62,6 +62,12 @@ litert_compiled_model_reset_profile(_model) ->
     not_loaded(?LINE).
 
 litert_compiled_model_io_sizes(_model) ->
+    not_loaded(?LINE).
+
+litert_model_signatures(_env, _path) ->
+    not_loaded(?LINE).
+
+litert_compiled_model_metrics(_model, _detail_level) ->
     not_loaded(?LINE).
 
 
