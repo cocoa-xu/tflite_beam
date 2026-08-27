@@ -343,6 +343,14 @@ if(TFLITE_BEAM_ENABLE_LITERT_API)
     if(EXISTS "${CMAKE_CURRENT_BINARY_DIR}/FP16-source/include")
         include_directories("${CMAKE_CURRENT_BINARY_DIR}/FP16-source/include")
     endif()
+    # litert/cc/litert_buffer_ref.h declares members named Span whose own return
+    # type is the Span alias, already used earlier in the same class. GCC 14 made
+    # that diagnostic an error by default, so every Linux build with the default
+    # toolchain fails on a header we do not own. Clang does not diagnose it.
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        add_compile_options(-Wno-changes-meaning)
+    endif()
+
     # The C API sits on cc/internal, which sits on core. litert's own top level
     # adds these in the same order; only its add_subdirectory of tflite is left
     # out, since this build already has one.
