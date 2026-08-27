@@ -1,9 +1,10 @@
 // LiteRT's compiled model, exposed as it is rather than wrapped.
 //
 // The reason to have this at all is not speed. Measured on the same model and
-// machine, a compiled model running on the GPU lands in the same band as an
-// interpreter with the same plugin attached as an external delegate, because
-// underneath they are the same delegate. What only exists here is the profiler:
+// machine, a compiled model on the GPU was no faster than an interpreter with
+// the same plugin attached as an external delegate, and in three runs it was
+// slower: 1076 to 1394 microseconds against 772 to 943. Underneath they are the
+// same delegate. What only exists here is the profiler:
 // LiteRtCompiledModelGetProfiler has no counterpart on an interpreter, and it
 // is the only way to see, operator by operator, where the time went and which
 // operators an accelerator actually claimed.
@@ -13,6 +14,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -39,8 +41,42 @@ ERL_NIF_TERM litert_error(ErlNifEnv *env, const char *what, LiteRtStatus st) {
     return erlang::nif::error(env, (std::string(what) + ": " + LiteRtGetStatusString(st)).c_str());
 }
 
-// Handed to LiteRT for anything this file allocates with malloc or
-// posix_memalign, both of which free() releases.
+// Resolving a compiled model for use: the handle, then the lock, then the
+// ownership check under it, and the lock is held until this goes out of scope.
+// Trying rather than waiting, because a NIF that blocks blocks a scheduler, and
+// because a caller who has been told the model is busy can decide what to do
+// about it; waiting would only hide that two processes are sharing one.
+class CompiledModelUse {
+public:
+    CompiledModelUse(ErlNifEnv *env, ERL_NIF_TERM term) : env_(env) {
+        res_ = NifResLiteRtCompiledModel::get_resource(env, term, error_);
+        if (res_ == nullptr) return;
+
+        held_ = std::unique_ptr<MutexTryLock>(new MutexTryLock(res_->lock));
+        if (!held_->acquired()) {
+            res_ = nullptr;
+            error_ = erlang::nif::error(env, "compiled model is in use by another caller");
+            return;
+        }
+        if (!compiled_model_caller_may_use(env, res_)) {
+            res_ = nullptr;
+            error_ = erlang::nif::error(env, "compiled model belongs to another process");
+        }
+    }
+
+    explicit operator bool() const { return res_ != nullptr; }
+    NifResLiteRtCompiledModel * operator->() const { return res_; }
+    NifResLiteRtCompiledModel * get() const { return res_; }
+    ERL_NIF_TERM error() const { return error_; }
+
+private:
+    ErlNifEnv *env_;
+    NifResLiteRtCompiledModel *res_ = nullptr;
+    ERL_NIF_TERM error_{};
+    std::unique_ptr<MutexTryLock> held_;
+};
+
+// Handed to LiteRT for the TOML payloads this file strdups.
 void release_malloced(void *addr) { free(addr); }
 
 // Attaches one TOML payload under its identifier. LiteRT files an accelerator's
@@ -176,12 +212,16 @@ ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_T
     }
     res->signature = (LiteRtParamIndex)signature;
 
-    LiteRtSubgraph subgraph = nullptr;
+    // A signature index is not a subgraph index: signatures may share a subgraph
+    // and may name a subset of its tensors in their own order. Counting the
+    // subgraph's tensors would allocate buffers that do not match the signature
+    // then handed to LiteRtRunCompiledModel, so the signature is asked directly.
+    LiteRtSignature sig = nullptr;
     LiteRtParamIndex n_in = 0, n_out = 0;
-    if (LiteRtGetModelSubgraph(res->model, res->signature, &subgraph) != kLiteRtStatusOk ||
-        LiteRtGetNumSubgraphInputs(subgraph, &n_in) != kLiteRtStatusOk ||
-        LiteRtGetNumSubgraphOutputs(subgraph, &n_out) != kLiteRtStatusOk) {
-        return erlang::nif::error(env, "cannot count the model's inputs and outputs");
+    if (LiteRtGetModelSignature(res->model, res->signature, &sig) != kLiteRtStatusOk ||
+        LiteRtGetNumSignatureInputs(sig, &n_in) != kLiteRtStatusOk ||
+        LiteRtGetNumSignatureOutputs(sig, &n_out) != kLiteRtStatusOk) {
+        return erlang::nif::error(env, "cannot count the signature's inputs and outputs");
     }
 
     // Output layouts come back for every output at once, so they are fetched
@@ -207,26 +247,14 @@ ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_T
                 return "buffer size";
             }
 
-            // LITERT_HOST_MEMORY_BUFFER_ALIGNMENT is 64 and a BEAM binary never
-            // meets it at these sizes, so the memory is allocated aligned here
-            // and handed over with the deallocator that frees it. The allocation
-            // is rounded up because LiteRT reads and writes it in whole lines.
-            void *mem = nullptr;
-            size_t padded = ((bytes + LITERT_HOST_MEMORY_BUFFER_ALIGNMENT - 1)
-                             / LITERT_HOST_MEMORY_BUFFER_ALIGNMENT) * LITERT_HOST_MEMORY_BUFFER_ALIGNMENT;
-            if (posix_memalign(&mem, LITERT_HOST_MEMORY_BUFFER_ALIGNMENT, padded) != 0 || mem == nullptr) {
-                return "aligned allocation";
-            }
-            memset(mem, 0, padded);
-
             // Ask for the layout rather than inventing one. A buffer declared as
             // a flat run of bytes compiles and then fails at run time, because
             // the model expects its own shape and the buffer has to say so too.
             LiteRtLayout layout;
             memset(&layout, 0, sizeof(layout));
             if (input) {
-                if (LiteRtGetCompiledModelInputTensorLayout(res->val, res->signature, i, &layout) != kLiteRtStatusOk) {
-                    free(mem);
+                if (LiteRtGetCompiledModelInputTensorLayout(res->val, res->signature, i, &layout)
+                    != kLiteRtStatusOk) {
                     return "input tensor layout";
                 }
             } else {
@@ -238,12 +266,21 @@ ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_T
             type.element_type = kLiteRtElementTypeUInt8;
             type.layout = layout;
 
+            // LiteRT allocates this, not us. Hand-rolling it meant rounding the
+            // size up to the alignment and hoping, while LiteRT's own allocator
+            // adds XNN_EXTRA_BYTES of guard that XNNPACK kernels are allowed to
+            // touch, and meant owning memory whose ownership on failure is
+            // ambiguous: LiteRtCreateTensorBufferFromHostMemory installs the
+            // deallocator before it validates, so a validation failure frees the
+            // memory and freeing it again here was a double free.
             LiteRtTensorBuffer buf = nullptr;
-            if (LiteRtCreateTensorBufferFromHostMemory(&type, mem, bytes, release_malloced, &buf)
-                != kLiteRtStatusOk) {
-                free(mem);
-                return "tensor buffer";
-            }
+            s = LiteRtCreateManagedTensorBufferFromRequirements(
+                    env_res->val, &type, req, &buf);
+            if (s != kLiteRtStatusOk || buf == nullptr) return "tensor buffer";
+
+            // push_back can throw, and a buffer that never reached the vector
+            // would be unreachable by the destructor, so the space is reserved
+            // before any of them exist.
             if (input) {
                 res->inputs->push_back(buf);
                 res->input_sizes->push_back(bytes);
@@ -254,6 +291,11 @@ ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_T
         }
         return nullptr;
     };
+    res->inputs->reserve(n_in);
+    res->input_sizes->reserve(n_in);
+    res->outputs->reserve(n_out);
+    res->output_sizes->reserve(n_out);
+
     if (const char *why = make_buffers(true, n_in))   return erlang::nif::error(env, why);
     if (const char *why = make_buffers(false, n_out)) return erlang::nif::error(env, why);
 #undef TRY
@@ -270,9 +312,8 @@ ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_T
 ERL_NIF_TERM litert_compiled_model_run(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 2) return enif_make_badarg(env);
 
-    ERL_NIF_TERM error{};
-    auto res = NifResLiteRtCompiledModel::get_resource(env, argv[0], error);
-    if (res == nullptr) return error;
+    CompiledModelUse res(env, argv[0]);
+    if (!res) return res.error();
 
     unsigned int given = 0;
     if (!enif_get_list_length(env, argv[1], &given)) {
@@ -330,6 +371,10 @@ ERL_NIF_TERM litert_compiled_model_run(ErlNifEnv *env, int argc, const ERL_NIF_T
         }
         ERL_NIF_TERM bin_term;
         unsigned char *out = enif_make_new_binary(env, res->output_sizes->at(i), &bin_term);
+        if (out == nullptr) {
+            LiteRtUnlockTensorBuffer(res->outputs->at(i));
+            return erlang::nif::error(env, "cannot allocate the output binary");
+        }
         memcpy(out, addr, res->output_sizes->at(i));
         LiteRtUnlockTensorBuffer(res->outputs->at(i));
         outputs = enif_make_list_cell(env, bin_term, outputs);
@@ -340,9 +385,8 @@ ERL_NIF_TERM litert_compiled_model_run(ErlNifEnv *env, int argc, const ERL_NIF_T
 // litert_compiled_model_fully_accelerated(Model) -> {ok, boolean()}
 ERL_NIF_TERM litert_compiled_model_fully_accelerated(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
-    ERL_NIF_TERM error{};
-    auto res = NifResLiteRtCompiledModel::get_resource(env, argv[0], error);
-    if (res == nullptr) return error;
+    CompiledModelUse res(env, argv[0]);
+    if (!res) return res.error();
 
     bool fully = false;
     LiteRtStatus st = LiteRtCompiledModelIsFullyAccelerated(res->val, &fully);
@@ -357,9 +401,8 @@ ERL_NIF_TERM litert_compiled_model_fully_accelerated(ErlNifEnv *env, int argc, c
 // the caller's, not this layer's.
 ERL_NIF_TERM litert_compiled_model_profile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
-    ERL_NIF_TERM error{};
-    auto res = NifResLiteRtCompiledModel::get_resource(env, argv[0], error);
-    if (res == nullptr) return error;
+    CompiledModelUse res(env, argv[0]);
+    if (!res) return res.error();
 
     ERL_NIF_TERM events = enif_make_list(env, 0);
     if (res->profiler == nullptr) return erlang::nif::ok(env, events);
@@ -391,23 +434,26 @@ ERL_NIF_TERM litert_compiled_model_profile(ErlNifEnv *env, int argc, const ERL_N
 // litert_compiled_model_reset_profile(Model) -> ok | {error, Reason}
 ERL_NIF_TERM litert_compiled_model_reset_profile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
-    ERL_NIF_TERM error{};
-    auto res = NifResLiteRtCompiledModel::get_resource(env, argv[0], error);
-    if (res == nullptr) return error;
+    CompiledModelUse res(env, argv[0]);
+    if (!res) return res.error();
     if (res->profiler == nullptr) {
         return erlang::nif::error(env, "this model was not compiled with profiling on");
     }
+    // ProfileBuffer::Reset clears enabled_, and LiteRT's outer reset does not put
+    // it back, so a reset without this leaves a model that silently records
+    // nothing for the rest of its life.
     LiteRtStatus st = LiteRtResetProfiler(res->profiler);
     if (st != kLiteRtStatusOk) return litert_error(env, "reset profiler", st);
+    st = LiteRtStartProfiler(res->profiler);
+    if (st != kLiteRtStatusOk) return litert_error(env, "restart profiler after reset", st);
     return erlang::nif::ok(env);
 }
 
 // litert_compiled_model_io_sizes(Model) -> {ok, {[integer()], [integer()]}}
 ERL_NIF_TERM litert_compiled_model_io_sizes(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
-    ERL_NIF_TERM error{};
-    auto res = NifResLiteRtCompiledModel::get_resource(env, argv[0], error);
-    if (res == nullptr) return error;
+    CompiledModelUse res(env, argv[0]);
+    if (!res) return res.error();
 
     auto to_list = [&](const std::vector<size_t> &v) {
         ERL_NIF_TERM list = enif_make_list(env, 0);
@@ -469,21 +515,23 @@ ERL_NIF_TERM litert_model_signatures(ErlNifEnv *env, int argc, const ERL_NIF_TER
 ERL_NIF_TERM litert_compiled_model_metrics(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 2) return enif_make_badarg(env);
 
-    ERL_NIF_TERM error{};
-    auto res = NifResLiteRtCompiledModel::get_resource(env, argv[0], error);
-    if (res == nullptr) return error;
+    CompiledModelUse res(env, argv[0]);
+    if (!res) return res.error();
 
     int detail = 0;
     if (!enif_get_int(env, argv[1], &detail) || detail < 0) {
         return erlang::nif::error(env, "expecting a detail level of zero or more");
     }
 
-    LiteRtStatus st = LiteRtCompiledModelStartMetricsCollection(res->val, detail);
-    if (st != kLiteRtStatusOk) return litert_error(env, "start metrics", st);
-
+    // The metrics object first: creating it allocates, and an allocation that
+    // throws between starting and stopping collection would leave the backend
+    // collecting for ever.
     LiteRtMetrics metrics = nullptr;
-    st = LiteRtCreateMetrics(&metrics);
+    LiteRtStatus st = LiteRtCreateMetrics(&metrics);
     if (st != kLiteRtStatusOk) return litert_error(env, "create metrics", st);
+
+    st = LiteRtCompiledModelStartMetricsCollection(res->val, detail);
+    if (st != kLiteRtStatusOk) { LiteRtDestroyMetrics(metrics); return litert_error(env, "start metrics", st); }
 
     st = LiteRtCompiledModelStopMetricsCollection(res->val, metrics);
     if (st != kLiteRtStatusOk) { LiteRtDestroyMetrics(metrics); return litert_error(env, "stop metrics", st); }
@@ -516,10 +564,10 @@ ERL_NIF_TERM litert_compiled_model_metrics(ErlNifEnv *env, int argc, const ERL_N
 // litert_platform_support() -> map()
 //
 // What this build of the library can reach, not what the machine has. These are
-// compile-time answers: LiteRT decides them from the macros in litert_common.h,
-// which is why OpenCL reads false on Apple and true elsewhere whether or not a
-// driver is installed. Whether a device is actually there is discovered by
-// asking for it and being refused.
+// compile-time answers, from the macros in litert_common.h and from what this
+// build turns off: OpenCL reads false everywhere because CMakeLists defines
+// LITERT_DISABLE_OPENCL_SUPPORT. Whether a device is actually there is
+// discovered by asking for it and being refused.
 ERL_NIF_TERM litert_platform_support(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 0) return enif_make_badarg(env);
 
@@ -547,9 +595,8 @@ ERL_NIF_TERM litert_platform_support(ErlNifEnv *env, int argc, const ERL_NIF_TER
 ERL_NIF_TERM litert_compiled_model_set_controlling_process(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 2) return enif_make_badarg(env);
 
-    ERL_NIF_TERM error{};
-    auto res = NifResLiteRtCompiledModel::get_resource(env, argv[0], error);
-    if (res == nullptr) return error;
+    CompiledModelUse res(env, argv[0]);
+    if (!res) return res.error();
 
     ErlNifPid pid;
     if (!enif_get_local_pid(env, argv[1], &pid)) {
