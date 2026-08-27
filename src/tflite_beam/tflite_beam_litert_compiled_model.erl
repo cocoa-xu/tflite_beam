@@ -27,7 +27,7 @@
     profile/1,
     reset_profile/1,
     summarise_profile/1,
-    metrics/1, metrics/2,
+    run_with_metrics/2, run_with_metrics/3,
     controlling_process/1, controlling_process/2,
     platform_support/0
 ]).
@@ -174,28 +174,31 @@ io_sizes(Model) ->
 profile(Model) ->
     tflite_beam_nif:litert_compiled_model_profile(Model).
 
-%% @doc Hardware counters an accelerator chose to report, at detail level zero.
--spec metrics(reference()) -> {ok, [{binary(), term()}]} | {error, binary()}.
-metrics(Model) ->
-    metrics(Model, 0).
+%% @doc Run the model and collect whatever counters the accelerator reports.
+-spec run_with_metrics(reference(), [binary()]) ->
+    {ok, {[binary()], [{binary(), term()}]}} | {error, binary()}.
+run_with_metrics(Model, Inputs) ->
+    run_with_metrics(Model, Inputs, 0).
 
 %% @doc
-%% Hardware counters an accelerator chose to report.
+%% Run the model with metrics collection bracketing the inference.
 %%
-%% Usually `{ok, []}'. The two entries of an accelerator definition that would
-%% fill these in may be null, and are null in both the plugins here and in
-%% Google\'s own prebuilt GPU accelerator, so an empty list means nobody offered
-%% anything rather than that something went wrong. Use `profile/1' for timings;
-%% this is for counters a vendor backend exposes.
--spec metrics(reference(), signature_index()) -> {ok, [{binary(), term()}]} | {error, binary()}.
-metrics(Model, DetailLevel) when is_integer(DetailLevel), DetailLevel >= 0 ->
-    tflite_beam_nif:litert_compiled_model_metrics(Model, DetailLevel).
+%% Usually the counters come back empty. Filling them in is the accelerator's
+%% job, through two entries of its definition that are allowed to be null, so an
+%% empty list means nobody offered anything rather than that something went
+%% wrong. Every accelerator this library has been run against returned nothing;
+%% what a vendor backend does is its own business and is not established here.
+%%
+%% Collection brackets the run rather than being started and stopped on its own,
+%% because a backend asked to report on an interval containing no inference has
+%% nothing to report on. Use `profile/1' for timings; this is for counters a
+%% backend chooses to expose.
+-spec run_with_metrics(reference(), [binary()], signature_index()) ->
+    {ok, {[binary()], [{binary(), term()}]}} | {error, binary()}.
+run_with_metrics(Model, Inputs, DetailLevel)
+        when is_list(Inputs), is_integer(DetailLevel), DetailLevel >= 0 ->
+    tflite_beam_nif:litert_compiled_model_run_with_metrics(Model, Inputs, DetailLevel).
 
-%% @doc
-%% Which process this model belongs to, or `undefined' if nobody has claimed it.
-%%
-%% Answers whoever asks, including a process that has just handed the model
-%% away and wants to know where it went.
 %% @doc Which process this model belongs to, or `undefined' if nobody has
 %% claimed it. Answers `{error, _}' while another caller is inside the model,
 %% because the answer is read under the same lock that call holds.

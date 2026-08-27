@@ -194,27 +194,34 @@ an_unknown_signature_is_refused(Config) ->
 %% An accelerator may leave the two metric entries of its definition null, and
 %% every accelerator reachable here does, so this asks for the empty list rather
 %% than an error. It exists to catch the API breaking, not to assert a number.
+%% An accelerator may leave the two metric entries of its definition null, and
+%% every accelerator reachable here does, so this asks for the empty list rather
+%% than a number. `{ok, {Outputs, []}}' looks the same whether LiteRT was asked
+%% or not, so the NIF counts the times it reached the call and this asks whether
+%% the count moved. Collection has to bracket a real inference, which is why
+%% this is a run rather than a standalone metrics call.
 metrics_are_empty_rather_than_an_error(Config) ->
     Model = model(Config, #{accelerators => [cpu]}),
-    ?assertEqual({ok, []}, ?A:metrics(Model)),
-    ?assertEqual({ok, []}, ?A:metrics(Model, 2)),
-    %% `{ok, []}' looks the same whether LiteRT was asked or not, and the
-    %% ownership check happens before the LiteRT call so refusing a stranger
-    %% proves nothing about it either. The NIF counts the times it reached the
-    %% call, so this asks whether the count moved.
+    {ok, {Ins, _}} = ?A:io_sizes(Model),
+    Inputs = [filled(1.0, N) || N <- Ins],
+
+    {ok, {Outputs, Metrics}} = ?A:run_with_metrics(Model, Inputs),
+    ?assertEqual([], Metrics),
+    %% the run really ran: the same inputs through run/2 give the same answers
+    ?assertEqual({ok, Outputs}, ?A:run(Model, Inputs)),
+
     case fault_injection() of
         false ->
             ok;
         true ->
             Before = tflite_beam_nif:nif_litert_call_count(),
-            {ok, []} = ?A:metrics(Model),
-            {ok, []} = ?A:metrics(Model, 1),
-            After = tflite_beam_nif:nif_litert_call_count(),
-            ?assertEqual(Before + 2, After)
+            {ok, {_, []}} = ?A:run_with_metrics(Model, Inputs),
+            {ok, {_, []}} = ?A:run_with_metrics(Model, Inputs, 1),
+            ?assertEqual(Before + 2, tflite_beam_nif:nif_litert_call_count())
     end,
+
     %% a detail level below zero is a caller mistake, so the guard rejects it
-    %% rather than the NIF being asked about it
-    ?assertError(function_clause, ?A:metrics(Model, -1)).
+    ?assertError(function_clause, ?A:run_with_metrics(Model, Inputs, -1)).
 
 profile_is_empty_unless_asked_for(Config) ->
     Model = model(Config, #{accelerators => [cpu]}),
