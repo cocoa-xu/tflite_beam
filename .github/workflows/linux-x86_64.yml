@@ -111,8 +111,21 @@ jobs:
           # the five allocation-failure cases refuse to arm without this, and
           # skip rather than fail, so leaving it out loses them silently
           TFLITE_BEAM_ENABLE_FAULT_INJECTION=1 rebar3 ct
-          # armv6/armv7l build with XNNPACK off and nothing else covers that shape
+          # armv6/armv7l build with XNNPACK off, and the LiteRT API is off by
+          # default, so nothing else covers either shape
           python3 scripts/check_preprocessor_combinations.py
+
+      - name: Build and test with the LiteRT API
+        run: |
+          # This is also the only place the two GCC workarounds LiteRT's C++
+          # layer needs are exercised: -fpermissive up to GCC 13 and
+          # -Wno-changes-meaning from 14, for a header whose member shadows the
+          # alias in its own return type. Clang never sees either, so macOS
+          # cannot catch a mistake in them.
+          rm -rf _build/default/lib/tflite_beam/cmake_tflite_beam priv/tflite_beam.so
+          export CMAKE_OPTIONS="${CMAKE_OPTIONS} -D TFLITE_BEAM_ENABLE_LITERT_API=ON -D LITERT_ENABLE_GPU=ON"
+          rebar3 compile
+          TFLITE_BEAM_ENABLE_FAULT_INJECTION=1 rebar3 ct
 
       - name: ccache statistics
         if: always()

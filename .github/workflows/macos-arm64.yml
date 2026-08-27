@@ -115,8 +115,25 @@ jobs:
           # the five allocation-failure cases refuse to arm without this, and
           # skip rather than fail, so leaving it out loses them silently
           TFLITE_BEAM_ENABLE_FAULT_INJECTION=1 rebar3 ct
-          # armv6/armv7l build with XNNPACK off and nothing else covers that shape
+          # armv6/armv7l build with XNNPACK off, and the LiteRT API is off by
+          # default, so nothing else covers either shape
           python3 scripts/check_preprocessor_combinations.py
+
+      - name: Build and test with the LiteRT API
+        run: |
+          export OTP_MAIN_VER="${OTP_VERSION%%.*}"
+          export PATH=$HOME/.elixir-install/installs/otp/${OTP_VERSION}/bin:$PATH
+          export PATH=$HOME/.elixir-install/installs/elixir/${ELIXIR_VERSION}-otp-${OTP_MAIN_VER}/bin:$PATH
+          export PATH="${HOME}/.cache/rebar3/bin:$PATH"
+
+          # The LiteRT API and its GPU accelerator support are off by default, so
+          # the compiled model, its profiler and everything in
+          # tflite_beam_litert_SUITE are never built or run by the step above.
+          # Without this they are only ever compiled by whoever turns them on.
+          rm -rf _build/default/lib/tflite_beam/cmake_tflite_beam priv/tflite_beam.so
+          export CMAKE_OPTIONS="${CMAKE_OPTIONS} -D TFLITE_BEAM_ENABLE_LITERT_API=ON -D LITERT_ENABLE_GPU=ON"
+          rebar3 compile
+          TFLITE_BEAM_ENABLE_FAULT_INJECTION=1 rebar3 ct
 
       - name: ccache statistics
         if: always()
