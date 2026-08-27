@@ -130,8 +130,9 @@ profile(Server) ->
     with(Server, fun(M) -> ?M:profile(M) end).
 
 %% @doc Per-operator totals over every run since the last reset, slowest first.
--spec summarise_profile(pid()) -> {ok, [{binary(), pos_integer(), non_neg_integer()}]}
-                                | {error, binary()}.
+-spec summarise_profile(pid()) ->
+    {ok, [{binary(), tflite_beam_litert_compiled_model:operator_kind(),
+           pos_integer(), non_neg_integer()}]} | {error, binary()}.
 summarise_profile(Server) ->
     with(Server, fun(M) -> ?M:summarise_profile(M) end).
 
