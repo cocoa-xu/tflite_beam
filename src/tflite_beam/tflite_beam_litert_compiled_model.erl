@@ -34,26 +34,38 @@
 
 -type accelerator() :: cpu | gpu | npu.
 -type precision() :: default | fp16 | fp32 | fp16_with_fp32_accum.
+%% The signature index crosses into the NIF through enif_get_int, so the range
+%% is the C int range and not every non_neg_integer().
+-type signature_index() :: 0..2147483647.
+-type operator_kind() :: operator | delegate_operator | delegate_profiled.
 -type opts() :: #{
     accelerators => [accelerator()],
     precision => precision(),
     profile => boolean(),
-    signature => non_neg_integer() | binary() | list()
+    signature => signature_index() | binary() | string()
 }.
--export_type([accelerator/0, precision/0, opts/0]).
+-export_type([accelerator/0, precision/0, opts/0, signature_index/0, operator_kind/0]).
 
 %% @doc
 %% What this build of the library can reach.
 %%
-%% Compile-time answers, decided by LiteRT from the macros it was built with, so
-%% `opencl' reads false on Apple and true elsewhere whether or not a driver is
-%% installed. This says "was it compiled in", not "is a device present"; the
-%% second question is answered by asking for the accelerator and being refused.
+%% Compile-time answers, decided by LiteRT from the macros it was built with and
+%% by what this build turns off. `opencl' reads false everywhere here, because
+%% this library defines `LITERT_DISABLE_OPENCL_SUPPORT': LiteRT's own OpenCL
+%% layer exists so it can pass CL buffers around itself and nothing here asks it
+%% to, while a GPU accelerator plugin brings its own OpenCL and is unaffected.
+%% This says "was it compiled in", not "is a device present"; the second
+%% question is answered by asking for the accelerator and being refused.
 -spec platform_support() -> #{atom() => boolean()}.
 platform_support() ->
     tflite_beam_nif:litert_platform_support().
 
-%% @doc An environment that will not find an accelerator plugin.
+%% @doc
+%% An environment with no directory to look for accelerator plugins in.
+%%
+%% Not a guarantee that none is found: LiteRT still passes a bare filename to
+%% the platform loader, which has its own search paths. It is the way to say
+%% "I am not pointing you at one", not the way to say "there is none".
 -spec environment() -> {ok, reference()} | {error, binary()}.
 environment() ->
     environment(<<>>).
@@ -65,7 +77,7 @@ environment() ->
 %% for it by filename relative to this directory. Leave it empty and the search
 %% happens relative to nothing, so a GPU compile falls back to the CPU with
 %% only a line in the log to say why.
--spec environment(binary() | list()) -> {ok, reference()} | {error, binary()}.
+-spec environment(binary() | string()) -> {ok, reference()} | {error, binary()}.
 environment(Dir) when is_list(Dir) ->
     environment(list_to_binary(Dir));
 environment(Dir) when is_binary(Dir) ->
@@ -77,14 +89,14 @@ environment(Dir) when is_binary(Dir) ->
 %% A model with no named signatures still has one, and it comes back as the
 %% empty key. Reading these needs the model but not a compile, so it is the
 %% cheap way to find out what `new/3' can be asked for.
--spec signatures(reference(), binary() | list()) -> {ok, [binary()]} | {error, binary()}.
+-spec signatures(reference(), binary() | string()) -> {ok, [binary()]} | {error, binary()}.
 signatures(Env, Path) when is_list(Path) ->
     signatures(Env, list_to_binary(Path));
 signatures(Env, Path) when is_binary(Path) ->
     tflite_beam_nif:litert_model_signatures(Env, Path).
 
 %% @doc A compiled model on the CPU, with no profiling.
--spec new(reference(), binary() | list()) -> {ok, reference()} | {error, binary()}.
+-spec new(reference(), binary() | string()) -> {ok, reference()} | {error, binary()}.
 new(Env, Path) ->
     new(Env, Path, #{}).
 
@@ -111,7 +123,7 @@ new(Env, Path) ->
 %% accelerator splits into many nodes has many more boundaries to time.
 %% The events accumulate across runs, so `reset_profile/1' is what keeps a
 %% long-lived model bounded.
--spec new(reference(), binary() | list(), opts()) -> {ok, reference()} | {error, binary()}.
+-spec new(reference(), binary() | string(), opts()) -> {ok, reference()} | {error, binary()}.
 new(Env, Path, Opts) when is_list(Path) ->
     new(Env, list_to_binary(Path), Opts);
 new(Env, Path, Opts) when is_binary(Path), is_map(Opts) ->
@@ -153,6 +165,11 @@ io_sizes(Model) ->
 %% Empty unless the model was built with `profile => true'. Each event is a map
 %% of `tag', `us', `type' and `source'. Telemetry events are included and carry
 %% a sentinel in place of a duration; `summarise_profile/1' drops them.
+%%
+%% The buffer behind this holds a fixed number of events, 10240 in LiteRT 2.2.0,
+%% so a long-lived model does not accumulate for ever and a busy one loses the
+%% oldest. Read it, or `reset_profile/1' it, on a cadence that suits how many
+%% operators your model has.
 -spec profile(reference()) -> {ok, [map()]} | {error, binary()}.
 profile(Model) ->
     tflite_beam_nif:litert_compiled_model_profile(Model).
@@ -170,7 +187,7 @@ metrics(Model) ->
 %% Google\'s own prebuilt GPU accelerator, so an empty list means nobody offered
 %% anything rather than that something went wrong. Use `profile/1' for timings;
 %% this is for counters a vendor backend exposes.
--spec metrics(reference(), non_neg_integer()) -> {ok, [{binary(), term()}]} | {error, binary()}.
+-spec metrics(reference(), signature_index()) -> {ok, [{binary(), term()}]} | {error, binary()}.
 metrics(Model, DetailLevel) when is_integer(DetailLevel), DetailLevel >= 0 ->
     tflite_beam_nif:litert_compiled_model_metrics(Model, DetailLevel).
 
@@ -179,7 +196,7 @@ metrics(Model, DetailLevel) when is_integer(DetailLevel), DetailLevel >= 0 ->
 %%
 %% Answers whoever asks, including a process that has just handed the model
 %% away and wants to know where it went.
--spec controlling_process(reference()) -> {ok, pid()} | undefined.
+-spec controlling_process(reference()) -> {ok, pid()} | undefined | {error, binary()}.
 controlling_process(Model) when is_reference(Model) ->
     tflite_beam_nif:litert_compiled_model_get_controlling_process(Model).
 
@@ -204,42 +221,51 @@ reset_profile(Model) ->
 %% @doc
 %% `profile/1' folded into per-operator totals.
 %%
-%% Returns `{Tag, Count, MicrosecondsTotal}' sorted slowest first, over operator
-%% events only.
+%% Returns `{Tag, Kind, Count, MicrosecondsTotal}' sorted slowest first, over
+%% operator events only.
 %%
-%% The events LiteRT records are nested: an `Invoke' encloses the operators it
-%% ran, and `AllocateTensors' and LiteRT's own buffer handling sit beside them.
-%% Summing all of those together would count the operators twice, once on their
-%% own and once inside their `Invoke', and would put `Invoke' at the top of a
-%% list that claims to name the slowest operator. So only the three operator
-%% event types are folded here. Everything else, including the enclosing
-%% `Invoke' and LiteRT's buffer registration and sync, is still in `profile/1'.
--spec summarise_profile(reference()) -> {ok, [{binary(), pos_integer(), non_neg_integer()}]}
-                                      | {error, binary()}.
+%% The events LiteRT records are nested. An `Invoke' encloses the operators it
+%% ran, and `AllocateTensors' and LiteRT's own buffer handling sit beside them,
+%% so folding everything together would count operators twice and put `Invoke'
+%% at the top of a list that claims to name the slowest operator. Only operator
+%% events are folded here; everything else is still in `profile/1'.
+%%
+%% Nesting does not stop there, which is why `Kind' is in the tuple rather than
+%% summed away. A `delegate_operator' is an operator *inside* a delegate, and
+%% its time can already be counted in the enclosing `delegate_profiled' entry
+%% for the fused operation. LiteRT's own summariser keeps the two apart for the
+%% same reason. Totals within one `Kind' are additive; totals across kinds are
+%% not.
+-spec summarise_profile(reference()) ->
+    {ok, [{binary(), operator_kind(), pos_integer(), non_neg_integer()}]} | {error, binary()}.
 summarise_profile(Model) ->
     case profile(Model) of
         {ok, Events} ->
-            Ops = [E || E <- Events, operator_event(E)],
             Totals = lists:foldl(
                 fun(E, Acc) ->
-                    maps:update_with(maps:get(tag, E),
-                                     fun({C, U}) -> {C + 1, U + maps:get(us, E)} end,
-                                     {1, maps:get(us, E)}, Acc)
-                end, #{}, Ops),
-            {ok, lists:reverse(lists:keysort(3,
-                [{Tag, C, U} || {Tag, {C, U}} <- maps:to_list(Totals)]))};
+                    case operator_kind(maps:get(type, E)) of
+                        not_an_operator ->
+                            Acc;
+                        Kind ->
+                            maps:update_with({maps:get(tag, E), Kind},
+                                             fun({C, U}) -> {C + 1, U + maps:get(us, E)} end,
+                                             {1, maps:get(us, E)}, Acc)
+                    end
+                end, #{}, Events),
+            {ok, lists:reverse(lists:keysort(4,
+                [{Tag, Kind, C, U} || {{Tag, Kind}, {C, U}} <- maps:to_list(Totals)]))};
         Error ->
             Error
     end.
 
-%% LiteRtProfilerEventType, of which only these three are an operator running:
-%% OPERATOR_INVOKE_EVENT, DELEGATE_OPERATOR_INVOKE_EVENT and
-%% DELEGATE_PROFILED_OPERATOR_INVOKE_EVENT. DEFAULT encloses them, telemetry
-%% carries 1 bsl 32 where a duration would go, and the rest are not operators.
--define(OPERATOR_EVENT_TYPES, [2, 4, 8]).
-
-operator_event(#{us := Us, type := Type}) ->
-    Us < (1 bsl 32) andalso lists:member(Type, ?OPERATOR_EVENT_TYPES).
+%% LiteRtProfilerEventType, of which only these three are an operator running.
+%% DEFAULT encloses them and the rest are not operators, so naming the three is
+%% the whole filter: telemetry, which carries a sentinel where a duration would
+%% go, is excluded by its type rather than by how large its number is.
+operator_kind(2) -> operator;
+operator_kind(4) -> delegate_operator;
+operator_kind(8) -> delegate_profiled;
+operator_kind(_) -> not_an_operator.
 
 accelerator_set(List) when is_list(List) ->
     lists:foldl(fun(A, Acc) -> Acc bor accelerator_bit(A) end, 0, List).
