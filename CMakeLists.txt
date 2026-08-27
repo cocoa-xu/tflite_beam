@@ -347,8 +347,20 @@ if(TFLITE_BEAM_ENABLE_LITERT_API)
     # type is the Span alias, already used earlier in the same class. GCC 14 made
     # that diagnostic an error by default, so every Linux build with the default
     # toolchain fails on a header we do not own. Clang does not diagnose it.
+    # litert/cc/litert_buffer_ref.h declares members named Span whose return type
+    # is the Span alias already used earlier in the same class. GCC rejects that
+    # and Clang does not, so every Linux build with the default toolchain fails on
+    # a header we do not own. The diagnostic is tagged -fpermissive up to GCC 13
+    # and became its own -Wchanges-meaning in 14. Scoped to the subtree that needs
+    # it by saving the flags and restoring them after: -fpermissive is broad
+    # enough that it has no business reaching our own sources.
+    set(_litert_saved_cxx_flags "${CMAKE_CXX_FLAGS}")
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        add_compile_options(-Wno-changes-meaning)
+        if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 14)
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-changes-meaning")
+        else()
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
+        endif()
     endif()
 
     # litert/runtime's event.cc, gpu_environment.cc and open_cl_memory.cc call
@@ -389,6 +401,8 @@ if(TFLITE_BEAM_ENABLE_LITERT_API)
         "${CMAKE_CURRENT_BINARY_DIR}/litert_c"
         EXCLUDE_FROM_ALL
     )
+    set(CMAKE_CXX_FLAGS "${_litert_saved_cxx_flags}")
+
     target_sources(tflite_beam PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/c_src/elitte/litert_api.cpp")
     # the compiled model path reaches absl's CHECK macros, which live in
     # absl::log_internal_check_op and are not among the absl targets the tflite
