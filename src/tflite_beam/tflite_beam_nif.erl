@@ -31,17 +31,9 @@ not_loaded(Line) ->
 nif_arm_fault(_point) ->
     not_loaded(?LINE).
 
-litert_api_status_string(_status) ->
-    not_loaded(?LINE).
 
-litert_api_binary_alignment(_binary) ->
-    not_loaded(?LINE).
 
-litert_api_host_buffer_roundtrip(_binary) ->
-    not_loaded(?LINE).
 
-litert_api_compiled_model_bench(_path, _iters, _accelerators, _accel_dir, _precision, _profile) ->
-    not_loaded(?LINE).
 
 litert_environment_new(_runtime_library_dir) ->
     not_loaded(?LINE).

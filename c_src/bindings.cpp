@@ -24,10 +24,6 @@ limitations under the License.
 #include "helper.h"
 
 #ifdef TFLITE_BEAM_LITERT_API_ENABLED
-extern ERL_NIF_TERM litert_api_status_string(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
-extern ERL_NIF_TERM litert_api_binary_alignment(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
-extern ERL_NIF_TERM litert_api_host_buffer_roundtrip(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
-extern ERL_NIF_TERM litert_api_compiled_model_bench(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 extern ERL_NIF_TERM litert_environment_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 extern ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 extern ERL_NIF_TERM litert_compiled_model_run(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
@@ -183,10 +179,6 @@ static ErlNifFunc nif_functions[] = {
     F(interpreter_builder_state, 1),
 
 #ifdef TFLITE_BEAM_LITERT_API_ENABLED
-    F(litert_api_status_string, 1),
-    F(litert_api_binary_alignment, 1),
-    F(litert_api_host_buffer_roundtrip, 1),
-    F_CPU(litert_api_compiled_model_bench, 6),
     F(litert_environment_new, 1),
     F_CPU(litert_compiled_model_new, 6),
     F_CPU(litert_compiled_model_run, 2),
