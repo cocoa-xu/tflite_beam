@@ -2,6 +2,8 @@
 #define TFLITE_BEAM_FAULT_INJECT_HPP
 
 #include <atomic>
+#include <chrono>
+#include <thread>
 #include <cstring>
 #include <new>
 
@@ -28,9 +30,15 @@ enum FaultPoint {
     kFaultBuilderContainers,
     kFaultModelBufferCopy,
     kFaultRebuildHandover,
+    kFaultCompiledModelHoldLock,
 };
 
 extern std::atomic<int> armed_fault_point;
+
+// Counts how many times a NIF actually reached the LiteRT call it exists to
+// make. Some of those calls answer the same thing whether or not they happened,
+// and a test cannot tell an empty answer from an absent one without this.
+extern std::atomic<long> litert_call_counter;
 
 // Names as the test suite spells them. Index by FaultPoint.
 inline const char * const * fault_point_names() {
@@ -43,13 +51,14 @@ inline const char * const * fault_point_names() {
         "builder_containers",
         "model_buffer_copy",
         "rebuild_handover",
+        "compiled_model_hold_lock",
     };
     return names;
 }
 
 inline int fault_point_from_name(const char * name) {
     const char * const * names = fault_point_names();
-    for (int i = kFaultNone; i <= kFaultRebuildHandover; i++) {
+    for (int i = kFaultNone; i <= kFaultCompiledModelHoldLock; i++) {
         if (std::strcmp(names[i], name) == 0) return i;
     }
     return -1;
@@ -62,6 +71,19 @@ inline void fault_point(FaultPoint point) {
     int expected = point;
     if (armed_fault_point.compare_exchange_strong(expected, kFaultNone, std::memory_order_relaxed)) {
         throw std::bad_alloc();
+    }
+}
+
+// Holds still while armed, so a second caller reliably meets the lock the first
+// one is holding. Refusing a concurrent caller cannot be tested by racing two of
+// them and hoping: with one dirty scheduler they never overlap and the test
+// fails for a reason that has nothing to do with the code. One shot, and it
+// disarms before sleeping so the second caller is the one that finds it gone.
+inline void fault_point_hold(FaultPoint point, int milliseconds) {
+    if (armed_fault_point.load(std::memory_order_relaxed) != point) return;
+    int expected = point;
+    if (armed_fault_point.compare_exchange_strong(expected, kFaultNone, std::memory_order_relaxed)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
     }
 }
 
