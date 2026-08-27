@@ -112,6 +112,14 @@ private:
 // once answers "already locked" for the rest of its life. Unlocking after a
 // failed lock is what keeps a model usable, and a mapper that reports success
 // with a null address is a failure this has to name rather than dereference.
+//
+// Unlocking after a failure it did not cause would be wrong, so why this is
+// safe: these buffers belong to one compiled model, every path that locks them
+// runs inside CompiledModelUse, and that holds the model's mutex for the whole
+// operation. No second caller can be inside a lock on the same buffer. So the
+// one failure mode that means somebody else holds it, "already locked", can
+// only be this model's own flag left set by an earlier failed attempt, and
+// clearing it is the repair rather than a theft.
 class TensorBufferLock {
 public:
     TensorBufferLock(LiteRtTensorBuffer buffer, LiteRtTensorBufferLockMode mode)

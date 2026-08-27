@@ -116,6 +116,13 @@ and is shown here beside them because it is what the overhead looks like:
 {<<"TfLiteMetalDelegate">>,             operator,           21, 24722}
 ```
 
+The profile shapes are **provisional**: `summarise_profile/1` returns positional
+tuples where named maps belong, `profile/1` passes LiteRT's enumeration numbers
+through unnamed, and `run_with_metrics/2` types its values as `term()` for want
+of a backend that fills them in. Everything else here, the constructors, the
+binary input and output, the accelerator, precision and signature options, the
+refusal semantics, `io_sizes/1` and `fully_accelerated/1`, is meant to be stable.
+
 `Kind` is in the tuple because the categories can nest: a `delegate_operator`
 runs inside a delegate and its time may already be counted in the enclosing
 `delegate_profiled` entry. Totals within one kind add up; totals across kinds do
@@ -137,13 +144,17 @@ answer both this and the delegate interface above from one file.
 ### One model, one process
 
 A compiled model owns one set of input and output buffers for its whole life,
-so `run/2` on a shared one races. Four processes running twenty-five inferences
-each against one model, every one checking the answer to its own input, three
-times over: about 72 of the 100 calls were refused with a runtime failure, most
-of the rest were right, and **0, 5 and 1 of them came back holding another
-process's answer**. Through
-`tflite_beam_litert_compiled_model_server`, which keeps the model in one
-process, the same measurement gives 100 right out of 100:
+and LiteRT does not promise its compiled model API is safe to enter from two
+threads at once. So a second caller arriving while one is inside the model is
+**refused**:
+
+```erlang
+{error, <<"compiled model is in use by another caller">>}
+```
+
+That is honest but it is not a queue. `tflite_beam_litert_compiled_model_server`
+is the queue: it holds the model in one process, so callers wait their turn
+instead of being told to come back.
 
 ```erlang
 {ok, Server} = tflite_beam_litert_compiled_model_server:start_link(Env, "model.tflite",
@@ -159,15 +170,13 @@ The server claims the model with
 `tflite_beam_litert_compiled_model:controlling_process/2`, so the promise is
 enforced rather than conventional: a `with/2` callback that keeps the reference
 and uses it from somewhere else afterwards is refused. Claiming is opt-in and
-available to anyone building their own owner, and a claim whose process has
-died is released rather than stranding the model.
+available to anyone building their own owner, and a claim whose process has died
+is released rather than stranding the model.
 
-Concurrent use of one model is refused rather than attempted. LiteRT states its
-compiled model API is not verified for multithreading and the profile buffer
-under it is documented as not thread safe, so a second caller is turned away at
-the door with `{error, <<"compiled model is in use by another caller">>}`
-instead of being let into a data race. The server is the way to have callers
-wait their turn instead.
+Before that refusal existed, four processes running twenty-five inferences each
+against one shared model, each checking the answer to its own input, got a
+handful of answers belonging to a different process with nothing to say which
+ones. That is what the refusal is for.
 
 ## Threading
 
