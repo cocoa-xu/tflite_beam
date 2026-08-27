@@ -15,6 +15,7 @@
 #include "litert/c/litert_options.h"
 #include "litert/c/litert_environment.h"
 #include "litert/c/litert_environment_options.h"
+#include "litert/c/litert_opaque_options.h"
 #include "litert/c/litert_tensor_buffer_requirements.h"
 
 // The first thing here calls into LiteRT's own C API rather than the tflite one
@@ -143,7 +144,7 @@ struct CompiledModelProbe {
 // reusing those buffers. The point is the reuse: binding happens once and each
 // run writes into memory that is already where the runtime wants it.
 ERL_NIF_TERM litert_api_compiled_model_bench(ErlNifEnv *env_nif, int argc, const ERL_NIF_TERM argv[]) {
-    if (argc != 4) return enif_make_badarg(env_nif);
+    if (argc != 5) return enif_make_badarg(env_nif);
 
     std::string path;
     int iters;
@@ -177,6 +178,25 @@ ERL_NIF_TERM litert_api_compiled_model_bench(ErlNifEnv *env_nif, int argc, const
         return erlang::nif::error(env_nif, "expecting the accelerator set to be an integer");
     }
     CHECK(LiteRtSetOptionsHardwareAccelerators(p.options, (LiteRtHwAcceleratorSet)accel_flag), "select accelerator")
+
+    // an accelerator reads its settings from a TOML payload filed under its own
+    // identifier, so asking a GPU accelerator for a precision is a matter of
+    // attaching one; zero leaves the accelerator on its own default
+    int precision;
+    if (!enif_get_int(env_nif, argv[4], &precision)) {
+        return erlang::nif::error(env_nif, "expecting the precision to be an integer");
+    }
+    if (precision != 0) {
+        char toml[32];
+        snprintf(toml, sizeof(toml), "precision = %d\n", precision);
+        char *payload = strdup(toml);
+        if (payload == nullptr) return erlang::nif::error(env_nif, "out of memory");
+        LiteRtOpaqueOptions gpu_options = nullptr;
+        st = LiteRtCreateOpaqueOptions("gpu_options", payload,
+                                       [](void *d) { free(d); }, &gpu_options);
+        if (st != kLiteRtStatusOk) { free(payload); return erlang::nif::error(env_nif, "gpu options"); }
+        CHECK(LiteRtAddOpaqueOptions(p.options, gpu_options), "attach gpu options")
+    }
     CHECK(LiteRtCreateCompiledModel(p.env, p.model, p.options, &p.compiled), "compile model")
 
     auto make_buffers = [&](bool input, size_t count) -> const char * {
