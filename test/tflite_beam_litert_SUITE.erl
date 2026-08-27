@@ -15,7 +15,7 @@
     platform_support_is_reported/1,
     signatures_are_listed/1,
     a_signature_can_be_named/1,
-    each_signature_gets_its_own_shape/1,
+    each_signature_runs_its_own_function/1,
     an_unknown_signature_is_refused/1,
     metrics_are_empty_rather_than_an_error/1,
     profile_is_empty_unless_asked_for/1,
@@ -41,7 +41,7 @@ all() ->
         platform_support_is_reported,
         signatures_are_listed,
         a_signature_can_be_named,
-        each_signature_gets_its_own_shape,
+        each_signature_runs_its_own_function,
         an_unknown_signature_is_refused,
         metrics_are_empty_rather_than_an_error,
         profile_is_empty_unless_asked_for,
@@ -133,8 +133,8 @@ platform_support_is_reported(_Config) ->
 signatures_are_listed(Config) ->
     Env = proplists:get_value(env, Config),
     {ok, Keys} = ?A:signatures(Env, tflite_beam_test_models:path(?MODEL)),
-    ?assertNotEqual([], Keys),
-    ?assert(lists:all(fun is_binary/1, Keys)).
+    %% the fixture's actual key, so a stub that fabricates one does not pass
+    ?assertEqual([<<"serving_default">>], Keys).
 
 %% Naming the signature has to reach the same model that its index does, or the
 %% lookup is decorative.
@@ -150,32 +150,36 @@ a_signature_can_be_named(Config) ->
     ?assertEqual(?A:run(ByIndex, Inputs), ?A:run(Named, Inputs)).
 
 %% A signature index is not a subgraph index, and a model with one signature
-%% cannot tell the two apart. No fixture here has more than one: the smallest
-%% multi-signature model in LiteRT's own test data is 49MB with 23MB tensors,
-%% which is not something to carry in this repository. So this runs against a
-%% model named by TFLITE_BEAM_MULTI_SIGNATURE_MODEL and skips without one.
-%%
-%% Verified by hand on 2026-08-27 against LiteRT's model_magic_test.tflite: its
-%% eight signatures produced output counts of 33 and 32 and first input sizes
-%% between 32768 and 23116544, all different, which is what counting the
-%% signature rather than its subgraph gets you.
-each_signature_gets_its_own_shape(Config) ->
-    case os:getenv("TFLITE_BEAM_MULTI_SIGNATURE_MODEL") of
-        false ->
-            {skip, "set TFLITE_BEAM_MULTI_SIGNATURE_MODEL to a model with several signatures"};
-        Path ->
-            Env = proplists:get_value(env, Config),
-            {ok, Keys} = ?A:signatures(Env, Path),
-            ?assert(length(Keys) > 1),
-            Shapes = [begin
-                          {ok, M} = ?A:new(Env, Path, #{accelerators => [cpu], signature => I}),
-                          {ok, Sizes} = ?A:io_sizes(M),
-                          Sizes
-                      end || I <- lists:seq(0, length(Keys) - 1)],
-            %% counting the subgraph instead would hand several signatures the
-            %% same shape; these have to differ
-            ?assert(length(lists:usort(Shapes)) > 1)
-    end.
+%% cannot tell the two apart. This fixture has three, and they compute different
+%% functions rather than merely having different shapes: the same input through
+%% `add', `mul' and `sub' has to come back as three different answers. Counting
+%% a subgraph instead of a signature, or ignoring the index, gets one answer
+%% three times.
+each_signature_runs_its_own_function(Config) ->
+    Env = proplists:get_value(env, Config),
+    Path = tflite_beam_test_models:path("multi_signature.tflite"),
+    {ok, Keys} = ?A:signatures(Env, Path),
+    ?assertEqual([<<"add">>, <<"mul">>, <<"sub">>], Keys),
+
+    Answers = [begin
+                   {ok, M} = ?A:new(Env, Path, #{accelerators => [cpu], signature => I}),
+                   {ok, {Ins, _}} = ?A:io_sizes(M),
+                   {ok, [Out]} = ?A:run(M, [filled(3.0, N) || N <- Ins]),
+                   <<First:32/float-native, _/binary>> = Out,
+                   First
+               end || I <- lists:seq(0, length(Keys) - 1)],
+    %% 3 + 3, 3 * 3, 3 - 3
+    ?assertEqual([6.0, 9.0, 0.0], Answers),
+
+    %% and naming them gets the same three, in the same order
+    ByName = [begin
+                  {ok, M} = ?A:new(Env, Path, #{accelerators => [cpu], signature => K}),
+                  {ok, {Ins, _}} = ?A:io_sizes(M),
+                  {ok, [Out]} = ?A:run(M, [filled(3.0, N) || N <- Ins]),
+                  <<First:32/float-native, _/binary>> = Out,
+                  First
+              end || K <- Keys],
+    ?assertEqual(Answers, ByName).
 
 an_unknown_signature_is_refused(Config) ->
     Env = proplists:get_value(env, Config),
@@ -194,14 +198,19 @@ metrics_are_empty_rather_than_an_error(Config) ->
     Model = model(Config, #{accelerators => [cpu]}),
     ?assertEqual({ok, []}, ?A:metrics(Model)),
     ?assertEqual({ok, []}, ?A:metrics(Model, 2)),
-    %% An empty list from a NIF that never called LiteRT would pass the two
-    %% assertions above, so this asks the same NIF about a model it cannot use.
-    %% Reaching LiteRT is the only way to answer that differently.
-    Other = spawn_owner(Model),
-    try
-        ?assertMatch({error, _}, ?A:metrics(Model))
-    after
-        release_owner(Other)
+    %% `{ok, []}' looks the same whether LiteRT was asked or not, and the
+    %% ownership check happens before the LiteRT call so refusing a stranger
+    %% proves nothing about it either. The NIF counts the times it reached the
+    %% call, so this asks whether the count moved.
+    case fault_injection() of
+        false ->
+            ok;
+        true ->
+            Before = tflite_beam_nif:nif_litert_call_count(),
+            {ok, []} = ?A:metrics(Model),
+            {ok, []} = ?A:metrics(Model, 1),
+            After = tflite_beam_nif:nif_litert_call_count(),
+            ?assertEqual(Before + 2, After)
     end,
     %% a detail level below zero is a caller mistake, so the guard rejects it
     %% rather than the NIF being asked about it
@@ -260,26 +269,91 @@ server_serialises_what_sharing_gets_wrong(Config) ->
     {ok, {Ins, _}} = ?A:io_sizes(Model),
     Inputs = [filled(3.0, N) || N <- Ins],
 
-    %% A second caller is refused by this library before it reaches LiteRT.
-    %% Counting refusals is not enough to show that: without the lock LiteRT
-    %% fails on its own, with a different message, and a test that counted
-    %% errors would pass either way. So the refusal has to be *ours*.
-    Refusals = concurrent_refusals(Model, Inputs, 8, 20),
-    Ours = [R || R <- Refusals, binary:match(R, <<"in use by another caller">>) =/= nomatch],
-    ?assertNotEqual([], Ours),
+    %% A second caller is refused by this library before it reaches LiteRT, and
+    %% the refusal has to be *ours*: without the lock LiteRT fails on its own,
+    %% with a different message, so counting errors would pass either way.
+    %%
+    %% The collision is arranged rather than raced for. Two processes calling at
+    %% once only overlap when there are two dirty schedulers to run them on, and
+    %% on one they never do, so a racing test fails for a reason that has
+    %% nothing to do with the code. The fault point holds the lock instead.
+    %% Two dirty NIF calls cannot overlap on one dirty scheduler: the second
+    %% waits in the scheduler queue rather than at the lock, and by the time it
+    %% runs the first has finished. The refusal is real, the configuration
+    %% simply cannot produce it, so this half is skipped there rather than made
+    %% to look like a defect.
+    case fault_injection() andalso erlang:system_info(dirty_cpu_schedulers) > 1 of
+        false ->
+            ok;
+        true ->
+            ok = tflite_beam_nif:nif_arm_fault(compiled_model_hold_lock),
+            Holder = spawn(fun() -> ?A:run(Model, Inputs) end),
+            HRef = monitor(process, Holder),
+            timer:sleep(100),
+            ?assertMatch({error, <<"compiled model is in use by another caller">>},
+                         ?A:run(Model, Inputs)),
+            receive {'DOWN', HRef, process, _, _} -> ok after 10000 -> ct:fail(holder_stuck) end
+    end,
 
-    %% and every call that did get in returned this input's own answer
-    {ok, Want} = ?A:run(Model, Inputs),
+    %% Every worker feeds a value of its own, so a call that succeeded with
+    %% somebody else's data is visible rather than discarded. Identical inputs
+    %% would make a lock released too early, after the run but before the output
+    %% copy, indistinguishable from a correct one.
+    Pairs = [begin
+                 In = [filled(V, N) || N <- Ins],
+                 {ok, Out} = ?A:run(Model, In),
+                 {In, Out}
+             end || V <- [1.0, 5.0, 9.0, 13.0]],
+    ?assertEqual(4, length(lists:usort([O || {_, O} <- Pairs]))),
+
+    %% Direct: whatever got in must have got its own answer, and whatever was
+    %% refused must have been refused by this library rather than by LiteRT
+    %% failing underneath it.
+    {DOk, DWrong, DErrs} = tally_keep_errors(fun(In) -> ?A:run(Model, In) end, Pairs, 20),
+    ?assertEqual(0, DWrong),
+    ?assert(DOk > 0),
+    ?assert(lists:all(fun(E) -> E =:= <<"compiled model is in use by another caller">> end,
+                      DErrs)),
+
+    %% and through the server every one of them gets in and gets its own answer
     {ok, Server} = ?B:start(Env, Path, #{accelerators => [cpu]}),
     try
-        {Ok, Wrong, Err} = tally(fun(In) -> ?B:run(Server, In) end,
-                                 [{Inputs, Want} || _ <- lists:seq(1, 4)], 20),
+        {Ok, Wrong, Err} = tally(fun(In) -> ?B:run(Server, In) end, Pairs, 20),
         ?assertEqual({80, 0, 0}, {Ok, Wrong, Err})
     after
         ?B:stop(Server)
     end.
 
+%% Like tally, but hands back the error messages rather than a count, so a
+%% caller can insist they are the ones this library produces.
+tally_keep_errors(Run, Wants, Rounds) ->
+    Refs = [element(2, spawn_monitor(fun() ->
+                exit({tally, count_keep_errors(Run, In, Want, Rounds)})
+            end)) || {In, Want} <- Wants],
+    lists:foldl(fun(Ref, {O, W, Es}) ->
+        receive
+            {'DOWN', Ref, process, _, {tally, {O2, W2, Es2}}} -> {O + O2, W + W2, Es2 ++ Es};
+            {'DOWN', Ref, process, _, Other}                  -> ct:fail({worker_died, Other})
+        after 60000 -> ct:fail(worker_timeout)
+        end
+    end, {0, 0, []}, Refs).
+
+count_keep_errors(Run, In, Want, Rounds) ->
+    lists:foldl(fun(_, {Ok, Wrong, Es}) ->
+        case Run(In) of
+            {ok, Want}   -> {Ok + 1, Wrong, Es};
+            {ok, _}      -> {Ok, Wrong + 1, Es};
+            {error, Why} -> {Ok, Wrong, [Why | Es]}
+        end
+    end, {0, 0, []}, lists:seq(1, Rounds)).
+
 %% Returns the refusal messages, not a count, so a caller can tell whose they are.
+fault_injection() ->
+    case catch tflite_beam_nif:nif_arm_fault(none) of
+        ok -> true;
+        _  -> false
+    end.
+
 concurrent_refusals(Model, Inputs, Workers, Rounds) ->
     Refs = [element(2, spawn_monitor(fun() ->
                 Rs = lists:foldl(fun(_, Acc) ->

@@ -196,6 +196,9 @@ metrics(Model, DetailLevel) when is_integer(DetailLevel), DetailLevel >= 0 ->
 %%
 %% Answers whoever asks, including a process that has just handed the model
 %% away and wants to know where it went.
+%% @doc Which process this model belongs to, or `undefined' if nobody has
+%% claimed it. Answers `{error, _}' while another caller is inside the model,
+%% because the answer is read under the same lock that call holds.
 -spec controlling_process(reference()) -> {ok, pid()} | undefined | {error, binary()}.
 controlling_process(Model) when is_reference(Model) ->
     tflite_beam_nif:litert_compiled_model_get_controlling_process(Model).
