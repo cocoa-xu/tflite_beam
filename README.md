@@ -69,6 +69,77 @@ because the loader is asked for exactly the file named -- a bare `libfoo.so` wou
 otherwise be searched for wherever the system looks, which is rarely where anyone
 means. The library is not unloaded afterwards.
 
+## LiteRT compiled models, and seeing where the time goes
+
+Built only with `TFLITE_BEAM_ENABLE_LITERT_API=ON`, so the calls below raise
+rather than return an error on a library without it.
+
+A LiteRT compiled model is a second way to run a model, beside the interpreter.
+It is not a faster one. Measured on an M4 Max against `mobilenet_v2_1.0_224`,
+50 runs each, an interpreter with a GPU plugin attached and a compiled model on
+the GPU land in the same band, because underneath they are the same delegate:
+
+| | us/run |
+|---|---|
+| interpreter, CPU | 2205 to 2272 |
+| interpreter + GPU plugin | 772 to 943 |
+| compiled model, CPU | 2186 to 2212 |
+| compiled model, GPU | 1076 to 1394 |
+
+What it has and the interpreter does not is a profiler. It reports every
+operator, how long it took, and which of them an accelerator claimed:
+
+```erlang
+{ok, Env}   = tflite_beam_litert_compiled_model:environment("/opt/lib"),
+{ok, Model} = tflite_beam_litert_compiled_model:new(Env, "model.tflite",
+                  #{accelerators => [gpu], precision => fp32, profile => true}),
+{ok, [Out]} = tflite_beam_litert_compiled_model:run(Model, [Input]),
+{ok, Slow}  = tflite_beam_litert_compiled_model:summarise_profile(Model).
+```
+
+On the CPU that names XNNPACK's kernels, and on the GPU it shows the whole
+graph collapsed into one delegate node, with LiteRT's own buffer handling
+broken out beside it:
+
+```
+Convolution (NHWC, F32) DWConv       357 x  23831 us
+Fully Connected (NC, PF32) GEMM      735 x  18527 us
+
+TfLiteMetalDelegate                   21 x  24722 us
+LiteRT::Run[buffer registration]      21 x    197 us
+LiteRT::Run[Buffer sync]              21 x     96 us
+```
+
+Profiling costs between 1.1x and 1.4x on the CPU and nothing measurable on the
+GPU, where there is no per-operator boundary left to time.
+
+The directory handed to `environment/1` is where LiteRT looks for a GPU
+accelerator plugin. Without one, asking for `[gpu]` fails rather than quietly
+running on the CPU. [`tflite_delegate_plugins`][plugins] builds plugins that
+answer both this and the delegate interface above from one file.
+
+[plugins]: https://github.com/cocoa-xu/tflite_delegate_plugins
+
+### One model, one process
+
+A compiled model owns one set of input and output buffers for its whole life,
+so `run/2` on a shared one races. Four processes running twenty-five inferences
+each against one model, every one checking the answer to its own input: 74 of
+the 100 calls were refused with a runtime failure, 14 were right, and **12 came
+back holding another process's answer**. Through
+`tflite_beam_litert_compiled_model_server`, which keeps the model in one
+process, the same measurement gives 100 right out of 100:
+
+```erlang
+{ok, Server} = tflite_beam_litert_compiled_model_server:start_link(Env, "model.tflite",
+                   #{accelerators => [gpu]}),
+{ok, Outputs} = tflite_beam_litert_compiled_model_server:run(Server, [Input]).
+```
+
+Same split as `tflite_beam_interpreter` and `tflite_beam_interpreter_server`:
+the direct module stays exactly as it is for callers who would rather serialise
+access themselves.
+
 ## Threading
 
 An interpreter, and any delegate attached to it, belongs to one process at a time.
