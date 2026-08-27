@@ -27,7 +27,8 @@
     profile/1,
     reset_profile/1,
     summarise_profile/1,
-    metrics/1, metrics/2
+    metrics/1, metrics/2,
+    platform_support/0
 ]).
 
 -type accelerator() :: cpu | gpu | npu.
@@ -39,6 +40,17 @@
     signature => non_neg_integer() | binary() | list()
 }.
 -export_type([accelerator/0, precision/0, opts/0]).
+
+%% @doc
+%% What this build of the library can reach.
+%%
+%% Compile-time answers, decided by LiteRT from the macros it was built with, so
+%% `opencl' reads false on Apple and true elsewhere whether or not a driver is
+%% installed. This says "was it compiled in", not "is a device present"; the
+%% second question is answered by asking for the accelerator and being refused.
+-spec platform_support() -> #{atom() => boolean()}.
+platform_support() ->
+    tflite_beam_nif:litert_platform_support().
 
 %% @doc An environment that will not find an accelerator plugin.
 -spec environment() -> {ok, reference()} | {error, binary()}.

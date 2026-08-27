@@ -30,6 +30,7 @@
 #include "litert/c/litert_tensor_buffer.h"
 #include "litert/c/litert_tensor_buffer_requirements.h"
 #include "litert/c/litert_metrics.h"
+#include "litert/c/litert_platform_support.h"
 
 namespace {
 
@@ -485,4 +486,30 @@ ERL_NIF_TERM litert_compiled_model_metrics(ErlNifEnv *env, int argc, const ERL_N
     }
     LiteRtDestroyMetrics(metrics);
     return erlang::nif::ok(env, list);
+}
+
+// litert_platform_support() -> map()
+//
+// What this build of the library can reach, not what the machine has. These are
+// compile-time answers: LiteRT decides them from the macros in litert_common.h,
+// which is why OpenCL reads false on Apple and true elsewhere whether or not a
+// driver is installed. Whether a device is actually there is discovered by
+// asking for it and being refused.
+ERL_NIF_TERM litert_platform_support(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 0) return enif_make_badarg(env);
+
+    ERL_NIF_TERM map = enif_make_new_map(env);
+    auto put = [&](const char *name, bool value) {
+        enif_make_map_put(env, map, erlang::nif::atom(env, name),
+                          erlang::nif::atom(env, value ? "true" : "false"), &map);
+    };
+    put("opencl",     LiteRtHasOpenClSupport());
+    put("opengl",     LiteRtHasOpenGlSupport());
+    put("metal",      LiteRtHasMetalSupport());
+    put("ahwb",       LiteRtHasAhwbSupport());
+    put("ion",        LiteRtHasIonSupport());
+    put("dmabuf",     LiteRtHasDmaBufSupport());
+    put("fastrpc",    LiteRtHasFastRpcSupport());
+    put("sync_fence", LiteRtHasSyncFenceSupport());
+    return map;
 }

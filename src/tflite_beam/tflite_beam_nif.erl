@@ -70,6 +70,9 @@ litert_model_signatures(_env, _path) ->
 litert_compiled_model_metrics(_model, _detail_level) ->
     not_loaded(?LINE).
 
+litert_platform_support() ->
+    not_loaded(?LINE).
+
 
 error_reporter_default_error_reporter() ->
     not_loaded(?LINE).
