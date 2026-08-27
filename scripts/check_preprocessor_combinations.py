@@ -32,7 +32,7 @@ def main():
         return 1
 
     text = flags_make.read_text()
-    defines, includes = cmake_var(text, "CXX_DEFINES"), cmake_var(text, "CXX_INCLUDES")
+    base_defines, includes = cmake_var(text, "CXX_DEFINES"), cmake_var(text, "CXX_INCLUDES")
     base_flags = cmake_var(text, "CXX_FLAGS")
 
     # The flags are lifted from a build that already happened, so they describe
@@ -69,6 +69,18 @@ def main():
                 if not xnnpack:
                     flags = flags.replace("-DTFLITE_BEAM_XNNPACK_ENABLED=1", "")
 
+                # CORAL and XNNPACK live in CXX_FLAGS, the LiteRT one lives in
+                # CXX_DEFINES. Editing only flags for all three left every row
+                # using whatever the seed build happened to be, so the four
+                # LiteRT-on rows and the four off rows were the same four checks
+                # printed twice under different labels.
+                row_defines = base_defines
+                if litert:
+                    if "-DTFLITE_BEAM_LITERT_API_ENABLED=1" not in row_defines:
+                        row_defines += " -DTFLITE_BEAM_LITERT_API_ENABLED=1"
+                else:
+                    row_defines = row_defines.replace("-DTFLITE_BEAM_LITERT_API_ENABLED=1", "")
+
                 checking = sources + (coral_only if coral else [])
                 label = (f"CORAL={'on ' if coral else 'off'} "
                          f"XNNPACK={'on ' if xnnpack else 'off'} "
@@ -76,7 +88,7 @@ def main():
                 bad = []
                 for source in checking:
                     result = subprocess.run(
-                        f"c++ {defines} {includes} {flags} -fsyntax-only {source}",
+                        f"c++ {row_defines} {includes} {flags} -fsyntax-only {source}",
                         shell=True, capture_output=True, text=True,
                     )
                     if result.returncode != 0:
