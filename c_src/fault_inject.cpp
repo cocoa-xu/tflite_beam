@@ -10,6 +10,13 @@ namespace erlang {
 namespace nif {
 std::atomic<long> litert_call_counter{0};
 
+bool fault_injection_enabled() {
+    // Read once: the suite sets this before the VM starts, and a check on every
+    // operator invocation should not be a getenv.
+    static const bool enabled = getenv("TFLITE_BEAM_ENABLE_FAULT_INJECTION") != nullptr;
+    return enabled;
+}
+
 std::atomic<int> armed_fault_point{kFaultNone};
 
 }  // namespace nif
