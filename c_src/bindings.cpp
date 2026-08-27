@@ -162,7 +162,7 @@ static ErlNifFunc nif_functions[] = {
     F(litert_api_status_string, 1),
     F(litert_api_binary_alignment, 1),
     F(litert_api_host_buffer_roundtrip, 1),
-    F_CPU(litert_api_compiled_model_bench, 5),
+    F_CPU(litert_api_compiled_model_bench, 6),
 #endif
     F(delegate_available, 0),
     F_IO(delegate_external_new, 2),

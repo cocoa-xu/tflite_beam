@@ -16,6 +16,8 @@
 #include "litert/c/litert_environment.h"
 #include "litert/c/litert_environment_options.h"
 #include "litert/c/litert_opaque_options.h"
+#include "litert/c/litert_profiler.h"
+#include "litert/c/litert_profiler_event.h"
 #include "litert/c/litert_tensor_buffer_requirements.h"
 
 // The first thing here calls into LiteRT's own C API rather than the tflite one
@@ -144,7 +146,7 @@ struct CompiledModelProbe {
 // reusing those buffers. The point is the reuse: binding happens once and each
 // run writes into memory that is already where the runtime wants it.
 ERL_NIF_TERM litert_api_compiled_model_bench(ErlNifEnv *env_nif, int argc, const ERL_NIF_TERM argv[]) {
-    if (argc != 5) return enif_make_badarg(env_nif);
+    if (argc != 6) return enif_make_badarg(env_nif);
 
     std::string path;
     int iters;
@@ -182,6 +184,12 @@ ERL_NIF_TERM litert_api_compiled_model_bench(ErlNifEnv *env_nif, int argc, const
     // an accelerator reads its settings from a TOML payload filed under its own
     // identifier, so asking a GPU accelerator for a precision is a matter of
     // attaching one; zero leaves the accelerator on its own default
+    int want_profile_i;
+    if (!enif_get_int(env_nif, argv[5], &want_profile_i)) {
+        return erlang::nif::error(env_nif, "expecting the profile flag to be an integer");
+    }
+    const bool want_profile = want_profile_i != 0;
+
     int precision;
     if (!enif_get_int(env_nif, argv[4], &precision)) {
         return erlang::nif::error(env_nif, "expecting the precision to be an integer");
@@ -197,7 +205,26 @@ ERL_NIF_TERM litert_api_compiled_model_bench(ErlNifEnv *env_nif, int argc, const
         if (st != kLiteRtStatusOk) { free(payload); return erlang::nif::error(env_nif, "gpu options"); }
         CHECK(LiteRtAddOpaqueOptions(p.options, gpu_options), "attach gpu options")
     }
+    // profiling is off unless the compile is told to turn it on, and the switch
+    // travels the same way precision does: a TOML payload under its own identifier
+    if (want_profile) {
+        char *payload = strdup("enable_profiling = true\n");
+        if (payload == nullptr) return erlang::nif::error(env_nif, "out of memory");
+        LiteRtOpaqueOptions rt_options = nullptr;
+        st = LiteRtCreateOpaqueOptions("runtime_options_string", payload,
+                                       [](void *d) { free(d); }, &rt_options);
+        if (st != kLiteRtStatusOk) { free(payload); return erlang::nif::error(env_nif, "runtime options"); }
+        CHECK(LiteRtAddOpaqueOptions(p.options, rt_options), "attach runtime options")
+    }
+
     CHECK(LiteRtCreateCompiledModel(p.env, p.model, p.options, &p.compiled), "compile model")
+
+    LiteRtProfiler profiler = nullptr;
+    if (want_profile &&
+        LiteRtCompiledModelGetProfiler(p.compiled, &profiler) == kLiteRtStatusOk &&
+        profiler != nullptr) {
+        LiteRtStartProfiler(profiler);
+    }
 
     auto make_buffers = [&](bool input, size_t count) -> const char * {
         for (size_t i = 0; i < count; i++) {
@@ -264,6 +291,36 @@ ERL_NIF_TERM litert_api_compiled_model_bench(ErlNifEnv *env_nif, int argc, const
                       enif_make_uint64(env_nif, p.in_size[0]), &map);
     enif_make_map_put(env_nif, map, erlang::nif::atom(env_nif, "output_bytes"),
                       enif_make_uint64(env_nif, p.out_size[0]), &map);
+    // a profiler is attached to the compiled model, not to an interpreter, so
+    // this is the only place per-operator timings and their delegate attribution
+    // can be read from
+    ERL_NIF_TERM events = enif_make_list(env_nif, 0);
+    if (want_profile && profiler != nullptr) {
+        LiteRtStopProfiler(profiler);
+        {
+            LiteRtProfiler prof = profiler;
+            int n = 0;
+            if (LiteRtGetNumProfilerEvents(prof, &n) == kLiteRtStatusOk && n > 0) {
+                std::vector<ProfiledEventData> buf(n);
+                if (LiteRtGetProfilerEvents(prof, n, buf.data()) == kLiteRtStatusOk) {
+                    for (int i = n - 1; i >= 0; i--) {
+                        ERL_NIF_TERM ev = enif_make_new_map(env_nif);
+                        enif_make_map_put(env_nif, ev, erlang::nif::atom(env_nif, "tag"),
+                            erlang::nif::make_binary(env_nif, buf[i].tag ? buf[i].tag : ""), &ev);
+                        enif_make_map_put(env_nif, ev, erlang::nif::atom(env_nif, "us"),
+                            enif_make_uint64(env_nif, buf[i].elapsed_time_us), &ev);
+                        enif_make_map_put(env_nif, ev, erlang::nif::atom(env_nif, "type"),
+                            enif_make_int(env_nif, (int)buf[i].event_type), &ev);
+                        enif_make_map_put(env_nif, ev, erlang::nif::atom(env_nif, "source"),
+                            enif_make_int(env_nif, (int)buf[i].event_source), &ev);
+                        events = enif_make_list_cell(env_nif, ev, events);
+                    }
+                }
+            }
+        }
+    }
+    enif_make_map_put(env_nif, map, erlang::nif::atom(env_nif, "events"), events, &map);
+
     // the input is a constant memset, so the output is deterministic and
     // comparable across accelerators: a speedup that changes the answer is not one
     ERL_NIF_TERM out_bin;
