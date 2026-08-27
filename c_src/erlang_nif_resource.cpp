@@ -636,8 +636,6 @@ NifResLiteRtCompiledModel * NifResLiteRtCompiledModel::allocate_resource(ErlNifE
     res->outputs = nullptr;
     res->input_sizes = nullptr;
     res->output_sizes = nullptr;
-    res->input_mem = nullptr;
-    res->output_mem = nullptr;
     res->signature = 0;
     res->profiler = nullptr;
     return res;
@@ -670,11 +668,11 @@ void NifResLiteRtCompiledModel::destruct_resource(ErlNifEnv *, void *args) {
     res->inputs = nullptr;
     res->outputs = nullptr;
 
+    // the host memory behind the buffers is not freed here: it was handed to
+    // LiteRT with the deallocator that frees it, and destroying the buffer above
+    // is what calls it
     delete res->input_sizes;  res->input_sizes = nullptr;
     delete res->output_sizes; res->output_sizes = nullptr;
-    // the memory itself is not freed here; the deallocator handed to LiteRT owns it
-    delete res->input_mem;    res->input_mem = nullptr;
-    delete res->output_mem;   res->output_mem = nullptr;
 
     // borrowed from the compiled model, so it is dropped rather than destroyed
     res->profiler = nullptr;

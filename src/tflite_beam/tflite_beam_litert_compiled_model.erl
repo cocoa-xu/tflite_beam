@@ -179,30 +179,42 @@ reset_profile(Model) ->
 %% @doc
 %% `profile/1' folded into per-operator totals.
 %%
-%% Returns a list of `{Tag, Count, MicrosecondsTotal}' sorted slowest first,
-%% over the events that carry a duration.
+%% Returns `{Tag, Count, MicrosecondsTotal}' sorted slowest first, over operator
+%% events only.
+%%
+%% The events LiteRT records are nested: an `Invoke' encloses the operators it
+%% ran, and `AllocateTensors' and LiteRT's own buffer handling sit beside them.
+%% Summing all of those together would count the operators twice, once on their
+%% own and once inside their `Invoke', and would put `Invoke' at the top of a
+%% list that claims to name the slowest operator. So only the three operator
+%% event types are folded here. Everything else, including the enclosing
+%% `Invoke' and LiteRT's buffer registration and sync, is still in `profile/1'.
 -spec summarise_profile(reference()) -> {ok, [{binary(), pos_integer(), non_neg_integer()}]}
                                       | {error, binary()}.
 summarise_profile(Model) ->
     case profile(Model) of
         {ok, Events} ->
-            Timed = [E || E <- Events, timed(E)],
+            Ops = [E || E <- Events, operator_event(E)],
             Totals = lists:foldl(
                 fun(E, Acc) ->
                     maps:update_with(maps:get(tag, E),
                                      fun({C, U}) -> {C + 1, U + maps:get(us, E)} end,
                                      {1, maps:get(us, E)}, Acc)
-                end, #{}, Timed),
+                end, #{}, Ops),
             {ok, lists:reverse(lists:keysort(3,
                 [{Tag, C, U} || {Tag, {C, U}} <- maps:to_list(Totals)]))};
         Error ->
             Error
     end.
 
-%% Telemetry markers are reported with 1 bsl 32 where a duration would go, and
-%% event types above the operator ones are not operators at all.
-timed(#{us := Us, type := Type}) ->
-    Us < (1 bsl 32) andalso Type =< 8.
+%% LiteRtProfilerEventType, of which only these three are an operator running:
+%% OPERATOR_INVOKE_EVENT, DELEGATE_OPERATOR_INVOKE_EVENT and
+%% DELEGATE_PROFILED_OPERATOR_INVOKE_EVENT. DEFAULT encloses them, telemetry
+%% carries 1 bsl 32 where a duration would go, and the rest are not operators.
+-define(OPERATOR_EVENT_TYPES, [2, 4, 8]).
+
+operator_event(#{us := Us, type := Type}) ->
+    Us < (1 bsl 32) andalso lists:member(Type, ?OPERATOR_EVENT_TYPES).
 
 accelerator_set(List) when is_list(List) ->
     lists:foldl(fun(A, Acc) -> Acc bor accelerator_bit(A) end, 0, List).

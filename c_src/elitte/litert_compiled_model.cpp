@@ -39,7 +39,9 @@ ERL_NIF_TERM litert_error(ErlNifEnv *env, const char *what, LiteRtStatus st) {
     return erlang::nif::error(env, (std::string(what) + ": " + LiteRtGetStatusString(st)).c_str());
 }
 
-void free_host_buffer(void *addr) { free(addr); }
+// Handed to LiteRT for anything this file allocates with malloc or
+// posix_memalign, both of which free() releases.
+void release_malloced(void *addr) { free(addr); }
 
 // Attaches one TOML payload under its identifier. LiteRT files an accelerator's
 // settings this way, so both precision and profiling travel the same road.
@@ -47,9 +49,16 @@ LiteRtStatus add_toml_options(LiteRtOptions options, const char *identifier, con
     char *payload = strdup(toml);
     if (payload == nullptr) return kLiteRtStatusErrorMemoryAllocationFailure;
     LiteRtOpaqueOptions opaque = nullptr;
-    LiteRtStatus st = LiteRtCreateOpaqueOptions(identifier, payload, free_host_buffer, &opaque);
+    LiteRtStatus st = LiteRtCreateOpaqueOptions(identifier, payload, release_malloced, &opaque);
+    // the payload is only taken on success, so freeing it here is not a double free
     if (st != kLiteRtStatusOk) { free(payload); return st; }
-    return LiteRtAddOpaqueOptions(options, opaque);
+
+    st = LiteRtAddOpaqueOptions(options, opaque);
+    if (st != kLiteRtStatusOk) {
+        // not appended, so it is still ours, and it owns the payload now
+        LiteRtDestroyOpaqueOptions(opaque);
+    }
+    return st;
 }
 
 }  // namespace
@@ -153,8 +162,6 @@ ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_T
     res->outputs      = new std::vector<LiteRtTensorBuffer>();
     res->input_sizes  = new std::vector<size_t>();
     res->output_sizes = new std::vector<size_t>();
-    res->input_mem    = new std::vector<void *>();
-    res->output_mem   = new std::vector<void *>();
 
     LiteRtParamIndex num_signatures = 0;
     if (LiteRtGetNumModelSignatures(res->model, &num_signatures) != kLiteRtStatusOk) {
@@ -232,18 +239,16 @@ ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_T
             type.layout = layout;
 
             LiteRtTensorBuffer buf = nullptr;
-            if (LiteRtCreateTensorBufferFromHostMemory(&type, mem, bytes, free_host_buffer, &buf)
+            if (LiteRtCreateTensorBufferFromHostMemory(&type, mem, bytes, release_malloced, &buf)
                 != kLiteRtStatusOk) {
                 free(mem);
                 return "tensor buffer";
             }
             if (input) {
                 res->inputs->push_back(buf);
-                res->input_mem->push_back(mem);
                 res->input_sizes->push_back(bytes);
             } else {
                 res->outputs->push_back(buf);
-                res->output_mem->push_back(mem);
                 res->output_sizes->push_back(bytes);
             }
         }
@@ -295,7 +300,19 @@ ERL_NIF_TERM litert_compiled_model_run(ErlNifEnv *env, int argc, const ERL_NIF_T
                      i, res->input_sizes->at(i), bin.size);
             return erlang::nif::error(env, msg);
         }
-        memcpy(res->input_mem->at(i), bin.data, bin.size);
+        // Writing through Lock rather than at the pointer we allocated. For host
+        // memory the two are the same address today, but the lock is where
+        // LiteRT synchronises on any event attached to the buffer and where a
+        // strided buffer is packed, and neither of those is our business to
+        // assume away.
+        void *addr = nullptr;
+        LiteRtStatus ls = LiteRtLockTensorBuffer(res->inputs->at(i), &addr,
+                                                 kLiteRtTensorBufferLockModeWrite);
+        if (ls != kLiteRtStatusOk || addr == nullptr) {
+            return litert_error(env, "lock input buffer", ls);
+        }
+        memcpy(addr, bin.data, bin.size);
+        LiteRtUnlockTensorBuffer(res->inputs->at(i));
     }
 
     LiteRtStatus st = LiteRtRunCompiledModel(res->val, res->signature,
@@ -305,9 +322,16 @@ ERL_NIF_TERM litert_compiled_model_run(ErlNifEnv *env, int argc, const ERL_NIF_T
 
     ERL_NIF_TERM outputs = enif_make_list(env, 0);
     for (size_t i = res->outputs->size(); i-- > 0; ) {
+        void *addr = nullptr;
+        LiteRtStatus ls = LiteRtLockTensorBuffer(res->outputs->at(i), &addr,
+                                                 kLiteRtTensorBufferLockModeRead);
+        if (ls != kLiteRtStatusOk || addr == nullptr) {
+            return litert_error(env, "lock output buffer", ls);
+        }
         ERL_NIF_TERM bin_term;
         unsigned char *out = enif_make_new_binary(env, res->output_sizes->at(i), &bin_term);
-        memcpy(out, res->output_mem->at(i), res->output_sizes->at(i));
+        memcpy(out, addr, res->output_sizes->at(i));
+        LiteRtUnlockTensorBuffer(res->outputs->at(i));
         outputs = enif_make_list_cell(env, bin_term, outputs);
     }
     return erlang::nif::ok(env, outputs);

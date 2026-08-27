@@ -159,9 +159,6 @@ struct NifResLiteRtCompiledModel {
     std::vector<LiteRtTensorBuffer> * outputs;
     std::vector<size_t> * input_sizes;
     std::vector<size_t> * output_sizes;
-    // host memory handed to LiteRT, freed by the deallocator it was given
-    std::vector<void *> * input_mem;
-    std::vector<void *> * output_mem;
 
     // the buffers above belong to one signature, so the model remembers which
     LiteRtParamIndex signature;
