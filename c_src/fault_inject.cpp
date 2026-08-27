@@ -8,6 +8,7 @@
 
 namespace erlang {
 namespace nif {
+std::atomic<long> litert_call_counter{0};
 
 std::atomic<int> armed_fault_point{kFaultNone};
 
@@ -45,4 +46,20 @@ ERL_NIF_TERM nif_arm_fault(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) 
 
     erlang::nif::armed_fault_point.store(point, std::memory_order_relaxed);
     return erlang::nif::atom(env, "ok");
+}
+
+// nif_litert_call_count() -> integer()
+//
+// How many times a NIF has reached a LiteRT call it is instrumented for. Only
+// compiled in with fault injection, and only useful to the test suite: a call
+// whose answer is the same whether or not it happened cannot otherwise be
+// shown to have happened.
+ERL_NIF_TERM nif_litert_call_count(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 0) return enif_make_badarg(env);
+    if (getenv("TFLITE_BEAM_ENABLE_FAULT_INJECTION") == nullptr) {
+        return erlang::nif::error(env,
+            "fault injection is off; set TFLITE_BEAM_ENABLE_FAULT_INJECTION to use it");
+    }
+    return enif_make_int64(env,
+        (ErlNifSInt64)erlang::nif::litert_call_counter.load(std::memory_order_relaxed));
 }
