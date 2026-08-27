@@ -63,6 +63,10 @@ all() ->
 %% rather than returning an error tuple.
 init_per_suite(Config) ->
     case catch ?A:platform_support() of
+        {error, _} ->
+            %% the NIFs are registered but report the feature is absent, which is
+            %% what a build without TFLITE_BEAM_ENABLE_LITERT_API now does
+            {skip, "built without TFLITE_BEAM_ENABLE_LITERT_API"};
         Support when is_map(Support) ->
             %% The feature is compiled in, so from here an error is a failure and
             %% not a reason to skip: a suite that skips itself when the thing it
@@ -162,6 +166,15 @@ hostile_arguments_are_refused_not_survived(Config) ->
     ?assertMatch({error, _}, ?A:run(Model, [1, 2, 3, 4])),
     ?assertMatch({error, _}, ?A:run(Model, lists:duplicate(1000, hd(Good)))),
     ?assertMatch({error, _}, ?A:run(Model, [binary:copy(<<0>>, 1000000) | tl(Good)])),
+
+    %% A wrong option value is an ordinary mistake, so it answers like every
+    %% sibling does rather than raising and making the caller catch one of them.
+    [?assertMatch({error, _}, ?A:new(Env, Path, Bad))
+     || Bad <- [#{accelerators => [nope]}, #{accelerators => 7},
+                #{accelerators => []}, #{precision => nope},
+                #{profile => perhaps}]],
+    %% and a perfectly ordinary Unicode string is text, not a crash
+    ?assertMatch({error, _}, ?A:new(Env, [28450, 23383], #{})),
 
     %% and after all of that the model still runs
     ?assertMatch({ok, _}, ?A:run(Model, Good)).
