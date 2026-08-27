@@ -40,7 +40,7 @@ litert_api_binary_alignment(_binary) ->
 litert_api_host_buffer_roundtrip(_binary) ->
     not_loaded(?LINE).
 
-litert_api_compiled_model_bench(_path, _iters, _accelerators, _accel_dir, _precision) ->
+litert_api_compiled_model_bench(_path, _iters, _accelerators, _accel_dir, _precision, _profile) ->
     not_loaded(?LINE).
 
 
