@@ -20,6 +20,16 @@
 #include "tflite/model.h"
 #include "tflite/stderr_reporter.h"
 
+#ifdef TFLITE_BEAM_LITERT_API_ENABLED
+#include "litert/c/litert_common.h"
+#include "litert/c/litert_compiled_model.h"
+#include "litert/c/litert_environment.h"
+#include "litert/c/litert_model.h"
+#include "litert/c/litert_options.h"
+#include "litert/c/litert_profiler.h"
+#include "litert/c/litert_tensor_buffer.h"
+#endif
+
 // enif_alloc_resource hands back a resource carrying one reference, and that
 // reference belongs to nobody until enif_make_resource passes it to a term.
 // Everything in between is a chance to lose it: the resource is live, no term
@@ -120,6 +130,49 @@ struct NifResFlatBufferModel {
     static NifResFlatBufferModel * get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error);
     static void destruct_resource(ErlNifEnv *env, void *args);
 };
+
+#ifdef TFLITE_BEAM_LITERT_API_ENABLED
+
+// A LiteRT environment. It is what a GPU accelerator plugin is found through,
+// so it carries the directory that plugin was looked for in and nothing else.
+struct NifResLiteRtEnvironment {
+    LiteRtEnvironment val;
+
+    static ErlNifResourceType * type;
+    static NifResLiteRtEnvironment * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
+    static NifResLiteRtEnvironment * get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error);
+    static void destruct_resource(ErlNifEnv *env, void *args);
+};
+
+// A compiled model together with everything whose lifetime it depends on. The
+// model and the options outlive the compile in LiteRT's C API, and the input
+// and output buffers belong to the compiled model rather than to a call, which
+// is the whole reason a caller has to serialise access to one of these.
+struct NifResLiteRtCompiledModel {
+    LiteRtCompiledModel val;
+    LiteRtModel model;
+    LiteRtOptions options;
+    // kept alive because the compiled model holds a plain pointer to it
+    NifResLiteRtEnvironment * environment;
+
+    std::vector<LiteRtTensorBuffer> * inputs;
+    std::vector<LiteRtTensorBuffer> * outputs;
+    std::vector<size_t> * input_sizes;
+    std::vector<size_t> * output_sizes;
+    // host memory handed to LiteRT, freed by the deallocator it was given
+    std::vector<void *> * input_mem;
+    std::vector<void *> * output_mem;
+
+    // borrowed from the compiled model, not owned
+    LiteRtProfiler profiler;
+
+    static ErlNifResourceType * type;
+    static NifResLiteRtCompiledModel * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
+    static NifResLiteRtCompiledModel * get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error);
+    static void destruct_resource(ErlNifEnv *env, void *args);
+};
+
+#endif  // TFLITE_BEAM_LITERT_API_ENABLED
 
 struct NifResDelegate {
     TfLiteDelegate * val;

@@ -1,0 +1,380 @@
+// LiteRT's compiled model, exposed as it is rather than wrapped.
+//
+// The reason to have this at all is not speed. Measured on the same model and
+// machine, a compiled model running on the GPU lands in the same band as an
+// interpreter with the same plugin attached as an external delegate, because
+// underneath they are the same delegate. What only exists here is the profiler:
+// LiteRtCompiledModelGetProfiler has no counterpart on an interpreter, and it
+// is the only way to see, operator by operator, where the time went and which
+// operators an accelerator actually claimed.
+#include <erl_nif.h>
+
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <string>
+#include <vector>
+
+#include "../nif_utils.hpp"
+#include "../erlang_nif_resource.h"
+
+#include "litert/c/litert_common.h"
+#include "litert/c/litert_compiled_model.h"
+#include "litert/c/litert_environment.h"
+#include "litert/c/litert_environment_options.h"
+#include "litert/c/litert_model.h"
+#include "litert/c/litert_opaque_options.h"
+#include "litert/c/litert_options.h"
+#include "litert/c/litert_profiler.h"
+#include "litert/c/litert_profiler_event.h"
+#include "litert/c/litert_tensor_buffer.h"
+#include "litert/c/litert_tensor_buffer_requirements.h"
+
+namespace {
+
+ERL_NIF_TERM litert_error(ErlNifEnv *env, const char *what, LiteRtStatus st) {
+    return erlang::nif::error(env, (std::string(what) + ": " + LiteRtGetStatusString(st)).c_str());
+}
+
+void free_host_buffer(void *addr) { free(addr); }
+
+// Attaches one TOML payload under its identifier. LiteRT files an accelerator's
+// settings this way, so both precision and profiling travel the same road.
+LiteRtStatus add_toml_options(LiteRtOptions options, const char *identifier, const char *toml) {
+    char *payload = strdup(toml);
+    if (payload == nullptr) return kLiteRtStatusErrorMemoryAllocationFailure;
+    LiteRtOpaqueOptions opaque = nullptr;
+    LiteRtStatus st = LiteRtCreateOpaqueOptions(identifier, payload, free_host_buffer, &opaque);
+    if (st != kLiteRtStatusOk) { free(payload); return st; }
+    return LiteRtAddOpaqueOptions(options, opaque);
+}
+
+}  // namespace
+
+// litert_environment_new(RuntimeLibraryDir) -> {ok, Env} | {error, Reason}
+//
+// The directory is where a GPU accelerator plugin is looked for. An empty one
+// leaves LiteRT searching relative to nothing, which is why a GPU compile then
+// fails with only a line in the log to say so.
+ERL_NIF_TERM litert_environment_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+
+    std::string dir;
+    if (!erlang::nif::get(env, argv[0], dir)) {
+        return erlang::nif::error(env, "expecting the runtime library directory to be a string");
+    }
+
+    ERL_NIF_TERM error{};
+    auto res = NifResLiteRtEnvironment::allocate_resource(env, error);
+    if (res == nullptr) return error;
+    ResourceRef<NifResLiteRtEnvironment> hold(res);
+
+    LiteRtEnvOption opts[1];
+    int num_opts = 0;
+    if (!dir.empty()) {
+        opts[0].tag = kLiteRtEnvOptionTagRuntimeLibraryDir;
+        opts[0].value.type = kLiteRtAnyTypeString;
+        opts[0].value.str_value = dir.c_str();
+        num_opts = 1;
+    }
+
+    LiteRtStatus st = LiteRtCreateEnvironment(num_opts, num_opts ? opts : nullptr, &res->val);
+    if (st != kLiteRtStatusOk) return litert_error(env, "create environment", st);
+
+    return erlang::nif::ok(env, enif_make_resource(env, res));
+}
+
+// litert_compiled_model_new(Env, Path, Opts) -> {ok, Model} | {error, Reason}
+//
+// Opts is a map: accelerators (an integer bitset), precision (a
+// LiteRtDelegatePrecision), profile (0 or 1). Buffers for signature 0 are
+// allocated once here rather than per run, which is what makes a compiled
+// model something a caller has to serialise access to.
+ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 5) return enif_make_badarg(env);
+
+    ERL_NIF_TERM error{};
+    auto env_res = NifResLiteRtEnvironment::get_resource(env, argv[0], error);
+    if (env_res == nullptr) return error;
+
+    std::string path;
+    int accelerators = 0, precision = 0, profile = 0;
+    if (!erlang::nif::get(env, argv[1], path) ||
+        !enif_get_int(env, argv[2], &accelerators) ||
+        !enif_get_int(env, argv[3], &precision) ||
+        !enif_get_int(env, argv[4], &profile)) {
+        return erlang::nif::error(env, "expecting a path and three integers");
+    }
+
+    auto res = NifResLiteRtCompiledModel::allocate_resource(env, error);
+    if (res == nullptr) return error;
+    ResourceRef<NifResLiteRtCompiledModel> hold(res);
+
+    LiteRtStatus st;
+#define TRY(expr, what) st = (expr); if (st != kLiteRtStatusOk) return litert_error(env, what, st);
+
+    TRY(LiteRtCreateModelFromFile(env_res->val, path.c_str(), &res->model), "load model")
+    TRY(LiteRtCreateOptions(&res->options), "create options")
+    // an options object carries no accelerator by default, and none is not a
+    // valid answer to LiteRtCreateCompiledModel
+    TRY(LiteRtSetOptionsHardwareAccelerators(res->options, (LiteRtHwAcceleratorSet)accelerators),
+        "select accelerator")
+
+    if (precision != 0) {
+        char toml[40];
+        snprintf(toml, sizeof(toml), "precision = %d\n", precision);
+        TRY(add_toml_options(res->options, "gpu_options", toml), "attach gpu options")
+    }
+    if (profile) {
+        TRY(add_toml_options(res->options, "runtime_options_string", "enable_profiling = true\n"),
+            "attach runtime options")
+    }
+
+    TRY(LiteRtCreateCompiledModel(env_res->val, res->model, res->options, &res->val), "compile model")
+
+    // the environment is reachable from the compiled model as a plain pointer,
+    // so it has to outlive it
+    res->environment = env_res;
+    enif_keep_resource(env_res);
+
+    if (profile) {
+        LiteRtProfiler prof = nullptr;
+        if (LiteRtCompiledModelGetProfiler(res->val, &prof) == kLiteRtStatusOk && prof != nullptr) {
+            res->profiler = prof;
+            LiteRtStartProfiler(prof);
+        }
+    }
+
+    res->inputs       = new std::vector<LiteRtTensorBuffer>();
+    res->outputs      = new std::vector<LiteRtTensorBuffer>();
+    res->input_sizes  = new std::vector<size_t>();
+    res->output_sizes = new std::vector<size_t>();
+    res->input_mem    = new std::vector<void *>();
+    res->output_mem   = new std::vector<void *>();
+
+    LiteRtSubgraph subgraph = nullptr;
+    LiteRtParamIndex n_in = 0, n_out = 0;
+    if (LiteRtGetModelSubgraph(res->model, 0, &subgraph) != kLiteRtStatusOk ||
+        LiteRtGetNumSubgraphInputs(subgraph, &n_in) != kLiteRtStatusOk ||
+        LiteRtGetNumSubgraphOutputs(subgraph, &n_out) != kLiteRtStatusOk) {
+        return erlang::nif::error(env, "cannot count the model's inputs and outputs");
+    }
+
+    // Output layouts come back for every output at once, so they are fetched
+    // before the loop rather than inside it.
+    std::vector<LiteRtLayout> out_layouts(n_out ? n_out : 1);
+    memset(out_layouts.data(), 0, out_layouts.size() * sizeof(LiteRtLayout));
+    if (n_out > 0 &&
+        LiteRtGetCompiledModelOutputTensorLayouts(res->val, 0, n_out, out_layouts.data(), false)
+            != kLiteRtStatusOk) {
+        return erlang::nif::error(env, "output tensor layouts");
+    }
+
+    auto make_buffers = [&](bool input, LiteRtParamIndex count) -> const char * {
+        for (LiteRtParamIndex i = 0; i < count; i++) {
+            LiteRtTensorBufferRequirements req = nullptr;
+            LiteRtStatus s = input
+                ? LiteRtGetCompiledModelInputBufferRequirements(res->val, 0, i, &req)
+                : LiteRtGetCompiledModelOutputBufferRequirements(res->val, 0, i, &req);
+            if (s != kLiteRtStatusOk) return input ? "input requirements" : "output requirements";
+
+            size_t bytes = 0;
+            if (LiteRtGetTensorBufferRequirementsBufferSize(req, &bytes) != kLiteRtStatusOk) {
+                return "buffer size";
+            }
+
+            // LITERT_HOST_MEMORY_BUFFER_ALIGNMENT is 64 and a BEAM binary never
+            // meets it at these sizes, so the memory is allocated aligned here
+            // and handed over with the deallocator that frees it. The allocation
+            // is rounded up because LiteRT reads and writes it in whole lines.
+            void *mem = nullptr;
+            size_t padded = ((bytes + LITERT_HOST_MEMORY_BUFFER_ALIGNMENT - 1)
+                             / LITERT_HOST_MEMORY_BUFFER_ALIGNMENT) * LITERT_HOST_MEMORY_BUFFER_ALIGNMENT;
+            if (posix_memalign(&mem, LITERT_HOST_MEMORY_BUFFER_ALIGNMENT, padded) != 0 || mem == nullptr) {
+                return "aligned allocation";
+            }
+            memset(mem, 0, padded);
+
+            // Ask for the layout rather than inventing one. A buffer declared as
+            // a flat run of bytes compiles and then fails at run time, because
+            // the model expects its own shape and the buffer has to say so too.
+            LiteRtLayout layout;
+            memset(&layout, 0, sizeof(layout));
+            if (input) {
+                if (LiteRtGetCompiledModelInputTensorLayout(res->val, 0, i, &layout) != kLiteRtStatusOk) {
+                    free(mem);
+                    return "input tensor layout";
+                }
+            } else {
+                layout = out_layouts[i];
+            }
+
+            LiteRtRankedTensorType type;
+            memset(&type, 0, sizeof(type));
+            type.element_type = kLiteRtElementTypeUInt8;
+            type.layout = layout;
+
+            LiteRtTensorBuffer buf = nullptr;
+            if (LiteRtCreateTensorBufferFromHostMemory(&type, mem, bytes, free_host_buffer, &buf)
+                != kLiteRtStatusOk) {
+                free(mem);
+                return "tensor buffer";
+            }
+            if (input) {
+                res->inputs->push_back(buf);
+                res->input_mem->push_back(mem);
+                res->input_sizes->push_back(bytes);
+            } else {
+                res->outputs->push_back(buf);
+                res->output_mem->push_back(mem);
+                res->output_sizes->push_back(bytes);
+            }
+        }
+        return nullptr;
+    };
+    if (const char *why = make_buffers(true, n_in))   return erlang::nif::error(env, why);
+    if (const char *why = make_buffers(false, n_out)) return erlang::nif::error(env, why);
+#undef TRY
+
+    return erlang::nif::ok(env, enif_make_resource(env, res));
+}
+
+// litert_compiled_model_run(Model, Inputs) -> {ok, [binary()]} | {error, Reason}
+//
+// Inputs is a list of binaries, one per input buffer and each exactly the size
+// that buffer wants. They are copied in, the model runs, and the outputs are
+// copied back out. Two processes doing this against the same model interleave
+// on the buffers, which is what the server wrapper exists to prevent.
+ERL_NIF_TERM litert_compiled_model_run(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 2) return enif_make_badarg(env);
+
+    ERL_NIF_TERM error{};
+    auto res = NifResLiteRtCompiledModel::get_resource(env, argv[0], error);
+    if (res == nullptr) return error;
+
+    unsigned int given = 0;
+    if (!enif_get_list_length(env, argv[1], &given)) {
+        return erlang::nif::error(env, "expecting a list of input binaries");
+    }
+    if (given != res->inputs->size()) {
+        char msg[96];
+        snprintf(msg, sizeof(msg), "this model takes %zu inputs, %u given",
+                 res->inputs->size(), given);
+        return erlang::nif::error(env, msg);
+    }
+
+    ERL_NIF_TERM head, tail = argv[1];
+    for (size_t i = 0; i < res->inputs->size(); i++) {
+        if (!enif_get_list_cell(env, tail, &head, &tail)) {
+            return erlang::nif::error(env, "expecting a list of input binaries");
+        }
+        ErlNifBinary bin;
+        if (!enif_inspect_binary(env, head, &bin)) {
+            return erlang::nif::error(env, "expecting every input to be a binary");
+        }
+        if (bin.size != res->input_sizes->at(i)) {
+            char msg[112];
+            snprintf(msg, sizeof(msg), "input %zu wants %zu bytes, %zu given",
+                     i, res->input_sizes->at(i), bin.size);
+            return erlang::nif::error(env, msg);
+        }
+        memcpy(res->input_mem->at(i), bin.data, bin.size);
+    }
+
+    LiteRtStatus st = LiteRtRunCompiledModel(res->val, 0,
+                                             res->inputs->size(), res->inputs->data(),
+                                             res->outputs->size(), res->outputs->data());
+    if (st != kLiteRtStatusOk) return litert_error(env, "run", st);
+
+    ERL_NIF_TERM outputs = enif_make_list(env, 0);
+    for (size_t i = res->outputs->size(); i-- > 0; ) {
+        ERL_NIF_TERM bin_term;
+        unsigned char *out = enif_make_new_binary(env, res->output_sizes->at(i), &bin_term);
+        memcpy(out, res->output_mem->at(i), res->output_sizes->at(i));
+        outputs = enif_make_list_cell(env, bin_term, outputs);
+    }
+    return erlang::nif::ok(env, outputs);
+}
+
+// litert_compiled_model_fully_accelerated(Model) -> {ok, boolean()}
+ERL_NIF_TERM litert_compiled_model_fully_accelerated(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+    ERL_NIF_TERM error{};
+    auto res = NifResLiteRtCompiledModel::get_resource(env, argv[0], error);
+    if (res == nullptr) return error;
+
+    bool fully = false;
+    LiteRtStatus st = LiteRtCompiledModelIsFullyAccelerated(res->val, &fully);
+    if (st != kLiteRtStatusOk) return litert_error(env, "fully accelerated", st);
+    return erlang::nif::ok(env, erlang::nif::atom(env, fully ? "true" : "false"));
+}
+
+// litert_compiled_model_profile(Model) -> {ok, [map()]} | {error, Reason}
+//
+// Empty unless the model was compiled with profiling on. Telemetry events carry
+// a sentinel rather than a duration and are left in: deciding what is noise is
+// the caller's, not this layer's.
+ERL_NIF_TERM litert_compiled_model_profile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+    ERL_NIF_TERM error{};
+    auto res = NifResLiteRtCompiledModel::get_resource(env, argv[0], error);
+    if (res == nullptr) return error;
+
+    ERL_NIF_TERM events = enif_make_list(env, 0);
+    if (res->profiler == nullptr) return erlang::nif::ok(env, events);
+
+    int n = 0;
+    LiteRtStatus st = LiteRtGetNumProfilerEvents(res->profiler, &n);
+    if (st != kLiteRtStatusOk) return litert_error(env, "profiler event count", st);
+    if (n <= 0) return erlang::nif::ok(env, events);
+
+    std::vector<ProfiledEventData> buf(n);
+    st = LiteRtGetProfilerEvents(res->profiler, n, buf.data());
+    if (st != kLiteRtStatusOk) return litert_error(env, "profiler events", st);
+
+    for (int i = n - 1; i >= 0; i--) {
+        ERL_NIF_TERM ev = enif_make_new_map(env);
+        enif_make_map_put(env, ev, erlang::nif::atom(env, "tag"),
+            erlang::nif::make_binary(env, buf[i].tag ? buf[i].tag : ""), &ev);
+        enif_make_map_put(env, ev, erlang::nif::atom(env, "us"),
+            enif_make_uint64(env, buf[i].elapsed_time_us), &ev);
+        enif_make_map_put(env, ev, erlang::nif::atom(env, "type"),
+            enif_make_int(env, (int)buf[i].event_type), &ev);
+        enif_make_map_put(env, ev, erlang::nif::atom(env, "source"),
+            enif_make_int(env, (int)buf[i].event_source), &ev);
+        events = enif_make_list_cell(env, ev, events);
+    }
+    return erlang::nif::ok(env, events);
+}
+
+// litert_compiled_model_reset_profile(Model) -> ok | {error, Reason}
+ERL_NIF_TERM litert_compiled_model_reset_profile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+    ERL_NIF_TERM error{};
+    auto res = NifResLiteRtCompiledModel::get_resource(env, argv[0], error);
+    if (res == nullptr) return error;
+    if (res->profiler == nullptr) {
+        return erlang::nif::error(env, "this model was not compiled with profiling on");
+    }
+    LiteRtStatus st = LiteRtResetProfiler(res->profiler);
+    if (st != kLiteRtStatusOk) return litert_error(env, "reset profiler", st);
+    return erlang::nif::ok(env);
+}
+
+// litert_compiled_model_io_sizes(Model) -> {ok, {[integer()], [integer()]}}
+ERL_NIF_TERM litert_compiled_model_io_sizes(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+    ERL_NIF_TERM error{};
+    auto res = NifResLiteRtCompiledModel::get_resource(env, argv[0], error);
+    if (res == nullptr) return error;
+
+    auto to_list = [&](const std::vector<size_t> &v) {
+        ERL_NIF_TERM list = enif_make_list(env, 0);
+        for (size_t i = v.size(); i-- > 0; ) {
+            list = enif_make_list_cell(env, enif_make_uint64(env, v[i]), list);
+        }
+        return list;
+    };
+    return erlang::nif::ok(env, enif_make_tuple2(env,
+        to_list(*res->input_sizes), to_list(*res->output_sizes)));
+}

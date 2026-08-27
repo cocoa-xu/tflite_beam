@@ -43,6 +43,27 @@ litert_api_host_buffer_roundtrip(_binary) ->
 litert_api_compiled_model_bench(_path, _iters, _accelerators, _accel_dir, _precision, _profile) ->
     not_loaded(?LINE).
 
+litert_environment_new(_runtime_library_dir) ->
+    not_loaded(?LINE).
+
+litert_compiled_model_new(_env, _path, _accelerators, _precision, _profile) ->
+    not_loaded(?LINE).
+
+litert_compiled_model_run(_model, _inputs) ->
+    not_loaded(?LINE).
+
+litert_compiled_model_fully_accelerated(_model) ->
+    not_loaded(?LINE).
+
+litert_compiled_model_profile(_model) ->
+    not_loaded(?LINE).
+
+litert_compiled_model_reset_profile(_model) ->
+    not_loaded(?LINE).
+
+litert_compiled_model_io_sizes(_model) ->
+    not_loaded(?LINE).
+
 
 error_reporter_default_error_reporter() ->
     not_loaded(?LINE).
