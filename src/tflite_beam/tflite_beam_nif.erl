@@ -62,7 +62,7 @@ litert_compiled_model_io_sizes(_model) ->
 litert_model_signatures(_env, _path) ->
     not_loaded(?LINE).
 
-litert_compiled_model_metrics(_model, _detail_level) ->
+litert_compiled_model_run_with_metrics(_model, _inputs, _detail_level) ->
     not_loaded(?LINE).
 
 litert_platform_support() ->

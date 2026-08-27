@@ -41,6 +41,7 @@
     with/2, with/3,
     fully_accelerated/1,
     io_sizes/1,
+    run_with_metrics/2, run_with_metrics/3,
     profile/1,
     summarise_profile/1,
     reset_profile/1,
@@ -123,6 +124,18 @@ fully_accelerated(Server) ->
 -spec io_sizes(pid()) -> {ok, {[non_neg_integer()], [non_neg_integer()]}} | {error, binary()}.
 io_sizes(Server) ->
     with(Server, fun(M) -> ?M:io_sizes(M) end).
+
+%% @doc Run the model and collect whatever counters the accelerator reports.
+-spec run_with_metrics(pid(), [binary()]) ->
+    {ok, {[binary()], [{binary(), term()}]}} | {error, binary()}.
+run_with_metrics(Server, Inputs) ->
+    run_with_metrics(Server, Inputs, 0).
+
+%% @doc Run the model with metrics collection bracketing the inference.
+-spec run_with_metrics(pid(), [binary()], non_neg_integer()) ->
+    {ok, {[binary()], [{binary(), term()}]}} | {error, binary()}.
+run_with_metrics(Server, Inputs, DetailLevel) when is_list(Inputs) ->
+    with(Server, fun(M) -> ?M:run_with_metrics(M, Inputs, DetailLevel) end).
 
 %% @doc Every profiling event recorded since the last reset.
 -spec profile(pid()) -> {ok, [map()]} | {error, binary()}.
