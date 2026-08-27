@@ -29,6 +29,7 @@
 #include "litert/c/litert_profiler_event.h"
 #include "litert/c/litert_tensor_buffer.h"
 #include "litert/c/litert_tensor_buffer_requirements.h"
+#include "litert/c/litert_metrics.h"
 
 namespace {
 
@@ -91,19 +92,20 @@ ERL_NIF_TERM litert_environment_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM
 // allocated once here rather than per run, which is what makes a compiled
 // model something a caller has to serialise access to.
 ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    if (argc != 5) return enif_make_badarg(env);
+    if (argc != 6) return enif_make_badarg(env);
 
     ERL_NIF_TERM error{};
     auto env_res = NifResLiteRtEnvironment::get_resource(env, argv[0], error);
     if (env_res == nullptr) return error;
 
     std::string path;
-    int accelerators = 0, precision = 0, profile = 0;
+    int accelerators = 0, precision = 0, profile = 0, signature = 0;
     if (!erlang::nif::get(env, argv[1], path) ||
         !enif_get_int(env, argv[2], &accelerators) ||
         !enif_get_int(env, argv[3], &precision) ||
-        !enif_get_int(env, argv[4], &profile)) {
-        return erlang::nif::error(env, "expecting a path and three integers");
+        !enif_get_int(env, argv[4], &profile) ||
+        !enif_get_int(env, argv[5], &signature) || signature < 0) {
+        return erlang::nif::error(env, "expecting a path and four integers");
     }
 
     auto res = NifResLiteRtCompiledModel::allocate_resource(env, error);
@@ -152,9 +154,22 @@ ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_T
     res->input_mem    = new std::vector<void *>();
     res->output_mem   = new std::vector<void *>();
 
+    LiteRtParamIndex num_signatures = 0;
+    if (LiteRtGetNumModelSignatures(res->model, &num_signatures) != kLiteRtStatusOk) {
+        return erlang::nif::error(env, "cannot count the model's signatures");
+    }
+    if ((LiteRtParamIndex)signature >= num_signatures) {
+        char msg[96];
+        snprintf(msg, sizeof(msg), "this model has %llu signature%s, %d asked for",
+                 (unsigned long long)num_signatures,
+                 num_signatures == 1 ? "" : "s", signature);
+        return erlang::nif::error(env, msg);
+    }
+    res->signature = (LiteRtParamIndex)signature;
+
     LiteRtSubgraph subgraph = nullptr;
     LiteRtParamIndex n_in = 0, n_out = 0;
-    if (LiteRtGetModelSubgraph(res->model, 0, &subgraph) != kLiteRtStatusOk ||
+    if (LiteRtGetModelSubgraph(res->model, res->signature, &subgraph) != kLiteRtStatusOk ||
         LiteRtGetNumSubgraphInputs(subgraph, &n_in) != kLiteRtStatusOk ||
         LiteRtGetNumSubgraphOutputs(subgraph, &n_out) != kLiteRtStatusOk) {
         return erlang::nif::error(env, "cannot count the model's inputs and outputs");
@@ -165,7 +180,7 @@ ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_T
     std::vector<LiteRtLayout> out_layouts(n_out ? n_out : 1);
     memset(out_layouts.data(), 0, out_layouts.size() * sizeof(LiteRtLayout));
     if (n_out > 0 &&
-        LiteRtGetCompiledModelOutputTensorLayouts(res->val, 0, n_out, out_layouts.data(), false)
+        LiteRtGetCompiledModelOutputTensorLayouts(res->val, res->signature, n_out, out_layouts.data(), false)
             != kLiteRtStatusOk) {
         return erlang::nif::error(env, "output tensor layouts");
     }
@@ -174,8 +189,8 @@ ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_T
         for (LiteRtParamIndex i = 0; i < count; i++) {
             LiteRtTensorBufferRequirements req = nullptr;
             LiteRtStatus s = input
-                ? LiteRtGetCompiledModelInputBufferRequirements(res->val, 0, i, &req)
-                : LiteRtGetCompiledModelOutputBufferRequirements(res->val, 0, i, &req);
+                ? LiteRtGetCompiledModelInputBufferRequirements(res->val, res->signature, i, &req)
+                : LiteRtGetCompiledModelOutputBufferRequirements(res->val, res->signature, i, &req);
             if (s != kLiteRtStatusOk) return input ? "input requirements" : "output requirements";
 
             size_t bytes = 0;
@@ -201,7 +216,7 @@ ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_T
             LiteRtLayout layout;
             memset(&layout, 0, sizeof(layout));
             if (input) {
-                if (LiteRtGetCompiledModelInputTensorLayout(res->val, 0, i, &layout) != kLiteRtStatusOk) {
+                if (LiteRtGetCompiledModelInputTensorLayout(res->val, res->signature, i, &layout) != kLiteRtStatusOk) {
                     free(mem);
                     return "input tensor layout";
                 }
@@ -281,7 +296,7 @@ ERL_NIF_TERM litert_compiled_model_run(ErlNifEnv *env, int argc, const ERL_NIF_T
         memcpy(res->input_mem->at(i), bin.data, bin.size);
     }
 
-    LiteRtStatus st = LiteRtRunCompiledModel(res->val, 0,
+    LiteRtStatus st = LiteRtRunCompiledModel(res->val, res->signature,
                                              res->inputs->size(), res->inputs->data(),
                                              res->outputs->size(), res->outputs->data());
     if (st != kLiteRtStatusOk) return litert_error(env, "run", st);
@@ -377,4 +392,97 @@ ERL_NIF_TERM litert_compiled_model_io_sizes(ErlNifEnv *env, int argc, const ERL_
     };
     return erlang::nif::ok(env, enif_make_tuple2(env,
         to_list(*res->input_sizes), to_list(*res->output_sizes)));
+}
+
+// litert_model_signatures(Env, Path) -> {ok, [binary()]} | {error, Reason}
+//
+// The keys, in index order, so a caller can name a signature rather than count
+// to it. Reading them needs a model but not a compile, which is why this takes
+// a path rather than a compiled model.
+ERL_NIF_TERM litert_model_signatures(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 2) return enif_make_badarg(env);
+
+    ERL_NIF_TERM error{};
+    auto env_res = NifResLiteRtEnvironment::get_resource(env, argv[0], error);
+    if (env_res == nullptr) return error;
+
+    std::string path;
+    if (!erlang::nif::get(env, argv[1], path)) {
+        return erlang::nif::error(env, "expecting the model path to be a string");
+    }
+
+    LiteRtModel model = nullptr;
+    LiteRtStatus st = LiteRtCreateModelFromFile(env_res->val, path.c_str(), &model);
+    if (st != kLiteRtStatusOk) return litert_error(env, "load model", st);
+
+    LiteRtParamIndex count = 0;
+    st = LiteRtGetNumModelSignatures(model, &count);
+    if (st != kLiteRtStatusOk) { LiteRtDestroyModel(model); return litert_error(env, "signature count", st); }
+
+    ERL_NIF_TERM list = enif_make_list(env, 0);
+    for (LiteRtParamIndex i = count; i-- > 0; ) {
+        LiteRtSignature sig = nullptr;
+        const char *key = nullptr;
+        if (LiteRtGetModelSignature(model, i, &sig) != kLiteRtStatusOk ||
+            LiteRtGetSignatureKey(sig, &key) != kLiteRtStatusOk) {
+            LiteRtDestroyModel(model);
+            return erlang::nif::error(env, "signature key");
+        }
+        list = enif_make_list_cell(env, erlang::nif::make_binary(env, key ? key : ""), list);
+    }
+    LiteRtDestroyModel(model);
+    return erlang::nif::ok(env, list);
+}
+
+// litert_compiled_model_metrics(Model, DetailLevel) -> {ok, [{binary(), term()}]}
+//
+// Hardware counters, which an accelerator supplies through the two entries of
+// its definition that may be null. Neither the plugins here nor Google's own
+// prebuilt fills them in, so this is usually an empty list rather than an
+// error, and saying so beats leaving a caller to wonder.
+ERL_NIF_TERM litert_compiled_model_metrics(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 2) return enif_make_badarg(env);
+
+    ERL_NIF_TERM error{};
+    auto res = NifResLiteRtCompiledModel::get_resource(env, argv[0], error);
+    if (res == nullptr) return error;
+
+    int detail = 0;
+    if (!enif_get_int(env, argv[1], &detail) || detail < 0) {
+        return erlang::nif::error(env, "expecting a detail level of zero or more");
+    }
+
+    LiteRtStatus st = LiteRtCompiledModelStartMetricsCollection(res->val, detail);
+    if (st != kLiteRtStatusOk) return litert_error(env, "start metrics", st);
+
+    LiteRtMetrics metrics = nullptr;
+    st = LiteRtCreateMetrics(&metrics);
+    if (st != kLiteRtStatusOk) return litert_error(env, "create metrics", st);
+
+    st = LiteRtCompiledModelStopMetricsCollection(res->val, metrics);
+    if (st != kLiteRtStatusOk) { LiteRtDestroyMetrics(metrics); return litert_error(env, "stop metrics", st); }
+
+    int n = 0;
+    if (LiteRtGetNumMetrics(metrics, &n) != kLiteRtStatusOk) {
+        LiteRtDestroyMetrics(metrics);
+        return erlang::nif::error(env, "metric count");
+    }
+
+    ERL_NIF_TERM list = enif_make_list(env, 0);
+    for (int i = n; i-- > 0; ) {
+        LiteRtMetric metric{};
+        if (LiteRtGetMetric(metrics, i, &metric) != kLiteRtStatusOk) continue;
+        ERL_NIF_TERM value;
+        switch (metric.value.type) {
+            case kLiteRtAnyTypeInt:    value = enif_make_int64(env, metric.value.int_value); break;
+            case kLiteRtAnyTypeReal:   value = enif_make_double(env, metric.value.real_value); break;
+            case kLiteRtAnyTypeBool:   value = erlang::nif::atom(env, metric.value.bool_value ? "true" : "false"); break;
+            case kLiteRtAnyTypeString: value = erlang::nif::make_binary(env, metric.value.str_value ? metric.value.str_value : ""); break;
+            default:                   value = erlang::nif::atom(env, "unsupported"); break;
+        }
+        list = enif_make_list_cell(env, enif_make_tuple2(env,
+            erlang::nif::make_binary(env, metric.name ? metric.name : ""), value), list);
+    }
+    LiteRtDestroyMetrics(metrics);
+    return erlang::nif::ok(env, list);
 }

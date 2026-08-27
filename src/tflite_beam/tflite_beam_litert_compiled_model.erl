@@ -19,13 +19,15 @@
 
 -export([
     environment/0, environment/1,
+    signatures/2,
     new/2, new/3,
     run/2,
     fully_accelerated/1,
     io_sizes/1,
     profile/1,
     reset_profile/1,
-    summarise_profile/1
+    summarise_profile/1,
+    metrics/1, metrics/2
 ]).
 
 -type accelerator() :: cpu | gpu | npu.
@@ -33,7 +35,8 @@
 -type opts() :: #{
     accelerators => [accelerator()],
     precision => precision(),
-    profile => boolean()
+    profile => boolean(),
+    signature => non_neg_integer() | binary() | list()
 }.
 -export_type([accelerator/0, precision/0, opts/0]).
 
@@ -55,6 +58,18 @@ environment(Dir) when is_list(Dir) ->
 environment(Dir) when is_binary(Dir) ->
     tflite_beam_nif:litert_environment_new(Dir).
 
+%% @doc
+%% The signature keys of a model, in index order.
+%%
+%% A model with no named signatures still has one, and it comes back as the
+%% empty key. Reading these needs the model but not a compile, so it is the
+%% cheap way to find out what `new/3' can be asked for.
+-spec signatures(reference(), binary() | list()) -> {ok, [binary()]} | {error, binary()}.
+signatures(Env, Path) when is_list(Path) ->
+    signatures(Env, list_to_binary(Path));
+signatures(Env, Path) when is_binary(Path) ->
+    tflite_beam_nif:litert_model_signatures(Env, Path).
+
 %% @doc A compiled model on the CPU, with no profiling.
 -spec new(reference(), binary() | list()) -> {ok, reference()} | {error, binary()}.
 new(Env, Path) ->
@@ -71,6 +86,10 @@ new(Env, Path) ->
 %% @param precision What a GPU accelerator should compute in. `fp32' is the
 %% default and agrees with the CPU answer to within rounding; `fp16' is faster
 %% and does not. Ignored by the CPU.
+%% @param signature Which signature this model runs, as an index or a key. The
+%% buffers are allocated for that one signature and `run/2' runs it, so a model
+%% with several signatures needs one of these per signature rather than one that
+%% switches. Defaults to the first.
 %% @param profile Whether to record per-operator timings, readable with
 %% `profile/1'. Measured on `mobilenet_v2_1.0_224', 50 runs: on the CPU it cost
 %% between 1.1x and 1.4x, and on the GPU nothing measurable, because there the
@@ -84,7 +103,12 @@ new(Env, Path, Opts) when is_binary(Path), is_map(Opts) ->
     Accel = accelerator_set(maps:get(accelerators, Opts, [cpu])),
     Prec = precision_value(maps:get(precision, Opts, default)),
     Profile = case maps:get(profile, Opts, false) of true -> 1; false -> 0 end,
-    tflite_beam_nif:litert_compiled_model_new(Env, Path, Accel, Prec, Profile).
+    case signature_index(Env, Path, maps:get(signature, Opts, 0)) of
+        {ok, Index} ->
+            tflite_beam_nif:litert_compiled_model_new(Env, Path, Accel, Prec, Profile, Index);
+        Error ->
+            Error
+    end.
 
 %% @doc
 %% Run the model over `Inputs' and return its outputs.
@@ -117,6 +141,23 @@ io_sizes(Model) ->
 -spec profile(reference()) -> {ok, [map()]} | {error, binary()}.
 profile(Model) ->
     tflite_beam_nif:litert_compiled_model_profile(Model).
+
+%% @doc Hardware counters an accelerator chose to report, at detail level zero.
+-spec metrics(reference()) -> {ok, [{binary(), term()}]} | {error, binary()}.
+metrics(Model) ->
+    metrics(Model, 0).
+
+%% @doc
+%% Hardware counters an accelerator chose to report.
+%%
+%% Usually `{ok, []}'. The two entries of an accelerator definition that would
+%% fill these in may be null, and are null in both the plugins here and in
+%% Google\'s own prebuilt GPU accelerator, so an empty list means nobody offered
+%% anything rather than that something went wrong. Use `profile/1' for timings;
+%% this is for counters a vendor backend exposes.
+-spec metrics(reference(), non_neg_integer()) -> {ok, [{binary(), term()}]} | {error, binary()}.
+metrics(Model, DetailLevel) when is_integer(DetailLevel), DetailLevel >= 0 ->
+    tflite_beam_nif:litert_compiled_model_metrics(Model, DetailLevel).
 
 %% @doc Forget the events recorded so far and keep recording.
 -spec reset_profile(reference()) -> ok | {error, binary()}.
@@ -157,6 +198,28 @@ accelerator_set(List) when is_list(List) ->
 accelerator_bit(cpu) -> 1;
 accelerator_bit(gpu) -> 2;
 accelerator_bit(npu) -> 4.
+
+signature_index(_Env, _Path, Index) when is_integer(Index), Index >= 0 ->
+    {ok, Index};
+signature_index(Env, Path, Key) when is_list(Key) ->
+    signature_index(Env, Path, list_to_binary(Key));
+signature_index(Env, Path, Key) when is_binary(Key) ->
+    case tflite_beam_nif:litert_model_signatures(Env, Path) of
+        {ok, Keys} ->
+            case index_of(Key, Keys, 0) of
+                not_found ->
+                    {error, iolist_to_binary(
+                        [<<"no signature named ">>, Key, <<" in this model">>])};
+                Index ->
+                    {ok, Index}
+            end;
+        Error ->
+            Error
+    end.
+
+index_of(_Key, [], _N) -> not_found;
+index_of(Key, [Key | _], N) -> N;
+index_of(Key, [_ | Rest], N) -> index_of(Key, Rest, N + 1).
 
 precision_value(default) -> 0;
 precision_value(fp16) -> 1;

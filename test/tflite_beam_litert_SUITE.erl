@@ -6,12 +6,16 @@
 -include_lib("common_test/include/ct.hrl").
 -include_lib("stdlib/include/assert.hrl").
 
--export([all/0, init_per_suite/1]).
+-export([all/0, init_per_suite/1, end_per_suite/1]).
 -export([
     environment_is_created/1,
     compiled_model_runs/1,
     compiled_model_refuses_a_wrong_sized_input/1,
     compiled_model_refuses_the_wrong_number_of_inputs/1,
+    signatures_are_listed/1,
+    a_signature_can_be_named/1,
+    an_unknown_signature_is_refused/1,
+    metrics_are_empty_rather_than_an_error/1,
     profile_is_empty_unless_asked_for/1,
     profile_names_the_operators/1,
     reset_profile_needs_profiling_on/1,
@@ -28,6 +32,10 @@ all() ->
         compiled_model_runs,
         compiled_model_refuses_a_wrong_sized_input,
         compiled_model_refuses_the_wrong_number_of_inputs,
+        signatures_are_listed,
+        a_signature_can_be_named,
+        an_unknown_signature_is_refused,
+        metrics_are_empty_rather_than_an_error,
         profile_is_empty_unless_asked_for,
         profile_names_the_operators,
         reset_profile_needs_profiling_on,
@@ -46,6 +54,9 @@ init_per_suite(Config) ->
         _ ->
             {skip, "built without TFLITE_BEAM_ENABLE_LITERT_API"}
     end.
+
+end_per_suite(_Config) ->
+    ok.
 
 model(Config, Opts) ->
     Env = proplists:get_value(env, Config),
@@ -87,6 +98,47 @@ compiled_model_refuses_the_wrong_number_of_inputs(Config) ->
     ?assertMatch({ok, _}, ?A:run(Model, Right)),
     ?assertMatch({error, _}, ?A:run(Model, tl(Right))),
     ?assertMatch({error, _}, ?A:run(Model, Right ++ [hd(Right)])).
+
+signatures_are_listed(Config) ->
+    Env = proplists:get_value(env, Config),
+    {ok, Keys} = ?A:signatures(Env, tflite_beam_test_models:path(?MODEL)),
+    ?assertNotEqual([], Keys),
+    ?assert(lists:all(fun is_binary/1, Keys)).
+
+%% Naming the signature has to reach the same model that its index does, or the
+%% lookup is decorative.
+a_signature_can_be_named(Config) ->
+    Env = proplists:get_value(env, Config),
+    Path = tflite_beam_test_models:path(?MODEL),
+    {ok, [Key | _]} = ?A:signatures(Env, Path),
+    ByIndex = model(Config, #{accelerators => [cpu], signature => 0}),
+    {ok, Named} = ?A:new(Env, Path, #{accelerators => [cpu], signature => Key}),
+    {ok, {Ins, _}} = ?A:io_sizes(ByIndex),
+    ?assertEqual({ok, {Ins, element(2, element(2, ?A:io_sizes(Named)))}},
+                 {ok, {Ins, element(2, element(2, ?A:io_sizes(Named)))}}),
+    Inputs = [filled(2.0, N) || N <- Ins],
+    ?assertEqual(?A:run(ByIndex, Inputs), ?A:run(Named, Inputs)).
+
+an_unknown_signature_is_refused(Config) ->
+    Env = proplists:get_value(env, Config),
+    Path = tflite_beam_test_models:path(?MODEL),
+    %% the same call with a real key works, so the refusal is about the name
+    {ok, [Key | _]} = ?A:signatures(Env, Path),
+    ?assertMatch({ok, _}, ?A:new(Env, Path, #{accelerators => [cpu], signature => Key})),
+    ?assertMatch({error, _}, ?A:new(Env, Path, #{accelerators => [cpu],
+                                                 signature => <<"not a signature">>})),
+    ?assertMatch({error, _}, ?A:new(Env, Path, #{accelerators => [cpu], signature => 99})).
+
+%% An accelerator may leave the two metric entries of its definition null, and
+%% every accelerator reachable here does, so this asks for the empty list rather
+%% than an error. It exists to catch the API breaking, not to assert a number.
+metrics_are_empty_rather_than_an_error(Config) ->
+    Model = model(Config, #{accelerators => [cpu]}),
+    ?assertEqual({ok, []}, ?A:metrics(Model)),
+    ?assertEqual({ok, []}, ?A:metrics(Model, 2)),
+    %% a detail level below zero is a caller mistake, so the guard rejects it
+    %% rather than the NIF being asked about it
+    ?assertError(function_clause, ?A:metrics(Model, -1)).
 
 profile_is_empty_unless_asked_for(Config) ->
     Model = model(Config, #{accelerators => [cpu]}),

@@ -163,6 +163,9 @@ struct NifResLiteRtCompiledModel {
     std::vector<void *> * input_mem;
     std::vector<void *> * output_mem;
 
+    // the buffers above belong to one signature, so the model remembers which
+    LiteRtParamIndex signature;
+
     // borrowed from the compiled model, not owned
     LiteRtProfiler profiler;
 
