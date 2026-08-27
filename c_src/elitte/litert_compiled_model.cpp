@@ -36,6 +36,22 @@
 #include "litert/c/litert_metrics.h"
 #include "litert/c/litert_platform_support.h"
 
+// Defined below, used by run_with_metrics above it.
+// LiteRT's own rule, from litert_compiled_model.h: a dimension that is not
+// positive means the shape is only settled once the model is allocated, and the
+// output layouts have to be fetched with update_allocation so the concrete one
+// comes back rather than the unresolved one.
+static bool has_dynamic_dimensions(const LiteRtLayout &layout) {
+    for (uint32_t i = 0; i < layout.rank; i++) {
+        if (layout.dimensions[i] <= 0) return true;
+    }
+    return false;
+}
+
+static ERL_NIF_TERM read_metrics(ErlNifEnv *env, LiteRtMetrics metrics, ERL_NIF_TERM *out);
+static ERL_NIF_TERM run_locked(ErlNifEnv *env, NifResLiteRtCompiledModel *res,
+                               ERL_NIF_TERM input_list, ERL_NIF_TERM *out);
+
 namespace {
 
 ERL_NIF_TERM litert_error(ErlNifEnv *env, const char *what, LiteRtStatus st) {
@@ -226,13 +242,40 @@ ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_T
     }
 
     // Output layouts come back for every output at once, so they are fetched
-    // before the loop rather than inside it.
+    // before the loop rather than inside it. update_allocation is what makes a
+    // dynamic output report its settled shape instead of the unresolved one,
+    // and it is asked for on exactly the condition LiteRT asks for it on: any
+    // output whose declared layout has a dimension that is not positive.
+    bool dynamic_output = false;
+    for (LiteRtParamIndex i = 0; i < n_out && !dynamic_output; i++) {
+        LiteRtTensor out_tensor = nullptr;
+        LiteRtRankedTensorType out_type;
+        memset(&out_type, 0, sizeof(out_type));
+        if (LiteRtGetSignatureOutputTensorByIndex(sig, i, &out_tensor) == kLiteRtStatusOk &&
+            LiteRtGetRankedTensorType(out_tensor, &out_type) == kLiteRtStatusOk) {
+            dynamic_output = has_dynamic_dimensions(out_type.layout);
+        }
+    }
+
     std::vector<LiteRtLayout> out_layouts(n_out ? n_out : 1);
     memset(out_layouts.data(), 0, out_layouts.size() * sizeof(LiteRtLayout));
     if (n_out > 0 &&
-        LiteRtGetCompiledModelOutputTensorLayouts(res->val, res->signature, n_out, out_layouts.data(), false)
+        LiteRtGetCompiledModelOutputTensorLayouts(res->val, res->signature, n_out,
+                                                  out_layouts.data(), dynamic_output)
             != kLiteRtStatusOk) {
         return erlang::nif::error(env, "output tensor layouts");
+    }
+
+    // A shape still unresolved after that would size the buffers wrongly and
+    // fail somewhere further away, so it is refused here where it can be named.
+    for (LiteRtParamIndex i = 0; i < n_out; i++) {
+        if (has_dynamic_dimensions(out_layouts[i])) {
+            char msg[112];
+            snprintf(msg, sizeof(msg),
+                     "output %llu still has an unresolved shape after allocation",
+                     (unsigned long long)i);
+            return erlang::nif::error(env, msg);
+        }
     }
 
     auto make_buffers = [&](bool input, LiteRtParamIndex count) -> const char * {
@@ -311,20 +354,15 @@ ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_T
     return erlang::nif::ok(env, enif_make_resource(env, res));
 }
 
-// litert_compiled_model_run(Model, Inputs) -> {ok, [binary()]} | {error, Reason}
-//
-// Inputs is a list of binaries, one per input buffer and each exactly the size
-// that buffer wants. They are copied in, the model runs, and the outputs are
-// copied back out. Two processes doing this against the same model interleave
-// on the buffers, which is what the server wrapper exists to prevent.
-ERL_NIF_TERM litert_compiled_model_run(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    if (argc != 2) return enif_make_badarg(env);
-
-    CompiledModelUse res(env, argv[0]);
-    if (!res) return res.error();
-
+// Runs the model with the lock already held. Returns the {ok, Outputs} or
+// {error, Reason} term either caller wants to hand back.
+// Returns 0 and writes the output list on success, or the error term to hand
+// back. Same shape as read_metrics, so a caller that has to clean up after a
+// failure can tell the two apart.
+static ERL_NIF_TERM run_locked(ErlNifEnv *env, NifResLiteRtCompiledModel *res,
+                               ERL_NIF_TERM input_list, ERL_NIF_TERM *out) {
     unsigned int given = 0;
-    if (!enif_get_list_length(env, argv[1], &given)) {
+    if (!enif_get_list_length(env, input_list, &given)) {
         return erlang::nif::error(env, "expecting a list of input binaries");
     }
     if (given != res->inputs->size()) {
@@ -334,7 +372,7 @@ ERL_NIF_TERM litert_compiled_model_run(ErlNifEnv *env, int argc, const ERL_NIF_T
         return erlang::nif::error(env, msg);
     }
 
-    ERL_NIF_TERM head, tail = argv[1];
+    ERL_NIF_TERM head, tail = input_list;
     for (size_t i = 0; i < res->inputs->size(); i++) {
         if (!enif_get_list_cell(env, tail, &head, &tail)) {
             return erlang::nif::error(env, "expecting a list of input binaries");
@@ -349,11 +387,6 @@ ERL_NIF_TERM litert_compiled_model_run(ErlNifEnv *env, int argc, const ERL_NIF_T
                      i, res->input_sizes->at(i), bin.size);
             return erlang::nif::error(env, msg);
         }
-        // Writing through Lock rather than at the pointer we allocated. For host
-        // memory the two are the same address today, but the lock is where
-        // LiteRT synchronises on any event attached to the buffer and where a
-        // strided buffer is packed, and neither of those is our business to
-        // assume away.
         void *addr = nullptr;
         LiteRtStatus ls = LiteRtLockTensorBuffer(res->inputs->at(i), &addr,
                                                  kLiteRtTensorBufferLockModeWrite);
@@ -361,7 +394,10 @@ ERL_NIF_TERM litert_compiled_model_run(ErlNifEnv *env, int argc, const ERL_NIF_T
             return litert_error(env, "lock input buffer", ls);
         }
         memcpy(addr, bin.data, bin.size);
-        LiteRtUnlockTensorBuffer(res->inputs->at(i));
+        // Unlocking a device buffer is where the upload happens, so a failure
+        // here means the model would run against whatever was there before.
+        ls = LiteRtUnlockTensorBuffer(res->inputs->at(i));
+        if (ls != kLiteRtStatusOk) return litert_error(env, "unlock input buffer", ls);
     }
 
     // for the suite: hold the lock so a second caller reliably meets it
@@ -383,14 +419,83 @@ ERL_NIF_TERM litert_compiled_model_run(ErlNifEnv *env, int argc, const ERL_NIF_T
         ERL_NIF_TERM bin_term;
         unsigned char *out = enif_make_new_binary(env, res->output_sizes->at(i), &bin_term);
         if (out == nullptr) {
-            LiteRtUnlockTensorBuffer(res->outputs->at(i));
+            // cleanup path: the allocation failure is what the caller needs to
+            // hear, so an unlock failure here does not replace it
+            (void)LiteRtUnlockTensorBuffer(res->outputs->at(i));
             return erlang::nif::error(env, "cannot allocate the output binary");
         }
         memcpy(out, addr, res->output_sizes->at(i));
-        LiteRtUnlockTensorBuffer(res->outputs->at(i));
+        ls = LiteRtUnlockTensorBuffer(res->outputs->at(i));
+        if (ls != kLiteRtStatusOk) return litert_error(env, "unlock output buffer", ls);
         outputs = enif_make_list_cell(env, bin_term, outputs);
     }
+    *out = outputs;
+    return 0;
+}
+
+// litert_compiled_model_run(Model, Inputs) -> {ok, [binary()]} | {error, Reason}
+//
+// Inputs is a list of binaries, one per input buffer and each exactly the size
+// that buffer wants. They are copied in, the model runs, and the outputs are
+// copied back out. Two processes doing this against the same model interleave
+// on the buffers, which is what the server wrapper exists to prevent.
+ERL_NIF_TERM litert_compiled_model_run(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 2) return enif_make_badarg(env);
+
+    CompiledModelUse res(env, argv[0]);
+    if (!res) return res.error();
+
+    ERL_NIF_TERM outputs;
+    ERL_NIF_TERM failure = run_locked(env, res.get(), argv[1], &outputs);
+    if (failure != 0) return failure;
     return erlang::nif::ok(env, outputs);
+}
+
+// litert_compiled_model_run_with_metrics(Model, Inputs, DetailLevel)
+//
+// Collection has to bracket an inference: starting and stopping with nothing in
+// between reports on an empty interval, which is what asking for metrics without
+// a run used to do. Both happen here under one lock so nothing interleaves.
+ERL_NIF_TERM litert_compiled_model_run_with_metrics(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 3) return enif_make_badarg(env);
+
+    CompiledModelUse res(env, argv[0]);
+    if (!res) return res.error();
+
+    int detail = 0;
+    if (!enif_get_int(env, argv[2], &detail) || detail < 0) {
+        return erlang::nif::error(env, "expecting a detail level of zero or more");
+    }
+
+    if (erlang::nif::fault_injection_enabled()) {
+        erlang::nif::litert_call_counter.fetch_add(1, std::memory_order_relaxed);
+    }
+
+    // The metrics object first: creating it allocates, and an allocation that
+    // throws between starting and stopping collection would leave the backend
+    // collecting for ever.
+    LiteRtMetrics metrics = nullptr;
+    LiteRtStatus st = LiteRtCreateMetrics(&metrics);
+    if (st != kLiteRtStatusOk) return litert_error(env, "create metrics", st);
+
+    st = LiteRtCompiledModelStartMetricsCollection(res->val, detail);
+    if (st != kLiteRtStatusOk) { LiteRtDestroyMetrics(metrics); return litert_error(env, "start metrics", st); }
+
+    ERL_NIF_TERM outputs;
+    ERL_NIF_TERM run_failure = run_locked(env, res.get(), argv[1], &outputs);
+
+    // stop first whatever happened, so a failed inference never leaves the
+    // backend collecting
+    st = LiteRtCompiledModelStopMetricsCollection(res->val, metrics);
+    if (run_failure != 0) { LiteRtDestroyMetrics(metrics); return run_failure; }
+    if (st != kLiteRtStatusOk) { LiteRtDestroyMetrics(metrics); return litert_error(env, "stop metrics", st); }
+
+    ERL_NIF_TERM collected;
+    ERL_NIF_TERM failure = read_metrics(env, metrics, &collected);
+    LiteRtDestroyMetrics(metrics);
+    if (failure != 0) return failure;
+
+    return erlang::nif::ok(env, enif_make_tuple2(env, outputs, collected));
 }
 
 // litert_compiled_model_fully_accelerated(Model) -> {ok, boolean()}
@@ -523,44 +628,20 @@ ERL_NIF_TERM litert_model_signatures(ErlNifEnv *env, int argc, const ERL_NIF_TER
 // its definition that may be null. Neither the plugins here nor Google's own
 // prebuilt fills them in, so this is usually an empty list rather than an
 // error, and saying so beats leaving a caller to wonder.
-ERL_NIF_TERM litert_compiled_model_metrics(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    if (argc != 2) return enif_make_badarg(env);
-
-    CompiledModelUse res(env, argv[0]);
-    if (!res) return res.error();
-
-    int detail = 0;
-    if (!enif_get_int(env, argv[1], &detail) || detail < 0) {
-        return erlang::nif::error(env, "expecting a detail level of zero or more");
-    }
-
-    // The metrics object first: creating it allocates, and an allocation that
-    // throws between starting and stopping collection would leave the backend
-    // collecting for ever.
-    LiteRtMetrics metrics = nullptr;
-    LiteRtStatus st = LiteRtCreateMetrics(&metrics);
-    if (st != kLiteRtStatusOk) return litert_error(env, "create metrics", st);
-
-    // for the suite: an empty metrics list looks the same whether LiteRT was
-    // asked or not, so the asking is counted
-    erlang::nif::litert_call_counter.fetch_add(1, std::memory_order_relaxed);
-
-    st = LiteRtCompiledModelStartMetricsCollection(res->val, detail);
-    if (st != kLiteRtStatusOk) { LiteRtDestroyMetrics(metrics); return litert_error(env, "start metrics", st); }
-
-    st = LiteRtCompiledModelStopMetricsCollection(res->val, metrics);
-    if (st != kLiteRtStatusOk) { LiteRtDestroyMetrics(metrics); return litert_error(env, "stop metrics", st); }
-
+// Reads a stopped metrics object into a list. Returns 0 on success and an error
+// term otherwise, so a caller can destroy the object either way.
+static ERL_NIF_TERM read_metrics(ErlNifEnv *env, LiteRtMetrics metrics, ERL_NIF_TERM *out) {
     int n = 0;
     if (LiteRtGetNumMetrics(metrics, &n) != kLiteRtStatusOk) {
-        LiteRtDestroyMetrics(metrics);
         return erlang::nif::error(env, "metric count");
     }
 
     ERL_NIF_TERM list = enif_make_list(env, 0);
     for (int i = n; i-- > 0; ) {
         LiteRtMetric metric{};
-        if (LiteRtGetMetric(metrics, i, &metric) != kLiteRtStatusOk) continue;
+        LiteRtStatus st = LiteRtGetMetric(metrics, i, &metric);
+        if (st != kLiteRtStatusOk) return litert_error(env, "read metric", st);
+
         ERL_NIF_TERM value;
         switch (metric.value.type) {
             case kLiteRtAnyTypeInt:    value = enif_make_int64(env, metric.value.int_value); break;
@@ -572,8 +653,8 @@ ERL_NIF_TERM litert_compiled_model_metrics(ErlNifEnv *env, int argc, const ERL_N
         list = enif_make_list_cell(env, enif_make_tuple2(env,
             erlang::nif::make_binary(env, metric.name ? metric.name : ""), value), list);
     }
-    LiteRtDestroyMetrics(metrics);
-    return erlang::nif::ok(env, list);
+    *out = list;
+    return 0;
 }
 
 // litert_platform_support() -> map()
