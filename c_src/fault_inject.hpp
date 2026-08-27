@@ -35,6 +35,12 @@ enum FaultPoint {
 
 extern std::atomic<int> armed_fault_point;
 
+// Whether the environment asked for any of this, resolved once. Arming and
+// reading were gated, the points themselves were not, so a point armed before
+// the variable was unset still fired and the counter still moved. Anything that
+// changes behaviour has to ask this, not just the entry points.
+bool fault_injection_enabled();
+
 // Counts how many times a NIF actually reached the LiteRT call it exists to
 // make. Some of those calls answer the same thing whether or not they happened,
 // and a test cannot tell an empty answer from an absent one without this.
@@ -67,6 +73,7 @@ inline int fault_point_from_name(const char * name) {
 // One shot: the point disarms itself as it fires, so a test arms it, makes the
 // one call it wants to fail, and leaves nothing behind for the next case.
 inline void fault_point(FaultPoint point) {
+    if (!fault_injection_enabled()) return;
     if (armed_fault_point.load(std::memory_order_relaxed) != point) return;
     int expected = point;
     if (armed_fault_point.compare_exchange_strong(expected, kFaultNone, std::memory_order_relaxed)) {
@@ -80,6 +87,7 @@ inline void fault_point(FaultPoint point) {
 // fails for a reason that has nothing to do with the code. One shot, and it
 // disarms before sleeping so the second caller is the one that finds it gone.
 inline void fault_point_hold(FaultPoint point, int milliseconds) {
+    if (!fault_injection_enabled()) return;
     if (armed_fault_point.load(std::memory_order_relaxed) != point) return;
     int expected = point;
     if (armed_fault_point.compare_exchange_strong(expected, kFaultNone, std::memory_order_relaxed)) {
