@@ -65,6 +65,12 @@ litert_compiled_model_metrics(_model, _detail_level) ->
 litert_platform_support() ->
     not_loaded(?LINE).
 
+litert_compiled_model_set_controlling_process(_model, _pid) ->
+    not_loaded(?LINE).
+
+litert_compiled_model_get_controlling_process(_model) ->
+    not_loaded(?LINE).
+
 
 error_reporter_default_error_reporter() ->
     not_loaded(?LINE).

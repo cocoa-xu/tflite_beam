@@ -163,6 +163,13 @@ struct NifResLiteRtCompiledModel {
     // the buffers above belong to one signature, so the model remembers which
     LiteRtParamIndex signature;
 
+    // Opt-in ownership, the same shape NifResInterpreter uses. A model nobody
+    // has claimed is open to every process, which is what the direct API wants;
+    // once claimed, only the claimant may run it, which is what makes the
+    // server's promise enforced rather than a convention.
+    std::atomic_bool is_controlled;
+    ErlNifPid controlling_process;
+
     // borrowed from the compiled model, not owned
     LiteRtProfiler profiler;
 

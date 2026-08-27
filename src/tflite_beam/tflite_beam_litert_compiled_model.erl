@@ -28,6 +28,7 @@
     reset_profile/1,
     summarise_profile/1,
     metrics/1, metrics/2,
+    controlling_process/1, controlling_process/2,
     platform_support/0
 ]).
 
@@ -170,6 +171,28 @@ metrics(Model) ->
 -spec metrics(reference(), non_neg_integer()) -> {ok, [{binary(), term()}]} | {error, binary()}.
 metrics(Model, DetailLevel) when is_integer(DetailLevel), DetailLevel >= 0 ->
     tflite_beam_nif:litert_compiled_model_metrics(Model, DetailLevel).
+
+%% @doc
+%% Which process this model belongs to, or `undefined' if nobody has claimed it.
+%%
+%% Answers whoever asks, including a process that has just handed the model
+%% away and wants to know where it went.
+-spec controlling_process(reference()) -> {ok, pid()} | undefined.
+controlling_process(Model) when is_reference(Model) ->
+    tflite_beam_nif:litert_compiled_model_get_controlling_process(Model).
+
+%% @doc
+%% Give the model to `Pid', after which every other process is refused.
+%%
+%% Unclaimed is the default and stays the default: a model nobody has claimed is
+%% usable from wherever its reference reaches, which is what this module is for.
+%% Claiming is how `tflite_beam_litert_compiled_model_server' makes its promise
+%% enforced rather than a convention, and it is available here for anyone
+%% building their own owner. A claim whose process has died is released, so a
+%% model is never stranded.
+-spec controlling_process(reference(), pid()) -> ok | {error, binary()}.
+controlling_process(Model, Pid) when is_reference(Model), is_pid(Pid) ->
+    tflite_beam_nif:litert_compiled_model_set_controlling_process(Model, Pid).
 
 %% @doc Forget the events recorded so far and keep recording.
 -spec reset_profile(reference()) -> ok | {error, binary()}.

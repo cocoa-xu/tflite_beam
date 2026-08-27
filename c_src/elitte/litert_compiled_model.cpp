@@ -539,4 +539,45 @@ ERL_NIF_TERM litert_platform_support(ErlNifEnv *env, int argc, const ERL_NIF_TER
     return map;
 }
 
+// litert_compiled_model_controlling_process(Model, Pid) -> ok | {error, Reason}
+//
+// Binds the model to one process. Deliberately not done by new/6: the direct
+// API is meant to be usable from wherever a caller holds the reference, and it
+// is the server that wants the model to itself.
+ERL_NIF_TERM litert_compiled_model_set_controlling_process(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 2) return enif_make_badarg(env);
+
+    ERL_NIF_TERM error{};
+    auto res = NifResLiteRtCompiledModel::get_resource(env, argv[0], error);
+    if (res == nullptr) return error;
+
+    ErlNifPid pid;
+    if (!enif_get_local_pid(env, argv[1], &pid)) {
+        return erlang::nif::error(env, "expecting a local pid");
+    }
+    if (!enif_is_process_alive(env, &pid)) {
+        return erlang::nif::error(env, "that process is not alive");
+    }
+
+    res->controlling_process = pid;
+    res->is_controlled = true;
+    return erlang::nif::ok(env);
+}
+
+// litert_compiled_model_controlling_process(Model) -> {ok, pid()} | undefined
+//
+// Reads the claim without being subject to it, the same way
+// interpreter_controlling_process does: a process that has just handed a model
+// away still has a reason to ask who has it.
+ERL_NIF_TERM litert_compiled_model_get_controlling_process(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+
+    NifResLiteRtCompiledModel * res = nullptr;
+    if (!enif_get_resource(env, argv[0], NifResLiteRtCompiledModel::type, (void **)&res) || res == nullptr) {
+        return erlang::nif::error(env, "cannot access NifResLiteRtCompiledModel resource");
+    }
+    if (!res->is_controlled) return erlang::nif::atom(env, "undefined");
+    return erlang::nif::ok(env, enif_make_pid(env, &res->controlling_process));
+}
+
 #endif  // TFLITE_BEAM_LITERT_API_ENABLED
