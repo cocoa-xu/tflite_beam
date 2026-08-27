@@ -20,6 +20,7 @@
 
 #include "../nif_utils.hpp"
 #include "../erlang_nif_resource.h"
+#include "../fault_inject.hpp"
 
 #include "litert/c/litert_common.h"
 #include "litert/c/litert_compiled_model.h"
@@ -242,14 +243,25 @@ ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_T
                 : LiteRtGetCompiledModelOutputBufferRequirements(res->val, res->signature, i, &req);
             if (s != kLiteRtStatusOk) return input ? "input requirements" : "output requirements";
 
-            size_t bytes = 0;
-            if (LiteRtGetTensorBufferRequirementsBufferSize(req, &bytes) != kLiteRtStatusOk) {
-                return "buffer size";
+            // The tensor's own type, not a fabricated one. Declaring every buffer
+            // as UInt8 worked only while we allocated the memory ourselves and
+            // the element type decided nothing; a managed buffer sizes itself
+            // from the type, so a float32 tensor declared as UInt8 gets a quarter
+            // of the room it needs. Host memory hides that because LiteRT hands
+            // back the whole backing allocation, and a device buffer does not.
+            LiteRtTensor tensor = nullptr;
+            s = input ? LiteRtGetSignatureInputTensorByIndex(sig, i, &tensor)
+                      : LiteRtGetSignatureOutputTensorByIndex(sig, i, &tensor);
+            if (s != kLiteRtStatusOk) return "signature tensor";
+
+            LiteRtRankedTensorType type;
+            memset(&type, 0, sizeof(type));
+            if (LiteRtGetRankedTensorType(tensor, &type) != kLiteRtStatusOk) {
+                return "ranked tensor type";
             }
 
-            // Ask for the layout rather than inventing one. A buffer declared as
-            // a flat run of bytes compiles and then fails at run time, because
-            // the model expects its own shape and the buffer has to say so too.
+            // Only the layout is replaced: the compiled model knows the shape it
+            // settled on, which a dynamic model's tensor does not carry.
             LiteRtLayout layout;
             memset(&layout, 0, sizeof(layout));
             if (input) {
@@ -260,33 +272,29 @@ ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_T
             } else {
                 layout = out_layouts[i];
             }
-
-            LiteRtRankedTensorType type;
-            memset(&type, 0, sizeof(type));
-            type.element_type = kLiteRtElementTypeUInt8;
             type.layout = layout;
 
-            // LiteRT allocates this, not us. Hand-rolling it meant rounding the
-            // size up to the alignment and hoping, while LiteRT's own allocator
-            // adds XNN_EXTRA_BYTES of guard that XNNPACK kernels are allowed to
-            // touch, and meant owning memory whose ownership on failure is
-            // ambiguous: LiteRtCreateTensorBufferFromHostMemory installs the
-            // deallocator before it validates, so a validation failure frees the
-            // memory and freeing it again here was a double free.
             LiteRtTensorBuffer buf = nullptr;
             s = LiteRtCreateManagedTensorBufferFromRequirements(
                     env_res->val, &type, req, &buf);
             if (s != kLiteRtStatusOk || buf == nullptr) return "tensor buffer";
 
-            // push_back can throw, and a buffer that never reached the vector
-            // would be unreachable by the destructor, so the space is reserved
-            // before any of them exist.
+            // The requirements size is what the hardware allocation needs, which
+            // strides and padding can make larger than the bytes a caller reads
+            // and writes. The packed size is the second, and it is the one this
+            // library's contract is stated in.
+            size_t packed = 0;
+            if (LiteRtGetTensorBufferPackedSize(buf, &packed) != kLiteRtStatusOk) {
+                LiteRtDestroyTensorBuffer(buf);
+                return "packed buffer size";
+            }
+
             if (input) {
                 res->inputs->push_back(buf);
-                res->input_sizes->push_back(bytes);
+                res->input_sizes->push_back(packed);
             } else {
                 res->outputs->push_back(buf);
-                res->output_sizes->push_back(bytes);
+                res->output_sizes->push_back(packed);
             }
         }
         return nullptr;
@@ -355,6 +363,9 @@ ERL_NIF_TERM litert_compiled_model_run(ErlNifEnv *env, int argc, const ERL_NIF_T
         memcpy(addr, bin.data, bin.size);
         LiteRtUnlockTensorBuffer(res->inputs->at(i));
     }
+
+    // for the suite: hold the lock so a second caller reliably meets it
+    erlang::nif::fault_point_hold(erlang::nif::kFaultCompiledModelHoldLock, 400);
 
     LiteRtStatus st = LiteRtRunCompiledModel(res->val, res->signature,
                                              res->inputs->size(), res->inputs->data(),
@@ -530,6 +541,10 @@ ERL_NIF_TERM litert_compiled_model_metrics(ErlNifEnv *env, int argc, const ERL_N
     LiteRtStatus st = LiteRtCreateMetrics(&metrics);
     if (st != kLiteRtStatusOk) return litert_error(env, "create metrics", st);
 
+    // for the suite: an empty metrics list looks the same whether LiteRT was
+    // asked or not, so the asking is counted
+    erlang::nif::litert_call_counter.fetch_add(1, std::memory_order_relaxed);
+
     st = LiteRtCompiledModelStartMetricsCollection(res->val, detail);
     if (st != kLiteRtStatusOk) { LiteRtDestroyMetrics(metrics); return litert_error(env, "start metrics", st); }
 
@@ -622,6 +637,17 @@ ERL_NIF_TERM litert_compiled_model_get_controlling_process(ErlNifEnv *env, int a
     NifResLiteRtCompiledModel * res = nullptr;
     if (!enif_get_resource(env, argv[0], NifResLiteRtCompiledModel::type, (void **)&res) || res == nullptr) {
         return erlang::nif::error(env, "cannot access NifResLiteRtCompiledModel resource");
+    }
+
+    // The lock, because the flag and the pid are plain fields it covers and a
+    // setter may be writing both. Not CompiledModelUse, because that applies the
+    // ownership check and the whole point of this call is that anybody may ask
+    // who owns the model. Trying rather than waiting: the read is two words, but
+    // the wait is not, because the same lock is held for a whole inference on a
+    // dirty scheduler, and this call runs on a normal one.
+    MutexTryLock held(res->lock);
+    if (!held.acquired()) {
+        return erlang::nif::error(env, "compiled model is in use by another caller");
     }
     if (!res->is_controlled) return erlang::nif::atom(env, "undefined");
     return erlang::nif::ok(env, enif_make_pid(env, &res->controlling_process));
