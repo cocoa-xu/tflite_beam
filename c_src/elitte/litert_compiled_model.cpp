@@ -7,6 +7,7 @@
 // LiteRtCompiledModelGetProfiler has no counterpart on an interpreter, and it
 // is the only way to see, operator by operator, where the time went and which
 // operators an accelerator actually claimed.
+#ifdef TFLITE_BEAM_LITERT_API_ENABLED
 #include <erl_nif.h>
 
 #include <cstdio>
@@ -513,3 +514,5 @@ ERL_NIF_TERM litert_platform_support(ErlNifEnv *env, int argc, const ERL_NIF_TER
     put("sync_fence", LiteRtHasSyncFenceSupport());
     return map;
 }
+
+#endif  // TFLITE_BEAM_LITERT_API_ENABLED
