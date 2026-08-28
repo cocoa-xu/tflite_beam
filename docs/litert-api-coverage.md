@@ -49,6 +49,31 @@ as `litert_event.h`: nothing here holds one.
 **`litert_event_type.h`, `litert_op_code.h`** are enumerations used by the
 above.
 
+## Cancellation, and why there is no timeout on a run
+
+`litert_compiled_model.h` offers `LiteRtSetCompiledModelCancellationFunction`,
+and it looks like the answer to an inference that never returns: a NIF cannot be
+interrupted from Erlang, so a run that hangs holds a dirty scheduler, the calling
+process and the model for the life of the VM.
+
+It was built and measured, and it is not the answer. TFLite consults the callback
+once before each node of the execution plan (`tflite/core/subgraph.cc:1761`), and
+an accelerator that takes the whole graph leaves one node. Counted through an
+instrumented callback: `multi_add.bin`, `add.bin` and `conv3d_huge_im2col.bin`
+each consult it exactly **twice per inference**, whatever their size, and
+`conv3d_huge_im2col.bin` runs for 709ms between those two points. A one
+millisecond deadline does not stop it.
+
+So the deadline can only be observed at the very start of a run. Shipping a
+`run/3` whose timeout does not time out would be worse than not shipping one,
+because a caller would rely on it, so there is no timeout on the direct API. The
+server's `run/3` timeout is a `gen_server:call/3` timeout and says so: it ends
+the wait, not the work.
+
+Containing a hung or crashing inference needs the model in a separate OS process
+that can be killed. That is a change to what this library is, not a flag, and it
+would apply to `tflite_beam_interpreter` just as much.
+
 ## The one thing worth rechecking on an upstream bump
 
 `litert_metrics.h` is bound but empty in practice, because filling it is an
