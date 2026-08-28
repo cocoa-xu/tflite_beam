@@ -91,67 +91,82 @@ static ERL_NIF_TERM not_compiled_delegate(ErlNifEnv *env, int argc, const ERL_NI
     return erlang::nif::error(env, "this delegate was not compiled into this build. tflite_beam_delegate:available/0 lists the ones that were.");
 }
 
-static int
-on_load(ErlNifEnv* env, void**, ERL_NIF_TERM) {
+// Opening every resource type this library owns.
+//
+// on_upgrade has to do this too. A new .so starts with its static type pointers
+// null, so an upgrade that only returned success would leave every allocation
+// and lookup dereferencing null while the VM believed the upgrade had worked.
+// TAKEOVER is what adopts the resources the old library created, which is the
+// only way a model that outlives an upgrade stays usable; CREATE alone would
+// leave the old ones orphaned and the library loaded for ever.
+static int open_resource_types(ErlNifEnv* env, ErlNifResourceFlags flags) {
     ErlNifResourceType *rt;
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "BuiltinOpResolver", NifResBuiltinOpResolver::destruct_resource, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "BuiltinOpResolver", NifResBuiltinOpResolver::destruct_resource, flags, NULL);
     if (!rt) return -1;
     NifResBuiltinOpResolver::type = rt;
     
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "FlatBufferModel", NifResFlatBufferModel::destruct_resource, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "FlatBufferModel", NifResFlatBufferModel::destruct_resource, flags, NULL);
     if (!rt) return -1;
     NifResFlatBufferModel::type = rt;    
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "InterpreterBuilder", NifResInterpreterBuilder::destruct_resource, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "InterpreterBuilder", NifResInterpreterBuilder::destruct_resource, flags, NULL);
     if (!rt) return -1;
     NifResInterpreterBuilder::type = rt;
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "Interpreter", NifResInterpreter::destruct_resource, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "Interpreter", NifResInterpreter::destruct_resource, flags, NULL);
     if (!rt) return -1;
     NifResInterpreter::type = rt;
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "SignatureRunner", NifResSignatureRunner::destruct_resource, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "SignatureRunner", NifResSignatureRunner::destruct_resource, flags, NULL);
     if (!rt) return -1;
     NifResSignatureRunner::type = rt;
 
 #ifdef TFLITE_BEAM_LITERT_API_ENABLED
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "LiteRtEnvironment", NifResLiteRtEnvironment::destruct_resource, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "LiteRtEnvironment", NifResLiteRtEnvironment::destruct_resource, flags, NULL);
     if (!rt) return -1;
     NifResLiteRtEnvironment::type = rt;
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "LiteRtCompiledModel", NifResLiteRtCompiledModel::destruct_resource, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "LiteRtCompiledModel", NifResLiteRtCompiledModel::destruct_resource, flags, NULL);
     if (!rt) return -1;
     NifResLiteRtCompiledModel::type = rt;
 #endif
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "TfLiteTensor", NifResTfLiteTensor::destruct_resource, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "TfLiteTensor", NifResTfLiteTensor::destruct_resource, flags, NULL);
     if (!rt) return -1;
     NifResTfLiteTensor::type = rt;
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "ErrorReporter", NifResErrorReporter::destruct_resource, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "ErrorReporter", NifResErrorReporter::destruct_resource, flags, NULL);
     if (!rt) return -1;
     NifResErrorReporter::type = rt;
 
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "Delegate", NifResDelegate::destruct_resource, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "Delegate", NifResDelegate::destruct_resource, flags, NULL);
     if (!rt) return -1;
     NifResDelegate::type = rt;
 
 #ifdef CORAL_SUPPORT_ENABLED
-    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "EdgeTpuContext", NifResEdgeTpuContext::destruct_resource, ERL_NIF_RT_CREATE, NULL);
+    rt = enif_open_resource_type(env, "Elixir.TFLite.Nif", "EdgeTpuContext", NifResEdgeTpuContext::destruct_resource, flags, NULL);
     if (!rt) return -1;
     NifResEdgeTpuContext::type = rt;
 #endif
 
     return 0;
+
+    return 0;
+}
+
+static int
+on_load(ErlNifEnv* env, void**, ERL_NIF_TERM) {
+    return open_resource_types(env, ERL_NIF_RT_CREATE);
 }
 
 static int on_reload(ErlNifEnv*, void**, ERL_NIF_TERM) {
     return 0;
 }
 
-static int on_upgrade(ErlNifEnv*, void**, void**, ERL_NIF_TERM) {
-    return 0;
+static int on_upgrade(ErlNifEnv* env, void**, void**, ERL_NIF_TERM) {
+    return open_resource_types(
+        env, (ErlNifResourceFlags)(ERL_NIF_RT_CREATE | ERL_NIF_RT_TAKEOVER));
 }
 
 // Every entry goes through the exception guard; see nif_guard.hpp. The two
@@ -193,10 +208,10 @@ static ErlNifFunc nif_functions[] = {
     F(interpreter_builder_state, 1),
 
 #ifdef TFLITE_BEAM_LITERT_API_ENABLED
-    F_IO(litert_environment_new, 1),
+    F_CPU(litert_environment_new, 1),
     F_CPU(litert_compiled_model_new, 6),
     F_CPU(litert_compiled_model_run, 2),
-    F(litert_compiled_model_fully_accelerated, 1),
+    F_CPU(litert_compiled_model_fully_accelerated, 1),
     F_CPU(litert_compiled_model_profile, 2),
     F(litert_compiled_model_reset_profile, 1),
     F(litert_compiled_model_io_sizes, 1),
