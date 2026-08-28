@@ -105,9 +105,10 @@ run(Server, Inputs, Timeout) when is_list(Inputs) ->
 %% running a measured batch as one uninterrupted step.
 %%
 %% What this guarantees is narrow and worth stating exactly: the function runs
-%% in this process, so the server handles no other message while it does. It
-%% does not sandbox the function. A callback that raises takes the server, and
-%% the model, down with it. A callback that keeps the reference and hands the
+%% in this process, so the server handles no other message while it does. A
+%% callback that raises is caught and returned as an error, because losing a
+%% compiled model to somebody else's mistake is not a reasonable price. It is
+%% not a sandbox beyond that. A callback that keeps the reference and hands the
 %% model to another process with
 %% `tflite_beam_litert_compiled_model:controlling_process/2' leaves this server
 %% alive and unable to use its own model. And a timeout on `with/3' ends the
@@ -167,8 +168,11 @@ profile(Server) ->
 %%
 %% A server that runs for a long time is exactly the case where the bound is
 %% worth using: nothing trims the profile except `reset_profile/1'.
+%% The guard is here as well as in the direct module for the same reason it is
+%% on `run_with_metrics/4': an argument the direct module refuses with
+%% `function_clause' would raise inside this server and take the model with it.
 -spec profile(pid(), non_neg_integer()) -> {ok, [map()]} | {error, binary()}.
-profile(Server, Limit) ->
+profile(Server, Limit) when is_integer(Limit), Limit >= 0, Limit =< 2147483647 ->
     with(Server, fun(M) -> ?M:profile(M, Limit) end).
 
 %% @doc Per-operator totals over every run since the last reset, slowest first.
@@ -207,7 +211,19 @@ handle_call({run, Inputs}, _From, State = #{model := Model}) ->
 handle_call({run_with_metrics, Inputs, DetailLevel}, _From, State = #{model := Model}) ->
     {reply, ?M:run_with_metrics(Model, Inputs, DetailLevel), State};
 handle_call({with, Fun}, _From, State = #{model := Model}) ->
-    {reply, Fun(Model), State};
+    %% A callback belongs to whoever wrote it and may do anything, including
+    %% raise. Letting that terminate this process would destroy a compiled model
+    %% that has nothing to do with the mistake, and every caller queued behind
+    %% it, so the failure is returned to the caller that caused it instead.
+    Reply =
+        try Fun(Model)
+        catch
+            Class:Reason:Stack ->
+                {error, iolist_to_binary(
+                    io_lib:format("the callback ~p ~p at ~p",
+                                  [Class, Reason, hd(Stack)]))}
+        end,
+    {reply, Reply, State};
 handle_call(_Request, _From, State) ->
     {reply, {error, <<"unknown request">>}, State}.
 

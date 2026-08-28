@@ -27,7 +27,8 @@
     a_claimed_model_refuses_other_processes/1,
     a_claim_dies_with_its_process/1,
     the_server_claims_what_with_hands_out/1,
-    a_bad_detail_level_does_not_take_the_server_down/1
+    a_bad_detail_level_does_not_take_the_server_down/1,
+    a_raising_callback_costs_the_call_not_the_model/1
 ]).
 
 -define(A, tflite_beam_litert_compiled_model).
@@ -55,7 +56,8 @@ all() ->
         a_claimed_model_refuses_other_processes,
         a_claim_dies_with_its_process,
         the_server_claims_what_with_hands_out,
-        a_bad_detail_level_does_not_take_the_server_down
+        a_bad_detail_level_does_not_take_the_server_down,
+        a_raising_callback_costs_the_call_not_the_model
     ].
 
 %% The Erlang stubs exist whatever the library was built with; what is missing
@@ -559,6 +561,35 @@ a_bad_detail_level_does_not_take_the_server_down(Config) ->
         %% the server survived every one of them and still works
         ?assert(is_process_alive(Server)),
         ?assertMatch({ok, _}, ?B:run(Server, Inputs))
+    after
+        case is_process_alive(Server) of
+            true -> ?B:stop(Server);
+            false -> ok
+        end
+    end.
+
+
+%% A callback belongs to whoever wrote it and may raise. Losing a compiled model,
+%% and every caller queued behind it, to somebody else's mistake is not a
+%% reasonable price, so the failure comes back to the caller that caused it.
+%% The same goes for an out of range limit reaching the server through profile/2.
+a_raising_callback_costs_the_call_not_the_model(Config) ->
+    Env = proplists:get_value(env, Config),
+    {ok, Server} = ?B:start(Env, tflite_beam_test_models:path(?MODEL),
+                            #{accelerators => [cpu]}),
+    try
+        ?assertMatch({error, _}, ?B:with(Server, fun(_) -> error(boom) end)),
+        ?assertMatch({error, _}, ?B:with(Server, fun(_) -> throw(nope) end)),
+        ?assertMatch({error, _}, ?B:with(Server, fun(_) -> exit(gone) end)),
+        ?assert(is_process_alive(Server)),
+
+        [?assertError(function_clause, ?B:profile(Server, Bad))
+         || Bad <- [-1, 4294967296, not_a_number]],
+        ?assert(is_process_alive(Server)),
+
+        %% and the model is still there and still works
+        {ok, {Ins, _}} = ?B:io_sizes(Server),
+        ?assertMatch({ok, _}, ?B:run(Server, [filled(1.0, N) || N <- Ins]))
     after
         case is_process_alive(Server) of
             true -> ?B:stop(Server);
