@@ -4,6 +4,7 @@
 #pragma once
 
 #include <atomic>
+#include <new>
 #include <memory>
 #include <string>
 #include <vector>
@@ -29,6 +30,19 @@
 #include "litert/c/litert_profiler.h"
 #include "litert/c/litert_tensor_buffer.h"
 #endif
+// enif_alloc_resource returns raw storage and runs no constructor, so a
+// std::atomic in a resource is an object that never began: assigning to it is
+// undefined behaviour rather than a store. These two put it in place and take it
+// out again, and every resource holding one has to call both.
+template <typename T>
+inline void construct_atomic(std::atomic<T> * where, T value) {
+    new (static_cast<void *>(where)) std::atomic<T>(value);
+}
+
+template <typename T>
+inline void destroy_atomic(std::atomic<T> * what) {
+    what->~atomic();
+}
 
 // enif_alloc_resource hands back a resource carrying one reference, and that
 // reference belongs to nobody until enif_make_resource passes it to a term.
@@ -320,11 +334,20 @@ bool caller_may_use(ErlNifEnv * env, NifResInterpreter * res);
         return erlang::nif::error(env, "interpreter is being rebuilt");               \
     }
 
+// The ownership check happens here rather than only in get_resource, and it
+// happens under this guard. Checking before taking the guard leaves a window: a
+// caller can pass the check on an unclaimed interpreter, be descheduled, watch
+// somebody else claim it, and then acquire the guard and use an interpreter it
+// no longer has any authority over. Checking again inside closes that, and the
+// guard is also what makes the plain pid safe to read at all.
 #define TFLITE_BEAM_INTERPRETER_IN_USE(RES)                                          \
     MutexTryLock in_use((RES)->in_use);                                              \
     if (!in_use.acquired()) {                                                        \
         return erlang::nif::error(env,                                               \
             "interpreter is already in use by another process");                     \
+    }                                                                                \
+    if (!caller_may_use(env, (RES))) {                                               \
+        return erlang::nif::error(env, "interpreter belongs to another process");    \
     }                                                                                \
     if ((RES)->val == nullptr) {                                                     \
         return erlang::nif::error(env, "cannot access NifResInterpreter resource");  \
@@ -341,6 +364,9 @@ bool caller_may_use(ErlNifEnv * env, NifResInterpreter * res);
     if ((RES)->interpreter != nullptr && !in_use.acquired()) {                       \
         return erlang::nif::error(env,                                               \
             "interpreter is already in use by another process");                     \
+    }                                                                                \
+    if ((RES)->interpreter != nullptr && !caller_may_use(env, (RES)->interpreter)) { \
+        return erlang::nif::error(env, "interpreter belongs to another process");    \
     }                                                                                \
     if ((RES)->interpreter_has_gone || (RES)->val == nullptr ||                      \
         ((RES)->interpreter != nullptr && (RES)->interpreter->val == nullptr)) {     \

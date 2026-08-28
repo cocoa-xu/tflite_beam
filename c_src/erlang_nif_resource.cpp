@@ -239,7 +239,7 @@ NifResInterpreter * NifResInterpreter::allocate_resource(ErlNifEnv * env, ERL_NI
     res->delegates = nullptr;
     res->in_use = nullptr;
     res->being_replaced = nullptr;
-    res->is_controlled = false;
+    construct_atomic(&res->is_controlled, false);
 
     // All or nothing, for the same reason as the builder above and one more: an
     // interpreter missing its in_use mutex would answer every guarded call with
@@ -295,13 +295,11 @@ NifResInterpreter * NifResInterpreter::get_resource(ErlNifEnv * env, ERL_NIF_TER
         return nullptr;
     }
 
-    // one check for all thirty-three call sites, rather than thirty-three
-    // chances to forget one
-    if (!caller_may_use(env, self_res)) {
-        error = erlang::nif::error(env, "interpreter belongs to another process");
-        return nullptr;
-    }
-
+    // The ownership check is not here. It reads a pid that the setter writes,
+    // so it has to happen under the guard that serialises the two, and this runs
+    // before any guard is taken: TFLITE_BEAM_INTERPRETER_IN_USE and
+    // TFLITE_BEAM_BORROWED_IN_USE do it. Checking here as well was not a second
+    // line of defence, it was the data race.
     return self_res;
 }
 
@@ -415,6 +413,7 @@ void NifResInterpreter::destruct_resource(ErlNifEnv *env, void *args) {
             delete res->delegates;
             res->delegates = nullptr;
         }
+    destroy_atomic(&res->is_controlled);
     }
 }
 
@@ -427,7 +426,7 @@ NifResSignatureRunner * NifResSignatureRunner::allocate_resource(ErlNifEnv * env
 
     res->val = nullptr;
     res->interpreter = nullptr;
-    res->interpreter_has_gone = false;
+    construct_atomic(&res->interpreter_has_gone, false);
 
     return res;
 }
@@ -479,6 +478,7 @@ void NifResSignatureRunner::destruct_resource(ErlNifEnv *env, void *args) {
             enif_release_resource(res->interpreter);
             res->interpreter = nullptr;
         }
+    destroy_atomic(&res->interpreter_has_gone);
     }
 }
 
@@ -492,7 +492,7 @@ NifResTfLiteTensor * NifResTfLiteTensor::allocate_resource(ErlNifEnv * env, ERL_
     res->val = nullptr;
     res->interpreter = nullptr;
     res->index = -1;
-    res->interpreter_has_gone = false;
+    construct_atomic(&res->interpreter_has_gone, false);
 
     return res;
 }
@@ -551,6 +551,7 @@ void NifResTfLiteTensor::destruct_resource(ErlNifEnv *env, void *args) {
             enif_release_resource(res->interpreter);
             res->interpreter = nullptr;
         }
+    destroy_atomic(&res->interpreter_has_gone);
     }
 }
 
