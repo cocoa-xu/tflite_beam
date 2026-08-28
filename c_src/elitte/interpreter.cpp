@@ -43,6 +43,16 @@ ERL_NIF_TERM interpreter_controlling_process(ErlNifEnv *env, int argc, const ERL
         return erlang::nif::error(env, "cannot access NifResInterpreter resource");
     }
 
+    // The guard, because the flag and the pid are read together and the setter
+    // writes both. Trying rather than waiting: this is two words, but the wait
+    // is a whole inference, and this runs on a normal scheduler. Not
+    // get_resource, because the point of this call is that anybody may ask who
+    // owns the interpreter.
+    MutexTryLock in_use(self_res->in_use);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
+    }
+
     if (!self_res->is_controlled) {
         return erlang::nif::atom(env, "undefined");
     }
@@ -58,6 +68,15 @@ ERL_NIF_TERM interpreter_set_controlling_process(ErlNifEnv *env, int argc, const
     NifResInterpreter * self_res;
     if (!enif_get_resource(env, argv[0], NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
         return erlang::nif::error(env, "cannot access NifResInterpreter resource");
+    }
+
+    // The same guard every reader of the ownership state takes. Without it the
+    // plain pid is written here while another thread reads it in caller_may_use,
+    // and two processes claiming an unclaimed interpreter at the same moment can
+    // both succeed with only the later write surviving.
+    MutexTryLock in_use(self_res->in_use);
+    if (!in_use.acquired()) {
+        return erlang::nif::error(env, "interpreter is already in use by another process");
     }
 
     ErlNifPid caller;
