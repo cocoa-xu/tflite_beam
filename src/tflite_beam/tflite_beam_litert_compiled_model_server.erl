@@ -248,7 +248,7 @@ guarded(State = #{model := Model, max_queue := MaxQueue}, {Caller, _}, Fun) ->
                 io_lib:format("~p calls are already waiting on this model", [Waiting]))},
              State};
         _ ->
-            case is_process_alive(Caller) of
+            case caller_alive(Caller) of
                 false ->
                     %% nobody is waiting for this answer any more, and running it
                     %% would only delay the calls that still are
@@ -257,6 +257,14 @@ guarded(State = #{model := Model, max_queue := MaxQueue}, {Caller, _}, Fun) ->
                     {reply, Fun(Model), State}
             end
     end.
+
+%% is_process_alive/1 answers only for a local pid and raises for anything else,
+%% and a caller on another node is exactly what this server sees when it is the
+%% far half of tflite_beam_litert_compiled_model_isolated. A remote caller is
+%% taken to be alive: its node going down is the isolating process's business,
+%% not this one's.
+caller_alive(Pid) when node(Pid) =:= node() -> is_process_alive(Pid);
+caller_alive(_Pid) -> true.
 
 queue_length() ->
     {message_queue_len, Length} = process_info(self(), message_queue_len),
