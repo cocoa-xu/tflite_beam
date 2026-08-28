@@ -50,7 +50,7 @@ litert_compiled_model_run(_model, _inputs) ->
 litert_compiled_model_fully_accelerated(_model) ->
     not_loaded(?LINE).
 
-litert_compiled_model_profile(_model) ->
+litert_compiled_model_profile(_model, _limit) ->
     not_loaded(?LINE).
 
 litert_compiled_model_reset_profile(_model) ->

@@ -645,12 +645,20 @@ ERL_NIF_TERM litert_compiled_model_fully_accelerated(ErlNifEnv *env, int argc, c
 // a sentinel rather than a duration and are left in: deciding what is noise is
 // the caller's, not this layer's.
 ERL_NIF_TERM litert_compiled_model_profile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    if (argc != 1) return enif_make_badarg(env);
+    if (argc != 2) return enif_make_badarg(env);
     CompiledModelUse res(env, argv[0]);
     if (!res) return res.error();
 
     ERL_NIF_TERM events = enif_make_list(env, 0);
     if (res->profiler == nullptr) return erlang::nif::ok(env, events);
+
+    // A profile nobody reads keeps growing to the buffer's half a million
+    // entries, and building a map for each of those in one call allocates far
+    // more than a caller who only wanted a look is asking for.
+    int limit = 0;
+    if (!enif_get_int(env, argv[1], &limit) || limit < 0) {
+        return erlang::nif::error(env, "expecting a limit of zero or more");
+    }
 
     int n = 0;
     LiteRtStatus st = LiteRtGetNumProfilerEvents(res->profiler, &n);
@@ -661,7 +669,9 @@ ERL_NIF_TERM litert_compiled_model_profile(ErlNifEnv *env, int argc, const ERL_N
     st = LiteRtGetProfilerEvents(res->profiler, n, buf.data());
     if (st != kLiteRtStatusOk) return litert_error(env, "profiler events", st);
 
-    for (int i = n - 1; i >= 0; i--) {
+    // the newest are the ones a caller asking for a few wants
+    int first = (limit > 0 && limit < n) ? n - limit : 0;
+    for (int i = n - 1; i >= first; i--) {
         ERL_NIF_TERM ev = enif_make_new_map(env);
         enif_make_map_put(env, ev, erlang::nif::atom(env, "tag"),
             erlang::nif::make_binary(env, buf[i].tag ? buf[i].tag : ""), &ev);

@@ -25,7 +25,7 @@
     run/2,
     fully_accelerated/1,
     io_sizes/1,
-    profile/1,
+    profile/1, profile/2,
     reset_profile/1,
     summarise_profile/1,
     run_with_metrics/2, run_with_metrics/3,
@@ -246,7 +246,18 @@ io_sizes(Model) ->
 %% it in check.
 -spec profile(reference()) -> {ok, [map()]} | {error, binary()}.
 profile(Model) ->
-    tflite_beam_nif:litert_compiled_model_profile(Model).
+    profile(Model, 0).
+
+%% @doc
+%% The most recent `Limit' profiling events, oldest first, or all of them when
+%% `Limit' is zero.
+%%
+%% Worth using on a long-lived model. Events accumulate until the buffer's
+%% 512 * 1024 entries are full, and asking for all of them then builds half a
+%% million maps in one call.
+-spec profile(reference(), non_neg_integer()) -> {ok, [map()]} | {error, binary()}.
+profile(Model, Limit) when is_integer(Limit), Limit >= 0, Limit =< 2147483647 ->
+    tflite_beam_nif:litert_compiled_model_profile(Model, Limit).
 
 %% @doc Run the model and collect whatever counters the accelerator reports.
 -spec run_with_metrics(reference(), [binary()]) ->
@@ -325,7 +336,7 @@ reset_profile(Model) ->
 -spec summarise_profile(reference()) ->
     {ok, [{binary(), operator_kind(), pos_integer(), non_neg_integer()}]} | {error, binary()}.
 summarise_profile(Model) ->
-    case profile(Model) of
+    case profile(Model, 0) of
         {ok, Events} ->
             Totals = lists:foldl(
                 fun(E, Acc) ->

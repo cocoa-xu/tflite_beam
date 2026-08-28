@@ -41,7 +41,7 @@
     fully_accelerated/1,
     io_sizes/1,
     run_with_metrics/2, run_with_metrics/3, run_with_metrics/4,
-    profile/1,
+    profile/1, profile/2,
     summarise_profile/1,
     reset_profile/1,
     stop/1
@@ -160,7 +160,16 @@ run_with_metrics(Server, Inputs, DetailLevel, Timeout)
 %% @doc Every profiling event recorded since the last reset.
 -spec profile(pid()) -> {ok, [map()]} | {error, binary()}.
 profile(Server) ->
-    with(Server, fun(M) -> ?M:profile(M) end).
+    profile(Server, 0).
+
+%% @doc
+%% The most recent `Limit' profiling events, or all of them when `Limit' is zero.
+%%
+%% A server that runs for a long time is exactly the case where the bound is
+%% worth using: nothing trims the profile except `reset_profile/1'.
+-spec profile(pid(), non_neg_integer()) -> {ok, [map()]} | {error, binary()}.
+profile(Server, Limit) ->
+    with(Server, fun(M) -> ?M:profile(M, Limit) end).
 
 %% @doc Per-operator totals over every run since the last reset, slowest first.
 -spec summarise_profile(pid()) ->
