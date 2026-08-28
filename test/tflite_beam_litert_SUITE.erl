@@ -284,6 +284,12 @@ profile_names_the_operators(Config) ->
     {ok, _} = ?A:run(Model, [filled(1.0, N) || N <- Ins]),
     {ok, Events} = ?A:profile(Model),
     ?assertNotEqual([], Events),
+    %% the bound really bounds, and zero means all of them
+    {ok, Few} = ?A:profile(Model, 3),
+    ?assertEqual(3, length(Few)),
+    ?assertEqual(lists:sublist(Events, length(Events) - 2, 3), Few),
+    ?assertEqual({ok, Events}, ?A:profile(Model, 0)),
+    ?assertEqual({ok, Events}, ?A:profile(Model, length(Events) + 100)),
     {ok, Summary} = ?A:summarise_profile(Model),
     ?assertNotEqual([], Summary),
     %% every entry is a tag, an operator kind, a count and a total, the totals
