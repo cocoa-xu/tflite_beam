@@ -18,6 +18,8 @@
 %% turn want `tflite_beam_litert_compiled_model_server'.
 -module(tflite_beam_litert_compiled_model).
 
+-include_lib("kernel/include/file.hrl").
+
 -export([
     environment/0, environment/1,
     signatures/2,
@@ -45,7 +47,8 @@
     accelerators => [accelerator()],
     precision => precision(),
     profile => boolean(),
-    signature => signature_index() | binary() | string()
+    signature => signature_index() | binary() | string(),
+    max_model_bytes => non_neg_integer()
 }.
 -export_type([accelerator/0, precision/0, opts/0, signature_index/0,
               detail_level/0, operator_kind/0]).
@@ -142,6 +145,10 @@ new(Env, Path) ->
 %% buffers are allocated for that one signature and `run/2' runs it, so a model
 %% with several signatures needs one of these per signature rather than one that
 %% switches. Defaults to the first.
+%% @param max_model_bytes Refuse a model file larger than this, before LiteRT
+%% reads and parses it. Zero, the default, means no ceiling. Worth setting when
+%% the path comes from somewhere you do not control, because what LiteRT
+%% allocates for a model is invisible to the emulator's memory accounting.
 %% @param profile Whether to record per-operator timings, readable with
 %% `profile/1'. Measured on `mobilenet_v2_1.0_224', 50 runs, three times each:
 %% at most 1.05x on the CPU and nothing measurable on the GPU, where the whole
@@ -167,6 +174,33 @@ new(Env, Path, Opts) when is_binary(Path), is_map(Opts) ->
 %% function whose siblings all answer {error, Binary} should not have to catch
 %% one of them instead.
 new_checked(Env, Path, Opts) ->
+    case check_model_size(Path, maps:get(max_model_bytes, Opts, 0)) of
+        ok -> new_validated(Env, Path, Opts);
+        Error -> Error
+    end.
+
+%% A model file is read and parsed by LiteRT before anything here can object, and
+%% the memory that takes is invisible to the emulator's accounting. A caller that
+%% takes model paths from somewhere it does not control wants a ceiling; one that
+%% ships its own models does not, so the default is none.
+check_model_size(_Path, 0) ->
+    ok;
+check_model_size(Path, Max) when is_integer(Max), Max > 0 ->
+    case file:read_file_info(Path) of
+        {ok, #file_info{size = Size}} when Size > Max ->
+            {error, iolist_to_binary(
+                io_lib:format("the model is ~p bytes and the limit is ~p", [Size, Max]))};
+        {ok, _} ->
+            ok;
+        {error, Reason} ->
+            {error, iolist_to_binary(
+                io_lib:format("cannot read ~ts: ~p", [Path, Reason]))}
+    end;
+check_model_size(_Path, Other) ->
+    {error, iolist_to_binary(
+        io_lib:format("max_model_bytes must be a non-negative integer, got ~p", [Other]))}.
+
+new_validated(Env, Path, Opts) ->
     with_result([
         fun() -> accelerator_set(maps:get(accelerators, Opts, [cpu])) end,
         fun() -> precision_value(maps:get(precision, Opts, default)) end,

@@ -50,6 +50,14 @@
 -export([init/1, handle_call/3, handle_cast/2]).
 
 -define(DEFAULT_TIMEOUT, 30000).
+%% How many calls may be waiting before the next one is turned away. An
+%% inference runs inside handle_call, so while one runs the rest queue, and a
+%% caller whose gen_server:call timed out has stopped waiting but its request
+%% has not stopped existing: it still holds its input binaries and will still
+%% run when its turn comes. Under sustained overload that is a spiral, and the
+%% end of it is the VM running out of memory. Refusing early is the cheaper
+%% failure, and 64 is a queue deep enough that a burst rides through it.
+-define(DEFAULT_MAX_QUEUE, 64).
 -define(M, tflite_beam_litert_compiled_model).
 
 %% @doc Start a compiled model process, on the CPU with no profiling.
@@ -195,37 +203,61 @@ stop(Server) ->
 %% gen_server
 
 init({Env, ModelPath, Opts}) ->
-    case ?M:new(Env, ModelPath, Opts) of
+    MaxQueue = maps:get(max_queue, Opts, ?DEFAULT_MAX_QUEUE),
+    case ?M:new(Env, ModelPath, maps:remove(max_queue, Opts)) of
         {ok, Model} ->
             %% belt as well as braces: `with/2' runs its function here rather
             %% than handing the model out, but a function that captures the
             %% reference and uses it later from somewhere else is refused too
             ok = ?M:controlling_process(Model, self()),
-            {ok, #{model => Model}};
+            {ok, #{model => Model, max_queue => MaxQueue}};
         {error, Reason} ->
             {stop, Reason}
     end.
 
-handle_call({run, Inputs}, _From, State = #{model := Model}) ->
-    {reply, ?M:run(Model, Inputs), State};
-handle_call({run_with_metrics, Inputs, DetailLevel}, _From, State = #{model := Model}) ->
-    {reply, ?M:run_with_metrics(Model, Inputs, DetailLevel), State};
-handle_call({with, Fun}, _From, State = #{model := Model}) ->
+handle_call({run, Inputs}, From, State) ->
+    guarded(State, From, fun(Model) -> ?M:run(Model, Inputs) end);
+handle_call({run_with_metrics, Inputs, DetailLevel}, From, State) ->
+    guarded(State, From, fun(Model) -> ?M:run_with_metrics(Model, Inputs, DetailLevel) end);
+handle_call({with, Fun}, From, State) ->
+    guarded(State, From, fun(Model) ->
     %% A callback belongs to whoever wrote it and may do anything, including
     %% raise. Letting that terminate this process would destroy a compiled model
     %% that has nothing to do with the mistake, and every caller queued behind
     %% it, so the failure is returned to the caller that caused it instead.
-    Reply =
         try Fun(Model)
         catch
             Class:Reason:Stack ->
                 {error, iolist_to_binary(
                     io_lib:format("the callback ~p ~p at ~p",
                                   [Class, Reason, hd(Stack)]))}
-        end,
-    {reply, Reply, State};
+        end
+    end);
 handle_call(_Request, _From, State) ->
     {reply, {error, <<"unknown request">>}, State}.
 
 handle_cast(_Request, State) ->
     {noreply, State}.
+
+%% Everything that touches the model comes through here, so the queue check and
+%% the caller-still-there check happen once rather than at four call sites.
+guarded(State = #{model := Model, max_queue := MaxQueue}, {Caller, _}, Fun) ->
+    case queue_length() of
+        Waiting when Waiting > MaxQueue ->
+            {reply, {error, iolist_to_binary(
+                io_lib:format("~p calls are already waiting on this model", [Waiting]))},
+             State};
+        _ ->
+            case is_process_alive(Caller) of
+                false ->
+                    %% nobody is waiting for this answer any more, and running it
+                    %% would only delay the calls that still are
+                    {reply, {error, <<"the caller is gone">>}, State};
+                true ->
+                    {reply, Fun(Model), State}
+            end
+    end.
+
+queue_length() ->
+    {message_queue_len, Length} = process_info(self(), message_queue_len),
+    Length.

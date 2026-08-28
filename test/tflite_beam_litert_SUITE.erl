@@ -28,7 +28,9 @@
     a_claim_dies_with_its_process/1,
     the_server_claims_what_with_hands_out/1,
     a_bad_detail_level_does_not_take_the_server_down/1,
-    a_raising_callback_costs_the_call_not_the_model/1
+    a_raising_callback_costs_the_call_not_the_model/1,
+    a_model_larger_than_its_limit_is_refused/1,
+    a_full_queue_is_refused_rather_than_grown/1
 ]).
 
 -define(A, tflite_beam_litert_compiled_model).
@@ -57,7 +59,9 @@ all() ->
         a_claim_dies_with_its_process,
         the_server_claims_what_with_hands_out,
         a_bad_detail_level_does_not_take_the_server_down,
-        a_raising_callback_costs_the_call_not_the_model
+        a_raising_callback_costs_the_call_not_the_model,
+        a_model_larger_than_its_limit_is_refused,
+        a_full_queue_is_refused_rather_than_grown
     ].
 
 %% The Erlang stubs exist whatever the library was built with; what is missing
@@ -595,4 +599,49 @@ a_raising_callback_costs_the_call_not_the_model(Config) ->
             true -> ?B:stop(Server);
             false -> ok
         end
+    end.
+
+
+%% What LiteRT allocates for a model is invisible to the emulator, so a caller
+%% whose model paths come from elsewhere wants to say no before the read.
+a_model_larger_than_its_limit_is_refused(Config) ->
+    Env = proplists:get_value(env, Config),
+    Path = tflite_beam_test_models:path(?MODEL),
+    ?assertMatch({ok, _}, ?A:new(Env, Path, #{})),
+    ?assertMatch({ok, _}, ?A:new(Env, Path, #{max_model_bytes => 0})),
+    ?assertMatch({ok, _}, ?A:new(Env, Path, #{max_model_bytes => 10000000})),
+    ?assertMatch({error, _}, ?A:new(Env, Path, #{max_model_bytes => 10})),
+    ?assertMatch({error, _}, ?A:new(Env, Path, #{max_model_bytes => big})).
+
+%% An inference runs inside handle_call, so callers queue behind it, and one
+%% whose call timed out has stopped waiting without its request stopping. Under
+%% overload that queue is where the memory goes, so past a bound the server says
+%% no instead of growing.
+a_full_queue_is_refused_rather_than_grown(Config) ->
+    Env = proplists:get_value(env, Config),
+    {ok, Server} = ?B:start(Env, tflite_beam_test_models:path(?MODEL),
+                            #{accelerators => [cpu], max_queue => 4}),
+    try
+        {ok, {Ins, _}} = ?B:io_sizes(Server),
+        Inputs = [filled(1.0, N) || N <- Ins],
+        Self = self(),
+        [spawn(fun() -> Self ! {done, catch ?B:run(Server, Inputs, 30000)} end)
+         || _ <- lists:seq(1, 40)],
+        {Ok, Refused} = lists:foldl(
+            fun(_, {O, R}) ->
+                receive
+                    {done, {ok, _}} -> {O + 1, R};
+                    {done, {error, _}} -> {O, R + 1};
+                    {done, _} -> {O, R}
+                after 30000 -> {O, R}
+                end
+            end, {0, 0}, lists:seq(1, 40)),
+        ?assert(Refused > 0),
+        ?assert(Ok > 0),
+        ?assertEqual(40, Ok + Refused),
+        %% and the server is still there to serve the next caller
+        ?assert(is_process_alive(Server)),
+        ?assertMatch({ok, _}, ?B:run(Server, Inputs))
+    after
+        ?B:stop(Server)
     end.
