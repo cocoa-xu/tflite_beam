@@ -166,6 +166,30 @@ Same split as `tflite_beam_interpreter` and `tflite_beam_interpreter_server`:
 the direct module stays exactly as it is for callers who would rather serialise
 access themselves.
 
+### Or on a node of its own
+
+Both of those run LiteRT inside the emulator, which is fast and is the right
+default. It is also unconditional: a NIF cannot be interrupted, so a
+segmentation fault in an accelerator plugin, a delegate that aborts, or an
+inference that never returns takes the whole virtual machine with it, along with
+every other model and every process that had nothing to do with it.
+
+Whether that is acceptable depends on where the model came from, so it is a
+choice rather than a decision made here.
+`tflite_beam_litert_compiled_model_isolated` starts a second Erlang node, builds
+the model there and forwards calls to it:
+
+```erlang
+{ok, Server} = tflite_beam_litert_compiled_model_isolated:start_link(
+                   #{model_path => "model.tflite", accelerators => [cpu]}),
+{ok, Outputs} = tflite_beam_litert_compiled_model_isolated:run(Server, [Input]).
+```
+
+Kill that node and the call returns `{error, Binary}`, this VM carries on, and a
+supervisor starts another. What it costs: inputs and outputs are copied between
+nodes twice per call, starting a node took about 200ms here, and the emulator
+has to be distributed, which `start_link/1` arranges if nothing else has.
+
 The server claims the model with
 `tflite_beam_litert_compiled_model:controlling_process/2`, so the promise is
 enforced rather than conventional: a `with/2` callback that keeps the reference

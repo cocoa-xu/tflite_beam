@@ -30,11 +30,13 @@
     a_bad_detail_level_does_not_take_the_server_down/1,
     a_raising_callback_costs_the_call_not_the_model/1,
     a_model_larger_than_its_limit_is_refused/1,
-    a_full_queue_is_refused_rather_than_grown/1
+    a_full_queue_is_refused_rather_than_grown/1,
+    an_isolated_model_runs_and_its_death_is_survivable/1
 ]).
 
 -define(A, tflite_beam_litert_compiled_model).
 -define(B, tflite_beam_litert_compiled_model_server).
+-define(I, tflite_beam_litert_compiled_model_isolated).
 -define(MODEL, "multi_add.bin").
 
 all() ->
@@ -61,7 +63,8 @@ all() ->
         a_bad_detail_level_does_not_take_the_server_down,
         a_raising_callback_costs_the_call_not_the_model,
         a_model_larger_than_its_limit_is_refused,
-        a_full_queue_is_refused_rather_than_grown
+        a_full_queue_is_refused_rather_than_grown,
+        an_isolated_model_runs_and_its_death_is_survivable
     ].
 
 %% The Erlang stubs exist whatever the library was built with; what is missing
@@ -644,4 +647,41 @@ a_full_queue_is_refused_rather_than_grown(Config) ->
         ?assertMatch({ok, _}, ?B:run(Server, Inputs))
     after
         ?B:stop(Server)
+    end.
+
+
+%% The whole point of the isolated variant: a model that dies takes its node and
+%% nothing else. Killing the node stands in for the segmentation fault this
+%% exists to survive, because a real one cannot be arranged from Erlang.
+an_isolated_model_runs_and_its_death_is_survivable(Config) ->
+    Path = tflite_beam_test_models:path(?MODEL),
+    case tflite_beam_litert_compiled_model_isolated:start(
+             #{model_path => Path, accelerators => [cpu]}) of
+        {error, Reason} ->
+            {skip, {cannot_start_an_isolated_node, Reason}};
+        {ok, Server} ->
+            ?I = tflite_beam_litert_compiled_model_isolated,
+            {ok, Node} = ?I:node_of(Server),
+            ?assertNotEqual(node(), Node),
+
+            {ok, {Ins, _}} = ?I:io_sizes(Server),
+            Inputs = [filled(1.0, N) || N <- Ins],
+            {ok, Outputs} = ?I:run(Server, Inputs),
+            %% and it computes what the in-process one does
+            ?assertEqual({ok, Outputs},
+                         ?A:run(model(Config, #{accelerators => [cpu]}), Inputs)),
+
+            Ref = monitor(process, Server),
+            rpc:cast(Node, erlang, halt, [1]),
+            receive {'DOWN', Ref, process, _, _} -> ok
+            after 10000 -> ct:fail(the_isolating_process_outlived_its_node) end,
+
+            %% the calling process is still here, which is the point
+            ?assert(is_process_alive(self())),
+            ?assertMatch({error, _}, ?I:run(Server, Inputs)),
+
+            %% and a replacement starts, which is what a supervisor would do
+            {ok, Replacement} = ?I:start(#{model_path => Path, accelerators => [cpu]}),
+            try ?assertMatch({ok, _}, ?I:run(Replacement, Inputs))
+            after ?I:stop(Replacement) end
     end.
