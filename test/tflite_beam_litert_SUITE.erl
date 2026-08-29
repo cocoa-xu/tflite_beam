@@ -718,7 +718,14 @@ wait_for_isolated_down(Server, Inputs, Tries) ->
 %% survive whatever the isolating process did and the test would pass against a
 %% version that exits on nodedown and takes every linked caller with it, which
 %% is what this used to do.
+%%
+%% Trapping exits is what makes the link observable rather than fatal. A CI
+%% machine that cannot start distribution makes init return {stop, Reason}, and
+%% start_link then both returns {error, Reason} and sends an exit signal; without
+%% this the case died on the signal before it could reach the skip below, which
+%% is how a machine with no distribution reported a failure rather than a skip.
 an_isolated_model_runs_and_its_death_is_survivable(Config) ->
+    process_flag(trap_exit, true),
     Path = tflite_beam_test_models:path(?MODEL),
     case tflite_beam_litert_compiled_model_isolated:start_link(
              #{model_path => Path, accelerators => [cpu]}) of
