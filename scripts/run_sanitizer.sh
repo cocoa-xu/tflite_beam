@@ -44,7 +44,7 @@ make TFLITE_BEAM_MAKE=make >/dev/null
 codesign -s - -f priv/tflite_beam.so >/dev/null 2>&1 || true
 rebar3 compile >/dev/null
 
-DRIVE="${ROOT}/test/sanitizer_drive.erl"
+DRIVE="${ROOT}/scripts/sanitizer_drive.erl"
 OUT=$(mktemp -d)
 erlc -o "$OUT" -I "${ROOT}/src" "$DRIVE"
 
