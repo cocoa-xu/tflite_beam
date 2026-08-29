@@ -125,8 +125,7 @@ profile(Server, Limit) when is_integer(Limit), Limit >= 0, Limit =< 2147483647 -
     call(Server, {profile, Limit}, ?DEFAULT_TIMEOUT).
 
 %% @doc Per-operator totals, slowest first.
--spec summarise_profile(pid()) ->
-    {ok, [{binary(), ?M:operator_kind(), pos_integer(), non_neg_integer()}]} | {error, binary()}.
+-spec summarise_profile(pid()) -> {ok, [?M:summary_entry()]} | {error, binary()}.
 summarise_profile(Server) ->
     call(Server, summarise_profile, ?DEFAULT_TIMEOUT).
 
