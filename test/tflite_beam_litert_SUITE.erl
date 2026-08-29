@@ -13,6 +13,7 @@
     compiled_model_refuses_a_wrong_sized_input/1,
     compiled_model_refuses_the_wrong_number_of_inputs/1,
     platform_support_is_reported/1,
+    availability_is_answerable_without_a_call/1,
     hostile_arguments_are_refused_not_survived/1,
     signatures_are_listed/1,
     a_signature_can_be_named/1,
@@ -47,6 +48,7 @@ all() ->
         compiled_model_refuses_a_wrong_sized_input,
         compiled_model_refuses_the_wrong_number_of_inputs,
         platform_support_is_reported,
+    availability_is_answerable_without_a_call,
         hostile_arguments_are_refused_not_survived,
         signatures_are_listed,
         a_signature_can_be_named,
@@ -155,6 +157,15 @@ platform_support_is_reported(_Config) ->
 %% refusal. A zero byte matters more than it looks, because every string here
 %% reaches C as a NUL terminated one and would otherwise name something shorter
 %% than what was asked for.
+%% available/0 has to agree with what every other function does, or it is worse
+%% than not having it: a build where it says true and the calls say "not
+%% compiled" would send a caller looking in the wrong place entirely.
+availability_is_answerable_without_a_call(Config) ->
+    ?assert(?A:available()),
+    ?assert(is_map(?A:platform_support())),
+    Env = proplists:get_value(env, Config),
+    ?assertMatch({ok, _}, ?A:signatures(Env, tflite_beam_test_models:path(?MODEL))).
+
 hostile_arguments_are_refused_not_survived(Config) ->
     Env = proplists:get_value(env, Config),
     Path = tflite_beam_test_models:path(?MODEL),
