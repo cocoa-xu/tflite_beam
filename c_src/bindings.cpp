@@ -20,6 +20,10 @@ limitations under the License.
 #include "tflite/kernels/register.h"
 #include "tflite/model.h"
 #include "nif_utils.hpp"
+
+#ifdef TFLITE_BEAM_LITERT_API_ENABLED
+#include "elitte/litert_reaper.h"
+#endif
 #include "nif_guard.hpp"
 #include "helper.h"
 
@@ -158,7 +162,19 @@ static int open_resource_types(ErlNifEnv* env, ErlNifResourceFlags flags) {
 
 static int
 on_load(ErlNifEnv* env, void**, ERL_NIF_TERM) {
-    return open_resource_types(env, ERL_NIF_RT_CREATE);
+    int rc = open_resource_types(env, ERL_NIF_RT_CREATE);
+#ifdef TFLITE_BEAM_LITERT_API_ENABLED
+    // A reaper that will not start is not a reason to refuse to load: teardown
+    // then happens on the caller's thread, which is what it did before.
+    if (rc == 0) litert_reaper_start();
+#endif
+    return rc;
+}
+
+static void on_unload(ErlNifEnv*, void*) {
+#ifdef TFLITE_BEAM_LITERT_API_ENABLED
+    litert_reaper_stop();
+#endif
 }
 
 static int on_reload(ErlNifEnv*, void**, ERL_NIF_TERM) {
@@ -334,4 +350,4 @@ static ErlNifFunc nif_functions[] = {
 #endif
 };
 
-ERL_NIF_INIT(tflite_beam_nif, nif_functions, on_load, on_reload, on_upgrade, NULL);
+ERL_NIF_INIT(tflite_beam_nif, nif_functions, on_load, on_reload, on_upgrade, on_unload);

@@ -404,7 +404,8 @@ if(TFLITE_BEAM_ENABLE_LITERT_API)
     set(CMAKE_CXX_FLAGS "${_litert_saved_cxx_flags}")
 
     target_sources(tflite_beam PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/c_src/elitte/litert_compiled_model.cpp")
+        "${CMAKE_CURRENT_SOURCE_DIR}/c_src/elitte/litert_compiled_model.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/c_src/elitte/litert_reaper.cpp")
     # the compiled model path reaches absl's CHECK macros, which live in
     # absl::log_internal_check_op and are not among the absl targets the tflite
     # side needs

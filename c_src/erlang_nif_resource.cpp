@@ -6,6 +6,11 @@
 
 #include "erlang_nif_resource.h"
 #include "fault_inject.hpp"
+#include "tsan_annotations.h"
+
+#ifdef TFLITE_BEAM_LITERT_API_ENABLED
+#include "elitte/litert_reaper.h"
+#endif
 
 NifResBuiltinOpResolver * NifResBuiltinOpResolver::allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error) {
     NifResBuiltinOpResolver * res = (NifResBuiltinOpResolver *)enif_alloc_resource(NifResBuiltinOpResolver::type, sizeof(NifResBuiltinOpResolver));
@@ -616,6 +621,7 @@ NifResLiteRtEnvironment * NifResLiteRtEnvironment::get_resource(ErlNifEnv * env,
 
 void NifResLiteRtEnvironment::destruct_resource(ErlNifEnv *, void *args) {
     auto res = (NifResLiteRtEnvironment *)args;
+    TFLITE_BEAM_TSAN_TAKE(res);
     if (res && res->val) {
         LiteRtDestroyEnvironment(res->val);
         res->val = nullptr;
@@ -681,42 +687,36 @@ NifResLiteRtCompiledModel * NifResLiteRtCompiledModel::get_resource(ErlNifEnv * 
 void NifResLiteRtCompiledModel::destruct_resource(ErlNifEnv *, void *args) {
     auto res = (NifResLiteRtCompiledModel *)args;
     if (!res) return;
+    TFLITE_BEAM_TSAN_TAKE(res);
 
-    // Buffers first: they name the compiled model's tensors, so they cannot
-    // outlive it. The memory behind them belongs to LiteRT, which allocated it
-    // from the tensor's requirements and may not have put it in host memory at
-    // all, so destroying the buffer is the whole of releasing it.
-    auto destroy = [](std::vector<LiteRtTensorBuffer> * bufs) {
-        if (!bufs) return;
-        for (auto b : *bufs) if (b) LiteRtDestroyTensorBuffer(b);
-        delete bufs;
-    };
-    destroy(res->inputs);
-    destroy(res->outputs);
+    // This runs wherever the last reference was dropped, which is normally an
+    // ordinary scheduler, and tearing a compiled model down is slow enough to
+    // matter there. So the parts are handed over and this returns at once; see
+    // elitte/litert_reaper.cpp for the measurements that decided it.
+    LiteRtTeardown job;
+    job.inputs       = res->inputs;
+    job.outputs      = res->outputs;
+    job.input_sizes  = res->input_sizes;
+    job.output_sizes = res->output_sizes;
+    job.compiled     = res->val;
+    job.options      = res->options;
+    job.model        = res->model;
+    job.environment  = res->environment;
+    job.lock         = res->lock;
+
     res->inputs = nullptr;
     res->outputs = nullptr;
-
-    delete res->input_sizes;  res->input_sizes = nullptr;
-    delete res->output_sizes; res->output_sizes = nullptr;
-
+    res->input_sizes = nullptr;
+    res->output_sizes = nullptr;
+    res->val = nullptr;
+    res->options = nullptr;
+    res->model = nullptr;
+    res->environment = nullptr;
+    res->lock = nullptr;
     // borrowed from the compiled model, so it is dropped rather than destroyed
     res->profiler = nullptr;
 
-    if (res->val)     { LiteRtDestroyCompiledModel(res->val); res->val = nullptr; }
-    if (res->options) { LiteRtDestroyOptions(res->options);   res->options = nullptr; }
-    if (res->model)   { LiteRtDestroyModel(res->model);       res->model = nullptr; }
-
-    if (res->environment) {
-        enif_release_resource(res->environment);
-        res->environment = nullptr;
-    }
-
-    // last, because everything above ran without contention only by virtue of
-    // this being the final reference
-    if (res->lock) {
-        enif_mutex_destroy(res->lock);
-        res->lock = nullptr;
-    }
+    litert_reaper_submit(job);
 }
 
 #endif  // TFLITE_BEAM_LITERT_API_ENABLED
