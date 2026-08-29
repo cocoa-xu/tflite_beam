@@ -296,6 +296,27 @@ endif()
 # build, so the c directory is added on its own once tensorflow-lite exists.
 option(TFLITE_BEAM_ENABLE_LITERT_API "Build LiteRT's C API alongside the tflite one" OFF)
 if(TFLITE_BEAM_ENABLE_LITERT_API)
+    # LiteRT will build without XNNPACK and then not load. Its CPU accelerator
+    # is XNNPACK: RegisterCpuAccelerator is defined in
+    # litert/runtime/accelerators/xnnpack/xnnpack_accelerator.cc, which
+    # litert/runtime/CMakeLists.txt compiles unconditionally, so the .so links
+    # with TfLiteXNNPackDelegate* undefined. Measured on a Pi Zero W: it builds,
+    # ships, and fails on_load with nothing pointing at the cause.
+    #
+    # armv6 and armv7l are the shapes that turn XNNPACK off, and neither has a
+    # usable GPU either, so there is no accelerator left for LiteRT to reach.
+    # Saying so here beats emitting an artifact that cannot be loaded.
+    # DEFINED matters: only the armv6 and armv7l branches above set this, and on
+    # every other target TFLite decides it later, from inside its own subtree.
+    # Testing the value alone would read "not set" as "off" and refuse the build
+    # on x86_64 and arm64, which is every platform that can have LiteRT at all.
+    if(DEFINED TFLITE_ENABLE_XNNPACK AND NOT TFLITE_ENABLE_XNNPACK)
+        message(FATAL_ERROR
+            "TFLITE_BEAM_ENABLE_LITERT_API needs XNNPACK, and this target "
+            "builds with it off. LiteRT's CPU accelerator is XNNPACK, so the "
+            "library would link with TfLiteXNNPackDelegate* undefined and fail "
+            "to load. Build without the LiteRT API on this target.")
+    endif()
     set(LITERT_SOURCE_DIR "${LITERT_ROOT_DIR}" CACHE PATH "LiteRT source root")
     # litert/core/model reads the converter schema out of this; normally set by
     # litert's top level, which also uses it to add tflite
