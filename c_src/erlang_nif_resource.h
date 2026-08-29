@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include <erl_nif.h>
+#include "tsan_annotations.h"
 
 #include "tflite/c/c_api.h"
 #include "tflite/c/common.h"
@@ -54,7 +55,15 @@ template <typename T>
 class ResourceRef {
 public:
     explicit ResourceRef(T * res) : res_(res) {}
-    ~ResourceRef() { if (res_) enif_release_resource(res_); }
+    // The release is where the resource stops being this thread's, whether it
+    // is going to Erlang or straight to its destructor, so it is also the point
+    // everything written into it becomes someone else's to read.
+    ~ResourceRef() {
+        if (res_) {
+            TFLITE_BEAM_TSAN_PUBLISH(res_);
+            enif_release_resource(res_);
+        }
+    }
 
     ResourceRef(const ResourceRef &) = delete;
     ResourceRef & operator=(const ResourceRef &) = delete;
