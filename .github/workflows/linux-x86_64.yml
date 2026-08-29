@@ -114,6 +114,9 @@ jobs:
           # armv6/armv7l build with XNNPACK off, and the LiteRT API is off by
           # default, so nothing else covers either shape
           python3 scripts/check_preprocessor_combinations.py
+          # compiling all eight shapes does not catch a NIF that is declared in
+          # Erlang and registered in only one of them; both are valid C++
+          python3 scripts/check_nif_table_balance.py
           # a wrong spec is not something the suite can fail on, and eight of
           # them had accumulated behind a plt that was missing ssl and inets
           rebar3 dialyzer
