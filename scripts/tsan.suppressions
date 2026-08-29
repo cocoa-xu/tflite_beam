@@ -1,0 +1,16 @@
+# ThreadSanitizer suppressions for driving this NIF.
+#
+# beam.smp is not built with TSan, so TSan cannot see the synchronisation inside
+# it. The one place that matters here is enif_release_resource: a resource is
+# built on one scheduler thread and its destructor runs on whichever thread
+# drops the last reference, and the happens-before edge between those two lives
+# in the emulator's refcount, which is invisible. Every construct-then-destruct
+# of a resource therefore looks like a race between the constructor's writes and
+# the destructor's reads.
+#
+# This suppresses that pair and nothing else. It is deliberately narrow: it names
+# the destructors, so a race inside any other function still reports, and the
+# check that it has not been widened into uselessness is scripts/run_sanitizer.sh
+# with a deliberately reintroduced race, which still fires with this in place.
+race:NifResLiteRtCompiledModel::destruct_resource
+race:NifResLiteRtEnvironment::destruct_resource

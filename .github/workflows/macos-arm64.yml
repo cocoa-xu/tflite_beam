@@ -135,6 +135,19 @@ jobs:
           rebar3 compile
           TFLITE_BEAM_ENABLE_FAULT_INJECTION=1 rebar3 ct
 
+      - name: ThreadSanitizer and AddressSanitizer
+        run: |
+          export OTP_MAIN_VER="${OTP_VERSION%%.*}"
+          export PATH=$HOME/.elixir-install/installs/otp/${OTP_VERSION}/bin:$PATH
+          export PATH=$HOME/.elixir-install/installs/elixir/${ELIXIR_VERSION}-otp-${OTP_MAIN_VER}/bin:$PATH
+          export PATH="${HOME}/.cache/rebar3/bin:$PATH"
+
+          # The suite cannot see a data race: three of them lived in the
+          # interpreter's ownership state through 155 passing test cases. These
+          # two are what found them, and nothing runs them unless something does.
+          ./scripts/run_sanitizer.sh thread
+          ./scripts/run_sanitizer.sh address
+
       - name: ccache statistics
         if: always()
         run: |
