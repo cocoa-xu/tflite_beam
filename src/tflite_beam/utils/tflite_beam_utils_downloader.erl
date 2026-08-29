@@ -221,7 +221,7 @@ preferred_eccs() ->
 
 secure_ssl() ->
     case os:getenv("TFLITE_BEAM_UNSAFE_HTTPS") of
-        nil -> true;
+        false -> true;
         "FALSE" -> false;
         "false" -> false;
         "nil" -> false;

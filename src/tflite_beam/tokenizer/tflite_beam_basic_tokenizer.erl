@@ -65,7 +65,7 @@ tokenize(Text, IsCaseInsensitive) when is_binary(Text) and is_boolean(IsCaseInse
 normalize_to_nfc(Text) when is_binary(Text) or is_list(Text) ->
     unicode:characters_to_nfc_binary(Text).
 
--spec clean_text(binary() | list()) -> binary().
+-spec clean_text(binary() | list()) -> unicode:chardata().
 clean_text(Text) when is_binary(Text) or is_list(Text) ->
     NfcText = normalize_to_nfc(Text),
     UnicodeScalars = unicode:characters_to_list(NfcText),
