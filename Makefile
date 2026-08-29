@@ -22,6 +22,10 @@ endif
 NATIVE_BINDINGS_SO = $(PRIV_DIR)/tflite_beam.so
 LIBEDGETPU_RUNTIME_PRIV = $(PRIV_DIR)/libedgetpu
 TFLITE_BEAM_CORAL_SUPPORT ?= "true"
+# One switch for both paths. A source build passes it to CMake; a precompiled
+# install uses it to pick which tarball to fetch, so a caller who asks for the
+# LiteRT API gets it either way rather than only when building from source.
+TFLITE_BEAM_ENABLE_LITERT_API ?= "false"
 TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME ?= "native"
 TFLITE_BEAM_PREFER_PRECOMPILED ?= "true"
 TFLITE_BEAM_CORAL_LIBEDGETPU_URL ?= "native"
@@ -260,6 +264,7 @@ $(NATIVE_BINDINGS_SO): $(UNICODE_DATA) unarchive_source_code unarchive_litert_so
 			-D GFLAGS_ROOT_DIR="$(GFLAGS_ROOT_DIR)" \
 			-D GLOG_ROOT_DIR="$(GLOG_ROOT_DIR)" \
 			-D TFLITE_BEAM_CORAL_SUPPORT="$(TFLITE_BEAM_CORAL_SUPPORT)" \
+			-D TFLITE_BEAM_ENABLE_LITERT_API="$(TFLITE_BEAM_ENABLE_LITERT_API)" \
 			-D TFLITE_BEAM_TFLITE_VERSION="$(TFLITE_VER)" \
 			-D TFLITE_BEAM_LITERT_VERSION="$(LITERT_VER)" \
 			-D TFLITE_HOST_TOOLS_DIR="$(TFLITE_HOST_TOOLS_DIR)" \
