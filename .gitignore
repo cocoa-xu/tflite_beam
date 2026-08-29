@@ -44,3 +44,4 @@ libusb/
 
 # built by TFLITE_BEAM_BUILD_TEST_PLUGIN, for the external-delegate tests
 test/plugin/*.so
+__pycache__/
