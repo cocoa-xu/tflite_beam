@@ -1,5 +1,95 @@
 # Changelog
 
+## v1.0.0-rc3 (2026-08-30)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v1.0.0-rc3) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v1.0.0-rc3)
+
+This release adds LiteRT's compiled model, which is a second way into the same
+runtime: accelerators asked for by name and answered honestly, and a per-operator
+profiler that says where the time went. Nothing about the existing interpreter
+API changed.
+
+**Three layers, because sharing one model is the thing that goes wrong.**
+`tflite_beam_litert_compiled_model` is the direct API and refuses a second
+concurrent caller rather than letting two into LiteRT at once, which LiteRT does
+not promise is safe and whose profile buffer says outright that it is not.
+`..._server` puts one model in a process so several callers can share it, with a
+bounded queue that refuses work past 64 pending calls instead of growing a
+mailbox until the node dies. `..._isolated` puts the model on a node of its own,
+for callers who cannot afford a segmentation fault in native code to be fatal;
+when that node dies the calls answer `{error, Binary}` and the process stays up
+as a handle, so recovering is a decision rather than something that happens to
+the caller.
+
+**`fully_accelerated/1`, because a partial answer is worse than no answer.** An
+accelerator that takes half the graph pays for every crossing back to the CPU and
+is often slower than the CPU alone. Whether it took the whole graph is not
+otherwise visible.
+
+**Two precompiled binaries per target now.** The LiteRT API is a build option and
+is off by default, so a single published binary would have meant that everything
+above was unreachable for anyone installing the ordinary way. Every target ships
+a plain tarball and, where LiteRT can work, a second one with it compiled in.
+`TFLITE_BEAM_ENABLE_LITERT_API` picks between them at install time and is the same
+variable that turns it on in a source build, so asking for the LiteRT API means
+the same thing however the library arrives.
+
+**armv6 and armv7l get no LiteRT variant, and say so.** LiteRT's CPU accelerator
+*is* XNNPACK: `RegisterCpuAccelerator` is defined in
+`litert/runtime/accelerators/xnnpack/xnnpack_accelerator.cc`, which its CMake
+build compiles unconditionally. Those two targets build with XNNPACK off, so the
+library links with `TfLiteXNNPackDelegate*` undefined and fails to load, which was
+found by shipping one to a Pi Zero W and running it. Asking for the LiteRT API on
+such a target is now a configure error naming the reason, rather than a 20MB
+artifact that cannot be loaded.
+
+**The GPU accelerator follows the LiteRT API rather than being a second thing to
+ask for.** With it off, `RegisterGpuAccelerator` compiles to a stub and a caller
+who names the GPU is silently given the CPU with nothing to explain it.
+
+**Tearing a compiled model down no longer stalls a scheduler.** A resource
+destructor runs wherever the last reference was dropped, normally an ordinary
+scheduler, and ERTS expects anything there to return within about a millisecond.
+Measured: a 13MB mobilenet took 491us to destroy and a 49MB model took 15.8ms,
+growing faster than the model does. The destructor now hands the pieces to one
+reaper thread and returns in under 5us.
+
+**`pending_events/1`, because the cost of reading a profile is not the number
+asked for.** LiteRT will not hand over part of a backlog, so `profile/2` copies
+whatever is waiting whatever the limit says: 104 bytes an event, twice over while
+LiteRT builds its own copy, which is about 109MiB for a full buffer. Nothing on a
+workstation and fatal on a board with 256MB.
+
+**Two answers changed shape.** `profile/1`'s `type` and `source` were LiteRT's own
+enumeration numbers and are now named against its constants, so an upstream
+renumbering cannot quietly change what one means; a type this build has no name
+for still arrives as its number. `summarise_profile/1` returned anonymous
+positional 4-tuples and now returns maps of `tag`, `kind`, `count` and `us`, so a
+field can be added later without breaking every caller that matched on position.
+
+**What the review found, in the parts that were already here.** Three data races
+in the interpreter's ownership state, which 155 passing test cases had nothing to
+say about: the setter, the getter, and an unlocked check inside `get_resource`
+whose own comment claimed it was a safety measure. `std::atomic` members were
+being used in storage `enif_alloc_resource` returns without running a
+constructor. Model-sized traversals and flatbuffer verification were on ordinary
+schedulers. `on_upgrade` did not open the resource types.
+
+**The sanitizers run in CI, on macOS and Linux.** `scripts/run_sanitizer.sh`
+builds under ThreadSanitizer or AddressSanitizer and drives the NIF; it is what
+found the races above, and it is checked against a deliberately reintroduced race
+so that a clean run means something. Where TSan cannot see the emulator's own
+synchronisation the edges are stated with `__tsan_release`/`__tsan_acquire` rather
+than suppressed, because a suppression that hides an artifact today hides a real
+bug tomorrow with no signal when it starts doing so.
+
+**Three checks that CI did not have.** dialyzer, which had eight standing
+warnings including one wrong spec and one unreachable clause. A NIF table balance
+check, because a function declared in Erlang and registered in only one build
+shape is valid C++ in both and raises `{not_loaded, ...}` on the day someone calls
+it. And the eight-shape preprocessor check now works on a clean tree; it had been
+passing on LiteRT rows only because an earlier build had left a generated header
+behind.
+
 ## v1.0.0-rc2 (2026-08-26)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v1.0.0-rc2) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v1.0.0-rc2)
 
