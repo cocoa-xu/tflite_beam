@@ -13,7 +13,11 @@
 %% model there, and forwards calls to it, so a crash costs one node and a
 %% supervisor can start another. `run/2' and its siblings answer the same way
 %% they do on `tflite_beam_litert_compiled_model_server', and a dead node comes
-%% back as `{error, Binary}' rather than as a dead caller.
+%% back as `{error, Binary}' rather than as a dead caller: this process stays up
+%% after its node goes down, answering every call with
+%% `{error, <<"the isolated model's node went down">>}', so that recovering is
+%% something the caller decides on rather than something that happens to it.
+%% `stop/1' when it is done.
 %%
 %% What it costs, so the choice is an informed one:
 %%
@@ -190,6 +194,8 @@ init(Opts) ->
 
 handle_call(node_of, _From, State = #{node := Node}) ->
     {reply, {ok, Node}, State};
+handle_call(_Request, _From, State = #{remote := down}) ->
+    {reply, {error, <<"the isolated model's node went down">>}, State};
 handle_call(Request, _From, State = #{remote := Remote}) ->
     %% The far side is a plain in-process server, so this is the same call it
     %% would have got locally; only the wire is different.
@@ -208,9 +214,18 @@ handle_cast(_Request, State) ->
     {noreply, State}.
 
 handle_info({nodedown, Node}, State = #{node := Node}) ->
-    %% Stopping rather than restarting: what to do about a model whose node died
-    %% is the supervisor's decision, and it has the information to make it.
-    {stop, {nodedown, Node}, State};
+    %% Surviving rather than stopping, because this module exists precisely so
+    %% that a dead node is not a dead caller. Stopping here would exit with
+    %% {nodedown, Node} and, through the link start_link/1 makes, take the
+    %% caller with it, which is the outcome isolation was supposed to prevent.
+    %% The process stays as a handle that answers, and what to do about it is
+    %% then a decision taken from a return value instead of an exit signal.
+    {noreply, State#{remote := down}};
+handle_info({'EXIT', Peer, _Reason}, State = #{peer := Peer}) ->
+    %% peer:start_link links its control process to this one. It going away
+    %% means the same thing as the node going away, and the two do not arrive
+    %% in a guaranteed order.
+    {noreply, State#{remote := down}};
 handle_info(_Info, State) ->
     {noreply, State}.
 

@@ -699,12 +699,28 @@ a_full_queue_is_refused_rather_than_grown(Config) ->
     end.
 
 
+%% nodedown does not arrive the instant the node is halted, so the refusal is
+%% waited for rather than assumed. Failing here rather than timing out says the
+%% node death never reached the isolating process at all.
+wait_for_isolated_down(_Server, _Inputs, 0) ->
+    ct:fail(the_isolated_model_never_noticed_its_node_died);
+wait_for_isolated_down(Server, Inputs, Tries) ->
+    case tflite_beam_litert_compiled_model_isolated:run(Server, Inputs) of
+        {error, <<"the isolated model's node went down">>} -> ok;
+        _ -> timer:sleep(100), wait_for_isolated_down(Server, Inputs, Tries - 1)
+    end.
+
 %% The whole point of the isolated variant: a model that dies takes its node and
 %% nothing else. Killing the node stands in for the segmentation fault this
 %% exists to survive, because a real one cannot be arranged from Erlang.
+%%
+%% start_link, deliberately. With start/1 there is no link, so the caller would
+%% survive whatever the isolating process did and the test would pass against a
+%% version that exits on nodedown and takes every linked caller with it, which
+%% is what this used to do.
 an_isolated_model_runs_and_its_death_is_survivable(Config) ->
     Path = tflite_beam_test_models:path(?MODEL),
-    case tflite_beam_litert_compiled_model_isolated:start(
+    case tflite_beam_litert_compiled_model_isolated:start_link(
              #{model_path => Path, accelerators => [cpu]}) of
         {error, Reason} ->
             {skip, {cannot_start_an_isolated_node, Reason}};
@@ -720,14 +736,19 @@ an_isolated_model_runs_and_its_death_is_survivable(Config) ->
             ?assertEqual({ok, Outputs},
                          ?A:run(model(Config, #{accelerators => [cpu]}), Inputs)),
 
-            Ref = monitor(process, Server),
             rpc:cast(Node, erlang, halt, [1]),
-            receive {'DOWN', Ref, process, _, _} -> ok
-            after 10000 -> ct:fail(the_isolating_process_outlived_its_node) end,
+            wait_for_isolated_down(Server, Inputs, 100),
 
-            %% the calling process is still here, which is the point
+            %% the calling process is still here, which is the point, and it is
+            %% linked, so this is only true if the isolating process did not exit
             ?assert(is_process_alive(self())),
-            ?assertMatch({error, _}, ?I:run(Server, Inputs)),
+            ?assert(is_process_alive(Server)),
+            ?assertMatch({error, <<"the isolated model's node went down">>},
+                         ?I:run(Server, Inputs)),
+            %% still able to say which node it was, which is what an error
+            %% report wants
+            ?assertEqual({ok, Node}, ?I:node_of(Server)),
+            ?I:stop(Server),
 
             %% and a replacement starts, which is what a supervisor would do
             {ok, Replacement} = ?I:start(#{model_path => Path, accelerators => [cpu]}),
