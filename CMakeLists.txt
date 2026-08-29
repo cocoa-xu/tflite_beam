@@ -310,10 +310,17 @@ if(TFLITE_BEAM_ENABLE_LITERT_API)
     set(LITERT_GENERATED_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/litert_generated")
     set(LITERT_BUILD_COMMON_GENERATED_DIR "${LITERT_GENERATED_INCLUDE_DIR}/litert/build_common")
     file(MAKE_DIRECTORY "${LITERT_BUILD_COMMON_GENERATED_DIR}")
-    # GPU and NPU off to start with: the runtime reaches for CL/cl.h and vendor
-    # SDKs otherwise, and neither is what the first pass is after. The GPU path
-    # is what litert/runtime/accelerators exists for and is worth its own look.
-    option(LITERT_ENABLE_GPU "Enable GPU acceleration support" OFF)
+    # GPU follows the LiteRT API rather than being a second thing to ask for.
+    # With it off, RegisterGpuAccelerator compiles to a stub, so a caller who
+    # names the GPU gets a silent fall back to the CPU and nothing to explain
+    # it, which is the whole feature missing rather than a tuning choice. The
+    # OpenCL headers are fetched by the module below rather than expected from
+    # the system, and the accelerator itself is a plugin this library dlopens,
+    # so turning it on costs the build very little. -DLITERT_ENABLE_GPU=OFF
+    # still turns it back off.
+    #
+    # NPU stays off: it wants vendor SDKs that cannot be fetched.
+    option(LITERT_ENABLE_GPU "Enable GPU acceleration support" ON)
     option(LITERT_ENABLE_NPU "Enable NPU acceleration support" OFF)
     if(LITERT_ENABLE_GPU)
         set(LITERT_BUILD_CONFIG_DISABLE_GPU 0)
@@ -343,10 +350,6 @@ if(TFLITE_BEAM_ENABLE_LITERT_API)
     if(EXISTS "${CMAKE_CURRENT_BINARY_DIR}/FP16-source/include")
         include_directories("${CMAKE_CURRENT_BINARY_DIR}/FP16-source/include")
     endif()
-    # litert/cc/litert_buffer_ref.h declares members named Span whose own return
-    # type is the Span alias, already used earlier in the same class. GCC 14 made
-    # that diagnostic an error by default, so every Linux build with the default
-    # toolchain fails on a header we do not own. Clang does not diagnose it.
     # litert/cc/litert_buffer_ref.h declares members named Span whose return type
     # is the Span alias already used earlier in the same class. GCC rejects that
     # and Clang does not, so every Linux build with the default toolchain fails on
