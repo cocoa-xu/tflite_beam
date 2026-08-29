@@ -20,12 +20,31 @@ import sys
 import tempfile
 
 FLAGS_MAKE = "_build/default/lib/tflite_beam/cmake_tflite_beam/CMakeFiles/tflite_beam.dir/flags.make"
+CMAKE_FILES = "_build/default/lib/tflite_beam/cmake_tflite_beam/CMakeFiles"
 
 
 def cmake_var(text, name):
     found = re.search(rf"^{name} = (.*)$", text, re.M)
     return found.group(1) if found else ""
 
+
+
+
+def compiler_for(flags_make):
+    """The compiler the flags were written for, not whatever c++ means here.
+
+    The flags are lifted from the last build in this tree, and that build may
+    have been a cross one. Feeding an armv6 or riscv64 include path to the host
+    c++ produces rows that pass or fail for reasons that have nothing to do with
+    the #ifdef shapes being checked, which is what happened on 2026-08-29 after
+    a riscv64 build: four rows went green against riscv64 headers compiled by
+    Apple clang, and the coral rows went red because that build had Coral off.
+    """
+    for cmake_cxx in sorted(pathlib.Path(CMAKE_FILES).glob("*/CMakeCXXCompiler.cmake")):
+        found = re.search(r'set\(CMAKE_CXX_COMPILER "([^"]+)"', cmake_cxx.read_text())
+        if found and pathlib.Path(found.group(1)).is_file():
+            return found.group(1)
+    return "c++"
 
 
 def litert_include_flags():
@@ -69,6 +88,7 @@ def main():
         return 1
 
     text = flags_make.read_text()
+    compiler = compiler_for(flags_make)
     base_defines, includes = cmake_var(text, "CXX_DEFINES"), cmake_var(text, "CXX_INCLUDES")
     base_flags = cmake_var(text, "CXX_FLAGS")
 
@@ -97,6 +117,7 @@ def main():
     # which CMake generates from a template into its own binary directory. If
     # the flags came from a default build neither is there, so they are made
     # here rather than hoped for.
+    print(f"checking with {compiler}")
     litert_includes = litert_include_flags()
     if litert_includes is None:
         return 1
@@ -144,7 +165,7 @@ def main():
                 bad = []
                 for source in checking:
                     result = subprocess.run(
-                        f"c++ {row_defines} {row_includes} {flags} -fsyntax-only {source}",
+                        f"{compiler} {row_defines} {row_includes} {flags} -fsyntax-only {source}",
                         shell=True, capture_output=True, text=True,
                     )
                     if result.returncode != 0:
