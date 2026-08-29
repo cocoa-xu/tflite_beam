@@ -127,6 +127,21 @@ get_target() ->
     TRIPLET = io_lib:fwrite("~s-~s-~s", [FinalARCH, OS, ABI]),
     TRIPLET.
 
+%% Two tarballs are published per target, one with the LiteRT API compiled in
+%% and one without, and TFLITE_BEAM_ENABLE_LITERT_API is what picks between
+%% them. It is the same variable a source build reads, so asking for the LiteRT
+%% API means the same thing whichever way the library arrives; a caller who set
+%% it and silently got the ordinary tarball would find every LiteRT function
+%% answering "not compiled into this build" with nothing to explain it.
+litert_suffix() ->
+    case string:lowercase(maybe_override_by_env("TFLITE_BEAM_ENABLE_LITERT_API", "false")) of
+        "true" -> "-litert";
+        "on" -> "-litert";
+        "1" -> "-litert";
+        "yes" -> "-litert";
+        _ -> ""
+    end.
+
 get_nif_version() ->
     erlang:system_info(nif_version).
 
@@ -145,7 +160,8 @@ is_precompiled_binary_available() ->
                 true ->
                     {false, "NIF version is too low, will fallback to compiling from source code."};
                 false ->
-                    Name = lists:flatten(io_lib:fwrite(?PRECOMPILED_TARBALL_NAME, [PrecompiledNifVersion, Target, AppVersion])),
+                    Name = lists:flatten(io_lib:fwrite(?PRECOMPILED_TARBALL_NAME,
+                                       [PrecompiledNifVersion, Target ++ litert_suffix(), AppVersion])),
                     TarballFilename = lists:flatten(io_lib:fwrite("~s.tar.gz", [Name])),
                     TarballURL = lists:flatten(io_lib:fwrite(?PRECOMPILED_DOWNLOAD_URL, [AppVersion, TarballFilename])),
                     {true, Name, TarballFilename, TarballURL}

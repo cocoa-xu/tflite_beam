@@ -65,14 +65,29 @@ jobs:
           export NIF_VERSION="$(erl -noshell -eval "io:format('~ts', [erlang:system_info(nif_version)])." -s erlang halt)"
 
           rebar3 deps
-          rebar3 compile
-          export PKG_NAME=tflite_beam-nif-${NIF_VERSION}-${{ matrix.pair.arch }}-apple-darwin-${GITHUB_REF##*/}
-          mkdir -p "${PKG_NAME}"
-          cp -a ./priv "${PKG_NAME}"
-          tar -czf "${PKG_NAME}.tar.gz" "${PKG_NAME}"
-          rm -rf "${PKG_NAME}"
           mkdir -p artifacts
-          mv "${PKG_NAME}.tar.gz" artifacts
+
+          # Two tarballs per target; see the same loop in linux-precompile.yml
+          # for why. The plain build goes first so a LiteRT failure cannot cost
+          # the tarball everything already depends on.
+          TARGET_TRIPLET=${{ matrix.pair.arch }}-apple-darwin
+          for VARIANT in "" "-litert"; do
+            if [ "${VARIANT}" = "-litert" ]; then
+              export TFLITE_BEAM_ENABLE_LITERT_API="true"
+            else
+              export TFLITE_BEAM_ENABLE_LITERT_API="false"
+            fi
+            echo "=== building ${TARGET_TRIPLET}${VARIANT} (LiteRT: ${TFLITE_BEAM_ENABLE_LITERT_API}) ==="
+            rm -rf _build/default/lib/tflite_beam/cmake_tflite_beam priv/tflite_beam.so
+            rebar3 compile
+            export PKG_NAME=tflite_beam-nif-${NIF_VERSION}-${TARGET_TRIPLET}${VARIANT}-${GITHUB_REF##*/}
+            mkdir -p "${PKG_NAME}"
+            cp -a ./priv "${PKG_NAME}"
+            tar -czf "${PKG_NAME}.tar.gz" "${PKG_NAME}"
+            rm -rf "${PKG_NAME}"
+            ls -lah "${PKG_NAME}.tar.gz"
+            mv "${PKG_NAME}.tar.gz" artifacts
+          done
 
       - uses: softprops/action-gh-release@v3
         if: startsWith(github.ref, 'refs/tags/')

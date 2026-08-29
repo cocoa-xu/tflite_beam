@@ -48,11 +48,17 @@ if [ "$COUNT" -eq 0 ]; then
   exit 1
 fi
 
+# Two variants per target since 1.0.0: the ordinary build and one with the
+# LiteRT API compiled in, chosen at install time by TFLITE_BEAM_ENABLE_LITERT_API.
+# Both have to be named here. A manifest that lists only the plain ones lets the
+# LiteRT half refuse to install, with no hint that the release built them.
 MISSING=()
 for target in "${EXPECTED_TARGETS[@]}"; do
-  if ! find "$WORK_DIR" -name "*-${target}-v${VERSION}.tar.gz" | grep -q .; then
-    MISSING+=("$target")
-  fi
+  for variant in "" "-litert"; do
+    if ! find "$WORK_DIR" -name "*-${target}${variant}-v${VERSION}.tar.gz" | grep -q .; then
+      MISSING+=("${target}${variant}")
+    fi
+  done
 done
 if [ "${#MISSING[@]}" -ne 0 ]; then
   echo "v${VERSION} is missing tarballs for: ${MISSING[*]}" >&2
