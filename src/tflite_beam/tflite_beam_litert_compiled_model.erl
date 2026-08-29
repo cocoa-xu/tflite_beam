@@ -29,6 +29,7 @@
     io_sizes/1,
     profile/1, profile/2,
     pending_events/1,
+    available/0,
     reset_profile/1,
     summarise_profile/1,
     run_with_metrics/2, run_with_metrics/3,
@@ -79,9 +80,20 @@
 %% to, while a GPU accelerator plugin brings its own OpenCL and is unaffected.
 %% This says "was it compiled in", not "is a device present"; the second
 %% question is answered by asking for the accelerator and being refused.
--spec platform_support() -> #{atom() => boolean()}.
+-spec platform_support() -> #{atom() => boolean()} | {error, binary()}.
 platform_support() ->
     tflite_beam_nif:litert_platform_support().
+
+%% @doc
+%% Whether this build has the LiteRT API at all.
+%%
+%% It is a build option and it is off by default, so every other function in
+%% this module answers `{error, <<"the LiteRT API was not compiled...">>}' on an
+%% ordinary build. This is the cheap way to ask first rather than to find out
+%% from a call that was supposed to do something.
+-spec available() -> boolean().
+available() ->
+    is_map(platform_support()).
 
 %% @doc
 %% An environment with no directory to look for accelerator plugins in.
