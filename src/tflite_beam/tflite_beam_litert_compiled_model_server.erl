@@ -42,6 +42,7 @@
     io_sizes/1,
     run_with_metrics/2, run_with_metrics/3, run_with_metrics/4,
     profile/1, profile/2,
+    pending_events/1,
     summarise_profile/1,
     reset_profile/1,
     stop/1
@@ -189,6 +190,11 @@ profile(Server, Limit) when is_integer(Limit), Limit >= 0, Limit =< 2147483647 -
            pos_integer(), non_neg_integer()}]} | {error, binary()}.
 summarise_profile(Server) ->
     with(Server, fun(M) -> ?M:summarise_profile(M) end).
+
+%% @doc How many profiling events are waiting, without reading them.
+-spec pending_events(pid()) -> {ok, non_neg_integer()} | {error, binary()}.
+pending_events(Server) ->
+    with(Server, fun(M) -> ?M:pending_events(M) end).
 
 %% @doc Forget the events recorded so far and keep recording.
 -spec reset_profile(pid()) -> ok | {error, binary()}.

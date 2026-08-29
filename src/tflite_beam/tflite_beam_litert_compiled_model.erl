@@ -28,6 +28,7 @@
     fully_accelerated/1,
     io_sizes/1,
     profile/1, profile/2,
+    pending_events/1,
     reset_profile/1,
     summarise_profile/1,
     run_with_metrics/2, run_with_metrics/3,
@@ -289,9 +290,27 @@ profile(Model) ->
 %% Worth using on a long-lived model. Events accumulate until the buffer's
 %% 512 * 1024 entries are full, and asking for all of them then builds half a
 %% million maps in one call.
+%%
+%% `Limit' bounds the maps, not the reading. LiteRT will not hand over part of
+%% a backlog, so every call copies whatever `pending_events/1' reports, at 104
+%% bytes an event and twice over while LiteRT builds its own copy: a full
+%% buffer is about 109 MiB no matter how few events were asked for. That is
+%% nothing on a workstation and fatal on a board with 256 MB, so on a small
+%% target read often or call `reset_profile/1', and check `pending_events/1'
+%% rather than discovering it.
 -spec profile(reference(), non_neg_integer()) -> {ok, [map()]} | {error, binary()}.
 profile(Model, Limit) when is_integer(Limit), Limit >= 0, Limit =< 2147483647 ->
     tflite_beam_nif:litert_compiled_model_profile(Model, Limit).
+
+%% @doc
+%% How many profiling events are waiting, without reading them.
+%%
+%% Zero for a model built without `profile => true'. This is what sizes the
+%% copy `profile/2' has to make, so it is the number to look at before calling
+%% it on a memory-constrained target.
+-spec pending_events(reference()) -> {ok, non_neg_integer()} | {error, binary()}.
+pending_events(Model) ->
+    tflite_beam_nif:litert_compiled_model_pending_events(Model).
 
 %% @doc Run the model and collect whatever counters the accelerator reports.
 -spec run_with_metrics(reference(), [binary()]) ->
