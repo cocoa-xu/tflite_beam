@@ -18,7 +18,7 @@ cd "$ROOT"
 KIND="${1:-thread}"
 case "$KIND" in
   thread)  RT=tsan; PATTERN="WARNING: ThreadSanitizer"
-           export TSAN_OPTIONS="exitcode=0:halt_on_error=0:suppressions=${ROOT}/scripts/tsan.suppressions" ;;
+           export TSAN_OPTIONS="exitcode=0:halt_on_error=0" ;;
   address) RT=asan; PATTERN="ERROR: AddressSanitizer"
            export ASAN_OPTIONS="detect_leaks=0:halt_on_error=0" ;;
   *) echo "usage: $0 [thread|address]" >&2; exit 2 ;;
