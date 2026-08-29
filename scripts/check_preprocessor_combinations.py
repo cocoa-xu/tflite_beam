@@ -14,8 +14,10 @@ Run it after touching anything under an `#ifdef`:
 import glob
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 
 FLAGS_MAKE = "_build/default/lib/tflite_beam/cmake_tflite_beam/CMakeFiles/tflite_beam.dir/flags.make"
 
@@ -23,6 +25,41 @@ FLAGS_MAKE = "_build/default/lib/tflite_beam/cmake_tflite_beam/CMakeFiles/tflite
 def cmake_var(text, name):
     found = re.search(rf"^{name} = (.*)$", text, re.M)
     return found.group(1) if found else ""
+
+
+
+def litert_include_flags():
+    """What a LiteRT-on build puts on the include path and a default one does not.
+
+    Returns the -I flags, or None after explaining what is missing. Never
+    returns flags that would let a row pass by not reaching LiteRT at all.
+    """
+    roots = sorted(glob.glob("3rd_party/litert/LiteRT-*"))
+    if not roots:
+        print("no 3rd_party/litert/LiteRT-*; unpack the LiteRT source before checking")
+        return None
+    root = pathlib.Path(roots[-1])
+
+    template = root / "litert/build_common/build_config.h.in"
+    if not template.is_file():
+        print(f"no {template}; the LiteRT source tree is not the shape this expects")
+        return None
+
+    # CMake writes this with configure_file; #cmakedefine01 becomes a 0/1 define.
+    # GPU and NPU are off here because that is what CMakeLists defaults them to
+    # and therefore what the precompiled LiteRT tarballs are built with.
+    generated = pathlib.Path(tempfile.mkdtemp(prefix="tflite_beam_litert_")) / "litert/build_common"
+    generated.mkdir(parents=True)
+    body = template.read_text()
+    body = re.sub(r"^#cmakedefine01 (\w+)$", r"#define \1 1", body, flags=re.M)
+    (generated / "build_config.h").write_text(body)
+
+    header = generated / "build_config.h"
+    if "#define LITERT_BUILD_CONFIG_DISABLE_GPU" not in header.read_text():
+        print(f"{header} came out without the defines it exists to carry")
+        return None
+
+    return f"-I{generated.parent.parent} -I{root}"
 
 
 def main():
@@ -39,12 +76,29 @@ def main():
     # whatever tree that build used. One from before the runtime moved to LiteRT
     # resolves none of the includes here, and the failure reads as "c_api.h file
     # not found" rather than as a stale build directory.
-    if "/litert/" not in includes:
+    #
+    # Checking for "/litert/" was not enough and looked like it was: the tflite
+    # subtree lives under 3rd_party/litert too, so a LiteRT-*off* build passes
+    # that test while missing everything the LiteRT rows need. On CI, where no
+    # LiteRT build has ever run, all four of those rows failed on a header the
+    # off build never generates, and locally they passed on one left behind by
+    # an earlier build. Ask for the header the tflite side actually needs.
+    if not any(pathlib.Path(d.lstrip("-I")).joinpath("tflite/c/c_api.h").is_file()
+               for d in includes.split() if d.startswith("-I")):
         print(
             f"{FLAGS_MAKE} was written by a build that did not use LiteRT.\n"
             "Rebuild from source in this tree before checking:\n"
             "  rm -f priv/tflite_beam.so && TFLITE_BEAM_PREFER_PRECOMPILED=false make"
         )
+        return 1
+
+    # A LiteRT-on row needs what a LiteRT-on build would have and a default
+    # build does not: LITERT_ROOT_DIR on the include path, and build_config.h,
+    # which CMake generates from a template into its own binary directory. If
+    # the flags came from a default build neither is there, so they are made
+    # here rather than hoped for.
+    litert_includes = litert_include_flags()
+    if litert_includes is None:
         return 1
 
     sources = sorted(
@@ -75,9 +129,11 @@ def main():
                 # LiteRT-on rows and the four off rows were the same four checks
                 # printed twice under different labels.
                 row_defines = base_defines
+                row_includes = includes
                 if litert:
                     if "-DTFLITE_BEAM_LITERT_API_ENABLED=1" not in row_defines:
                         row_defines += " -DTFLITE_BEAM_LITERT_API_ENABLED=1"
+                    row_includes = f"{includes} {litert_includes}"
                 else:
                     row_defines = row_defines.replace("-DTFLITE_BEAM_LITERT_API_ENABLED=1", "")
 
@@ -88,7 +144,7 @@ def main():
                 bad = []
                 for source in checking:
                     result = subprocess.run(
-                        f"c++ {row_defines} {includes} {flags} -fsyntax-only {source}",
+                        f"c++ {row_defines} {row_includes} {flags} -fsyntax-only {source}",
                         shell=True, capture_output=True, text=True,
                     )
                     if result.returncode != 0:
