@@ -134,13 +134,25 @@ if [ ! -f "priv/${LIBNAME_SO:-tflite_beam.so}" ]; then
   echo "priv/tflite_beam.so is missing after the build; nothing to drive" >&2
   exit 1
 fi
+# set -e and pipefail together would kill the script here the moment the
+# emulator does anything but exit cleanly, which is exactly the case this check
+# exists to explain: on a CI runner it died of SIGSEGV and the script exited 139
+# having printed nothing. The status is taken by hand so the message survives.
+set +e
 LOADCHECK=$(run_beam \
   -pa "${ROOT}/_build/default/lib/tflite_beam/ebin" \
-  -eval 'io:format("~p", [code:load_file(tflite_beam_nif)]), halt(0).' 2>&1 | tail -1)
+  -eval 'io:format("~p", [code:load_file(tflite_beam_nif)]), halt(0).' 2>&1)
+LOADRC=$?
+set -e
 case "$LOADCHECK" in
   *"{module,tflite_beam_nif}"*) ;;
-  *) echo "the NIF will not load, so the drive would only report undef:" >&2
-     echo "  $LOADCHECK" >&2
+  *) echo "the NIF will not load (emulator exited ${LOADRC}), so the drive" >&2
+     echo "would only report undef. What it said:" >&2
+     echo "$LOADCHECK" | tail -20 | sed 's/^/  /' >&2
+     if [ "$LOADRC" -gt 128 ]; then
+       echo "  (exit ${LOADRC} is signal $((LOADRC - 128)); a preloaded runtime that" >&2
+       echo "   does not match the one the library was built against does this)" >&2
+     fi
      exit 1 ;;
 esac
 
