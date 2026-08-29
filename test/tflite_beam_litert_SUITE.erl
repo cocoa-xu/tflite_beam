@@ -303,18 +303,27 @@ profile_names_the_operators(Config) ->
     ?assertEqual({ok, Events}, ?A:profile(Model, length(Events) + 100)),
     {ok, Summary} = ?A:summarise_profile(Model),
     ?assertNotEqual([], Summary),
-    %% every entry is a tag, an operator kind, a count and a total, the totals
-    %% are ordered, and nothing that is not an operator got in
-    Totals = [U || {_, _, _, U} <- Summary],
+    %% every entry names a tag, an operator kind, a count and a total, the
+    %% totals are ordered, and nothing that is not an operator got in
+    Totals = [U || #{us := U} <- Summary],
     ?assertEqual(lists:reverse(lists:sort(Totals)), Totals),
-    ?assert(lists:all(fun({T, K, C, _}) ->
+    ?assert(lists:all(fun(#{tag := T, kind := K, count := C}) ->
                           is_binary(T) andalso C > 0 andalso
                           lists:member(K, [operator, delegate_operator, delegate_profiled])
                       end, Summary)),
     %% the enclosing Invoke is an event but not an operator, so it must be in
     %% profile/1 and absent from the summary
     ?assert(lists:any(fun(E) -> maps:get(tag, E) =:= <<"Invoke">> end, Events)),
-    ?assertEqual([], [X || X = {<<"Invoke">>, _, _, _} <- Summary]),
+    ?assertEqual([], [X || X = #{tag := <<"Invoke">>} <- Summary]),
+    %% The event types are named, not LiteRT's raw numbers. This also serves as
+    %% a tripwire: an upstream bump that adds an event type arrives here as an
+    %% integer and fails this line, which is the point at which the new type
+    %% wants naming rather than the point a caller discovers a bare number.
+    ?assert(lists:all(fun(#{type := T, source := S}) ->
+                          is_atom(T) andalso is_atom(S)
+                      end, Events)),
+    ?assert(lists:member(litert, [maps:get(source, E) || E <- Events])
+            orelse lists:member(tflite_interpreter, [maps:get(source, E) || E <- Events])),
     %% Resetting empties it, and recording has to survive: LiteRT's own reset
     %% clears the profile buffer's enabled flag and does not put it back, so a
     %% test that only checks emptiness passes on a model that will never record

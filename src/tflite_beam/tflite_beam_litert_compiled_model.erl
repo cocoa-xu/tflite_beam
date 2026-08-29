@@ -44,6 +44,20 @@
 %% Same range and for the same reason: it crosses into the NIF as a C int.
 -type detail_level() :: 0..2147483647.
 -type operator_kind() :: operator | delegate_operator | delegate_profiled.
+%% What a profiling event is. An integer means this build met a type LiteRT has
+%% since added, which is reported rather than dropped.
+-type event_type() :: default | operator_kind()
+                    | runtime_instrumentation | telemetry
+                    | telemetry_report_settings | telemetry_delegate
+                    | telemetry_delegate_report_settings | integer().
+-type event_source() :: litert | tflite_interpreter | tflite_delegate | integer().
+-type event() :: #{tag := binary(), us := non_neg_integer(),
+                   type := event_type(), source := event_source()}.
+-type summary_entry() :: #{tag := binary(), kind := operator_kind(),
+                           count := pos_integer(), us := non_neg_integer()}.
+%% Whatever the accelerator chose to report. `unsupported' is a value of a kind
+%% LiteRtAny can hold but this library has no term for.
+-type metric_value() :: integer() | float() | boolean() | binary() | unsupported.
 -type opts() :: #{
     accelerators => [accelerator()],
     precision => precision(),
@@ -52,7 +66,8 @@
     max_model_bytes => non_neg_integer()
 }.
 -export_type([accelerator/0, precision/0, opts/0, signature_index/0,
-              detail_level/0, operator_kind/0]).
+              detail_level/0, operator_kind/0, event/0, event_type/0,
+              event_source/0, summary_entry/0, metric_value/0]).
 
 %% @doc
 %% What this build of the library can reach.
@@ -267,19 +282,18 @@ io_sizes(Model) ->
 %% Empty unless the model was built with `profile => true'. Each event is a map
 %% of `tag', `us', `type' and `source'.
 %%
-%% **Provisional.** `type' and `source' are LiteRT's own enumeration numbers,
-%% passed through rather than named, so they can change with an upstream bump
-%% and mean something different without this function changing. Build on
-%% `summarise_profile/1', which speaks in atoms, unless you specifically need an
-%% event this does not fold. Telemetry events are included and carry
-%% a sentinel in place of a duration; `summarise_profile/1' drops them.
+%% `type' and `source' are named against LiteRT's enumeration constants rather
+%% than passed through as numbers, so an upstream renumbering cannot quietly
+%% change what one means; a type this build has no name for arrives as its
+%% number. Telemetry events are included and carry a sentinel in place of a
+%% duration, which is why `summarise_profile/1' drops them.
 %%
 %% The buffer behind this is fixed and large: a compiled model asks for
 %% 512 * 1024 entries in LiteRT 2.2.0, not the 10240 a bare profiler defaults
 %% to. So a long-lived model does not grow without bound, but neither will it
 %% overflow soon. Reset it when you want to measure a change rather than to keep
 %% it in check.
--spec profile(reference()) -> {ok, [map()]} | {error, binary()}.
+-spec profile(reference()) -> {ok, [event()]} | {error, binary()}.
 profile(Model) ->
     profile(Model, 0).
 
@@ -298,7 +312,7 @@ profile(Model) ->
 %% nothing on a workstation and fatal on a board with 256 MB, so on a small
 %% target read often or call `reset_profile/1', and check `pending_events/1'
 %% rather than discovering it.
--spec profile(reference(), non_neg_integer()) -> {ok, [map()]} | {error, binary()}.
+-spec profile(reference(), non_neg_integer()) -> {ok, [event()]} | {error, binary()}.
 profile(Model, Limit) when is_integer(Limit), Limit >= 0, Limit =< 2147483647 ->
     tflite_beam_nif:litert_compiled_model_profile(Model, Limit).
 
@@ -314,7 +328,7 @@ pending_events(Model) ->
 
 %% @doc Run the model and collect whatever counters the accelerator reports.
 -spec run_with_metrics(reference(), [binary()]) ->
-    {ok, {[binary()], [{binary(), term()}]}} | {error, binary()}.
+    {ok, {[binary()], [{binary(), metric_value()}]}} | {error, binary()}.
 run_with_metrics(Model, Inputs) ->
     run_with_metrics(Model, Inputs, 0).
 
@@ -332,7 +346,7 @@ run_with_metrics(Model, Inputs) ->
 %% nothing to report on. Use `profile/1' for timings; this is for counters a
 %% backend chooses to expose.
 -spec run_with_metrics(reference(), [binary()], detail_level()) ->
-    {ok, {[binary()], [{binary(), term()}]}} | {error, binary()}.
+    {ok, {[binary()], [{binary(), metric_value()}]}} | {error, binary()}.
 run_with_metrics(Model, Inputs, DetailLevel)
         when is_list(Inputs), is_integer(DetailLevel),
              DetailLevel >= 0, DetailLevel =< 2147483647 ->
@@ -366,13 +380,9 @@ reset_profile(Model) ->
 %% @doc
 %% `profile/1' folded into per-operator totals.
 %%
-%% Returns `{Tag, Kind, Count, MicrosecondsTotal}' sorted slowest first, over
-%% operator events only.
-%%
-%% **Provisional.** The tuple is anonymous and positional, which is the wrong
-%% shape to be stuck with: a map with named keys is where this should end up,
-%% and adding a field to a tuple breaks every caller that matched on it. Treat
-%% the shape as unsettled until 1.0.0 says otherwise.
+%% Returns maps of `tag', `kind', `count' and `us', sorted slowest first, over
+%% operator events only. A map rather than a tuple so that a field can be added
+%% later without breaking every caller that matched on position.
 %%
 %% The events LiteRT records are nested. An `Invoke' encloses the operators it
 %% ran, and `AllocateTensors' and LiteRT's own buffer handling sit beside them,
@@ -386,8 +396,7 @@ reset_profile(Model) ->
 %% for the fused operation. LiteRT's own summariser keeps the two apart for the
 %% same reason. Totals within one `Kind' are additive; totals across kinds are
 %% not.
--spec summarise_profile(reference()) ->
-    {ok, [{binary(), operator_kind(), pos_integer(), non_neg_integer()}]} | {error, binary()}.
+-spec summarise_profile(reference()) -> {ok, [summary_entry()]} | {error, binary()}.
 summarise_profile(Model) ->
     case profile(Model, 0) of
         {ok, Events} ->
@@ -402,19 +411,20 @@ summarise_profile(Model) ->
                                              {1, maps:get(us, E)}, Acc)
                     end
                 end, #{}, Events),
-            {ok, lists:reverse(lists:keysort(4,
-                [{Tag, Kind, C, U} || {{Tag, Kind}, {C, U}} <- maps:to_list(Totals)]))};
+            Entries = [#{tag => Tag, kind => Kind, count => C, us => U}
+                       || {{Tag, Kind}, {C, U}} <- maps:to_list(Totals)],
+            {ok, lists:sort(fun(#{us := A}, #{us := B}) -> A >= B end, Entries)};
         Error ->
             Error
     end.
 
-%% LiteRtProfilerEventType, of which only these three are an operator running.
-%% DEFAULT encloses them and the rest are not operators, so naming the three is
-%% the whole filter: telemetry, which carries a sentinel where a duration would
-%% go, is excluded by its type rather than by how large its number is.
-operator_kind(2) -> operator;
-operator_kind(4) -> delegate_operator;
-operator_kind(8) -> delegate_profiled;
+%% Of the event types, only these three are an operator running. DEFAULT
+%% encloses them and the rest are not operators, so naming the three is the
+%% whole filter: telemetry, which carries a sentinel where a duration would go,
+%% is excluded by being none of them.
+operator_kind(operator) -> operator;
+operator_kind(delegate_operator) -> delegate_operator;
+operator_kind(delegate_profiled) -> delegate_profiled;
 operator_kind(_) -> not_an_operator.
 
 accelerator_set([]) ->

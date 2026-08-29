@@ -186,8 +186,7 @@ profile(Server, Limit) when is_integer(Limit), Limit >= 0, Limit =< 2147483647 -
 
 %% @doc Per-operator totals over every run since the last reset, slowest first.
 -spec summarise_profile(pid()) ->
-    {ok, [{binary(), tflite_beam_litert_compiled_model:operator_kind(),
-           pos_integer(), non_neg_integer()}]} | {error, binary()}.
+    {ok, [tflite_beam_litert_compiled_model:summary_entry()]} | {error, binary()}.
 summarise_profile(Server) ->
     with(Server, fun(M) -> ?M:summarise_profile(M) end).
 

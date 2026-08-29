@@ -639,6 +639,36 @@ ERL_NIF_TERM litert_compiled_model_fully_accelerated(ErlNifEnv *env, int argc, c
     return erlang::nif::ok(env, erlang::nif::atom(env, fully ? "true" : "false"));
 }
 
+// LiteRT's own numbers mean nothing to a caller and can be renumbered upstream
+// without this file changing, so they are named here against the enum constants
+// rather than passed through. An unknown one keeps its number, because dropping
+// it would be worse than reporting something this build does not know about.
+static ERL_NIF_TERM event_type_term(ErlNifEnv * env, LiteRtProfilerEventType t) {
+    switch (t) {
+        case DEFAULT:                                 return erlang::nif::atom(env, "default");
+        case OPERATOR_INVOKE_EVENT:                   return erlang::nif::atom(env, "operator");
+        case DELEGATE_OPERATOR_INVOKE_EVENT:          return erlang::nif::atom(env, "delegate_operator");
+        case DELEGATE_PROFILED_OPERATOR_INVOKE_EVENT: return erlang::nif::atom(env, "delegate_profiled");
+        case GENERAL_RUNTIME_INSTRUMENTATION_EVENT:   return erlang::nif::atom(env, "runtime_instrumentation");
+        case TELEMETRY_EVENT:                         return erlang::nif::atom(env, "telemetry");
+        case TELEMETRY_REPORT_SETTINGS:               return erlang::nif::atom(env, "telemetry_report_settings");
+        case TELEMETRY_DELEGATE_EVENT:                return erlang::nif::atom(env, "telemetry_delegate");
+        case TELEMETRY_DELEGATE_REPORT_SETTINGS:      return erlang::nif::atom(env, "telemetry_delegate_report_settings");
+        default: break;
+    }
+    return enif_make_int(env, (int)t);
+}
+
+static ERL_NIF_TERM event_source_term(ErlNifEnv * env, ProfiledEventSource s) {
+    switch (s) {
+        case LITERT:             return erlang::nif::atom(env, "litert");
+        case TFLITE_INTERPRETER: return erlang::nif::atom(env, "tflite_interpreter");
+        case TFLITE_DELEGATE:    return erlang::nif::atom(env, "tflite_delegate");
+        default: break;
+    }
+    return enif_make_int(env, (int)s);
+}
+
 // litert_compiled_model_profile(Model) -> {ok, [map()]} | {error, Reason}
 //
 // Empty unless the model was compiled with profiling on. Telemetry events carry
@@ -681,9 +711,9 @@ ERL_NIF_TERM litert_compiled_model_profile(ErlNifEnv *env, int argc, const ERL_N
         enif_make_map_put(env, ev, erlang::nif::atom(env, "us"),
             enif_make_uint64(env, buf[i].elapsed_time_us), &ev);
         enif_make_map_put(env, ev, erlang::nif::atom(env, "type"),
-            enif_make_int(env, (int)buf[i].event_type), &ev);
+            event_type_term(env, buf[i].event_type), &ev);
         enif_make_map_put(env, ev, erlang::nif::atom(env, "source"),
-            enif_make_int(env, (int)buf[i].event_source), &ev);
+            event_source_term(env, buf[i].event_source), &ev);
         events = enif_make_list_cell(env, ev, events);
     }
     return erlang::nif::ok(env, events);
