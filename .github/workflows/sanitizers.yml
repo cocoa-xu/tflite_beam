@@ -43,16 +43,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Install OTP
-        uses: cocoa-xu/otp-build@v1
-        with:
-          otp_version: '~> 26'
-
-      - name: Install system dependencies
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential automake autoconf pkg-config bc m4 \
             unzip zip curl git libssl-dev libncurses-dev ca-certificates
+
+          # The distribution's Erlang, not a self-built one. Preloading TSan into
+          # an emulator that was not built with it is not something Linux
+          # supports the way macOS does, and it is sensitive to how that emulator
+          # lays out memory: the same script runs clean on a distro OTP and
+          # segfaulted before printing anything on an OTP built by the action
+          # this repository uses elsewhere. This job is about the NIF, not about
+          # which OTP built it, so it takes the one that works.
+          sudo apt-get install -y erlang-nox erlang-dev
+          erl -noshell -eval 'io:format("otp ~s, erts ~s~n", [erlang:system_info(otp_release), erlang:system_info(version)]), halt().' 
 
           # clang, not gcc. XNNPACK writes XNN_OOB_READS after the declarator and
           # under a sanitizer that macro expands to an attribute GCC rejects
