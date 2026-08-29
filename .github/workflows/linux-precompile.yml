@@ -202,7 +202,22 @@ jobs:
           # The plain build goes first, so a LiteRT failure on a new target
           # cannot cost the tarball that everything already depends on.
           TARGET_TRIPLET=${{ matrix.pair.arch_name }}-${{ matrix.pair.target_os }}-${{ matrix.pair.target_abi }}
-          for VARIANT in "" "-litert"; do
+
+          # armv6 and armv7l build with XNNPACK off, and LiteRT's CPU
+          # accelerator *is* XNNPACK: RegisterCpuAccelerator lives in
+          # litert/runtime/accelerators/xnnpack/xnnpack_accelerator.cc, which
+          # litert/runtime/CMakeLists.txt compiles unconditionally. With XNNPACK
+          # off that leaves TfLiteXNNPackDelegate* undefined and the .so fails to
+          # load; measured on a Pi Zero W. Patching it to compile would produce a
+          # 20MB artifact against the plain 7MB with no accelerator of any kind,
+          # since those boards have no usable GPU either, so there is nothing on
+          # the other side of the work.
+          VARIANTS=("" "-litert")
+          case "${{ matrix.pair.arch_name }}" in
+            armv6|armv7l) VARIANTS=(""); echo "no LiteRT variant for ${{ matrix.pair.arch_name }}: XNNPACK is off there" ;;
+          esac
+
+          for VARIANT in "${VARIANTS[@]}"; do
             if [ "${VARIANT}" = "-litert" ]; then
               export TFLITE_BEAM_ENABLE_LITERT_API="true"
             else

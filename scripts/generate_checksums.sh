@@ -52,13 +52,29 @@ fi
 # LiteRT API compiled in, chosen at install time by TFLITE_BEAM_ENABLE_LITERT_API.
 # Both have to be named here. A manifest that lists only the plain ones lets the
 # LiteRT half refuse to install, with no hint that the release built them.
+#
+# armv6 and armv7l are the exception and get no LiteRT tarball: they build with
+# XNNPACK off, LiteRT's CPU accelerator is XNNPACK, and the resulting .so does
+# not load. Expecting one here would block every release for a file the matrix
+# is right not to produce.
+LITERT_TARGETS=()
+for target in "${EXPECTED_TARGETS[@]}"; do
+  case "$target" in
+    armv6-*|armv7l-*) ;;
+    *) LITERT_TARGETS+=("$target") ;;
+  esac
+done
+
 MISSING=()
 for target in "${EXPECTED_TARGETS[@]}"; do
-  for variant in "" "-litert"; do
-    if ! find "$WORK_DIR" -name "*-${target}${variant}-v${VERSION}.tar.gz" | grep -q .; then
-      MISSING+=("${target}${variant}")
-    fi
-  done
+  if ! find "$WORK_DIR" -name "*-${target}-v${VERSION}.tar.gz" | grep -q .; then
+    MISSING+=("$target")
+  fi
+done
+for target in "${LITERT_TARGETS[@]}"; do
+  if ! find "$WORK_DIR" -name "*-${target}-litert-v${VERSION}.tar.gz" | grep -q .; then
+    MISSING+=("${target}-litert")
+  fi
 done
 if [ "${#MISSING[@]}" -ne 0 ]; then
   echo "v${VERSION} is missing tarballs for: ${MISSING[*]}" >&2
