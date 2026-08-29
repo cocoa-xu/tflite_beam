@@ -1,0 +1,67 @@
+name: sanitizers
+
+# Not on pull requests. Each sanitizer run is a clean build of the whole tree
+# under -fsanitize, which takes 15 to 20 minutes on eight cores; on a four core
+# runner the two of them would take this job from 16 minutes to well over an
+# hour, on every push. The macOS job already runs both on every pull request, so
+# what this adds is the second compiler and the second platform: clang on Linux
+# compiles the x86 microkernels that an arm64 mac never sees, and TSan's
+# defaults differ between the two systems.
+on:
+  schedule:
+    # 05:00 UTC daily, after the day's merges and before anyone is looking
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: 'which sanitizer to run'
+        required: false
+        default: 'both'
+        type: choice
+        options: [both, thread, address]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sanitize:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TFLITE_BEAM_CORAL_SUPPORT: "false"
+      TFLITE_BEAM_PREFER_PRECOMPILED: "false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install OTP
+        uses: cocoa-xu/otp-build@v1
+        with:
+          otp_version: '~> 26'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential automake autoconf pkg-config bc m4 \
+            unzip zip curl git libssl-dev libncurses5-dev libtinfo5 ca-certificates
+
+          # clang, not gcc. XNNPACK writes XNN_OOB_READS after the declarator and
+          # under a sanitizer that macro expands to an attribute GCC rejects
+          # there, so a gcc run dies on a hundred f16 microkernels with a message
+          # that says nothing about sanitizers. scripts/run_sanitizer.sh picks
+          # clang on its own; this is what makes one available.
+          sudo apt-get install -y clang
+
+          curl -fSL https://s3.amazonaws.com/rebar3/rebar3 -o rebar3 && chmod +x rebar3
+          sudo mv rebar3 /usr/local/bin/rebar3
+
+      - name: ThreadSanitizer
+        if: ${{ github.event_name == 'schedule' || inputs.kind == 'both' || inputs.kind == 'thread' }}
+        run: ./scripts/run_sanitizer.sh thread
+
+      - name: AddressSanitizer
+        if: ${{ github.event_name == 'schedule' || inputs.kind == 'both' || inputs.kind == 'address' }}
+        run: ./scripts/run_sanitizer.sh address
