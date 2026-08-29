@@ -21,6 +21,7 @@
     metrics_are_empty_rather_than_an_error/1,
     profile_is_empty_unless_asked_for/1,
     profile_names_the_operators/1,
+    pending_events_tracks_the_backlog/1,
     reset_profile_needs_profiling_on/1,
     server_serialises_what_sharing_gets_wrong/1,
     an_unclaimed_model_is_open_to_every_process/1,
@@ -54,6 +55,7 @@ all() ->
         metrics_are_empty_rather_than_an_error,
         profile_is_empty_unless_asked_for,
         profile_names_the_operators,
+        pending_events_tracks_the_backlog,
         reset_profile_needs_profiling_on,
         server_serialises_what_sharing_gets_wrong,
         an_unclaimed_model_is_open_to_every_process,
@@ -322,6 +324,33 @@ profile_names_the_operators(Config) ->
     {ok, _} = ?A:run(Model, [filled(1.0, N) || N <- Ins]),
     {ok, AfterRerun} = ?A:summarise_profile(Model),
     ?assertNotEqual([], AfterRerun).
+
+%% The size of the copy profile/2 makes is set by this, not by the limit given
+%% to it, so the number has to be reachable without making the copy. Asserting
+%% only "it is a number" would pass against a stub returning zero, so what is
+%% checked is that it moves with the events and that the limit does not move it.
+pending_events_tracks_the_backlog(Config) ->
+    Unprofiled = model(Config, #{accelerators => [cpu]}),
+    ?assertEqual({ok, 0}, ?A:pending_events(Unprofiled)),
+
+    Model = model(Config, #{accelerators => [cpu], profile => true}),
+    {ok, {Ins, _}} = ?A:io_sizes(Model),
+    Inputs = [filled(1.0, N) || N <- Ins],
+    {ok, _} = ?A:run(Model, Inputs),
+    {ok, AfterOne} = ?A:pending_events(Model),
+    ?assert(AfterOne > 0),
+
+    {ok, _} = ?A:run(Model, Inputs),
+    {ok, AfterTwo} = ?A:pending_events(Model),
+    ?assert(AfterTwo > AfterOne),
+
+    %% reading a bounded slice must not drain the backlog, because the copy is
+    %% still whole-backlog sized on the next call
+    {ok, _} = ?A:profile(Model, 1),
+    ?assertEqual({ok, AfterTwo}, ?A:pending_events(Model)),
+
+    ok = ?A:reset_profile(Model),
+    ?assertEqual({ok, 0}, ?A:pending_events(Model)).
 
 reset_profile_needs_profiling_on(Config) ->
     Model = model(Config, #{accelerators => [cpu]}),

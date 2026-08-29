@@ -654,7 +654,10 @@ ERL_NIF_TERM litert_compiled_model_profile(ErlNifEnv *env, int argc, const ERL_N
 
     // A profile nobody reads keeps growing to the buffer's half a million
     // entries, and building a map for each of those in one call allocates far
-    // more than a caller who only wanted a look is asking for.
+    // more than a caller who only wanted a look is asking for. The limit bounds
+    // the maps but not the copy below it: LiteRtGetProfilerEvents refuses a
+    // buffer smaller than the whole backlog, so that part is sized by
+    // pending_events/1 no matter what is asked for here.
     int limit = 0;
     if (!enif_get_int(env, argv[1], &limit) || limit < 0) {
         return erlang::nif::error(env, "expecting a limit of zero or more");
@@ -684,6 +687,23 @@ ERL_NIF_TERM litert_compiled_model_profile(ErlNifEnv *env, int argc, const ERL_N
         events = enif_make_list_cell(env, ev, events);
     }
     return erlang::nif::ok(env, events);
+}
+
+// litert_compiled_model_pending_events(Model) -> {ok, non_neg_integer()}
+//
+// What profile/2 would have to copy. The copy is sized by this, not by the
+// caller's limit, so a caller on a small board needs to be able to see it
+// coming without paying for it first.
+ERL_NIF_TERM litert_compiled_model_pending_events(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+    CompiledModelUse res(env, argv[0]);
+    if (!res) return res.error();
+    if (res->profiler == nullptr) return erlang::nif::ok(env, enif_make_int(env, 0));
+
+    int n = 0;
+    LiteRtStatus st = LiteRtGetNumProfilerEvents(res->profiler, &n);
+    if (st != kLiteRtStatusOk) return litert_error(env, "profiler event count", st);
+    return erlang::nif::ok(env, enif_make_int(env, n < 0 ? 0 : n));
 }
 
 // litert_compiled_model_reset_profile(Model) -> ok | {error, Reason}

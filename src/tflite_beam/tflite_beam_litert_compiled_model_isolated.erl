@@ -39,6 +39,7 @@
     io_sizes/1,
     fully_accelerated/1,
     profile/1, profile/2,
+    pending_events/1,
     summarise_profile/1,
     reset_profile/1,
     node_of/1,
@@ -128,6 +129,11 @@ profile(Server, Limit) when is_integer(Limit), Limit >= 0, Limit =< 2147483647 -
     {ok, [{binary(), ?M:operator_kind(), pos_integer(), non_neg_integer()}]} | {error, binary()}.
 summarise_profile(Server) ->
     call(Server, summarise_profile, ?DEFAULT_TIMEOUT).
+
+%% @doc How many profiling events are waiting, without reading them.
+-spec pending_events(pid()) -> {ok, non_neg_integer()} | {error, binary()}.
+pending_events(Server) ->
+    call(Server, pending_events, ?DEFAULT_TIMEOUT).
 
 %% @doc Forget the events recorded so far and keep recording.
 -spec reset_profile(pid()) -> ok | {error, binary()}.
@@ -220,6 +226,7 @@ forward(Remote, io_sizes) -> ?SERVER:io_sizes(Remote);
 forward(Remote, fully_accelerated) -> ?SERVER:fully_accelerated(Remote);
 forward(Remote, {profile, Limit}) -> ?SERVER:profile(Remote, Limit);
 forward(Remote, summarise_profile) -> ?SERVER:summarise_profile(Remote);
+forward(Remote, pending_events) -> ?SERVER:pending_events(Remote);
 forward(Remote, reset_profile) -> ?SERVER:reset_profile(Remote).
 
 %% Distribution has to be up before a peer can be started, and a library should

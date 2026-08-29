@@ -53,6 +53,9 @@ litert_compiled_model_fully_accelerated(_model) ->
 litert_compiled_model_profile(_model, _limit) ->
     not_loaded(?LINE).
 
+litert_compiled_model_pending_events(_model) ->
+    not_loaded(?LINE).
+
 litert_compiled_model_reset_profile(_model) ->
     not_loaded(?LINE).
 
