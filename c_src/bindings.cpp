@@ -203,6 +203,8 @@ static ErlNifFunc nif_functions[] = {
     F(nif_arm_fault, 1),
 #ifdef TFLITE_BEAM_LITERT_API_ENABLED
     F(nif_litert_call_count, 0),
+#else
+    F_NOT_COMPILED_LITERT(nif_litert_call_count, 0),
 #endif
 
     F(error_reporter_default_error_reporter, 0),
