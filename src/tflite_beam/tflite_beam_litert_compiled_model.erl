@@ -80,9 +80,12 @@
 %% to, while a GPU accelerator plugin brings its own OpenCL and is unaffected.
 %% This says "was it compiled in", not "is a device present"; the second
 %% question is answered by asking for the accelerator and being refused.
--spec platform_support() -> #{atom() => boolean()} | {error, binary()}.
+-spec platform_support() -> {ok, #{atom() => boolean()}} | {error, binary()}.
 platform_support() ->
-    tflite_beam_nif:litert_platform_support().
+    case tflite_beam_nif:litert_platform_support() of
+        Map when is_map(Map) -> {ok, Map};
+        Error -> Error
+    end.
 
 %% @doc
 %% Whether this build has the LiteRT API at all.
@@ -93,7 +96,10 @@ platform_support() ->
 %% from a call that was supposed to do something.
 -spec available() -> boolean().
 available() ->
-    is_map(platform_support()).
+    case platform_support() of
+        {ok, _} -> true;
+        _ -> false
+    end.
 
 %% @doc
 %% An environment with no directory to look for accelerator plugins in.

@@ -61,6 +61,18 @@
 -define(DEFAULT_MAX_QUEUE, 64).
 -define(M, tflite_beam_litert_compiled_model).
 
+%% Everything tflite_beam_litert_compiled_model:new/3 takes, plus max_queue,
+%% which belongs to the process rather than to the model.
+-type opts() :: #{
+    accelerators => [?M:accelerator()],
+    precision => ?M:precision(),
+    profile => boolean(),
+    signature => ?M:signature_index() | binary() | string(),
+    max_model_bytes => non_neg_integer(),
+    max_queue => non_neg_integer()
+}.
+-export_type([opts/0]).
+
 %% @doc Start a compiled model process, on the CPU with no profiling.
 -spec start_link(reference(), binary() | list()) -> {ok, pid()} | {error, term()}.
 start_link(Env, ModelPath) ->
@@ -72,7 +84,7 @@ start_link(Env, ModelPath) ->
 %% `Opts' is what `tflite_beam_litert_compiled_model:new/3' takes. The
 %% environment is created by the caller and may be shared between servers: it
 %% carries where accelerator plugins are found and nothing per-model.
--spec start_link(reference(), binary() | list(), map()) -> {ok, pid()} | {error, term()}.
+-spec start_link(reference(), binary() | list(), opts()) -> {ok, pid()} | {error, term()}.
 start_link(Env, ModelPath, Opts) when is_map(Opts) ->
     gen_server:start_link(?MODULE, {Env, ModelPath, Opts}, []).
 
@@ -82,7 +94,7 @@ start(Env, ModelPath) ->
     start(Env, ModelPath, #{}).
 
 %% @doc Start a compiled model process outside a supervision tree.
--spec start(reference(), binary() | list(), map()) -> {ok, pid()} | {error, term()}.
+-spec start(reference(), binary() | list(), opts()) -> {ok, pid()} | {error, term()}.
 start(Env, ModelPath, Opts) when is_map(Opts) ->
     gen_server:start(?MODULE, {Env, ModelPath, Opts}, []).
 
@@ -168,7 +180,7 @@ run_with_metrics(Server, Inputs, DetailLevel, Timeout)
     gen_server:call(Server, {run_with_metrics, Inputs, DetailLevel}, Timeout).
 
 %% @doc Every profiling event recorded since the last reset.
--spec profile(pid()) -> {ok, [map()]} | {error, binary()}.
+-spec profile(pid()) -> {ok, [?M:event()]} | {error, binary()}.
 profile(Server) ->
     profile(Server, 0).
 
@@ -180,7 +192,7 @@ profile(Server) ->
 %% The guard is here as well as in the direct module for the same reason it is
 %% on `run_with_metrics/4': an argument the direct module refuses with
 %% `function_clause' would raise inside this server and take the model with it.
--spec profile(pid(), non_neg_integer()) -> {ok, [map()]} | {error, binary()}.
+-spec profile(pid(), non_neg_integer()) -> {ok, [?M:event()]} | {error, binary()}.
 profile(Server, Limit) when is_integer(Limit), Limit >= 0, Limit =< 2147483647 ->
     with(Server, fun(M) -> ?M:profile(M, Limit) end).
 
