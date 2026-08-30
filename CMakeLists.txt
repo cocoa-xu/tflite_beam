@@ -138,18 +138,34 @@ endif()
 
 # That override reaches the Eigen that LiteRT fetches by name and nothing else.
 # ml_dtypes carries its own Eigen as a git submodule, whose URL lives in that
-# repository's .gitmodules and points at gitlab all the same, so a build could
-# still fail there with "GitLab is currently unable to handle this request due
-# to load" while the mirror sat unused. insteadOf is the one rewrite git applies
-# to submodule URLs as well, so it closes the hole the CMake option cannot
-# reach. Scoped to this build's clones by writing it into a config file the
-# fetches are told to use, rather than touching the user's global git config.
-set(_git_mirror_config "${CMAKE_CURRENT_BINARY_DIR}/gitconfig-mirrors")
-file(WRITE "${_git_mirror_config}"
-     "[url \"${OVERRIDABLE_FETCH_CONTENT_eigen_GIT_REPOSITORY}\"]\n"
-     "\tinsteadOf = https://gitlab.com/libeigen/eigen.git\n"
-     "\tinsteadOf = https://gitlab.com/libeigen/eigen\n")
-set(ENV{GIT_CONFIG_GLOBAL} "${_git_mirror_config}")
+# repository's .gitmodules and points at gitlab all the same, so a build fails
+# there with "GitLab is currently unable to handle this request due to load"
+# while the mirror sits unused. insteadOf is the one rewrite git applies to
+# submodule URLs as well, so it closes the hole the CMake option cannot reach.
+#
+# Written into the user's git config rather than pointed at with
+# GIT_CONFIG_GLOBAL, because that variable arrived in git 2.32 and the
+# precompile container is ubuntu:20.04 with git 2.25, which ignores it silently:
+# the first attempt looked right here and changed nothing there. The entry is
+# rewritten every configure and names only this one repository.
+find_program(GIT_EXECUTABLE_FOR_MIRROR git)
+if(GIT_EXECUTABLE_FOR_MIRROR)
+    execute_process(
+        COMMAND "${GIT_EXECUTABLE_FOR_MIRROR}" config --global
+                "url.${OVERRIDABLE_FETCH_CONTENT_eigen_GIT_REPOSITORY}.insteadOf"
+                "https://gitlab.com/libeigen/eigen.git"
+        RESULT_VARIABLE _mirror_rc OUTPUT_QUIET ERROR_QUIET)
+    execute_process(
+        COMMAND "${GIT_EXECUTABLE_FOR_MIRROR}" config --global
+                "url.${OVERRIDABLE_FETCH_CONTENT_eigen_GIT_REPOSITORY}.insteadOf"
+                "https://gitlab.com/libeigen/eigen"
+        OUTPUT_QUIET ERROR_QUIET)
+    if(NOT _mirror_rc EQUAL 0)
+        message(WARNING
+            "could not point git at the Eigen mirror; a submodule clone may "
+            "fall back to gitlab.com and fail when it is loaded")
+    endif()
+endif()
 
 # reset CLOG_SOURCE_DIR so that cpuinfo won't complain
 unset(CLOG_SOURCE_DIR CACHE)
