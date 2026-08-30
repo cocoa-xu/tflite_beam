@@ -44,14 +44,31 @@ end_per_suite(Config) ->
 
 %% The manifest is generated between tagging and publishing and is not tracked, so
 %% a checkout usually has none -- and a checkout with none is a documented state,
-%% not a broken one. When there is one, though, seven targets ship, and a manifest
-%% listing six would verify six and wave the seventh through.
+%% not a broken one. When there is one, though, every published tarball has to be
+%% in it: a manifest listing eleven of twelve verifies eleven and waves the
+%% twelfth through.
+%%
+%% Twelve, not seven, since 1.0.0-rc3: seven targets ship a plain tarball and
+%% five of them ship a second one with the LiteRT API compiled in. Counting is
+%% not enough on its own, so the shape is checked too. armv6 and armv7l build
+%% with XNNPACK off and LiteRT's CPU accelerator is XNNPACK, so those two have no
+%% LiteRT variant and their presence here would mean the matrix built something
+%% that cannot load.
 manifest_lists_every_target(Config) ->
     case tflite_beam_precompiled:checksums(?config(manifest, Config)) of
         no_manifest ->
             {skip, "no checksum.term here; it is generated at release time"};
         {ok, Entries} ->
-            ?assertEqual(7, length(Entries)),
+            ?assertEqual(12, length(Entries)),
+            {LiteRt, Plain} = lists:partition(
+                fun({Name, _}) -> string:find(Name, "-litert-") =/= nomatch end, Entries),
+            ?assertEqual(7, length(Plain)),
+            ?assertEqual(5, length(LiteRt)),
+            [?assertEqual(nomatch, string:find(Name, Arch),
+                          lists:flatten(io_lib:format(
+                              "~ts has a LiteRT variant, but ~ts builds with XNNPACK off",
+                              [Name, Arch])))
+             || {Name, _} <- LiteRt, Arch <- ["armv6", "armv7l"]],
             [?assert(is_list(Name) andalso length(Digest) =:= 64) || {Name, Digest} <- Entries],
             %% and every one of them for the version being published. A manifest
             %% left over from the previous release lists seven perfectly good
