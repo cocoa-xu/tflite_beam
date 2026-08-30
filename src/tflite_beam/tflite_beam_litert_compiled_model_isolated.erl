@@ -40,8 +40,10 @@
     start_link/1, start_link/2,
     start/1, start/2,
     run/2, run/3,
+    with/2, with/3,
     io_sizes/1,
     fully_accelerated/1,
+    run_with_metrics/2, run_with_metrics/3, run_with_metrics/4,
     profile/1, profile/2,
     pending_events/1,
     summarise_profile/1,
@@ -118,13 +120,49 @@ io_sizes(Server) ->
 fully_accelerated(Server) ->
     call(Server, fully_accelerated, ?DEFAULT_TIMEOUT).
 
+%% @doc
+%% Run a function against the compiled model, on the node that owns it.
+%%
+%% The callback is sent to that node and applied there, so it must return
+%% something worth sending back: a value, not a handle to something local to it.
+-spec with(pid(), fun((reference()) -> Result)) -> Result | {error, binary()}
+    when Result :: term().
+with(Server, Fun) ->
+    with(Server, Fun, ?DEFAULT_TIMEOUT).
+
+%% @doc As `with/2', waiting at most `Timeout'.
+-spec with(pid(), fun((reference()) -> Result), timeout()) -> Result | {error, binary()}
+    when Result :: term().
+with(Server, Fun, Timeout) when is_function(Fun, 1) ->
+    call(Server, {with, Fun}, Timeout).
+
+%% @doc Run the model and collect whatever counters the accelerator reports.
+-spec run_with_metrics(pid(), [binary()]) ->
+    {ok, {[binary()], [{binary(), ?M:metric_value()}]}} | {error, binary()}.
+run_with_metrics(Server, Inputs) ->
+    run_with_metrics(Server, Inputs, 0).
+
+%% @doc As `run_with_metrics/2', at a given detail level.
+-spec run_with_metrics(pid(), [binary()], ?M:detail_level()) ->
+    {ok, {[binary()], [{binary(), ?M:metric_value()}]}} | {error, binary()}.
+run_with_metrics(Server, Inputs, DetailLevel) ->
+    run_with_metrics(Server, Inputs, DetailLevel, ?DEFAULT_TIMEOUT).
+
+%% @doc As `run_with_metrics/3', waiting at most `Timeout'.
+-spec run_with_metrics(pid(), [binary()], ?M:detail_level(), timeout()) ->
+    {ok, {[binary()], [{binary(), ?M:metric_value()}]}} | {error, binary()}.
+run_with_metrics(Server, Inputs, DetailLevel, Timeout)
+        when is_list(Inputs), is_integer(DetailLevel),
+             DetailLevel >= 0, DetailLevel =< 2147483647 ->
+    call(Server, {run_with_metrics, Inputs, DetailLevel}, Timeout).
+
 %% @doc Every profiling event recorded since the last reset.
--spec profile(pid()) -> {ok, [map()]} | {error, binary()}.
+-spec profile(pid()) -> {ok, [?M:event()]} | {error, binary()}.
 profile(Server) ->
     profile(Server, 0).
 
 %% @doc The most recent `Limit' events, or all of them when `Limit' is zero.
--spec profile(pid(), non_neg_integer()) -> {ok, [map()]} | {error, binary()}.
+-spec profile(pid(), non_neg_integer()) -> {ok, [?M:event()]} | {error, binary()}.
 profile(Server, Limit) when is_integer(Limit), Limit >= 0, Limit =< 2147483647 ->
     call(Server, {profile, Limit}, ?DEFAULT_TIMEOUT).
 
@@ -236,8 +274,11 @@ terminate(_Reason, _State) ->
     ok.
 
 forward(Remote, {run, Inputs}) -> ?SERVER:run(Remote, Inputs);
+forward(Remote, {with, Fun}) -> ?SERVER:with(Remote, Fun);
 forward(Remote, io_sizes) -> ?SERVER:io_sizes(Remote);
 forward(Remote, fully_accelerated) -> ?SERVER:fully_accelerated(Remote);
+forward(Remote, {run_with_metrics, Inputs, DetailLevel}) ->
+    ?SERVER:run_with_metrics(Remote, Inputs, DetailLevel);
 forward(Remote, {profile, Limit}) -> ?SERVER:profile(Remote, Limit);
 forward(Remote, summarise_profile) -> ?SERVER:summarise_profile(Remote);
 forward(Remote, pending_events) -> ?SERVER:pending_events(Remote);

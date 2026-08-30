@@ -80,7 +80,7 @@ init_per_suite(Config) ->
             %% the NIFs are registered but report the feature is absent, which is
             %% what a build without TFLITE_BEAM_ENABLE_LITERT_API now does
             {skip, "built without TFLITE_BEAM_ENABLE_LITERT_API"};
-        Support when is_map(Support) ->
+        {ok, Support} when is_map(Support) ->
             %% The feature is compiled in, so from here an error is a failure and
             %% not a reason to skip: a suite that skips itself when the thing it
             %% tests is broken is worse than no suite.
@@ -137,8 +137,7 @@ compiled_model_refuses_the_wrong_number_of_inputs(Config) ->
 %% Compile-time capabilities, so this asserts the shape and the one answer the
 %% platform fixes rather than a value that varies by machine.
 platform_support_is_reported(_Config) ->
-    Support = ?A:platform_support(),
-    ?assert(is_map(Support)),
+    {ok, Support} = ?A:platform_support(),
     Expected = [opencl, opengl, metal, ahwb, ion, dmabuf, fastrpc, sync_fence],
     ?assertEqual(lists:sort(Expected), lists:sort(maps:keys(Support))),
     ?assert(lists:all(fun is_boolean/1, maps:values(Support))),
@@ -162,7 +161,7 @@ platform_support_is_reported(_Config) ->
 %% compiled" would send a caller looking in the wrong place entirely.
 availability_is_answerable_without_a_call(Config) ->
     ?assert(?A:available()),
-    ?assert(is_map(?A:platform_support())),
+    ?assertMatch({ok, Map} when is_map(Map), ?A:platform_support()),
     Env = proplists:get_value(env, Config),
     ?assertMatch({ok, _}, ?A:signatures(Env, tflite_beam_test_models:path(?MODEL))).
 
@@ -735,6 +734,12 @@ an_isolated_model_runs_and_its_death_is_survivable(Config) ->
             ?I = tflite_beam_litert_compiled_model_isolated,
             {ok, Node} = ?I:node_of(Server),
             ?assertNotEqual(node(), Node),
+
+            %% with/2 sends the callback to the node that owns the model and
+            %% applies it there. A reference cannot cross, so this is the only
+            %% way that call can mean anything, and it has to be exercised.
+            {ok, {WIns, _}} = ?I:with(Server, fun(M) -> ?A:io_sizes(M) end),
+            ?assert(is_list(WIns)),
 
             {ok, {Ins, _}} = ?I:io_sizes(Server),
             Inputs = [filled(1.0, N) || N <- Ins],
