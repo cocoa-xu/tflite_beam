@@ -212,12 +212,17 @@ jobs:
           # 20MB artifact against the plain 7MB with no accelerator of any kind,
           # since those boards have no usable GPU either, so there is nothing on
           # the other side of the work.
-          VARIANTS=("" "-litert")
+          # A space separated list with "none" standing in for the empty variant,
+          # not a bash array: this step runs in ubuntu:20.04 where /bin/sh is dash,
+          # and VARIANTS=("" "-litert") is a syntax error there. The dry run caught
+          # it; a release tag would have paid for it.
+          VARIANTS="none -litert"
           case "${{ matrix.pair.arch_name }}" in
-            armv6|armv7l) VARIANTS=(""); echo "no LiteRT variant for ${{ matrix.pair.arch_name }}: XNNPACK is off there" ;;
+            armv6|armv7l) VARIANTS="none"; echo "no LiteRT variant for ${{ matrix.pair.arch_name }}: XNNPACK is off there" ;;
           esac
 
-          for VARIANT in "${VARIANTS[@]}"; do
+          for VARIANT in $VARIANTS; do
+            if [ "${VARIANT}" = "none" ]; then VARIANT=""; fi
             if [ "${VARIANT}" = "-litert" ]; then
               export TFLITE_BEAM_ENABLE_LITERT_API="true"
             else
