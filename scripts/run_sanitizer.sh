@@ -9,6 +9,17 @@
 # macOS and Linux both work. The runtime comes from Xcode on one and from the
 # compiler's own -print-file-name on the other.
 #
+# CI runs this on macOS only, on every pull request. Linux is a manual tool: a
+# job for it was tried on 2026-08-29 and withdrawn after three different
+# incompatibilities, none of them in this repository. ubuntu-22.04's clang is 14
+# and cannot compile the abseil that TensorFlow 2.21 pins, which wants
+# std::source_location. On 24.04 the clang is fine, but preloading TSan into an
+# emulator that was not built with it is not something Linux supports the way
+# macOS does, and an OTP built by this repository's usual action segfaults before
+# printing anything. Taking the distribution's emulator instead gets OTP 25,
+# which current rebar3 will not run on. It works on a machine with clang 16 or
+# newer and a packaged OTP 27, which is where it was verified.
+#
 # Going through `erl` does not work. macOS strips DYLD_* when it execs a
 # SIP-protected binary, and erl is a shell script, so the preload is gone before
 # the emulator starts and the interceptors never install. beam.smp is exec'd
