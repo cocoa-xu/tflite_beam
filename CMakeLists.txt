@@ -136,6 +136,21 @@ if(NOT OVERRIDABLE_FETCH_CONTENT_eigen_GIT_REPOSITORY)
         "Where to fetch Eigen from; the commit is still pinned by LiteRT")
 endif()
 
+# That override reaches the Eigen that LiteRT fetches by name and nothing else.
+# ml_dtypes carries its own Eigen as a git submodule, whose URL lives in that
+# repository's .gitmodules and points at gitlab all the same, so a build could
+# still fail there with "GitLab is currently unable to handle this request due
+# to load" while the mirror sat unused. insteadOf is the one rewrite git applies
+# to submodule URLs as well, so it closes the hole the CMake option cannot
+# reach. Scoped to this build's clones by writing it into a config file the
+# fetches are told to use, rather than touching the user's global git config.
+set(_git_mirror_config "${CMAKE_CURRENT_BINARY_DIR}/gitconfig-mirrors")
+file(WRITE "${_git_mirror_config}"
+     "[url \"${OVERRIDABLE_FETCH_CONTENT_eigen_GIT_REPOSITORY}\"]\n"
+     "\tinsteadOf = https://gitlab.com/libeigen/eigen.git\n"
+     "\tinsteadOf = https://gitlab.com/libeigen/eigen\n")
+set(ENV{GIT_CONFIG_GLOBAL} "${_git_mirror_config}")
+
 # reset CLOG_SOURCE_DIR so that cpuinfo won't complain
 unset(CLOG_SOURCE_DIR CACHE)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "NO shared library")
