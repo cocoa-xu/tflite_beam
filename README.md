@@ -71,8 +71,16 @@ means. The library is not unloaded afterwards.
 
 ## LiteRT compiled models, and seeing where the time goes
 
-Built only with `TFLITE_BEAM_ENABLE_LITERT_API=ON`, so the calls below raise
-rather than return an error on a library without it.
+Needs the LiteRT API, which is a build option. Installing a precompiled binary,
+set `TFLITE_BEAM_ENABLE_LITERT_API=true` and the variant carrying it is fetched
+instead of the plain one; building from source, the same variable turns it on.
+Without it every function here answers `{error, <<"the LiteRT API was not
+compiled into this build...">>}`, and `available/0` says so before you call one.
+
+armv6 and armv7l have no such variant. They build with XNNPACK off, and LiteRT's
+CPU accelerator is XNNPACK, so the library would link with
+`TfLiteXNNPackDelegate*` undefined and fail to load. Asking for the API there is
+a configure error that says as much.
 
 A LiteRT compiled model is a second way to run a model, beside the interpreter.
 It is not a faster one. Measured on an M4 Max against `mobilenet_v2_1.0_224`,
@@ -108,26 +116,27 @@ handling is not an operator and is not in that summary; it is in `profile/1`,
 and is shown here beside them because it is what the overhead looks like:
 
 ```erlang
-%% summarise_profile/1, on the CPU
-{<<"Convolution (NHWC, F32) DWConv">>,  delegate_profiled, 357, 23831}
-{<<"Fully Connected (NC, PF32) GEMM">>, delegate_profiled, 735, 18527}
+%% summarise_profile/1, on the CPU: seven entries, XNNPACK's kernels named
+#{tag => <<"Convolution (NHWC, F32) DWConv">>,  kind => delegate_profiled,
+  count => 850,  us => 55618}
+#{tag => <<"Fully Connected (NC, PF32) GEMM">>, kind => delegate_profiled,
+  count => 1750, us => 45187}
 
-%% and on the GPU
-{<<"TfLiteMetalDelegate">>,             operator,           21, 24722}
+%% and on the GPU: one entry, the whole graph in a single delegate node
+#{tag => <<"TfLiteMetalDelegate">>, kind => operator, count => 50, us => 79683}
 ```
 
-The profile shapes are **provisional**: `summarise_profile/1` returns positional
-tuples where named maps belong, `profile/1` passes LiteRT's enumeration numbers
-through unnamed, and `run_with_metrics/2` types its values as `term()` for want
-of a backend that fills them in. Everything else here, the constructors, the
-binary input and output, the accelerator, precision and signature options, the
-refusal semantics, `io_sizes/1` and `fully_accelerated/1`, is meant to be stable.
+`summarise_profile/1` returns maps of `tag`, `kind`, `count` and `us` so a field
+can be added later without breaking a caller that matched on position, and
+`profile/1` names LiteRT's enumerations against its constants rather than passing
+the numbers through, so an upstream renumbering cannot quietly change what one
+means. A type this build has no name for still arrives as its number.
 
-`Kind` is in the tuple because the categories can nest: a `delegate_operator`
-runs inside a delegate and its time may already be counted in the enclosing
+`kind` is in the map because the categories can nest: a `delegate_operator` runs
+inside a delegate and its time may already be counted in the enclosing
 `delegate_profiled` entry. Totals within one kind add up; totals across kinds do
-not. LiteRT's own buffer handling, which cost 197 and 96 microseconds over those
-21 runs, is not an operator and is in `profile/1` rather than the summary.
+not. LiteRT's own buffer handling is not an operator and is in `profile/1` rather
+than the summary.
 
 Profiling cost at most 1.05x on the CPU here and nothing measurable on the GPU,
 where the whole graph is one delegate node and there is no per-operator boundary
@@ -407,10 +416,16 @@ precompile matrix has finished, and the manifest that verifies them has to be
 inside the published package -- so it is generated in between:
 
 ```shell
-git tag -a vX.Y.Z -m "vX.Y.Z" && git push origin vX.Y.Z   # matrix builds the 7 targets
+git tag -a vX.Y.Z -m "vX.Y.Z" && git push origin vX.Y.Z   # matrix builds 12 tarballs
 scripts/generate_checksums.sh X.Y.Z                        # writes checksum.term
 rebar3 hex publish
 ```
+
+Twelve, not seven: every target ships a plain tarball, and the five whose
+platform can run LiteRT ship a second one with its API compiled in, chosen at
+install time by `TFLITE_BEAM_ENABLE_LITERT_API`. armv6 and armv7l have no LiteRT
+variant, because they build with XNNPACK off and LiteRT's CPU accelerator is
+XNNPACK.
 
 `checksum.term` is not tracked in git and does not need to be: it is packaged from
 the working directory, and the tarballs it lists do not exist until the tag has

@@ -6,8 +6,13 @@
 # the manifest has to be inside the published package, since it is what the
 # package checks its downloads against.
 #
-#     scripts/generate_checksums.sh 0.4.0
-#     git add checksum.term && git commit && rebar3 hex publish
+#     scripts/generate_checksums.sh 1.0.0-rc3
+#     rebar3 hex publish
+#
+# There is no commit in between: checksum.term is in .gitignore and in the files
+# list of tflite_beam.app.src, so it is packaged out of the working directory and
+# never tracked. A tracked copy would always name the previous release's
+# tarballs. Do not clean the working directory between these two commands.
 
 set -euo pipefail
 
