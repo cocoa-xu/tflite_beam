@@ -150,16 +150,18 @@ endif()
 # rewritten every configure and names only this one repository.
 find_program(GIT_EXECUTABLE_FOR_MIRROR git)
 if(GIT_EXECUTABLE_FOR_MIRROR)
+    # One entry, and the exact URL .gitmodules carries. insteadOf matches on
+    # prefix, so registering the form without ".git" as well would rewrite
+    # ".../eigen.git" into ".../cocoa-xu/eigen.git" plus the leftover ".git",
+    # and a request for a repository that does not exist comes back from GitHub
+    # as 401 rather than 404, which git answers by asking for a username and
+    # failing with "could not read Username". Setting the key twice does not
+    # add a second value either; it replaces the first.
     execute_process(
         COMMAND "${GIT_EXECUTABLE_FOR_MIRROR}" config --global
                 "url.${OVERRIDABLE_FETCH_CONTENT_eigen_GIT_REPOSITORY}.insteadOf"
                 "https://gitlab.com/libeigen/eigen.git"
         RESULT_VARIABLE _mirror_rc OUTPUT_QUIET ERROR_QUIET)
-    execute_process(
-        COMMAND "${GIT_EXECUTABLE_FOR_MIRROR}" config --global
-                "url.${OVERRIDABLE_FETCH_CONTENT_eigen_GIT_REPOSITORY}.insteadOf"
-                "https://gitlab.com/libeigen/eigen"
-        OUTPUT_QUIET ERROR_QUIET)
     if(NOT _mirror_rc EQUAL 0)
         message(WARNING
             "could not point git at the Eigen mirror; a submodule clone may "
