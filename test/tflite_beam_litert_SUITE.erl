@@ -33,7 +33,8 @@
     a_raising_callback_costs_the_call_not_the_model/1,
     a_model_larger_than_its_limit_is_refused/1,
     a_full_queue_is_refused_rather_than_grown/1,
-    an_isolated_model_runs_and_its_death_is_survivable/1
+    an_isolated_model_runs_and_its_death_is_survivable/1,
+    every_forwarded_call_reaches_the_model/1
 ]).
 
 -define(A, tflite_beam_litert_compiled_model).
@@ -68,7 +69,8 @@ all() ->
         a_raising_callback_costs_the_call_not_the_model,
         a_model_larger_than_its_limit_is_refused,
         a_full_queue_is_refused_rather_than_grown,
-        an_isolated_model_runs_and_its_death_is_survivable
+        an_isolated_model_runs_and_its_death_is_survivable,
+        every_forwarded_call_reaches_the_model
     ].
 
 %% The Erlang stubs exist whatever the library was built with; what is missing
@@ -697,6 +699,48 @@ a_full_queue_is_refused_rather_than_grown(Config) ->
         ?B:stop(Server)
     end.
 
+
+%% Both process layers are a list of one line forwards, and a one line forward is
+%% what a typo survives: a wrong atom reaches the far side and comes back as an
+%% error nobody reads. Eleven of them had no test at all. Calling each once, and
+%% asserting the shape rather than the value, is the whole of it.
+every_forwarded_call_reaches_the_model(Config) ->
+    Env = proplists:get_value(env, Config),
+    Path = tflite_beam_test_models:path(?MODEL),
+    Opts = #{accelerators => [cpu], profile => true},
+
+    {ok, Server} = ?B:start_link(Env, Path, Opts),
+    {ok, {Ins, _}} = ?B:io_sizes(Server),
+    Inputs = [filled(1.0, N) || N <- Ins],
+    ?assertMatch({ok, [_ | _]}, ?B:run(Server, Inputs)),
+    ?assertMatch({ok, B} when is_boolean(B), ?B:fully_accelerated(Server)),
+    ?assertMatch({ok, {_, _}}, ?B:run_with_metrics(Server, Inputs)),
+    ?assertMatch({ok, L} when is_list(L), ?B:profile(Server)),
+    ?assertMatch({ok, N} when is_integer(N), ?B:pending_events(Server)),
+    ?assertMatch({ok, L2} when is_list(L2), ?B:summarise_profile(Server)),
+    ?assertEqual(ok, ?B:reset_profile(Server)),
+    ?assertEqual({ok, 0}, ?B:pending_events(Server)),
+    ?assertMatch({ok, {_, _}}, ?B:with(Server, fun(M) -> ?A:io_sizes(M) end)),
+    ?B:stop(Server),
+
+    case ?I:start(Opts#{model_path => Path}) of
+        {error, Reason} ->
+            {skip, {cannot_start_an_isolated_node, Reason}};
+        {ok, Iso} ->
+            try
+                ?assertMatch({ok, {_, _}}, ?I:io_sizes(Iso)),
+                ?assertMatch({ok, [_ | _]}, ?I:run(Iso, Inputs)),
+                ?assertMatch({ok, B2} when is_boolean(B2), ?I:fully_accelerated(Iso)),
+                ?assertMatch({ok, {_, _}}, ?I:run_with_metrics(Iso, Inputs)),
+                ?assertMatch({ok, L3} when is_list(L3), ?I:profile(Iso)),
+                ?assertMatch({ok, N2} when is_integer(N2), ?I:pending_events(Iso)),
+                ?assertMatch({ok, L4} when is_list(L4), ?I:summarise_profile(Iso)),
+                ?assertEqual(ok, ?I:reset_profile(Iso)),
+                ?assertMatch({ok, Node} when is_atom(Node), ?I:node_of(Iso))
+            after
+                ?I:stop(Iso)
+            end
+    end.
 
 %% nodedown does not arrive the instant the node is halted, so the refusal is
 %% waited for rather than assumed. Failing here rather than timing out says the
