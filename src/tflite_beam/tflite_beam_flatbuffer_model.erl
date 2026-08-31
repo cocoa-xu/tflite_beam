@@ -266,11 +266,19 @@ get_associated_file(Buffer, Filename) when is_binary(Buffer) and (is_binary(File
                         true ->
                             MapItems = lists:map(
                                 fun(F) ->
-                                    case lists:member(F, AssociatedFiles) of
+                                    %% a name in the list may be an Erlang string while the archive
+                                    %% names are binaries. Without this the member test never matched,
+                                    %% so every string inside a list came back as "cannot find" while
+                                    %% the same string on its own worked.
+                                    Name = case is_list(F) of
+                                        true -> unicode:characters_to_binary(F);
+                                        false -> F
+                                    end,
+                                    case lists:member(Name, AssociatedFiles) of
                                         true ->
-                                            {F, get_associated_file_impl(Z, F)};
+                                            {F, get_associated_file_impl(Z, Name)};
                                         false ->
-                                            Reason = io_lib:format("cannot find associated file `~s`", [F]),
+                                            Reason = io_lib:format("cannot find associated file `~ts`", [Name]),
                                             {F, {error, unicode:characters_to_binary(Reason)}}
                                     end
                                 end,
