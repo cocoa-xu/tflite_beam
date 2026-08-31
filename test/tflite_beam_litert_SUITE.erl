@@ -741,6 +741,21 @@ an_isolated_model_runs_and_its_death_is_survivable(Config) ->
             {ok, {WIns, _}} = ?I:with(Server, fun(M) -> ?A:io_sizes(M) end),
             ?assert(is_list(WIns)),
 
+            %% and a callback whose module the peer cannot be given is refused in
+            %% words rather than passed on as a bare undef. A module compiled
+            %% into memory and never written out is the position an ExUnit case
+            %% or a mix script is in: code:get_object_code/1 has nothing to send.
+            EphemeralMod = list_to_atom("no_file_" ++ integer_to_list(erlang:unique_integer([positive]))),
+            {ok, EphemeralMod, Beam} = compile:forms(
+                [{attribute, 1, module, EphemeralMod},
+                 {attribute, 2, export, [{cb, 1}]},
+                 {function, 3, cb, 1, [{clause, 3, [{var, 3, '_'}], [], [{atom, 3, ok}]}]}],
+                [binary]),
+            {module, EphemeralMod} = code:load_binary(EphemeralMod, "", Beam),
+            ?assertEqual(error, code:get_object_code(EphemeralMod)),
+            {error, Why} = ?I:with(Server, fun EphemeralMod:cb/1),
+            ?assertNotEqual(nomatch, string:find(Why, <<"no compiled file to send">>)),
+
             {ok, {Ins, _}} = ?I:io_sizes(Server),
             Inputs = [filled(1.0, N) || N <- Ins],
             {ok, Outputs} = ?I:run(Server, Inputs),
