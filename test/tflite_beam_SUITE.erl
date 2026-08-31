@@ -299,7 +299,25 @@ associated_files_one_and_many(_Config) ->
     ?assertEqual([<<"labels.txt">>], tflite_beam_flatbuffer_model:list_associated_files(Zip)),
     ?assertEqual(Labels, tflite_beam_flatbuffer_model:get_associated_file(Zip, <<"labels.txt">>)),
     ?assertEqual(#{<<"labels.txt">> => Labels},
-                 tflite_beam_flatbuffer_model:get_associated_file(Zip, [<<"labels.txt">>])).
+                 tflite_beam_flatbuffer_model:get_associated_file(Zip, [<<"labels.txt">>])),
+
+    %% A name may be an Erlang string, and on its own one always worked. Inside a
+    %% list it did not: the archive names are binaries, the member test compared
+    %% a string against them, and every such name came back as "cannot find" from
+    %% an archive that had it. The keys come back as they were asked for, so a
+    %% caller can match what it passed.
+    ?assertEqual(Labels, tflite_beam_flatbuffer_model:get_associated_file(Zip, "labels.txt")),
+    ?assertEqual(#{"labels.txt" => Labels},
+                 tflite_beam_flatbuffer_model:get_associated_file(Zip, ["labels.txt"])),
+
+    {ok, {_, Two}} = zip:create("two.zip",
+                                [{"labels.txt", Labels}, {"notes.txt", <<"hello">>}], [memory]),
+    ?assertEqual(#{"labels.txt" => Labels, <<"notes.txt">> => <<"hello">>},
+                 tflite_beam_flatbuffer_model:get_associated_file(
+                     Two, ["labels.txt", <<"notes.txt">>])),
+
+    ?assertMatch(#{"nope.txt" := {error, _}},
+                 tflite_beam_flatbuffer_model:get_associated_file(Zip, ["nope.txt"])).
 
 %% Writing fewer bytes than the tensor holds used to be memcpy'd as far as the
 %% binary went and reported as ok, which leaves the rest of the tensor holding
