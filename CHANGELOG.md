@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.0.0-rc4 (2026-08-31)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v1.0.0-rc4) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v1.0.0-rc4)
+
+One fix, found by writing the test that should have come with the feature.
+
+**`with/2` on an isolated model could not run most callbacks.** It sends the
+function to the node that owns the model and applies it there, which needs the
+module that function belongs to to exist on that node. A capture of a compiled
+function, `fun mod:f/1` or `&Mod.f/1`, always did. A function written inline in
+a test case or a script did not: the compiler keeps such a module in memory,
+there is no file for the peer to load, and the call came back as a bare `undef`
+naming a fun with no context. The module is now sent over when there is object
+code to send, which covers every function that lives in a compiled module, and
+when there is none the answer says which module and why rather than passing the
+`undef` on.
+
+It was written on the reasoning that the peer starts with this node's code path,
+so any function would resolve there. That is true of named modules and of
+nothing else, and no test had been written that would notice.
+
 ## v1.0.0-rc3 (2026-08-30)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v1.0.0-rc3) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v1.0.0-rc3)
 
