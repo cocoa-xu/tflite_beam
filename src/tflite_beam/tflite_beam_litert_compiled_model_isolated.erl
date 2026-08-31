@@ -234,6 +234,25 @@ handle_call(node_of, _From, State = #{node := Node}) ->
     {reply, {ok, Node}, State};
 handle_call(_Request, _From, State = #{remote := down}) ->
     {reply, {error, <<"the isolated model's node went down">>}, State};
+handle_call({with, Fun}, _From, State = #{remote := Remote, node := Node}) ->
+    %% A fun carries the module that made it, and applying it on the peer needs
+    %% that module there. Loading it from the peer's code path covers a fun from
+    %% any compiled module, which is the ordinary case. It does not cover one
+    %% made where no module was written to disk: an ExUnit test body, an escript,
+    %% an iex session. Those have no object code to send, so the peer answers
+    %% undef, and this says which fun and why rather than passing that on.
+    Reply =
+        case ensure_module_on(Node, erlang:fun_info(Fun, module)) of
+            ok ->
+                try ?SERVER:with(Remote, Fun)
+                catch
+                    exit:{noproc, _} -> {error, <<"the isolated model is no longer there">>};
+                    exit:{nodedown, _} -> {error, <<"the isolated model's node went down">>}
+                end;
+            {error, Why} ->
+                {error, Why}
+        end,
+    {reply, Reply, State};
 handle_call(Request, _From, State = #{remote := Remote}) ->
     %% The far side is a plain in-process server, so this is the same call it
     %% would have got locally; only the wire is different.
@@ -273,8 +292,40 @@ terminate(_Reason, #{peer := Peer}) ->
 terminate(_Reason, _State) ->
     ok.
 
+%% The peer starts with this node's code path, so a module that lives in a beam
+%% file is already reachable there and this is a no-op. What it adds is the
+%% honest refusal for one that does not: a fun made in an ExUnit case or a
+%% script belongs to a module the compiler kept in memory, and no code path
+%% reaches it.
+ensure_module_on(Node, {module, Module}) ->
+    case erpc:call(Node, code, ensure_loaded, [Module]) of
+        {module, Module} ->
+            ok;
+        {error, _} ->
+            case code:get_object_code(Module) of
+                {Module, Binary, Filename} ->
+                    case erpc:call(Node, code, load_binary, [Module, Filename, Binary]) of
+                        {module, Module} -> ok;
+                        {error, Reason} -> {error, load_failed(Module, Reason)}
+                    end;
+                error ->
+                    {error, no_object_code(Module)}
+            end
+    end.
+
+load_failed(Module, Reason) ->
+    iolist_to_binary(io_lib:format(
+        "the isolated node could not load ~p, which the callback belongs to: ~p",
+        [Module, Reason])).
+
+no_object_code(Module) ->
+    iolist_to_binary(io_lib:format(
+        "the callback belongs to ~p, which has no compiled file to send to the "
+        "isolated node. A function captured from a module on disk, such as "
+        "fun mod:f/1, crosses; one written inline in a test case or a script "
+        "does not.", [Module])).
+
 forward(Remote, {run, Inputs}) -> ?SERVER:run(Remote, Inputs);
-forward(Remote, {with, Fun}) -> ?SERVER:with(Remote, Fun);
 forward(Remote, io_sizes) -> ?SERVER:io_sizes(Remote);
 forward(Remote, fully_accelerated) -> ?SERVER:fully_accelerated(Remote);
 forward(Remote, {run_with_metrics, Inputs, DetailLevel}) ->
