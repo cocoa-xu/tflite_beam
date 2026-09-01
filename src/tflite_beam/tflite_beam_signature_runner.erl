@@ -101,6 +101,10 @@ invoke(Self) when is_reference(Self) ->
     tflite_beam_nif:signature_runner_invoke(Self).
 
 %% @doc Cancel an in-flight invocation.
+%%
+%% Requires `tflite_beam_interpreter:enable_cancellation/1' on the interpreter
+%% this runner came from. Without it TFLite refuses, and the reason it gives
+%% does not say why.
 -spec cancel(reference()) -> ok | {error, binary()}.
 cancel(Self) when is_reference(Self) ->
     tflite_beam_nif:signature_runner_cancel(Self).

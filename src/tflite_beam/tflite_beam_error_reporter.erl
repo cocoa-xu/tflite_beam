@@ -8,6 +8,8 @@
 
 -include("tflite_beam_records.hrl").
 
+%% @doc TFLite's own error reporter, the one it uses when none is given.
+-spec default_error_reporter() -> #tflite_beam_error_reporter{} | {error, binary()}.
 default_error_reporter() ->
     case tflite_beam_nif:error_reporter_default_error_reporter() of
         {ok, ErrorReporter} ->
