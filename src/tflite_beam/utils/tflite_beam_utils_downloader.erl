@@ -43,11 +43,9 @@ maybe_override_by_env(EnvName, Default) ->
     end.
 
 mkdir_dir_p(Dir) ->
-    %% make_dir creates one level. Every HuggingFace repo id is owner/name and
-    %% goes in as the cache subdirectory, so this failed with enoent for all 88
-    %% models in the contrib catalogue and download_model never fetched one.
-    %% ensure_dir builds the parents of the path it is given, so it needs a name
-    %% inside the directory we actually want.
+    %% make_dir creates one level, so a cache subdirectory naming an owner as
+    %% well as the model failed with enoent. ensure_dir builds the parents of the
+    %% path it is given, so it needs a name inside the directory we actually want.
     case filelib:ensure_dir(filename:join(Dir, ".keep")) of
         ok ->
             ok;
@@ -68,8 +66,8 @@ cache_basepath() ->
 %% Neither of these may leave the cache directory. filename:join/2 hands back an
 %% absolute second argument unchanged, so join(Cache, "/etc/anything") is
 %% "/etc/anything", and a relative one may still climb out with "..". Both
-%% arrive from the caller: tflite_beam_contrib_huggingface passes a repository
-%% name and a filename straight through from whatever asked for the model.
+%% arrive from the caller, which may be passing them straight through from
+%% whatever asked for the model.
 inside_cache(Component) ->
     %% filename:split/1 hands back parts in whatever representation it was
     %% given, so a binary component splits into binaries and lists:member/2

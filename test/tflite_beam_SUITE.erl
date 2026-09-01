@@ -449,9 +449,8 @@ the_server_survives_a_malformed_request(_Config) ->
         Malformed),
     ?assertMatch([_ | _], tflite_beam_interpreter_server:predict(Server, [Good])).
 
-%% Both halves of the cache path come from the caller, and
-%% tflite_beam_contrib_huggingface passes a repository name and a filename
-%% straight through from whatever asked for the model. filename:join/2 returns an
+%% Both halves of the cache path come from the caller, and are passed straight
+%% through from whatever asked for the model. filename:join/2 returns an
 %% absolute second argument unchanged, so joining a cache directory with
 %% "/etc/anything" gives "/etc/anything", and a relative one can still climb out
 %% with "..". Either one made a successful download overwrite a file of the
@@ -664,15 +663,11 @@ a_truncated_model_is_refused_rather_than_walked_off_the_end(_Config) ->
         end
     end, [90, 50, 10, 2]).
 
-%% The cache subdirectory is the HuggingFace repo id, and every repo id is
-%% owner/name. mkdir_dir_p called the non-recursive make_dir, which fails with
-%% enoent when the parent is missing, so download_model could not fetch a single
-%% model in the catalogue.
+%% A cache subdirectory naming a model usually has a parent in it, an owner or a
+%% collection. mkdir_dir_p called the non-recursive make_dir, which fails with
+%% enoent when that parent is missing, so no such download could be made at all.
 a_nested_cache_subdirectory_is_created_not_refused(Config) ->
-    Models = tflite_beam_contrib_huggingface:all_models(),
-    Nested = [Repo || #{repo := Repo} <- Models, lists:member($/, Repo)],
-    %% not some of the catalogue, all of it
-    ?assertEqual(length(Models), length(Nested)),
+    Nested = ["an_owner/a_model"],
 
     Cache = filename:join(?config(priv_dir, Config), "cache"),
     Previous = os:getenv("TFLITE_BEAM_CACHE_DIR"),
