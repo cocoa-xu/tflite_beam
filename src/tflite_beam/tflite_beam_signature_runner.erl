@@ -67,7 +67,11 @@ output_tensor(Self, OutputName) when is_reference(Self), is_binary(OutputName) -
 %% @doc Change the dimensions of the named input.
 %%
 %% `allocate_tensors/1' has to be called again afterwards.
--spec resize_input_tensor(reference(), binary() | list(), list(integer())) -> ok | {error, binary()}.
+%%
+%% `Dims' is a list, or the tuple `tflite_beam_tensor:shape/1' returns.
+-spec resize_input_tensor(reference(), binary() | list(), list(integer()) | tuple()) -> ok | {error, binary()}.
+resize_input_tensor(Self, InputName, Dims) when is_tuple(Dims) ->
+    resize_input_tensor(Self, InputName, tuple_to_list(Dims));
 resize_input_tensor(Self, InputName, Dims) when is_reference(Self), is_list(InputName), is_list(Dims) ->
     resize_input_tensor(Self, unicode:characters_to_binary(InputName), Dims);
 resize_input_tensor(Self, InputName, Dims) when is_reference(Self), is_binary(InputName), is_list(Dims) ->
@@ -76,7 +80,11 @@ resize_input_tensor(Self, InputName, Dims) when is_reference(Self), is_binary(In
 %% @doc Change the dimensions of the named input, keeping the rank fixed.
 %%
 %% Only dimensions the model left unknown can be changed.
--spec resize_input_tensor_strict(reference(), binary() | list(), list(integer())) -> ok | {error, binary()}.
+%%
+%% `Dims' is a list, or the tuple `tflite_beam_tensor:shape/1' returns.
+-spec resize_input_tensor_strict(reference(), binary() | list(), list(integer()) | tuple()) -> ok | {error, binary()}.
+resize_input_tensor_strict(Self, InputName, Dims) when is_tuple(Dims) ->
+    resize_input_tensor_strict(Self, InputName, tuple_to_list(Dims));
 resize_input_tensor_strict(Self, InputName, Dims) when is_reference(Self), is_list(InputName), is_list(Dims) ->
     resize_input_tensor_strict(Self, unicode:characters_to_binary(InputName), Dims);
 resize_input_tensor_strict(Self, InputName, Dims) when is_reference(Self), is_binary(InputName), is_list(Dims) ->
