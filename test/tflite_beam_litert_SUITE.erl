@@ -34,7 +34,8 @@
     a_model_larger_than_its_limit_is_refused/1,
     a_full_queue_is_refused_rather_than_grown/1,
     an_isolated_model_runs_and_its_death_is_survivable/1,
-    every_forwarded_call_reaches_the_model/1
+    every_forwarded_call_reaches_the_model/1,
+    a_recompiled_callback_module_is_carried_over/1
 ]).
 
 -define(A, tflite_beam_litert_compiled_model).
@@ -70,7 +71,8 @@ all() ->
         a_model_larger_than_its_limit_is_refused,
         a_full_queue_is_refused_rather_than_grown,
         an_isolated_model_runs_and_its_death_is_survivable,
-        every_forwarded_call_reaches_the_model
+        every_forwarded_call_reaches_the_model,
+        a_recompiled_callback_module_is_carried_over
     ].
 
 %% The Erlang stubs exist whatever the library was built with; what is missing
@@ -825,4 +827,46 @@ an_isolated_model_runs_and_its_death_is_survivable(Config) ->
             {ok, Replacement} = ?I:start(#{model_path => Path, accelerators => [cpu]}),
             try ?assertMatch({ok, _}, ?I:run(Replacement, Inputs))
             after ?I:stop(Replacement) end
+    end.
+
+%% A closure carries the version of the module that made it, so recompiling that
+%% module here left the isolated node holding the older copy and the callback
+%% arrived as a badfun, reported against this library's own file and line rather
+%% than the caller's module. Having the module reachable there is not the same as
+%% having the same one.
+a_recompiled_callback_module_is_carried_over(Config) ->
+    process_flag(trap_exit, true),
+    Dir = ?config(priv_dir, Config),
+    Source = filename:join(Dir, "skewed_callback.erl"),
+    Write = fun(Body) ->
+        ok = file:write_file(Source, iolist_to_binary(
+            ["-module(skewed_callback).\n-export([make_fun/0]).\n"
+             "make_fun() -> fun(_Model) -> ", Body, " end.\n"])),
+        {ok, skewed_callback} = compile:file(Source, [{outdir, Dir}]),
+        code:purge(skewed_callback),
+        {module, skewed_callback} = code:load_abs(filename:join(Dir, "skewed_callback"))
+    end,
+    true = code:add_patha(Dir),
+
+    Write("first"),
+    Path = tflite_beam_test_models:path(?MODEL),
+    case tflite_beam_litert_compiled_model_isolated:start_link(
+             #{model_path => Path, accelerators => [cpu]}) of
+        {error, Reason} ->
+            {skip, {cannot_start_an_isolated_node, Reason}};
+        {ok, Server} ->
+            I = tflite_beam_litert_compiled_model_isolated,
+            try
+                %% the peer loads it from the shared code path, as it always did
+                ?assertEqual(first, I:with(Server, skewed_callback:make_fun())),
+
+                %% now this node has a version the peer does not
+                Write("second"),
+                ?assertEqual(second, I:with(Server, skewed_callback:make_fun()))
+            after
+                gen_server:stop(Server),
+                code:purge(skewed_callback),
+                code:delete(skewed_callback),
+                code:del_path(Dir)
+            end
     end.
