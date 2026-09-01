@@ -75,6 +75,7 @@ verify_and_build_from_file(Filename) when is_list(Filename) ->
 verify_and_build_from_file(Filename) when is_binary(Filename) ->
     verify_and_build_from_file(Filename, []).
 
+%% @doc
 %% Verifies whether the content of the file is legit, then builds a model
 %% based on the file.
 %%

@@ -1,6 +1,17 @@
 -module(tflite_beam_utils_downloader).
 -export([download/4]).
 
+%% @doc Fetch `URL' into `CacheSubdir/CacheFilename' under the cache directory.
+%%
+%% The cache directory is `TFLITE_BEAM_CACHE_DIR' if set, and a per-user cache
+%% otherwise. `CacheSubdir' and `CacheFilename' are refused if they would land
+%% the file outside it, so neither an absolute path nor one climbing through
+%% `..' reaches the network. An existing file is returned as is unless
+%% `ForceDownload' is true.
+%% Unlike the rest of this library, the reason here is a string or whatever
+%% httpc and file handed back, not a binary.
+-spec download(binary() | list(), binary() | list(), binary() | list(), boolean()) ->
+    {ok, file:filename_all()} | {error, term()}.
 download(URL, CacheSubdir, CacheFilename, ForceDownload) ->
     case cache_path(CacheSubdir, CacheFilename, ForceDownload) of 
         {ok, Exists, DestionationDir, DestionationFilename} ->

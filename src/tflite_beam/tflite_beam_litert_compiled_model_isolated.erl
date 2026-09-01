@@ -374,6 +374,9 @@ start_model_on(Node, Opts) ->
                 io_lib:format("cannot build the model on the isolated node: ~p", [Reason]))}
     end.
 
+%% @private
+%% Exported only so the rpc:call above can name it; the isolated node runs this,
+%% never the caller.
 build_remote(Dir, Path, ServerOpts) ->
     case ?M:environment(Dir) of
         {ok, Env} -> ?SERVER:start(Env, Path, ServerOpts);

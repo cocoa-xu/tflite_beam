@@ -120,6 +120,9 @@ jobs:
           # a wrong spec is not something the suite can fail on, and eight of
           # them had accumulated behind a plt that was missing ssl and inets
           rebar3 dialyzer
+          # the install snippet still named 1.0.0-rc1 three releases later, and
+          # nothing was looking at it
+          python3 scripts/check_readme_version.py
 
       - name: Build and test with the LiteRT API
         run: |

@@ -85,6 +85,8 @@ clean_text(Text) when is_binary(Text) or is_list(Text) ->
         UnicodeScalars
     ).
 
+%% @doc Split text on whitespace, dropping the runs between words.
+-spec split_by_whitespace(binary()) -> [binary()].
 split_by_whitespace(BinaryText) ->
     split_by_whitespace_impl(BinaryText, []).
 

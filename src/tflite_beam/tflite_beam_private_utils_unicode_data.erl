@@ -19,6 +19,7 @@
 %% slow board into a crash and buys nothing back.
 -define(PARSE_TIMEOUT, 30000).
 
+%% @private
 get_puncuation_list_from_unicode_data(UnicodeDataFile) ->
     ServerPid = get_running_instance(true),
     gen_server:call(ServerPid, {get_puncuation_list, UnicodeDataFile}, ?PARSE_TIMEOUT).
@@ -28,6 +29,7 @@ get_puncuation_list_from_unicode_data(UnicodeDataFile) ->
 %% round trip plus the path lookup that fed it cost 5.6us of the 5.6us a
 %% character took to tokenize: the tokenizing itself did not register.
 -spec punctuation_set(fun(() -> file:name_all())) -> map().
+%% @private
 punctuation_set(UnicodeDataFileFun) when is_function(UnicodeDataFileFun, 0) ->
     File = UnicodeDataFileFun(),
     %% Keyed by the file it was read from. Answering from the cache whatever file
@@ -55,6 +57,7 @@ punctuation_set(UnicodeDataFileFun) when is_function(UnicodeDataFileFun, 0) ->
 %% The server goes first. gen_server:stop/1 waits for the call in flight, and
 %% that call is the only thing that publishes, so nothing can put the table back
 %% after the erase below.
+%% @private
 release_memory() ->
     case get_running_instance(false) of
         undefined ->
