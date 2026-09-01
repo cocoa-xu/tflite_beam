@@ -141,7 +141,11 @@ set_inputs(Self, Inputs) when is_reference(Self) and is_list(Inputs) ->
 %%
 %% Note that this is only acceptable for tensors that are inputs to the model,
 %% and `allocate_tensors/1' has to be called again afterwards.
--spec resize_input_tensor(reference(), integer(), list(integer())) -> ok | {error, binary()}.
+%%
+%% `Dims' is a list, or the tuple `tflite_beam_tensor:shape/1' returns.
+-spec resize_input_tensor(reference(), integer(), list(integer()) | tuple()) -> ok | {error, binary()}.
+resize_input_tensor(Self, TensorIndex, Dims) when is_tuple(Dims) ->
+    resize_input_tensor(Self, TensorIndex, tuple_to_list(Dims));
 resize_input_tensor(Self, TensorIndex, Dims) when is_reference(Self), is_integer(TensorIndex), is_list(Dims) ->
     tflite_beam_nif:interpreter_resize_input_tensor(Self, TensorIndex, Dims).
 
@@ -150,7 +154,11 @@ resize_input_tensor(Self, TensorIndex, Dims) when is_reference(Self), is_integer
 %%
 %% Unlike `resize_input_tensor/3', this only accepts dimensions that the model
 %% left unknown, so a tensor whose shape is fully fixed cannot be resized.
--spec resize_input_tensor_strict(reference(), integer(), list(integer())) -> ok | {error, binary()}.
+%%
+%% `Dims' is a list, or the tuple `tflite_beam_tensor:shape/1' returns.
+-spec resize_input_tensor_strict(reference(), integer(), list(integer()) | tuple()) -> ok | {error, binary()}.
+resize_input_tensor_strict(Self, TensorIndex, Dims) when is_tuple(Dims) ->
+    resize_input_tensor_strict(Self, TensorIndex, tuple_to_list(Dims));
 resize_input_tensor_strict(Self, TensorIndex, Dims) when is_reference(Self), is_integer(TensorIndex), is_list(Dims) ->
     tflite_beam_nif:interpreter_resize_input_tensor_strict(Self, TensorIndex, Dims).
 

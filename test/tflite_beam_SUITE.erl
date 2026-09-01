@@ -51,7 +51,8 @@
     num_threads_follows_tflites_own_contract/1,
     metadata_reaches_the_corners_of_its_own_schema/1,
     the_loaded_object_came_from_litert/1,
-    the_two_eight_bit_floats_are_told_apart/1
+    the_two_eight_bit_floats_are_told_apart/1,
+    a_resize_takes_the_shape_this_library_hands_out/1
 ]).
 
 %% every tensor in multi_add.bin is a [1, 8, 8, 3] float32
@@ -102,7 +103,8 @@ all() ->
         num_threads_follows_tflites_own_contract,
         metadata_reaches_the_corners_of_its_own_schema,
         the_loaded_object_came_from_litert,
-        the_two_eight_bit_floats_are_told_apart
+        the_two_eight_bit_floats_are_told_apart,
+        a_resize_takes_the_shape_this_library_hands_out
     ].
 
 model_from_file(_Config) ->
@@ -1146,3 +1148,39 @@ a_timeout_ends_the_wait_and_not_the_work(_Config) ->
     ?assert(Waited > 500,
             lists:flatten(io_lib:format("the next caller waited only ~pms", [Waited]))),
     ok = tflite_beam_interpreter_server:stop(Server).
+
+%% tflite_beam_tensor:shape/1 returns a tuple and dims/1 returns a list, so
+%% resizing a tensor to a shape this library itself handed out fed a tuple to a
+%% function that had only an is_list clause, and got function_clause. Both
+%% shapes have to be accepted.
+a_resize_takes_the_shape_this_library_hands_out(_Config) ->
+    Interpreter = tflite_beam_test_models:interpreter("add.bin"),
+    ok = tflite_beam_interpreter:allocate_tensors(Interpreter),
+    {ok, [Index | _]} = tflite_beam_interpreter:inputs(Interpreter),
+    Tensor = tflite_beam_interpreter:tensor(Interpreter, Index),
+
+    Tuple = tflite_beam_tensor:shape(Tensor),
+    List = tflite_beam_tensor:dims(Tensor),
+    ?assert(is_tuple(Tuple)),
+    ?assertEqual(List, tuple_to_list(Tuple)),
+
+    ?assertEqual(ok, tflite_beam_interpreter:resize_input_tensor(Interpreter, Index, Tuple)),
+    ?assertEqual(ok, tflite_beam_interpreter:resize_input_tensor(Interpreter, Index, List)),
+    ?assertEqual(ok, tflite_beam_interpreter:resize_input_tensor_strict(Interpreter, Index, Tuple)),
+    ?assertEqual(ok, tflite_beam_interpreter:resize_input_tensor_strict(Interpreter, Index, List)),
+
+    %% the signature runner takes a name rather than an index, and a tuple used
+    %% to fall past its string clause as well as its binary one
+    SigInterpreter = tflite_beam_test_models:interpreter("multi_signature.tflite"),
+    ok = tflite_beam_interpreter:allocate_tensors(SigInterpreter),
+    {ok, Runner} = tflite_beam_interpreter:get_signature_runner(SigInterpreter, <<"add">>),
+    {ok, [Name | _]} = tflite_beam_signature_runner:input_names(Runner),
+    RunnerTensor = tflite_beam_interpreter:tensor(SigInterpreter, Index),
+    RunnerTuple = tflite_beam_tensor:shape(RunnerTensor),
+    ?assertEqual(ok, tflite_beam_signature_runner:resize_input_tensor(Runner, Name, RunnerTuple)),
+    ?assertEqual(ok, tflite_beam_signature_runner:resize_input_tensor(
+                       Runner, binary_to_list(Name), RunnerTuple)),
+    ?assertEqual(ok, tflite_beam_signature_runner:resize_input_tensor_strict(
+                       Runner, Name, RunnerTuple)),
+    ?assertEqual(ok, tflite_beam_signature_runner:resize_input_tensor_strict(
+                       Runner, binary_to_list(Name), RunnerTuple)).
