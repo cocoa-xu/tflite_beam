@@ -300,17 +300,45 @@ terminate(_Reason, _State) ->
 ensure_module_on(Node, {module, Module}) ->
     case erpc:call(Node, code, ensure_loaded, [Module]) of
         {module, Module} ->
-            ok;
+            %% Reachable is not the same as identical. A closure carries the
+            %% version of the module it was made in, so one made here after that
+            %% module was recompiled is a badfun on a node still holding the
+            %% older copy, reported against this file rather than the callback's.
+            case same_version(Node, Module) of
+                true -> ok;
+                false -> send_module_to(Node, Module)
+            end;
         {error, _} ->
-            case code:get_object_code(Module) of
-                {Module, Binary, Filename} ->
-                    case erpc:call(Node, code, load_binary, [Module, Filename, Binary]) of
-                        {module, Module} -> ok;
-                        {error, Reason} -> {error, load_failed(Module, Reason)}
-                    end;
-                error ->
-                    {error, no_object_code(Module)}
-            end
+            send_module_to(Node, Module)
+    end.
+
+%% Asking for the md5 by name keeps this from being circular: sending a fun to
+%% find out whether funs travel would have the very problem it is checking for.
+same_version(Node, Module) ->
+    case md5_on(Node, Module) of
+        undefined -> false;
+        Remote -> Remote =:= md5_of(Module)
+    end.
+
+md5_on(Node, Module) ->
+    try erpc:call(Node, Module, module_info, [md5])
+    catch _:_ -> undefined
+    end.
+
+md5_of(Module) ->
+    try Module:module_info(md5)
+    catch _:_ -> undefined
+    end.
+
+send_module_to(Node, Module) ->
+    case code:get_object_code(Module) of
+        {Module, Binary, Filename} ->
+            case erpc:call(Node, code, load_binary, [Module, Filename, Binary]) of
+                {module, Module} -> ok;
+                {error, Reason} -> {error, load_failed(Module, Reason)}
+            end;
+        error ->
+            {error, no_object_code(Module)}
     end.
 
 load_failed(Module, Reason) ->
