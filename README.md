@@ -69,6 +69,28 @@ because the loader is asked for exactly the file named -- a bare `libfoo.so` wou
 otherwise be searched for wherever the system looks, which is rarely where anyone
 means. The library is not unloaded afterwards.
 
+## Checked on real hardware
+
+Before 1.0.0 the same picture went through every route this library offers, on
+one machine: an M4 Max running macOS, with a USB Coral attached. The model is
+`mobilenet_v2_1.0_224_inat_bird_quant.tflite` from tflite_elixir's test data, the
+GPU plugins are [`tflite_delegate_plugins`][plugins] built against the same LiteRT
+2.2.0, and the CPU output is byte for byte the golden file the tests check
+against.
+
+| route | top-1 | top-5 against CPU | max abs diff (u8) | per run |
+|---|---|---|---|---|
+| CPU, `tflite_beam_interpreter:new/1` (XNNPACK) | 923 | same | 0 | 7.2 ms |
+| Metal, delegate plugin | 923 | same | 2 | 0.9 ms |
+| OpenCL, delegate plugin | 923 | fifth place differs | 9 | 2.5 ms |
+| Edge TPU, `make_edge_tpu_interpreter/2` and `edge_tpu_delegate/0` | 923 | same | 4 | 10 ms |
+| LiteRT compiled model, `[cpu]` | 923 | same | 0 | 7.2 ms |
+| LiteRT compiled model, `[gpu]`, Metal accelerator | 923 | same | 2 | 0.8 ms |
+
+The GPU differences are float16 arithmetic and the Edge TPU's is its own
+quantisation. Every GPU and TPU route took the whole graph as one node. Timings
+are a mean over 30 runs and are for orientation, not a benchmark.
+
 ## LiteRT compiled models, and seeing where the time goes
 
 Needs the LiteRT API, which is a build option. Installing a precompiled binary,
