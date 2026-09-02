@@ -348,7 +348,7 @@ pre-release from a range, so name it exactly:
 
 ```erlang
 {deps, [
-  {tflite_beam, "1.0.0-rc4"}
+  {tflite_beam, "1.0.0-rc5"}
 ]}
 ```
 

@@ -1,5 +1,43 @@
 # Changelog
 
+## v1.0.0-rc5 (2026-09-02)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v1.0.0-rc5) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v1.0.0-rc5)
+
+Four fixes and one removal, from calling every public function this library has
+rather than the ones the suite already called.
+
+**A tensor could not be resized to a shape this library itself hands out.**
+`tflite_beam_tensor:shape/1` returns a tuple and `dims/1` returns a list, and
+`resize_input_tensor/3` only had an `is_list` clause, so the obvious way to write
+it raised `function_clause`. Both shapes are accepted now, on the interpreter and
+on the signature runner.
+
+**A recompiled callback module did not reach the isolated node.** A closure
+carries the version of the module that made it, so recompiling that module here
+left the isolated node holding the older copy and `with/2` answered with a
+`badfun` reported against this library's own file and line rather than the
+caller's. Having the module reachable there is not the same as having the same
+one; the versions are compared now, and the local copy is sent when they differ.
+
+**The install instructions named 1.0.0-rc1, three releases after it.** Anyone
+following them got a build without the work the surrounding paragraph describes.
+A check in CI now fails when that line and the version in `tflite_beam.app.src`
+disagree, which is the only reason it will not drift again.
+
+**Four public functions said nothing about themselves**, and four exported only
+so an internal call could reach them appeared in the documentation as though they
+were API. The first four are documented; the others are marked private.
+`tflite_beam_signature_runner:cancel/1` now states the precondition its
+interpreter sibling already stated: without `enable_cancellation/1` it refuses,
+and the reason TFLite gives does not say why.
+
+**`tflite_beam_contrib_huggingface` is removed.** Ninety-five of its ninety-six
+download links no longer resolve: the repositories are still there, but the
+`.tflite` files were replaced with a pointer to an archive elsewhere. A hardcoded
+catalogue of someone else's URLs cannot be kept true, and nothing was watching
+this one, so it went stale for eighteen months without a sound. `all_models/0`,
+`model_urls/1` and `download_model/1` are gone. The downloader they used stays.
+
 ## v1.0.0-rc4 (2026-08-31)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v1.0.0-rc4) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v1.0.0-rc4)
 
