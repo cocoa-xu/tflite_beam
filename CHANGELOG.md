@@ -1,5 +1,96 @@
 # Changelog
 
+## v1.0.0 (2026-09-02)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v1.0.0) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v1.0.0)
+
+The first stable release. Since rc5 nothing was added to what the runtime can do.
+What changed is that every spec, guard and error path was read against what the
+code and the NIFs actually answer, and corrected where they disagreed.
+
+**Dialyzer now compares a spec against what the function returns.** `extra_return`
+and `missing_return` were never on, and the default set does not include them.
+Turning them on found eight specs that had passed for months. One was
+`tflite_beam_basic_tokenizer:normalize_to_nfc/1`, which promised a binary and
+handed the `{error, Done, Rest}` that `unicode:characters_to_nfc_binary/1` answers
+for text that is not UTF-8 on to `unicode:characters_to_list/1`, which raised
+`badarg` from inside `unicode` with nothing to say the text was the problem. It
+raises `{invalid_utf8, Rest}` now. The twelve `start` and `start_link` specs on the
+three gen_server wrappers say `ignore`, because `gen_server:start_link/3` can and
+they pass through whatever it gives.
+
+**Specs that denied what the NIFs answer.** `tflite_beam_interpreter:controlling_process/1`
+answers `{error, _}` for a reference that is not an interpreter and while another
+process's call holds one, and said neither. The tensor type union lacked the two
+8-bit floats, `{f, 8}` and `{f8_e4m3fn, 8}`, that the NIF has emitted since the
+move to LiteRT and that the suite asserts, so a correct match on either was one
+dialyzer called impossible. `profile/2` on the three compiled-model modules is
+specced with the C int range its guard has always enforced. Dialyzer could not
+have found any of these: the NIF stubs are untyped, so a spec on a function whose
+result comes from one is exactly as right as the person who wrote it.
+
+**An output that cannot be read fails the whole call.** `tflite_beam_interpreter:predict/2`
+answered a list with `{error, _}` elements inside it when an output could not be
+read, and `tflite_beam_interpreter_server` relayed it, so a caller matching
+`[Out]` bound an error tuple and carried on with it as though it were the answer.
+The Elixir binding had already made that one `{error, Reason}` for the whole
+call, so the two disagreed on the shape of the same failure. Both sides answer
+one error now, and the specs say `list(binary()) | {error, binary()}`. Finding a
+way to test it turned up worse: TfLite takes `-1`, its marker for an optional
+tensor, in `set_inputs/2`, `set_outputs/2` and `set_variables/2`, and `invoke/1`
+then reads before its tensor table with it, which is undefined and on CI was a
+segmentation fault of the whole VM. A negative index is refused here by name.
+
+**A model without associated files answered an atom.** Associated files travel in
+a zip archive appended to the model, and `zip:table/1` reports a model carrying
+none as `{error, bad_eocd}`, and a buffer too short to hold an archive as the exit
+of the process that tried. `list_associated_files/1` and `get_associated_file/2`
+passed both straight through under a spec that promised a binary, and the Elixir
+side interpolated whatever arrived into its own message. Both answer a binary now
+that says the model carries no readable archive of associated files.
+
+**Refused at the door rather than from inside another module.**
+`build_from_buffer/2` was the one builder without guards, so options that were not
+a list died in `proplists`. `tflite_beam_basic_tokenizer:tokenize/2` admitted a
+charlist in its spec and refused it in its guard, and `tflite_beam_full_tokenizer`
+forwarded one, so text that arrived as an Erlang string was a `function_clause`
+from a module nobody had called; a charlist tokenizes now, and
+`split_by_whitespace/1` and the wordpiece tokenizer guard their arguments.
+`tflite_beam_coral:dequantize_tensor/3` refuses a tuple type it does not know by
+name, as it already did an atom, `tflite_beam_litert_compiled_model:new/3` refuses a
+`signature` that is neither an index nor a key the way it refuses every other
+option of the wrong kind, and `edge_tpu_delegate/1` takes `lib_path => nil`, which
+is how an unset setting arrives, as the bundled runtime.
+`tflite_beam_interpreter_server:with/2` answers a callback that raises to the
+caller who wrote it, where it used to take the interpreter and every queued caller
+down with it; the compiled-model server always did.
+
+**An isolated model no longer dies with a slow or lost callback.** The exit a
+call gets when its node is gone is `{{nodedown, Node}, _}`, and the clause written
+for it as `{nodedown, _}` never matched; a callback that outlived the far side's
+thirty-second call was not caught at all. Either took the isolating process down,
+and with it the peer and whoever had linked to it, which is the one outcome the
+module exists to prevent. Both are answered now. The caller's own timeout travels
+with the request, so the process is free again as soon as the caller has stopped
+waiting; `erpc` reaching a node that is gone is caught on the way to sending a
+module over; and a start without `model_path` is refused before any node is
+brought up for it.
+
+**The downloader took a binary URL and reported it unparseable.**
+`uri_string:parse/1` answers in the representation it is given and the scheme
+patterns were strings, so every URL that came from Elixir failed that way, and a
+plain `http` URL handed `httpc` `nil` for its options and raised `badarg`. Both
+reach the network now. `tflite_beam_interpreter_server` refuses a `num_threads`
+that is not an integer by name rather than with a `case_clause`, and the
+compiled-model server checks `max_queue`, which an atom used to slip past without
+the bound ever applying.
+
+**Two NIFs had a door on the Elixir side and none here.**
+`tflite_beam:print_interpreter_state/1` and `tflite_beam:reset_variable_tensor/1`
+wrap them, and the doc on `reset_variable_tensors/1` that pointed at a module that
+does not exist points at the second. The error a tensor read before
+`allocate_tensors/1` produced named a module that exists in neither library; it
+names the function now.
+
 ## v1.0.0-rc5 (2026-09-02)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v1.0.0-rc5) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v1.0.0-rc5)
 

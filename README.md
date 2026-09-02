@@ -338,17 +338,17 @@ Add `tflite_beam` to your list of dependencies in `rebar.config`:
 
 ```erlang
 {deps, [
-  {tflite_beam, "0.3.12"}
+  {tflite_beam, "1.0.0"}
 ]}
 ```
 
-The 1.0.0 release candidates carry the memory-safety work described above and
-build the runtime from LiteRT rather than from TensorFlow. Hex never resolves a
-pre-release from a range, so name it exactly:
+1.0.0 carries the memory-safety work described above and builds the runtime from
+LiteRT rather than from TensorFlow. The 0.3 line is the last one built from
+TensorFlow itself:
 
 ```erlang
 {deps, [
-  {tflite_beam, "1.0.0-rc5"}
+  {tflite_beam, "0.3.12"}
 ]}
 ```
 
