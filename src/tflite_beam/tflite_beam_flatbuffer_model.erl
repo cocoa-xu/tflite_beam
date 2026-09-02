@@ -324,5 +324,7 @@ get_associated_file_impl(Z, Filename) ->
         {ok, {_, Content}} ->
             Content;
         {error, Reason} ->
-            {error, archive_reason(Reason)}
+            {error, unicode:characters_to_binary(
+                io_lib:format("associated file `~ts` could not be read from the archive: ~p",
+                              [Filename, Reason]))}
     end.

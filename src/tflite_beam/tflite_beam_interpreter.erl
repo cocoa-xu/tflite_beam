@@ -135,9 +135,27 @@ new_from_model(Model) when is_reference(Model) ->
 %% Provide a list of tensor indexes that are inputs to the model.
 %% Each index is bound check and this modifies the consistent_ flag of the
 %% interpreter.
--spec set_inputs(reference(), list(integer())) -> ok | {error, binary()}.
+-spec set_inputs(reference(), list(non_neg_integer())) -> ok | {error, binary()}.
 set_inputs(Self, Inputs) when is_reference(Self) and is_list(Inputs) ->
-    tflite_beam_nif:interpreter_set_inputs(Self, Inputs).
+    case tensor_indices(Inputs) of
+        ok -> tflite_beam_nif:interpreter_set_inputs(Self, Inputs);
+        Error -> Error
+    end.
+
+%% TfLite bounds-checks these lists but lets -1 through, its marker for an
+%% optional tensor, and invoke/1 then indexes its tensor table with it without a
+%% lower bound. What sits before that table decides whether the read is harmless
+%% or a segmentation fault, and on CI it was the latter twice. Refused here,
+%% where it can be named, since nothing this library does has a use for it.
+tensor_indices(Indices) ->
+    case lists:all(fun(Index) -> is_integer(Index) andalso Index >= 0 end, Indices) of
+        true -> ok;
+        false ->
+            {error, unicode:characters_to_binary(
+                io_lib:format("tensor indices must be non-negative integers, and this has ~p",
+                              [[Index || Index <- Indices,
+                                         not (is_integer(Index) andalso Index >= 0)]]))}
+    end.
 
 %% @doc
 %% Change the dimensionality of a given input tensor.
@@ -169,17 +187,23 @@ resize_input_tensor_strict(Self, TensorIndex, Dims) when is_reference(Self), is_
 %% Provide a list of tensor indexes that are outputs to the model.
 %% Each index is bound check and this modifies the consistent_ flag of the
 %% interpreter.
--spec set_outputs(reference(), list(integer())) -> ok | {error, binary()}.
+-spec set_outputs(reference(), list(non_neg_integer())) -> ok | {error, binary()}.
 set_outputs(Self, Outputs) when is_reference(Self) and is_list(Outputs) ->
-    tflite_beam_nif:interpreter_set_outputs(Self, Outputs).
+    case tensor_indices(Outputs) of
+        ok -> tflite_beam_nif:interpreter_set_outputs(Self, Outputs);
+        Error -> Error
+    end.
 
 %% @doc
 %% Provide a list of tensor indexes that are variable tensors.
 %% Each index is bound check and this modifies the consistent_ flag of the
 %% interpreter.
--spec set_variables(reference(), list(integer())) -> ok | {error, binary()}.
+-spec set_variables(reference(), list(non_neg_integer())) -> ok | {error, binary()}.
 set_variables(Self, Variables) when is_reference(Self) and is_list(Variables) ->
-    tflite_beam_nif:interpreter_set_variables(Self, Variables).
+    case tensor_indices(Variables) of
+        ok -> tflite_beam_nif:interpreter_set_variables(Self, Variables);
+        Error -> Error
+    end.
 
 %% @doc
 %% Get the list of input tensors.
@@ -383,8 +407,9 @@ get_signature_runner(Self, SignatureKey) when is_reference(Self), is_binary(Sign
 %% Fill input data to corresponding input tensor of the interpreter,
 %% call `tflite_beam_interpreter:invoke/1' and return output tensor(s).
 %% fetch_outputs/2 reads each output with tflite_beam_tensor:to_binary/1, so what
-%% comes back is the bytes, not the records this used to promise.
--spec predict(reference(), list(binary()) | binary() | map()) -> list(binary() | {error, binary()}) | {error, binary()}.
+%% comes back is the bytes, not the records this used to promise, and an output
+%% that cannot be read fails the whole call rather than sitting in the list.
+-spec predict(reference(), list(binary()) | binary() | map()) -> list(binary()) | {error, binary()}.
 predict(Self, Input) when is_reference(Self) and (is_binary(Input) or is_list(Input) or is_map(Input)) ->
     case tflite_beam_interpreter:inputs(Self) of
         {ok, InputTensors} when is_list(InputTensors) ->
@@ -501,14 +526,18 @@ not_binary_reason(InputTensorIndex, InputData) ->
 %% One name for two shapes needs the argument's type to say which is meant, and
 %% the indices come from a NIF with no type of its own, so nothing could tell
 %% which of the two a caller was getting back.
--spec fetch_outputs(reference(), list(non_neg_integer())) -> list(binary() | {error, binary()}).
+%%
+%% An output that cannot be read is the whole call failing, not an item in the
+%% list: a caller matching [Out] would otherwise bind an error tuple and carry it
+%% on as though it were the answer, and the Elixir binding already answered this
+%% way, so the two disagreed on the shape of the same failure.
+-spec fetch_outputs(reference(), list(non_neg_integer())) -> list(binary()) | {error, binary()}.
 fetch_outputs(Self, OutputTensors) when is_reference(Self) and is_list(OutputTensors) ->
-    lists:map(
-        fun(OutputTensorIndex) ->
-            fetch_output(Self, OutputTensorIndex)
-        end,
-        OutputTensors
-    ).
+    Outputs = [fetch_output(Self, OutputTensorIndex) || OutputTensorIndex <- OutputTensors],
+    case [Reason || {error, Reason} <- Outputs] of
+        [] -> Outputs;
+        Reasons -> {error, iolist_to_binary(lists:join(<<"; ">>, Reasons))}
+    end.
 
 -spec fetch_output(reference(), non_neg_integer()) -> binary() | {error, binary()}.
 fetch_output(Self, OutputTensorIndex) when is_reference(Self) and is_integer(OutputTensorIndex) ->

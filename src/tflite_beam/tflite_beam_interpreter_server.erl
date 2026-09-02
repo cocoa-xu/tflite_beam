@@ -59,7 +59,7 @@ start(ModelPath, Opts) when is_list(Opts) ->
 %%
 %% Concurrent callers are serialised by the process rather than racing inside
 %% the interpreter, so each gets the answer to its own input.
--spec predict(pid(), binary() | list() | map()) -> list(binary() | {error, binary()}) | {error, binary()}.
+-spec predict(pid(), binary() | list() | map()) -> list(binary()) | {error, binary()}.
 predict(Server, Input) ->
     predict(Server, Input, ?DEFAULT_TIMEOUT).
 
@@ -70,7 +70,7 @@ predict(Server, Input) ->
 %% not in the return type above, and the server carries on with the inference it
 %% was given. Anything queued behind it still waits for it to finish. Raise the
 %% timeout rather than retry: a retry joins the queue behind the call it replaced.
--spec predict(pid(), binary() | list() | map(), timeout()) -> list(binary() | {error, binary()}) | {error, binary()}.
+-spec predict(pid(), binary() | list() | map(), timeout()) -> list(binary()) | {error, binary()}.
 predict(Server, Input, Timeout) ->
     gen_server:call(Server, {predict, Input}, Timeout).
 
@@ -80,7 +80,8 @@ predict(Server, Input, Timeout) ->
 %% For the sequences `predict/2' does not cover -- resizing an input and
 %% reallocating, say, or driving a signature runner. The function runs in this
 %% process, so nothing else touches the interpreter while it does, and it should
-%% return promptly for the same reason.
+%% return promptly for the same reason. One that raises is answered to its caller
+%% as `{error, Reason}' and costs nobody else anything.
 -spec with(pid(), fun((reference()) -> Result)) -> Result | {error, binary()}.
 with(Server, Fun) ->
     with(Server, Fun, ?DEFAULT_TIMEOUT).
