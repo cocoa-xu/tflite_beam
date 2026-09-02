@@ -603,7 +603,7 @@ three needs anything unusual to reach.
 
   This is visible in one more place than the two above: a handle does not keep its
   interpreter alive, so reading through one whose interpreter has already been
-  collected now returns `{error, Reason}' where it used to return whatever was left in
+  collected now returns `{error, Reason}` where it used to return whatever was left in
   the freed memory. Keep the interpreter reachable for as long as its tensors are in
   use -- which is what the code doing this correctly already does, or it would have
   been crashing.
