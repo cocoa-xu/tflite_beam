@@ -74,6 +74,7 @@ edge_tpu_delegate() ->
 -spec edge_tpu_delegate(map()) -> {ok, reference()} | {error, binary()}.
 edge_tpu_delegate(Opts) when is_map(Opts) ->
     {LibraryPath, PluginOpts} = case maps:take(lib_path, Opts) of
+        {nil, Rest} -> {default_libedgetpu_path(), Rest};
         {Given, Rest} -> {Given, Rest};
         error -> {default_libedgetpu_path(), Opts}
     end,
@@ -190,9 +191,8 @@ get_edge_tpu_context(Opts) when is_list(Opts) ->
 %% - `model': `#tflite_beam_flatbuffer_model{}'. The tflite model.
 %% - `edgetpu_context': `reference()'.
 %%
-%%  The Edge TPU context, from `get_edge_tpu_context/1'.
-%%
-%%  If left `nil', the given interpreter will not resolve an Edge TPU delegate.
+%%  The Edge TPU context, from `get_edge_tpu_context/1'. It is required: an
+%%  interpreter without one is what `tflite_beam_interpreter:new/1' builds.
 %%  PoseNet custom op is always supported.
 -spec make_edge_tpu_interpreter(#tflite_beam_flatbuffer_model{} | reference(), reference()) -> {ok, reference()} | {error, binary()}.
 make_edge_tpu_interpreter(#tflite_beam_flatbuffer_model{ref = Model}, EdgeTPUContext) when is_reference(Model) and is_reference(EdgeTPUContext) ->
@@ -244,4 +244,7 @@ map_type(Atom) when is_atom(Atom) ->
     true ->
         Reason = io_lib:format("Invalid type `~p`", [Atom]),
         {error, unicode:characters_to_binary(Reason)}
-    end.
+    end;
+map_type(Other) ->
+    Reason = io_lib:format("Invalid type `~p`", [Other]),
+    {error, unicode:characters_to_binary(Reason)}.

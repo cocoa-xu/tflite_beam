@@ -151,12 +151,12 @@ verify_and_build_from_buffer(Buffer, Opts) when is_binary(Buffer), is_list(Opts)
 
 %% @doc Build model from caller owned memory buffer
 -spec build_from_buffer(binary()) -> #tflite_beam_flatbuffer_model{} | {error, binary()}.
-build_from_buffer(Buffer) ->
+build_from_buffer(Buffer) when is_binary(Buffer) ->
     build_from_buffer(Buffer, []).
 
 %% @doc Build model from caller owned memory buffer
 -spec build_from_buffer(binary(), list()) -> #tflite_beam_flatbuffer_model{} | {error, binary()}.
-build_from_buffer(Buffer, Opts) ->
+build_from_buffer(Buffer, Opts) when is_binary(Buffer), is_list(Opts) ->
     ErrorReporter = case proplists:get_value(error_reporter, Opts, nil) of
         #tflite_beam_error_reporter{ref = ErrorReporterRef} ->
             ErrorReporterRef;
@@ -243,8 +243,19 @@ list_associated_files(Buffer) when is_binary(Buffer) ->
                 end,
                 Entries);
         {error, Reason} ->
-            {error, Reason}
+            {error, archive_reason(Reason)}
     end.
+
+%% Associated files travel in a zip archive appended to the model, and zip
+%% reports one it cannot read as an atom or, for a buffer too short to hold an
+%% archive, as the exit of the process that tried. Neither is the binary these
+%% functions promise, and a model that simply carries no associated files is the
+%% ordinary way to get here.
+archive_reason({'EXIT', {Error, _Stacktrace}}) ->
+    archive_reason(Error);
+archive_reason(Reason) ->
+    unicode:characters_to_binary(
+        io_lib:format("the model carries no readable archive of associated files: ~p", [Reason])).
 
 %% is_list/1 cannot tell "labels.txt" from [<<"labels.txt">>]: an Erlang string
 %% is a list, so the many-files branch used to walk it character by character and
@@ -302,7 +313,7 @@ get_associated_file(Buffer, Filename) when is_binary(Buffer) and (is_binary(File
                     zip:zip_close(Z),
                     FileContent;
                 {error, Reason} ->
-                    {error, Reason}
+                    {error, archive_reason(Reason)}
             end;
         {error, Reason} ->
             {error, Reason}
@@ -313,5 +324,5 @@ get_associated_file_impl(Z, Filename) ->
         {ok, {_, Content}} ->
             Content;
         {error, Reason} ->
-            {error, Reason}
+            {error, archive_reason(Reason)}
     end.

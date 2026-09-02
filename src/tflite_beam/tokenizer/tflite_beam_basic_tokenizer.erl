@@ -29,8 +29,8 @@
 
 %% @doc
 %% Tokenizes a piece of text.
--spec tokenize(binary() | list(), boolean()) -> list(binary()).
-tokenize(Text, IsCaseInsensitive) when is_binary(Text) and is_boolean(IsCaseInsensitive) ->
+-spec tokenize(unicode:chardata(), boolean()) -> list(binary()).
+tokenize(Text, IsCaseInsensitive) when (is_binary(Text) orelse is_list(Text)) andalso is_boolean(IsCaseInsensitive) ->
     CleanedText = clean_text(Text),
     ProcessedText = if 
         IsCaseInsensitive ->
@@ -95,7 +95,7 @@ clean_text(Text) when is_binary(Text) or is_list(Text) ->
 
 %% @doc Split text on whitespace, dropping the runs between words.
 -spec split_by_whitespace(binary()) -> [binary()].
-split_by_whitespace(BinaryText) ->
+split_by_whitespace(BinaryText) when is_binary(BinaryText) ->
     split_by_whitespace_impl(BinaryText, []).
 
 split_by_whitespace_impl(BinaryText, Acc) ->

@@ -28,6 +28,7 @@
     server_is_atomic_under_concurrency/1,
     server_keeps_its_interpreter_to_itself/1,
     server_with_runs_inside_the_owner/1,
+    server_survives_a_raising_callback/1,
     three_more_ways_past_the_owner_are_closed/1,
     signature_defs_takes_the_interpreter_while_it_reads/1
 ]).
@@ -53,6 +54,7 @@ all() ->
         server_is_atomic_under_concurrency,
         server_keeps_its_interpreter_to_itself,
         server_with_runs_inside_the_owner,
+        server_survives_a_raising_callback,
         three_more_ways_past_the_owner_are_closed,
         signature_defs_takes_the_interpreter_while_it_reads
     ].
@@ -245,6 +247,17 @@ server_with_runs_inside_the_owner(_Config) ->
         {tflite_beam_interpreter:tensors_size(I), tflite_beam_interpreter:inputs(I)}
     end),
     ?assertEqual({7, {ok, [0, 1, 2, 3]}}, Sizes),
+    ok = tflite_beam_interpreter_server:stop(Server).
+
+%% A callback that raised took the server down, and with it the interpreter and
+%% every caller queued behind the one who wrote it. The compiled model server
+%% has always answered that caller instead, and now so does this one.
+server_survives_a_raising_callback(_Config) ->
+    {ok, Server} = tflite_beam_interpreter_server:start(tflite_beam_test_models:path("multi_add.bin")),
+    ?assertMatch({error, Reason} when is_binary(Reason),
+                 tflite_beam_interpreter_server:with(Server, fun(_) -> error(boom) end)),
+    ?assert(is_process_alive(Server)),
+    ?assertEqual([?FILLED(6.0), ?FILLED(9.0)], tflite_beam_interpreter_server:predict(Server, ?INPUTS)),
     ok = tflite_beam_interpreter_server:stop(Server).
 
 %% The guard was on the door and not on the window. interpreter:tensor/2 refused

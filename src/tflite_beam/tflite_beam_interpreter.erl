@@ -51,7 +51,10 @@ new() ->
 
 %% @doc
 %% Which process this interpreter belongs to, or `undefined' if it is shared.
--spec controlling_process(reference()) -> {ok, pid()} | undefined.
+%%
+%% The answer is read under the same lock every call takes, so while another
+%% process's call is in flight this is `{error, Reason}' rather than a wait.
+-spec controlling_process(reference()) -> {ok, pid()} | undefined | {error, binary()}.
 controlling_process(Self) when is_reference(Self) ->
     tflite_beam_nif:interpreter_controlling_process(Self).
 
