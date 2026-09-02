@@ -137,7 +137,10 @@ build(ModelPath, Opts) ->
         undefined ->
             tflite_beam_interpreter:new(ModelPath);
         NumThreads when is_integer(NumThreads) ->
-            build_with_threads(ModelPath, NumThreads)
+            build_with_threads(ModelPath, NumThreads);
+        Other ->
+            {error, unicode:characters_to_binary(
+                io_lib:format("num_threads must be an integer, and this is ~p", [Other]))}
     end.
 
 build_with_threads(ModelPath, NumThreads) ->

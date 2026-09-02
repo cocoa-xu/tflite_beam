@@ -29,6 +29,7 @@
     server_keeps_its_interpreter_to_itself/1,
     server_with_runs_inside_the_owner/1,
     server_survives_a_raising_callback/1,
+    server_refuses_a_thread_count_that_is_not_an_integer/1,
     three_more_ways_past_the_owner_are_closed/1,
     signature_defs_takes_the_interpreter_while_it_reads/1
 ]).
@@ -55,6 +56,7 @@ all() ->
         server_keeps_its_interpreter_to_itself,
         server_with_runs_inside_the_owner,
         server_survives_a_raising_callback,
+        server_refuses_a_thread_count_that_is_not_an_integer,
         three_more_ways_past_the_owner_are_closed,
         signature_defs_takes_the_interpreter_while_it_reads
     ].
@@ -259,6 +261,14 @@ server_survives_a_raising_callback(_Config) ->
     ?assert(is_process_alive(Server)),
     ?assertEqual([?FILLED(6.0), ?FILLED(9.0)], tflite_beam_interpreter_server:predict(Server, ?INPUTS)),
     ok = tflite_beam_interpreter_server:stop(Server).
+
+%% num_threads of the wrong kind fell through a case with two clauses, so the
+%% start answered with a case_clause wrapped in the error tuple rather than
+%% naming the option.
+server_refuses_a_thread_count_that_is_not_an_integer(_Config) ->
+    ?assertMatch({error, Reason} when is_binary(Reason),
+                 tflite_beam_interpreter_server:start(
+                     tflite_beam_test_models:path("multi_add.bin"), [{num_threads, nil}])).
 
 %% The guard was on the door and not on the window. interpreter:tensor/2 refused
 %% a process that did not control the interpreter, and a handle that process

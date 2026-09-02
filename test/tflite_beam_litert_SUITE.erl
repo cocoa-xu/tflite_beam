@@ -34,6 +34,7 @@
     a_model_larger_than_its_limit_is_refused/1,
     a_full_queue_is_refused_rather_than_grown/1,
     an_isolated_model_runs_and_its_death_is_survivable/1,
+    an_isolated_callback_that_outlives_its_timeout_costs_the_call_not_the_model/1,
     every_forwarded_call_reaches_the_model/1,
     a_recompiled_callback_module_is_carried_over/1
 ]).
@@ -71,6 +72,7 @@ all() ->
         a_model_larger_than_its_limit_is_refused,
         a_full_queue_is_refused_rather_than_grown,
         an_isolated_model_runs_and_its_death_is_survivable,
+        an_isolated_callback_that_outlives_its_timeout_costs_the_call_not_the_model,
         every_forwarded_call_reaches_the_model,
         a_recompiled_callback_module_is_carried_over
     ].
@@ -188,6 +190,15 @@ hostile_arguments_are_refused_not_survived(Config) ->
     %% and a signature that is neither an index nor a key is refused like every
     %% other option of the wrong kind, where it was a function_clause
     ?assertMatch({error, _}, ?A:new(Env, Path, #{signature => serving_default})),
+    %% max_queue is the one option new/3 never sees, and an atom slipped past it:
+    %% under term order a number is never greater than an atom, so the bound
+    %% silently never applied, and -1 refused every call
+    ?assertMatch({error, R1} when is_binary(R1),
+                 ?B:start(Env, Path, #{accelerators => [cpu], max_queue => nope})),
+    ?assertMatch({error, R2} when is_binary(R2),
+                 ?B:start(Env, Path, #{accelerators => [cpu], max_queue => -1})),
+    %% and the isolated variant asks for its model path before it starts a node
+    ?assertEqual({error, <<"model_path is required">>}, ?I:start(#{accelerators => [cpu]})),
 
     ?assertMatch({error, _}, ?A:run(Model, [])),
     ?assertMatch({error, _}, ?A:run(Model, [improper | Good])),
@@ -830,6 +841,41 @@ an_isolated_model_runs_and_its_death_is_survivable(Config) ->
             {ok, Replacement} = ?I:start(#{model_path => Path, accelerators => [cpu]}),
             try ?assertMatch({ok, _}, ?I:run(Replacement, Inputs))
             after ?I:stop(Replacement) end
+    end.
+
+%% A callback slower than the caller's timeout left the isolating process waiting
+%% on a thirty second call of its own, and when that ran out the exit was not
+%% caught and took the process, the peer and every linked caller down. The
+%% timeout now travels with the request, so the process is free again as soon as
+%% the caller has stopped waiting, and what the far side answers late is dropped.
+%% A callback that raises on the far side is answered too, whatever its stack.
+an_isolated_callback_that_outlives_its_timeout_costs_the_call_not_the_model(_Config) ->
+    Path = tflite_beam_test_models:path(?MODEL),
+    case ?I:start(#{model_path => Path, accelerators => [cpu]}) of
+        {error, Reason} ->
+            {skip, {cannot_start_an_isolated_node, Reason}};
+        {ok, Iso} ->
+            try
+                ?assertEqual({error, <<"the isolated model did not answer in time">>},
+                             ?I:with(Iso, fun(_) -> timer:sleep(3000), slow end, 200)),
+                %% node_of/1 is answered by the isolating process itself, so how
+                %% long it takes says whether that process is still waiting on
+                %% the callback: with the caller's timeout carried to the far
+                %% side it is free at once, and without it not until the callback
+                %% returns, which used to be thirty seconds for one that never did
+                T0 = erlang:monotonic_time(millisecond),
+                ?assertMatch({ok, _}, ?I:node_of(Iso)),
+                Waited = erlang:monotonic_time(millisecond) - T0,
+                ?assert(Waited < 1500, {still_waiting_on_the_callback_after_ms, Waited}),
+                %% and the model answers once the slow callback has run its course
+                ?assertMatch({ok, {_, _}}, ?I:with(Iso, fun(M) -> ?A:io_sizes(M) end, 5000)),
+                ?assert(is_process_alive(Iso)),
+                ?assertMatch({error, R} when is_binary(R),
+                             ?I:with(Iso, fun(_) -> erlang:raise(error, boom, []) end)),
+                ?assertMatch({ok, {_, _}}, ?I:io_sizes(Iso))
+            after
+                ?I:stop(Iso)
+            end
     end.
 
 %% A closure carries the version of the module that made it, so recompiling that

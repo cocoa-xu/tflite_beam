@@ -82,7 +82,10 @@ start_link(Opts) ->
 %% @doc Start a model on a node of its own, with gen_server options.
 -spec start_link(opts(), list()) -> {ok, pid()} | ignore | {error, term()}.
 start_link(Opts, GenOpts) when is_map(Opts) ->
-    gen_server:start_link(?MODULE, Opts, GenOpts).
+    case model_path_given(Opts) of
+        ok -> gen_server:start_link(?MODULE, Opts, GenOpts);
+        Error -> Error
+    end.
 
 %% @doc Start one outside a supervision tree.
 -spec start(opts()) -> {ok, pid()} | ignore | {error, term()}.
@@ -92,7 +95,17 @@ start(Opts) ->
 %% @doc Start one outside a supervision tree, with gen_server options.
 -spec start(opts(), list()) -> {ok, pid()} | ignore | {error, term()}.
 start(Opts, GenOpts) when is_map(Opts) ->
-    gen_server:start(?MODULE, Opts, GenOpts).
+    case model_path_given(Opts) of
+        ok -> gen_server:start(?MODULE, Opts, GenOpts);
+        Error -> Error
+    end.
+
+%% Without this the missing key was found by maps:get/2 inside init/1, after
+%% distribution had been started and a peer node brought up for a model that
+%% could never be named, and the answer was a badkey with an exit signal to
+%% whoever linked.
+model_path_given(#{model_path := Path}) when is_binary(Path); is_list(Path) -> ok;
+model_path_given(_Opts) -> {error, <<"model_path is required">>}.
 
 %% @doc Run the model over `Inputs'.
 -spec run(pid(), [binary()]) -> {ok, [binary()]} | {error, binary()}.
@@ -108,7 +121,7 @@ run(Server, Inputs) ->
 %% learns about it instead of being taken down with it.
 -spec run(pid(), [binary()], timeout()) -> {ok, [binary()]} | {error, binary()}.
 run(Server, Inputs, Timeout) when is_list(Inputs) ->
-    call(Server, {run, Inputs}, Timeout).
+    call(Server, {run, Inputs, Timeout}, Timeout).
 
 %% @doc The byte size of each input and output buffer.
 -spec io_sizes(pid()) -> {ok, {[non_neg_integer()], [non_neg_integer()]}} | {error, binary()}.
@@ -134,7 +147,7 @@ with(Server, Fun) ->
 -spec with(pid(), fun((reference()) -> Result), timeout()) -> Result | {error, binary()}
     when Result :: term().
 with(Server, Fun, Timeout) when is_function(Fun, 1) ->
-    call(Server, {with, Fun}, Timeout).
+    call(Server, {with, Fun, Timeout}, Timeout).
 
 %% @doc Run the model and collect whatever counters the accelerator reports.
 -spec run_with_metrics(pid(), [binary()]) ->
@@ -154,7 +167,7 @@ run_with_metrics(Server, Inputs, DetailLevel) ->
 run_with_metrics(Server, Inputs, DetailLevel, Timeout)
         when is_list(Inputs), is_integer(DetailLevel),
              DetailLevel >= 0, DetailLevel =< 2147483647 ->
-    call(Server, {run_with_metrics, Inputs, DetailLevel}, Timeout).
+    call(Server, {run_with_metrics, Inputs, DetailLevel, Timeout}, Timeout).
 
 %% @doc Every profiling event recorded since the last reset.
 -spec profile(pid()) -> {ok, [?M:event()]} | {error, binary()}.
@@ -234,7 +247,7 @@ handle_call(node_of, _From, State = #{node := Node}) ->
     {reply, {ok, Node}, State};
 handle_call(_Request, _From, State = #{remote := down}) ->
     {reply, {error, <<"the isolated model's node went down">>}, State};
-handle_call({with, Fun}, _From, State = #{remote := Remote, node := Node}) ->
+handle_call({with, Fun, Timeout}, _From, State = #{remote := Remote, node := Node}) ->
     %% A fun carries the module that made it, and applying it on the peer needs
     %% that module there. Loading it from the peer's code path covers a fun from
     %% any compiled module, which is the ordinary case. It does not cover one
@@ -244,11 +257,7 @@ handle_call({with, Fun}, _From, State = #{remote := Remote, node := Node}) ->
     Reply =
         case ensure_module_on(Node, erlang:fun_info(Fun, module)) of
             ok ->
-                try ?SERVER:with(Remote, Fun)
-                catch
-                    exit:{noproc, _} -> {error, <<"the isolated model is no longer there">>};
-                    exit:{nodedown, _} -> {error, <<"the isolated model's node went down">>}
-                end;
+                across(fun() -> ?SERVER:with(Remote, Fun, Timeout) end);
             {error, Why} ->
                 {error, Why}
         end,
@@ -256,16 +265,26 @@ handle_call({with, Fun}, _From, State = #{remote := Remote, node := Node}) ->
 handle_call(Request, _From, State = #{remote := Remote}) ->
     %% The far side is a plain in-process server, so this is the same call it
     %% would have got locally; only the wire is different.
-    Reply =
-        try forward(Remote, Request)
-        catch
-            exit:{noproc, _} -> {error, <<"the isolated model is no longer there">>};
-            exit:{nodedown, _} -> {error, <<"the isolated model's node went down">>};
-            exit:{Reason, _} ->
-                {error, iolist_to_binary(
-                    io_lib:format("the isolated model failed: ~p", [Reason]))}
-        end,
-    {reply, Reply, State}.
+    {reply, across(fun() -> forward(Remote, Request) end), State}.
+
+%% Every way the far side can fail, turned into an answer, because the caller of
+%% an isolated model asked not to be taken down by it. A call to a pid on a node
+%% that has gone exits with {{nodedown, Node}, _}, which the clause written for
+%% it as {nodedown, _} never matched, and a callback that outlived its timeout
+%% was not caught at all: both took this process down, and with it the peer and
+%% whoever had linked to it. The timeout is the caller's own, carried in the
+%% request, so this process is free again when the caller has stopped waiting.
+across(Call) ->
+    try Call()
+    catch
+        exit:{noproc, _} -> {error, <<"the isolated model is no longer there">>};
+        exit:{{nodedown, _}, _} -> {error, <<"the isolated model's node went down">>};
+        exit:{timeout, _} ->
+            {error, <<"the isolated model did not answer in time; what it was given carries on">>};
+        exit:{Reason, _} ->
+            {error, iolist_to_binary(
+                io_lib:format("the isolated model failed: ~p", [Reason]))}
+    end.
 
 handle_cast(_Request, State) ->
     {noreply, State}.
@@ -298,6 +317,17 @@ terminate(_Reason, _State) ->
 %% script belongs to a module the compiler kept in memory, and no code path
 %% reaches it.
 ensure_module_on(Node, {module, Module}) ->
+    %% erpc raises rather than returns when the node is gone, and this ran
+    %% outside any try, so a {with, _} queued behind the nodedown message took
+    %% the process down instead of being answered.
+    try ensure_module_loaded_on(Node, Module)
+    catch
+        error:{erpc, Reason} ->
+            {error, iolist_to_binary(
+                io_lib:format("cannot reach the isolated node: ~p", [Reason]))}
+    end.
+
+ensure_module_loaded_on(Node, Module) ->
     case erpc:call(Node, code, ensure_loaded, [Module]) of
         {module, Module} ->
             %% Reachable is not the same as identical. A closure carries the
@@ -353,11 +383,11 @@ no_object_code(Module) ->
         "fun mod:f/1, crosses; one written inline in a test case or a script "
         "does not.", [Module])).
 
-forward(Remote, {run, Inputs}) -> ?SERVER:run(Remote, Inputs);
+forward(Remote, {run, Inputs, Timeout}) -> ?SERVER:run(Remote, Inputs, Timeout);
 forward(Remote, io_sizes) -> ?SERVER:io_sizes(Remote);
 forward(Remote, fully_accelerated) -> ?SERVER:fully_accelerated(Remote);
-forward(Remote, {run_with_metrics, Inputs, DetailLevel}) ->
-    ?SERVER:run_with_metrics(Remote, Inputs, DetailLevel);
+forward(Remote, {run_with_metrics, Inputs, DetailLevel, Timeout}) ->
+    ?SERVER:run_with_metrics(Remote, Inputs, DetailLevel, Timeout);
 forward(Remote, {profile, Limit}) -> ?SERVER:profile(Remote, Limit);
 forward(Remote, summarise_profile) -> ?SERVER:summarise_profile(Remote);
 forward(Remote, pending_events) -> ?SERVER:pending_events(Remote);

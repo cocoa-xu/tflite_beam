@@ -50,7 +50,7 @@ mkdir_dir_p(Dir) ->
         ok ->
             ok;
         {error, Reason} ->
-            {error, lists:flatten(io_lib:fwrite("Cannot create directory ~s: ~s", [Dir, Reason]))}
+            {error, lists:flatten(io_lib:fwrite("Cannot create directory ~ts: ~p", [Dir, Reason]))}
     end.
 
 cache_basepath() ->
@@ -60,7 +60,7 @@ cache_basepath() ->
         ok ->
             {ok, CacheDir};
         {error, Reason} ->
-            {error, lists:flatten(io_lib:fwrite("Cannot create cache directory ~s: ~s", [CacheDir, Reason]))}
+            {error, lists:flatten(io_lib:fwrite("Cannot create cache directory ~ts: ~ts", [CacheDir, Reason]))}
     end.
 
 %% Neither of these may leave the cache directory. filename:join/2 hands back an
@@ -299,10 +299,15 @@ set_proxy_if_exists(ProxyEnvVar, ProxyAtom) ->
             end
     end.
 
-do_download(URL, DestionationFilename) ->
+do_download(GivenURL, DestionationFilename) ->
+    %% uri_string:parse/1 answers in the representation it was given and the
+    %% scheme patterns below are strings, so a binary URL, which is what every
+    %% Elixir caller passes, parsed fine and was then reported as unparseable.
+    URL = unicode:characters_to_list(GivenURL),
     {Parsed, HttpOpts} = case uri_string:parse(URL) of
         #{scheme := "http"} ->
-            {ok, nil};
+            %% httpc takes a list of options here, and nil is not one
+            {ok, []};
         #{scheme := "https", host := Host} ->
             ssl:start(),
             case https_opts(Host) of
@@ -326,17 +331,17 @@ do_download(URL, DestionationFilename) ->
                         ok ->
                             {ok, DestionationFilename};
                         Err ->
-                            {error, lists:flatten(io_lib:fwrite("Cannot write file ~s: ~p", [DestionationFilename, Err]))}
+                            {error, lists:flatten(io_lib:fwrite("Cannot write file ~ts: ~p", [DestionationFilename, Err]))}
                     end;
                 {ok, {{_, StatusCode, _}, _, Body}} ->
-                    {error, lists:flatten(io_lib:fwrite("Cannot download file from ~s, status code ~p: ~p", [URL, StatusCode, Body]))};
+                    {error, lists:flatten(io_lib:fwrite("Cannot download file from ~ts, status code ~p: ~p", [URL, StatusCode, Body]))};
                 {error, Reason} ->
                     {error, Reason};
                 Err ->
-                    {error, lists:flatten(io_lib:fwrite("Cannot download file from ~s: ~p", [URL, Err]))}
+                    {error, lists:flatten(io_lib:fwrite("Cannot download file from ~ts: ~p", [URL, Err]))}
             end;
         cannot_verify ->
             {error, HttpOpts};
         error ->
-            {error, lists:flatten(io_lib:fwrite("Cannot parse URL ~s", [URL]))}
+            {error, lists:flatten(io_lib:fwrite("Cannot parse URL ~ts", [URL]))}
     end.

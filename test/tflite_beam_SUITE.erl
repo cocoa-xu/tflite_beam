@@ -60,7 +60,8 @@
     a_charlist_tokenizes_like_the_binary_it_spells/1,
     the_top_level_module_reaches_the_last_two_nifs/1,
     a_dequantize_type_the_table_lacks_is_an_error_not_a_crash/1,
-    tokenizer_entries_refuse_at_their_own_door/1
+    tokenizer_entries_refuse_at_their_own_door/1,
+    a_binary_or_plain_http_url_reaches_the_network/1
 ]).
 
 %% every tensor in multi_add.bin is a [1, 8, 8, 3] float32
@@ -120,7 +121,8 @@ all() ->
         a_charlist_tokenizes_like_the_binary_it_spells,
         the_top_level_module_reaches_the_last_two_nifs,
         a_dequantize_type_the_table_lacks_is_an_error_not_a_crash,
-        tokenizer_entries_refuse_at_their_own_door
+        tokenizer_entries_refuse_at_their_own_door,
+        a_binary_or_plain_http_url_reaches_the_network
     ].
 
 model_from_file(_Config) ->
@@ -1307,3 +1309,26 @@ tokenizer_entries_refuse_at_their_own_door(_Config) ->
     ?assertError(function_clause, tflite_beam_basic_tokenizer:split_by_whitespace(nope)),
     ?assertError(function_clause, tflite_beam_wordpiece_tokenizer:tokenize(<<"x">>, nope)),
     ?assertEqual([<<"a">>, <<"b">>], tflite_beam_basic_tokenizer:split_by_whitespace(<<"a  b">>)).
+
+%% uri_string:parse/1 answers in the representation it was given and the scheme
+%% patterns were strings, so a binary URL, which is what every Elixir caller
+%% passes, parsed fine and was reported as unparseable; a plain http URL handed
+%% httpc nil for its options and raised badarg. Port 1 on the loopback address
+%% refuses the connection, which is the answer both should reach.
+a_binary_or_plain_http_url_reaches_the_network(Config) ->
+    Previous = os:getenv("TFLITE_BEAM_CACHE_DIR"),
+    true = os:putenv("TFLITE_BEAM_CACHE_DIR",
+                     filename:join(proplists:get_value(priv_dir, Config), "cache")),
+    try
+        ?assertMatch({error, {failed_connect, _}},
+                     tflite_beam_utils_downloader:download(
+                         <<"http://127.0.0.1:1/x.bin">>, "review", "x.bin", true)),
+        ?assertMatch({error, {failed_connect, _}},
+                     tflite_beam_utils_downloader:download(
+                         "http://127.0.0.1:1/x.bin", "review", "x.bin", true))
+    after
+        case Previous of
+            false -> os:unsetenv("TFLITE_BEAM_CACHE_DIR");
+            _ -> os:putenv("TFLITE_BEAM_CACHE_DIR", Previous)
+        end
+    end.
