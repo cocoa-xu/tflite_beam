@@ -220,8 +220,25 @@ stop(Server) ->
 %% gen_server
 
 init({Env, ModelPath, Opts}) ->
-    MaxQueue = maps:get(max_queue, Opts, ?DEFAULT_MAX_QUEUE),
-    case ?M:new(Env, ModelPath, maps:remove(max_queue, Opts)) of
+    case max_queue(Opts) of
+        {ok, MaxQueue} -> init(Env, ModelPath, maps:remove(max_queue, Opts), MaxQueue);
+        {error, Reason} -> {stop, Reason}
+    end.
+
+%% Every other option is checked by new/3 and refused by name. This one belongs
+%% to the process, and an atom or a negative number slipped through: under term
+%% order a number is never greater than an atom, so the bound silently never
+%% applied, and -1 refused every call as "0 calls are already waiting".
+max_queue(Opts) ->
+    case maps:get(max_queue, Opts, ?DEFAULT_MAX_QUEUE) of
+        MaxQueue when is_integer(MaxQueue), MaxQueue >= 0 -> {ok, MaxQueue};
+        Other ->
+            {error, iolist_to_binary(
+                io_lib:format("max_queue must be a non-negative integer, and this is ~p", [Other]))}
+    end.
+
+init(Env, ModelPath, Opts, MaxQueue) ->
+    case ?M:new(Env, ModelPath, Opts) of
         {ok, Model} ->
             %% belt as well as braces: `with/2' runs its function here rather
             %% than handing the model out, but a function that captures the
@@ -245,9 +262,9 @@ handle_call({with, Fun}, From, State) ->
         try Fun(Model)
         catch
             Class:Reason:Stack ->
+                Where = case Stack of [Top | _] -> Top; [] -> undefined end,
                 {error, iolist_to_binary(
-                    io_lib:format("the callback ~p ~p at ~p",
-                                  [Class, Reason, hd(Stack)]))}
+                    io_lib:format("the callback ~p ~p at ~p", [Class, Reason, Where]))}
         end
     end);
 handle_call(_Request, _From, State) ->
