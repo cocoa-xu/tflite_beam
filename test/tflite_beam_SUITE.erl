@@ -58,6 +58,7 @@
     a_model_without_associated_files_says_so_in_words/1,
     build_from_buffer_refuses_bad_options_at_its_own_door/1,
     a_charlist_tokenizes_like_the_binary_it_spells/1,
+    the_top_level_module_reaches_the_last_two_nifs/1,
     a_dequantize_type_the_table_lacks_is_an_error_not_a_crash/1,
     tokenizer_entries_refuse_at_their_own_door/1
 ]).
@@ -117,6 +118,7 @@ all() ->
         a_model_without_associated_files_says_so_in_words,
         build_from_buffer_refuses_bad_options_at_its_own_door,
         a_charlist_tokenizes_like_the_binary_it_spells,
+        the_top_level_module_reaches_the_last_two_nifs,
         a_dequantize_type_the_table_lacks_is_an_error_not_a_crash,
         tokenizer_entries_refuse_at_their_own_door
     ].
@@ -1273,6 +1275,22 @@ a_charlist_tokenizes_like_the_binary_it_spells(_Config) ->
     Vocabulary = #{<<"hello">> => 1, <<"world">> => 2, <<"!">> => 3, <<"[UNK]">> => 0},
     ?assertEqual([<<"hello">>, <<"world">>, <<"!">>],
                  tflite_beam_full_tokenizer:tokenize("Hello World!", true, Vocabulary)).
+
+%% Two NIFs had a door on the Elixir side and none here, and the doc on
+%% reset_variable_tensors/1 pointed at a module that does not exist.
+the_top_level_module_reaches_the_last_two_nifs(_Config) ->
+    Interpreter = tflite_beam_test_models:interpreter("add.bin"),
+    ?assertEqual(nil, tflite_beam:print_interpreter_state(Interpreter)),
+    ?assertMatch({error, Reason} when is_binary(Reason),
+                 tflite_beam:print_interpreter_state(make_ref())),
+    {ok, [Index | _]} = tflite_beam_interpreter:inputs(Interpreter),
+    Tensor = tflite_beam_interpreter:tensor(Interpreter, Index),
+    %% add.bin has no variable tensors, and TfLite leaves one that is not
+    %% variable alone and answers ok, so both spellings of the tensor come back ok
+    ?assertEqual(ok, tflite_beam:reset_variable_tensor(Tensor)),
+    ?assertEqual(ok, tflite_beam:reset_variable_tensor(Tensor#tflite_beam_tensor.ref)),
+    ?assertMatch({error, Reason} when is_binary(Reason),
+                 tflite_beam:reset_variable_tensor(make_ref())).
 
 %% map_type/1 named every atom it did not know and had no clause for a tuple it
 %% did not know, so {f, 16} was a function_clause from an unexported function.

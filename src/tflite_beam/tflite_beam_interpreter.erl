@@ -597,7 +597,7 @@ release_non_persistent_memory(Self) when is_reference(Self) ->
 %% @doc
 %% Reset all variable tensors to zero.
 %%
-%% `tflite_beam_tflite:reset_variable_tensor/1' resets a single one.
+%% `tflite_beam:reset_variable_tensor/1' resets a single one.
 -spec reset_variable_tensors(reference()) -> ok | {error, binary()}.
 reset_variable_tensors(Self) when is_reference(Self) ->
     tflite_beam_nif:interpreter_reset_variable_tensors(Self).

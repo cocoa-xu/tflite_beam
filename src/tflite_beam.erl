@@ -8,8 +8,12 @@
     tflite_schema_version/0,
     xnnpack_max_tensor_dims/0,
     source_tree/0,
-    tensorflow_version/0
+    tensorflow_version/0,
+    print_interpreter_state/1,
+    reset_variable_tensor/1
 ]).
+
+-include("tflite_beam/tflite_beam_records.hrl").
 
 %% @doc The version of the TfLite sources this library was built from, e.g.
 %% `<<"2.2.0">>'.
@@ -101,3 +105,22 @@ source_tree() ->
 -spec tensorflow_version() -> binary().
 tensorflow_version() ->
     tflite_beam_nif:tensorflow_version().
+
+%% @doc Print what tensors and nodes the interpreter holds, to standard output.
+%%
+%% Answers `nil' once it has printed. Walking the interpreter takes it the way
+%% every other call does, so this is refused while another process is using it or
+%% when it belongs to one.
+-spec print_interpreter_state(reference()) -> nil | {error, binary()}.
+print_interpreter_state(Interpreter) when is_reference(Interpreter) ->
+    tflite_beam_nif:tflite_print_interpreter_state(Interpreter).
+
+%% @doc Reset one variable tensor to its default value.
+%%
+%% A tensor that is not variable is left alone and answers `ok'.
+%% `tflite_beam_interpreter:reset_variable_tensors/1' resets all of them at once.
+-spec reset_variable_tensor(#tflite_beam_tensor{} | reference()) -> ok | {error, binary()}.
+reset_variable_tensor(#tflite_beam_tensor{ref = Ref}) when is_reference(Ref) ->
+    reset_variable_tensor(Ref);
+reset_variable_tensor(Tensor) when is_reference(Tensor) ->
+    tflite_beam_nif:tflite_reset_variable_tensor(Tensor).
