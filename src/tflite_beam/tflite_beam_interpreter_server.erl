@@ -59,7 +59,7 @@ start(ModelPath, Opts) when is_list(Opts) ->
 %%
 %% Concurrent callers are serialised by the process rather than racing inside
 %% the interpreter, so each gets the answer to its own input.
--spec predict(pid(), binary() | list() | map()) -> list(binary()) | {error, binary()}.
+-spec predict(pid(), binary() | list() | map()) -> list(binary() | {error, binary()}) | {error, binary()}.
 predict(Server, Input) ->
     predict(Server, Input, ?DEFAULT_TIMEOUT).
 
@@ -70,7 +70,7 @@ predict(Server, Input) ->
 %% not in the return type above, and the server carries on with the inference it
 %% was given. Anything queued behind it still waits for it to finish. Raise the
 %% timeout rather than retry: a retry joins the queue behind the call it replaced.
--spec predict(pid(), binary() | list() | map(), timeout()) -> list(binary()) | {error, binary()}.
+-spec predict(pid(), binary() | list() | map(), timeout()) -> list(binary() | {error, binary()}) | {error, binary()}.
 predict(Server, Input, Timeout) ->
     gen_server:call(Server, {predict, Input}, Timeout).
 
@@ -114,7 +114,18 @@ init({ModelPath, Opts}) ->
 handle_call({predict, Input}, _From, State = #{interpreter := Interpreter}) ->
     {reply, tflite_beam_interpreter:predict(Interpreter, Input), State};
 handle_call({with, Fun}, _From, State = #{interpreter := Interpreter}) ->
-    {reply, Fun(Interpreter), State};
+    %% A callback belongs to whoever wrote it and may raise. Letting that
+    %% terminate this process took the interpreter, and every caller queued
+    %% behind, down with one caller's mistake; the compiled model server has
+    %% answered that caller instead all along.
+    Reply = try Fun(Interpreter)
+            catch
+                Class:Reason:Stack ->
+                    Where = case Stack of [Top | _] -> Top; [] -> undefined end,
+                    {error, iolist_to_binary(
+                        io_lib:format("the callback ~p ~p at ~p", [Class, Reason, Where]))}
+            end,
+    {reply, Reply, State};
 handle_call(_Request, _From, State) ->
     {reply, {error, <<"unknown request">>}, State}.
 

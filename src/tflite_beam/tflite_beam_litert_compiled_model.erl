@@ -44,6 +44,8 @@
 -type signature_index() :: 0..2147483647.
 %% Same range and for the same reason: it crosses into the NIF as a C int.
 -type detail_level() :: 0..2147483647.
+%% How many recent events profile/2 answers with, zero meaning all of them.
+-type event_limit() :: 0..2147483647.
 -type operator_kind() :: operator | delegate_operator | delegate_profiled.
 %% What a profiling event is. An integer means this build met a type LiteRT has
 %% since added, which is reported rather than dropped.
@@ -66,7 +68,7 @@
     signature => signature_index() | binary() | string(),
     max_model_bytes => non_neg_integer()
 }.
--export_type([accelerator/0, precision/0, opts/0, signature_index/0,
+-export_type([accelerator/0, precision/0, opts/0, signature_index/0, event_limit/0,
               detail_level/0, operator_kind/0, event/0, event_type/0,
               event_source/0, summary_entry/0, metric_value/0]).
 
@@ -330,7 +332,7 @@ profile(Model) ->
 %% nothing on a workstation and fatal on a board with 256 MB, so on a small
 %% target read often or call `reset_profile/1', and check `pending_events/1'
 %% rather than discovering it.
--spec profile(reference(), non_neg_integer()) -> {ok, [event()]} | {error, binary()}.
+-spec profile(reference(), event_limit()) -> {ok, [event()]} | {error, binary()}.
 profile(Model, Limit) when is_integer(Limit), Limit >= 0, Limit =< 2147483647 ->
     tflite_beam_nif:litert_compiled_model_profile(Model, Limit).
 
@@ -485,7 +487,10 @@ signature_index(Env, Path, Key) when is_binary(Key) ->
     case check_no_nul(Key, <<"signature key">>) of
         ok -> signature_index_by_key(Env, Path, Key);
         Error -> Error
-    end.
+    end;
+signature_index(_Env, _Path, Other) ->
+    {error, iolist_to_binary(
+        io_lib:format("signature must be an index or a key, got ~p", [Other]))}.
 
 signature_index_by_key(Env, Path, Key) ->
     case tflite_beam_nif:litert_model_signatures(Env, Path) of

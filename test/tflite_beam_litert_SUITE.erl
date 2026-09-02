@@ -185,6 +185,9 @@ hostile_arguments_are_refused_not_survived(Config) ->
     ?assertMatch({error, _}, ?A:new(Env, Path, #{accelerators => []})),
     %% and an index the NIF cannot take is named here rather than there
     ?assertMatch({error, _}, ?A:new(Env, Path, #{signature => 4294967296})),
+    %% and a signature that is neither an index nor a key is refused like every
+    %% other option of the wrong kind, where it was a function_clause
+    ?assertMatch({error, _}, ?A:new(Env, Path, #{signature => serving_default})),
 
     ?assertMatch({error, _}, ?A:run(Model, [])),
     ?assertMatch({error, _}, ?A:run(Model, [improper | Good])),

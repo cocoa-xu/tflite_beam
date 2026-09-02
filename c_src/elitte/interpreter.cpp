@@ -764,7 +764,7 @@ ERL_NIF_TERM interpreter_input_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TE
 
     auto input_tensor = self_res->val->input_tensor(index);
     if (input_tensor->data.data == nullptr) {
-        return erlang::nif::error(env, "tensor is not allocated yet? Please call TFLiteBEAM.Interpreter.allocate_tensors first");
+        return erlang::nif::error(env, "tensor is not allocated yet? Please call allocate_tensors on the interpreter first");
     }
 
     // Exactly the tensor's size, or nothing. A short binary used to be memcpy'd
@@ -806,7 +806,7 @@ ERL_NIF_TERM interpreter_output_tensor(ErlNifEnv *env, int argc, const ERL_NIF_T
 
     auto t = self_res->val->output_tensor(index);
     if (t->data.data == nullptr) {
-        return erlang::nif::error(env, "tensor is not allocated yet? Please call TFLiteBEAM.Interpreter.allocate_tensors first");
+        return erlang::nif::error(env, "tensor is not allocated yet? Please call allocate_tensors on the interpreter first");
     }
 
     ErlNifBinary tensor_data;

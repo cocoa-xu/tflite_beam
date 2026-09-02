@@ -162,7 +162,7 @@ profile(Server) ->
     profile(Server, 0).
 
 %% @doc The most recent `Limit' events, or all of them when `Limit' is zero.
--spec profile(pid(), non_neg_integer()) -> {ok, [?M:event()]} | {error, binary()}.
+-spec profile(pid(), ?M:event_limit()) -> {ok, [?M:event()]} | {error, binary()}.
 profile(Server, Limit) when is_integer(Limit), Limit >= 0, Limit =< 2147483647 ->
     call(Server, {profile, Limit}, ?DEFAULT_TIMEOUT).
 

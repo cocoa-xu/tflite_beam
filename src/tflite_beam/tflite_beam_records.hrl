@@ -21,6 +21,12 @@
                                 | {u, 32}
                                 | {u, 16}
                                 | {bf, 16}
+                                %% E5M2 under the name Nx gives it, and E4M3FN
+                                %% under the other, because reading one as the
+                                %% other answers a different number rather than
+                                %% failing
+                                | {f, 8}
+                                | {f8_e4m3fn, 8}
                                 %% the tensor is fine and its shape, name and
                                 %% handle are all usable; TfLite's element type
                                 %% is one this binding has no Erlang spelling

@@ -53,7 +53,13 @@
     the_loaded_object_came_from_litert/1,
     the_two_eight_bit_floats_are_told_apart/1,
     a_resize_takes_the_shape_this_library_hands_out/1,
-    text_that_is_not_utf8_is_named_not_raised_from_unicode/1
+    text_that_is_not_utf8_is_named_not_raised_from_unicode/1,
+    asking_who_controls_a_stranger_is_an_error_not_a_crash/1,
+    a_model_without_associated_files_says_so_in_words/1,
+    build_from_buffer_refuses_bad_options_at_its_own_door/1,
+    a_charlist_tokenizes_like_the_binary_it_spells/1,
+    a_dequantize_type_the_table_lacks_is_an_error_not_a_crash/1,
+    tokenizer_entries_refuse_at_their_own_door/1
 ]).
 
 %% every tensor in multi_add.bin is a [1, 8, 8, 3] float32
@@ -106,7 +112,13 @@ all() ->
         the_loaded_object_came_from_litert,
         the_two_eight_bit_floats_are_told_apart,
         a_resize_takes_the_shape_this_library_hands_out,
-        text_that_is_not_utf8_is_named_not_raised_from_unicode
+        text_that_is_not_utf8_is_named_not_raised_from_unicode,
+        asking_who_controls_a_stranger_is_an_error_not_a_crash,
+        a_model_without_associated_files_says_so_in_words,
+        build_from_buffer_refuses_bad_options_at_its_own_door,
+        a_charlist_tokenizes_like_the_binary_it_spells,
+        a_dequantize_type_the_table_lacks_is_an_error_not_a_crash,
+        tokenizer_entries_refuse_at_their_own_door
     ].
 
 model_from_file(_Config) ->
@@ -1209,3 +1221,71 @@ text_that_is_not_utf8_is_named_not_raised_from_unicode(_Config) ->
 %% reaches it here: a binary or an iolist cut short mid-sequence comes back as
 %% {error, _, _}, and dialyzer says the same of the clause that was written for
 %% it, so there is no branch left to test.
+
+%% The NIF answers {error, _} for a reference that is not an interpreter, and
+%% while another process's call holds the interpreter, and the spec named
+%% neither, so a caller who covered the spec's two shapes had nothing for the
+%% third.
+asking_who_controls_a_stranger_is_an_error_not_a_crash(_Config) ->
+    ?assertMatch({error, Reason} when is_binary(Reason),
+                 tflite_beam_interpreter:controlling_process(make_ref())),
+    Interpreter = tflite_beam_test_models:interpreter("add.bin"),
+    ?assertEqual(undefined, tflite_beam_interpreter:controlling_process(Interpreter)).
+
+%% Associated files travel in a zip appended to the model. zip:table/1 reports a
+%% model that carries none as {error, bad_eocd}, an atom, and a buffer too short
+%% to hold an archive at all as the exit of the process that tried. Both passed
+%% straight through two functions whose specs promised a binary, and the Elixir
+%% side interpolated whatever arrived into its own message.
+a_model_without_associated_files_says_so_in_words(_Config) ->
+    {ok, Model} = file:read_file(tflite_beam_test_models:path("add.bin")),
+    {error, Listed} = tflite_beam_flatbuffer_model:list_associated_files(Model),
+    ?assert(is_binary(Listed), Listed),
+    ?assertNotEqual(nomatch, binary:match(Listed, <<"associated files">>)),
+    ?assertMatch({error, Reason} when is_binary(Reason),
+                 tflite_beam_flatbuffer_model:get_associated_file(Model, <<"vocab.txt">>)),
+    ?assertMatch({error, Reason} when is_binary(Reason),
+                 tflite_beam_flatbuffer_model:get_associated_file(<<>>, <<"vocab.txt">>)).
+
+%% build_from_buffer/2 was the one builder without guards, so options that were
+%% not a list reached proplists:get_value/3, and the function_clause named
+%% proplists rather than the builder that had been handed the wrong thing.
+build_from_buffer_refuses_bad_options_at_its_own_door(_Config) ->
+    {ok, Model} = file:read_file(tflite_beam_test_models:path("add.bin")),
+    Refused = try
+        tflite_beam_flatbuffer_model:build_from_buffer(Model, #{}),
+        no_error
+    catch
+        error:function_clause:Stacktrace ->
+            [{Module, _Function, _Args, _Location} | _] = Stacktrace,
+            Module
+    end,
+    ?assertEqual(tflite_beam_flatbuffer_model, Refused),
+    ?assertMatch(#tflite_beam_flatbuffer_model{},
+                 tflite_beam_flatbuffer_model:build_from_buffer(Model, [])).
+
+%% The spec admitted a charlist and the guard did not, and full_tokenizer
+%% forwards whichever it was given, so text that arrived as an Erlang string
+%% raised function_clause from inside the basic tokenizer.
+a_charlist_tokenizes_like_the_binary_it_spells(_Config) ->
+    ?assertEqual(tflite_beam_basic_tokenizer:tokenize(<<"Hello World!">>, true),
+                 tflite_beam_basic_tokenizer:tokenize("Hello World!", true)),
+    Vocabulary = #{<<"hello">> => 1, <<"world">> => 2, <<"!">> => 3, <<"[UNK]">> => 0},
+    ?assertEqual([<<"hello">>, <<"world">>, <<"!">>],
+                 tflite_beam_full_tokenizer:tokenize("Hello World!", true, Vocabulary)).
+
+%% map_type/1 named every atom it did not know and had no clause for a tuple it
+%% did not know, so {f, 16} was a function_clause from an unexported function.
+a_dequantize_type_the_table_lacks_is_an_error_not_a_crash(_Config) ->
+    Interpreter = tflite_beam_test_models:interpreter("add.bin"),
+    ?assertMatch({error, Reason} when is_binary(Reason),
+                 tflite_beam_coral:dequantize_tensor(Interpreter, 0, {f, 16})),
+    ?assertMatch({error, Reason} when is_binary(Reason),
+                 tflite_beam_coral:dequantize_tensor(Interpreter, 0, f16)).
+
+%% Neither entry had a guard, so the wrong kind of argument raised badarg from
+%% binary:split/2 and badmap from maps, each naming a module nobody had called.
+tokenizer_entries_refuse_at_their_own_door(_Config) ->
+    ?assertError(function_clause, tflite_beam_basic_tokenizer:split_by_whitespace(nope)),
+    ?assertError(function_clause, tflite_beam_wordpiece_tokenizer:tokenize(<<"x">>, nope)),
+    ?assertEqual([<<"a">>, <<"b">>], tflite_beam_basic_tokenizer:split_by_whitespace(<<"a  b">>)).

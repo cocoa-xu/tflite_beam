@@ -192,7 +192,7 @@ profile(Server) ->
 %% The guard is here as well as in the direct module for the same reason it is
 %% on `run_with_metrics/4': an argument the direct module refuses with
 %% `function_clause' would raise inside this server and take the model with it.
--spec profile(pid(), non_neg_integer()) -> {ok, [?M:event()]} | {error, binary()}.
+-spec profile(pid(), ?M:event_limit()) -> {ok, [?M:event()]} | {error, binary()}.
 profile(Server, Limit) when is_integer(Limit), Limit >= 0, Limit =< 2147483647 ->
     with(Server, fun(M) -> ?M:profile(M, Limit) end).
 

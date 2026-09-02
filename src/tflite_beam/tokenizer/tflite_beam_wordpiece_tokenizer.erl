@@ -28,7 +28,7 @@
 %%
 %% Related link: https://github.com/tensorflow/examples/blob/master/lite/examples/bert_qa/ios/BertQACore/Models/Tokenizers/WordpieceTokenizer.swift
 -spec tokenize(binary(), map()) -> list(binary()).
-tokenize(BinaryText, VocabularyID) ->
+tokenize(BinaryText, VocabularyID) when is_binary(BinaryText), is_map(VocabularyID) ->
     SplittedByWhitespace = tflite_beam_basic_tokenizer:split_by_whitespace(BinaryText),
     tokenize_impl(SplittedByWhitespace, VocabularyID, []).
 

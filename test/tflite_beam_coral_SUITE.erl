@@ -63,7 +63,11 @@ edge_tpu_absent_device(_Config) ->
         Result = tflite_beam_coral:edge_tpu_delegate(#{device => <<"usb:9">>}),
         ?assertMatch({error, _}, Result),
         {error, Reason} = Result,
-        ?assertNotEqual(nomatch, binary:match(Reason, <<"declined to create a delegate">>))
+        ?assertNotEqual(nomatch, binary:match(Reason, <<"declined to create a delegate">>)),
+        %% lib_path => nil is how an unset setting arrives, and it means the
+        %% bundled runtime, where it used to reach tflite_beam_delegate:external/2
+        ?assertEqual(Result,
+                     tflite_beam_coral:edge_tpu_delegate(#{lib_path => nil, device => <<"usb:9">>}))
     end).
 
 %% The acceptance criterion: the delegate route and the existing
