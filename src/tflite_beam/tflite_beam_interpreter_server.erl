@@ -29,7 +29,7 @@
 -define(DEFAULT_TIMEOUT, 30000).
 
 %% @doc Start an interpreter process for a model file.
--spec start_link(list() | binary()) -> {ok, pid()} | {error, term()}.
+-spec start_link(list() | binary()) -> {ok, pid()} | ignore | {error, term()}.
 start_link(ModelPath) ->
     start_link(ModelPath, []).
 
@@ -40,17 +40,17 @@ start_link(ModelPath) ->
 %% @param num_threads Passed to
 %% `tflite_beam_interpreter_builder:set_num_threads/2' before the interpreter is
 %% built, so it reaches the default XNNPACK delegate as well.
--spec start_link(list() | binary(), list()) -> {ok, pid()} | {error, term()}.
+-spec start_link(list() | binary(), list()) -> {ok, pid()} | ignore | {error, term()}.
 start_link(ModelPath, Opts) when is_list(Opts) ->
     gen_server:start_link(?MODULE, {ModelPath, Opts}, []).
 
 %% @doc Start an interpreter process outside a supervision tree.
--spec start(list() | binary()) -> {ok, pid()} | {error, term()}.
+-spec start(list() | binary()) -> {ok, pid()} | ignore | {error, term()}.
 start(ModelPath) ->
     start(ModelPath, []).
 
 %% @doc Start an interpreter process outside a supervision tree.
--spec start(list() | binary(), list()) -> {ok, pid()} | {error, term()}.
+-spec start(list() | binary(), list()) -> {ok, pid()} | ignore | {error, term()}.
 start(ModelPath, Opts) when is_list(Opts) ->
     gen_server:start(?MODULE, {ModelPath, Opts}, []).
 

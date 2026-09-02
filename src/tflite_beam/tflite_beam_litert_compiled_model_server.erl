@@ -74,7 +74,7 @@
 -export_type([opts/0]).
 
 %% @doc Start a compiled model process, on the CPU with no profiling.
--spec start_link(reference(), binary() | list()) -> {ok, pid()} | {error, term()}.
+-spec start_link(reference(), binary() | list()) -> {ok, pid()} | ignore | {error, term()}.
 start_link(Env, ModelPath) ->
     start_link(Env, ModelPath, #{}).
 
@@ -84,17 +84,17 @@ start_link(Env, ModelPath) ->
 %% `Opts' is what `tflite_beam_litert_compiled_model:new/3' takes. The
 %% environment is created by the caller and may be shared between servers: it
 %% carries where accelerator plugins are found and nothing per-model.
--spec start_link(reference(), binary() | list(), opts()) -> {ok, pid()} | {error, term()}.
+-spec start_link(reference(), binary() | list(), opts()) -> {ok, pid()} | ignore | {error, term()}.
 start_link(Env, ModelPath, Opts) when is_map(Opts) ->
     gen_server:start_link(?MODULE, {Env, ModelPath, Opts}, []).
 
 %% @doc Start a compiled model process outside a supervision tree.
--spec start(reference(), binary() | list()) -> {ok, pid()} | {error, term()}.
+-spec start(reference(), binary() | list()) -> {ok, pid()} | ignore | {error, term()}.
 start(Env, ModelPath) ->
     start(Env, ModelPath, #{}).
 
 %% @doc Start a compiled model process outside a supervision tree.
--spec start(reference(), binary() | list(), opts()) -> {ok, pid()} | {error, term()}.
+-spec start(reference(), binary() | list(), opts()) -> {ok, pid()} | ignore | {error, term()}.
 start(Env, ModelPath, Opts) when is_map(Opts) ->
     gen_server:start(?MODULE, {Env, ModelPath, Opts}, []).
 

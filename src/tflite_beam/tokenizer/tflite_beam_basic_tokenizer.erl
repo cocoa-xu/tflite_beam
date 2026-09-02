@@ -61,9 +61,17 @@ tokenize(Text, IsCaseInsensitive) when is_binary(Text) and is_boolean(IsCaseInse
 
 %% @doc
 %% Normalize string to NFC(Normalization Form Canonical Composition)
+%% characters_to_nfc_binary/1 answers {error, Done, Rest} for input that is not
+%% valid UTF-8, and that went on to characters_to_list/1, which raised badarg
+%% from inside unicode with nothing to say the text was the problem.
 -spec normalize_to_nfc(binary() | list()) -> binary().
 normalize_to_nfc(Text) when is_binary(Text) or is_list(Text) ->
-    unicode:characters_to_nfc_binary(Text).
+    case unicode:characters_to_nfc_binary(Text) of
+        Normalized when is_binary(Normalized) ->
+            Normalized;
+        {error, _Done, Rest} ->
+            error({invalid_utf8, Rest})
+    end.
 
 -spec clean_text(binary() | list()) -> unicode:chardata().
 clean_text(Text) when is_binary(Text) or is_list(Text) ->
