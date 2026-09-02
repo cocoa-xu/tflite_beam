@@ -379,14 +379,14 @@ get_signature_runner(Self, SignatureKey) when is_reference(Self), is_binary(Sign
 %% @doc
 %% Fill input data to corresponding input tensor of the interpreter,
 %% call `tflite_beam_interpreter:invoke/1' and return output tensor(s).
-%% fetch_output/2 reads each output with tflite_beam_tensor:to_binary/1, so what
+%% fetch_outputs/2 reads each output with tflite_beam_tensor:to_binary/1, so what
 %% comes back is the bytes, not the records this used to promise.
 -spec predict(reference(), list(binary()) | binary() | map()) -> list(binary() | {error, binary()}) | {error, binary()}.
 predict(Self, Input) when is_reference(Self) and (is_binary(Input) or is_list(Input) or is_map(Input)) ->
     case tflite_beam_interpreter:inputs(Self) of
-        {ok, InputTensors} ->
+        {ok, InputTensors} when is_list(InputTensors) ->
             case tflite_beam_interpreter:outputs(Self) of
-                {ok, OutputTensors} ->
+                {ok, OutputTensors} when is_list(OutputTensors) ->
                     case fill_input(Self, InputTensors, Input) of
                         ok ->
                             %% The result of the invoke decides whether the
@@ -400,7 +400,7 @@ predict(Self, Input) when is_reference(Self) and (is_binary(Input) or is_list(In
                             %% close, arriving by a different door.
                             case tflite_beam_interpreter:invoke(Self) of
                                 ok ->
-                                    fetch_output(Self, OutputTensors);
+                                    fetch_outputs(Self, OutputTensors);
                                 {error, Reason} ->
                                     {error, Reason}
                             end;
@@ -495,13 +495,19 @@ not_binary_reason(InputTensorIndex, InputData) ->
         [InputTensorIndex, InputData]),
     unicode:characters_to_binary(Reason).
 
-fetch_output(Self, OutputTensors) when is_reference(Self) and is_list(OutputTensors) ->
+%% One name for two shapes needs the argument's type to say which is meant, and
+%% the indices come from a NIF with no type of its own, so nothing could tell
+%% which of the two a caller was getting back.
+-spec fetch_outputs(reference(), list(non_neg_integer())) -> list(binary() | {error, binary()}).
+fetch_outputs(Self, OutputTensors) when is_reference(Self) and is_list(OutputTensors) ->
     lists:map(
         fun(OutputTensorIndex) ->
             fetch_output(Self, OutputTensorIndex)
         end,
         OutputTensors
-    );
+    ).
+
+-spec fetch_output(reference(), non_neg_integer()) -> binary() | {error, binary()}.
 fetch_output(Self, OutputTensorIndex) when is_reference(Self) and is_integer(OutputTensorIndex) ->
     case tflite_beam_interpreter:tensor(Self, OutputTensorIndex) of
         #tflite_beam_tensor{} = Tensor ->

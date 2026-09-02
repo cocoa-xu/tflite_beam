@@ -52,7 +52,8 @@
     metadata_reaches_the_corners_of_its_own_schema/1,
     the_loaded_object_came_from_litert/1,
     the_two_eight_bit_floats_are_told_apart/1,
-    a_resize_takes_the_shape_this_library_hands_out/1
+    a_resize_takes_the_shape_this_library_hands_out/1,
+    text_that_is_not_utf8_is_named_not_raised_from_unicode/1
 ]).
 
 %% every tensor in multi_add.bin is a [1, 8, 8, 3] float32
@@ -104,7 +105,8 @@ all() ->
         metadata_reaches_the_corners_of_its_own_schema,
         the_loaded_object_came_from_litert,
         the_two_eight_bit_floats_are_told_apart,
-        a_resize_takes_the_shape_this_library_hands_out
+        a_resize_takes_the_shape_this_library_hands_out,
+        text_that_is_not_utf8_is_named_not_raised_from_unicode
     ].
 
 model_from_file(_Config) ->
@@ -1179,3 +1181,31 @@ a_resize_takes_the_shape_this_library_hands_out(_Config) ->
                        Runner, Name, RunnerTuple)),
     ?assertEqual(ok, tflite_beam_signature_runner:resize_input_tensor_strict(
                        Runner, binary_to_list(Name), RunnerTuple)).
+
+%% unicode:characters_to_nfc_binary/1 answers {error, Done, Rest} rather than
+%% raising, and that tuple went straight on to characters_to_list/1, which raised
+%% badarg from inside unicode with nothing to say the text was the problem.
+text_that_is_not_utf8_is_named_not_raised_from_unicode(_Config) ->
+    Good = <<"Hello World">>,
+    ?assertEqual([<<"Hello">>, <<"World">>],
+                 tflite_beam_basic_tokenizer:tokenize(Good, false)),
+
+    %% every malformed shape reaches the same answer: a lone continuation byte,
+    %% and a multi-byte sequence cut short both here and at the very end
+    lists:foreach(
+        fun(Malformed) ->
+            ?assertError({invalid_utf8, _},
+                         tflite_beam_basic_tokenizer:tokenize(Malformed, false),
+                         Malformed)
+        end,
+        [
+            <<"hello ", 255, 254, " world">>,
+            <<"hello ", 16#E4, 16#B8, " world">>,
+            <<"hello ", 16#E4, 16#B8>>,
+            <<16#C3>>
+        ]).
+
+%% characters_to_nfc_binary/1 also documents an {incomplete, _, _}, but nothing
+%% reaches it here: a binary or an iolist cut short mid-sequence comes back as
+%% {error, _, _}, and dialyzer says the same of the clause that was written for
+%% it, so there is no branch left to test.

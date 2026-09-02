@@ -75,22 +75,22 @@
 -export_type([opts/0]).
 
 %% @doc Start a model on a node of its own.
--spec start_link(opts()) -> {ok, pid()} | {error, term()}.
+-spec start_link(opts()) -> {ok, pid()} | ignore | {error, term()}.
 start_link(Opts) ->
     start_link(Opts, []).
 
 %% @doc Start a model on a node of its own, with gen_server options.
--spec start_link(opts(), list()) -> {ok, pid()} | {error, term()}.
+-spec start_link(opts(), list()) -> {ok, pid()} | ignore | {error, term()}.
 start_link(Opts, GenOpts) when is_map(Opts) ->
     gen_server:start_link(?MODULE, Opts, GenOpts).
 
 %% @doc Start one outside a supervision tree.
--spec start(opts()) -> {ok, pid()} | {error, term()}.
+-spec start(opts()) -> {ok, pid()} | ignore | {error, term()}.
 start(Opts) ->
     start(Opts, []).
 
 %% @doc Start one outside a supervision tree, with gen_server options.
--spec start(opts(), list()) -> {ok, pid()} | {error, term()}.
+-spec start(opts(), list()) -> {ok, pid()} | ignore | {error, term()}.
 start(Opts, GenOpts) when is_map(Opts) ->
     gen_server:start(?MODULE, Opts, GenOpts).
 
