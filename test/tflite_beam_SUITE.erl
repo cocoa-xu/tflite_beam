@@ -61,7 +61,9 @@
     the_top_level_module_reaches_the_last_two_nifs/1,
     a_dequantize_type_the_table_lacks_is_an_error_not_a_crash/1,
     tokenizer_entries_refuse_at_their_own_door/1,
-    a_binary_or_plain_http_url_reaches_the_network/1
+    a_binary_or_plain_http_url_reaches_the_network/1,
+    an_output_that_cannot_be_read_fails_the_whole_call/1,
+    a_negative_tensor_index_is_refused_before_tflite_sees_it/1
 ]).
 
 %% every tensor in multi_add.bin is a [1, 8, 8, 3] float32
@@ -122,7 +124,9 @@ all() ->
         the_top_level_module_reaches_the_last_two_nifs,
         a_dequantize_type_the_table_lacks_is_an_error_not_a_crash,
         tokenizer_entries_refuse_at_their_own_door,
-        a_binary_or_plain_http_url_reaches_the_network
+        a_binary_or_plain_http_url_reaches_the_network,
+        an_output_that_cannot_be_read_fails_the_whole_call,
+        a_negative_tensor_index_is_refused_before_tflite_sees_it
     ].
 
 model_from_file(_Config) ->
@@ -1332,3 +1336,53 @@ a_binary_or_plain_http_url_reaches_the_network(Config) ->
             _ -> os:putenv("TFLITE_BEAM_CACHE_DIR", Previous)
         end
     end.
+
+%% predict/2 answered a list with {error, _} elements inside it when an output
+%% could not be read, and the server relayed it, so a caller matching [Out] bound
+%% an error tuple and carried on with it as though it were the answer. The
+%% intermediate tensor of add.bin is the one output that cannot be read on
+%% purpose: XNNPACK takes both additions, so nothing ever gives it a buffer.
+an_output_that_cannot_be_read_fails_the_whole_call(_Config) ->
+    case xnnpack_compiled_in() of
+        false ->
+            {skip, "without XNNPACK the intermediate tensor is allocated and readable"};
+        true ->
+            Interpreter = tflite_beam_test_models:interpreter("add.bin"),
+            {ok, Inputs} = tflite_beam_interpreter:inputs(Interpreter),
+            {ok, [Output] = Outputs} = tflite_beam_interpreter:outputs(Interpreter),
+            [Intermediate | _] =
+                lists:seq(0, tflite_beam_interpreter:tensors_size(Interpreter) - 1) -- Inputs -- Outputs,
+            Whole = binary:copy(<<0, 0, 128, 63>>, 192),
+            ?assertMatch([Bin] when is_binary(Bin),
+                         tflite_beam_interpreter:predict(Interpreter, [Whole])),
+
+            ok = tflite_beam_interpreter:set_outputs(Interpreter, [Output, Intermediate]),
+            ?assertMatch({error, Reason} when is_binary(Reason),
+                         tflite_beam_interpreter:predict(Interpreter, [Whole])),
+
+            {ok, Server} = tflite_beam_interpreter_server:start(tflite_beam_test_models:path("add.bin")),
+            ok = tflite_beam_interpreter_server:with(Server, fun(I) ->
+                tflite_beam_interpreter:set_outputs(I, [Output, Intermediate])
+            end),
+            ?assertMatch({error, Reason} when is_binary(Reason),
+                         tflite_beam_interpreter_server:predict(Server, [Whole])),
+            ok = tflite_beam_interpreter_server:stop(Server)
+    end.
+
+%% TfLite takes -1 in these lists, its marker for an optional tensor, and
+%% invoke/1 then reads before its tensor table with it. The read is undefined
+%% and on CI it was a segmentation fault of the whole VM, twice in four runs,
+%% where a test had used exactly that to make an output unreadable.
+a_negative_tensor_index_is_refused_before_tflite_sees_it(_Config) ->
+    Interpreter = tflite_beam_test_models:interpreter("add.bin"),
+    {ok, [Output]} = tflite_beam_interpreter:outputs(Interpreter),
+    {ok, [Input]} = tflite_beam_interpreter:inputs(Interpreter),
+    ?assertMatch({error, Reason} when is_binary(Reason),
+                 tflite_beam_interpreter:set_outputs(Interpreter, [Output, -1])),
+    ?assertMatch({error, Reason} when is_binary(Reason),
+                 tflite_beam_interpreter:set_inputs(Interpreter, [-1])),
+    ?assertMatch({error, Reason} when is_binary(Reason),
+                 tflite_beam_interpreter:set_variables(Interpreter, [Input, -1])),
+    ?assertEqual({ok, [Output]}, tflite_beam_interpreter:outputs(Interpreter)),
+    ?assertEqual({ok, [Input]}, tflite_beam_interpreter:inputs(Interpreter)),
+    ?assertEqual(ok, tflite_beam_interpreter:set_outputs(Interpreter, [Output])).
