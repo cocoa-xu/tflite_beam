@@ -388,7 +388,7 @@ exactly its size, where a short binary used to be written as far as it went and
 reported as success, leaving the rest of the tensor holding whatever was there
 before. And `tflite_version/0` now answers LiteRT's version rather than
 TensorFlow's, which matters if you load a delegate plugin: it has to be built from
-the same release, and the two version lines are not comparable, so LiteRT's 2.2.0
+the same release, and the two version lines are not comparable, so LiteRT's 2.3.0
 is newer than TensorFlow's 2.21.0 rather than older.
 
 Documentation is published on [HexDocs](https://hexdocs.pm/tflite_beam).

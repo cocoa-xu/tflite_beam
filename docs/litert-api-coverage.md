@@ -1,6 +1,6 @@
 # What of LiteRT's C API this binds, and what it does not
 
-LiteRT 2.2.0 publishes 27 headers under `litert/c`. This is which of them
+LiteRT 2.3.0 publishes 28 headers under `litert/c`. This is which of them
 tflite_beam reaches, and for the rest, the reason it does not. It exists so the
 next person asking "did we miss something" gets an answer rather than a survey.
 
@@ -48,6 +48,9 @@ as `litert_event.h`: nothing here holds one.
 
 **`litert_event_type.h`, `litert_op_code.h`** are enumerations used by the
 above.
+
+**`litert_profiler_types.h`** defines native tracing callbacks. The binding
+reads recorded profiling events synchronously and does not install callbacks.
 
 ## Cancellation, and why there is no timeout on a run
 
