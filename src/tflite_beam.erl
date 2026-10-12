@@ -16,12 +16,12 @@
 -include("tflite_beam/tflite_beam_records.hrl").
 
 %% @doc The version of the TfLite sources this library was built from, e.g.
-%% `<<"2.2.0">>'.
+%% `<<"2.3.0">>'.
 %%
 %% Since the runtime moved to LiteRT's `tflite' subtree this is LiteRT's version,
 %% because that is where the sources come from. It is not the same number as
 %% {@link tensorflow_version/0}, and the two are not comparable: LiteRT versions
-%% independently, so its 2.2.0 is newer than TensorFlow's 2.21.0, not older.
+%% independently, so its 2.3.0 is newer than TensorFlow's 2.21.0, not older.
 %%
 %% **This is the one to compare a delegate plugin against.** Open-source TfLite
 %% offers no binary-stable delegate interface: a plugin loaded through

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Build the runtime from LiteRT 2.3.0 and use the KleidiAI revision required by
+  its XNNPACK dependency. Fetch the pinned SafeInt headers for the optional
+  LiteRT API build. Rebuild external delegate plugins against LiteRT 2.3.0.
+
 ## v1.0.0 (2026-09-02)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v1.0.0) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v1.0.0)
 

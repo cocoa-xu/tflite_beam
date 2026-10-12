@@ -49,7 +49,7 @@ TFLITE_GIT_REPO ?= "https://github.com/tensorflow/tensorflow.git"
 # version a delegate plugin has to match, and it is what tflite_beam:tflite_version/0
 # answers.
 LITERT_GIT_REPO ?= "https://github.com/google-ai-edge/LiteRT.git"
-LITERT_VER ?= 2.2.0
+LITERT_VER ?= 2.3.0
 # TensorFlow is still a build dependency rather than the source of the runtime:
 # LiteRT's CMake reaches into it for compiler/mlir/lite, TSL and XLA. The version
 # is the one LiteRT pins, and mismatching it silently mixes two schemas.
@@ -76,9 +76,9 @@ TFLITE_CMAKELISTS_TXT = $(TFLITE_ROOT_DIR)/CMakeLists.txt
 CMAKE_TFLITE_BUILD_DIR = $(MIX_APP_PATH)/cmake_tflite_$(TFLITE_VER)
 
 # KleidiAI is fetched by XNNPACK for arm64 targets, but gitlab.arm.com blocks
-# GitHub runners. Mirror the commit XNNPACK pins (matches this TFLITE_VER) from
+# GitHub runners. Mirror the commit XNNPACK pins from
 # github.com and hand the local copy to XNNPACK via KLEIDIAI_SOURCE_DIR.
-KLEIDIAI_COMMIT ?= dce86647385ab2638aa5abebcb652f3e4271970d
+KLEIDIAI_COMMIT ?= 4bc7bd457930de119f8b826ecfdebfbd9c08cf8c
 KLEIDIAI_SOURCE_URL = https://github.com/ARM-software/kleidiai/archive/$(KLEIDIAI_COMMIT).tar.gz
 KLEIDIAI_SOURCE_ARCHIVE = $(TFLITE_BEAM_CACHE_DIR)/kleidiai-$(KLEIDIAI_COMMIT).tar.gz
 KLEIDIAI_SOURCE_DIR = $(THIRD_PARTY_DIR)/kleidiai-$(KLEIDIAI_COMMIT)

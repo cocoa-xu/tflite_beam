@@ -309,7 +309,7 @@ io_sizes(Model) ->
 %% duration, which is why `summarise_profile/1' drops them.
 %%
 %% The buffer behind this is fixed and large: a compiled model asks for
-%% 512 * 1024 entries in LiteRT 2.2.0, not the 10240 a bare profiler defaults
+%% 512 * 1024 entries in LiteRT 2.3.0, not the 10240 a bare profiler defaults
 %% to. So a long-lived model does not grow without bound, but neither will it
 %% overflow soon. Reset it when you want to measure a change rather than to keep
 %% it in check.

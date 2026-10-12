@@ -430,6 +430,21 @@ if(TFLITE_BEAM_ENABLE_LITERT_API)
     # libLiteRtGpuAccelerator, is not one of the ones this gates.
     add_compile_definitions(LITERT_DISABLE_OPENCL_SUPPORT)
 
+    include(OverridableFetchContent)
+    OverridableFetchContent_Declare(
+        safeint
+        GIT_REPOSITORY https://github.com/dcleblanc/SafeInt
+        GIT_TAG 72f0745e26091af6d1186fd91426377f16688ba7
+        GIT_PROGRESS TRUE
+        PREFIX "${CMAKE_BINARY_DIR}"
+        SOURCE_DIR "${CMAKE_BINARY_DIR}/safeint"
+    )
+    OverridableFetchContent_GetProperties(safeint)
+    if(NOT safeint_POPULATED)
+        OverridableFetchContent_Populate(safeint)
+    endif()
+    include_directories("${safeint_SOURCE_DIR}")
+
     # The C API sits on cc/internal, which sits on core. litert's own top level
     # adds these in the same order; only its add_subdirectory of tflite is left
     # out, since this build already has one.
