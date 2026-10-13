@@ -208,6 +208,51 @@ GPU plugin; the default is CPU. Missing input paths use zero-filled inputs.
 
 [plugins]: https://github.com/cocoa-xu/tflite_delegate_plugins
 
+### Backend settings and weight sharing
+
+`new/3` accepts a `backend_options` map. The server and isolated wrappers pass
+the same settings through. For example, to use four CPU threads:
+
+```erlang
+{ok, Model} = tflite_beam_litert_compiled_model:new(Env, "model.tflite", #{
+    backend_options => #{cpu => #{num_threads => 4}}
+}).
+```
+
+`backend_options/1` validates a configuration without loading a model or needing
+vendor hardware and returns the native option identifiers and serialized
+payloads. Settings use LiteRT's typed C API; unknown backends, keys and enum
+values return errors. Top-level `precision` is merged into the same GPU payload
+as its backend settings.
+
+| Backend | Supported settings |
+|---|---|
+| `cpu` | `num_threads` (-1 or positive), `kernel_mode` (`delegate`, `reference`, `builtin`), `enable_ynnpack`, `xnnpack_flags` (uint32), `hint_fully_delegated_to_single_delegate`, `weight_cache_path`, `weight_cache_fd` |
+| `gpu` | `constant_tensors_sharing`, `use_ir_model`, `use_metal_argument_buffers`, `metal_residency_set`, `hint_fully_delegated_to_single_delegate` (booleans) |
+| `arm` | `enable_just_in_time` (boolean) |
+| `intel_openvino` | `enable_weight_sharing` (boolean), `performance_mode` (`latency`, `throughput`, `cumulative_throughput`) |
+| `google_tensor` | `input_coherency`, `output_coherency`: lists of `{Signature, Tensor, Boolean}` |
+| `mediatek` | `gemma_compiler_optimizations`, `use_get_supported_operations` (booleans); `option_bundle`, `option_bundle_decode`, `option_bundle_prefill` (binaries) |
+| `qualcomm` | `enable_weight_sharing`; `backend` (`undefined`, `gpu`, `htp`, `dsp`, `ir`, `lpai`); `htp_pd_session`, `dsp_pd_session` (`unsigned`, `signed`, `adaptive`); `dsp_encoding` (`static`, `dynamic`); `dsp_performance_mode`; `lpai_target` (`x86`, `arm`, `adsp`, `tensilica`); `lpai_fps`, `lpai_ftrt_ratio` (positive uint32); `lpai_client_perf_type` (`default`, `real_time`, `non_real_time`); `lpai_core_affinity` (`default`, `soft`, `hard`); `lpai_core_selection` (uint32); `qnn_lib_dir`, `dsp_skel_dir`, `graph_transform` (binaries) |
+
+Qualcomm DSP performance modes are `default`, `sustained_high_performance`,
+`burst`, `high_performance`, `power_saver`, `low_power_saver`, `high_power_saver`,
+`low_balanced` and `balanced`. Backend strings are binaries without controls,
+quotes or backslashes, because LiteRT's payload serializers do not escape them.
+Coherency names also exclude colon, equals and spaces.
+
+CPU cache paths and descriptors are mutually exclusive; keep a supplied file
+descriptor available while compiling. YNNPACK requires a runtime built with it.
+GPU constant sharing and Intel/Qualcomm weight sharing apply between subgraphs
+where the backend supports them. Intel enables sharing by default. MediaTek
+bundles only affect its Gemma compiler optimizations. Vendor settings require
+the corresponding SDK and compatible plugin; this library does not bundle
+those SDKs. They do not improve execution on an unrelated CPU or Edge TPU.
+
+The official LiteRT 2.3.0 Metal plugin rejects uint8 weights when constant tensor
+sharing is enabled. Leave `constant_tensors_sharing` disabled for those models.
+Allowing CPU fallback does not recover a delegate compilation failure.
+
 ### Inspecting and rewriting graph options
 
 The experimental `tflite_beam_litert_model` API reads subgraph connectivity and

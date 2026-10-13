@@ -30,6 +30,7 @@ limitations under the License.
 #ifdef TFLITE_BEAM_LITERT_API_ENABLED
 extern ERL_NIF_TERM litert_environment_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 extern ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
+extern ERL_NIF_TERM litert_backend_options(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 extern ERL_NIF_TERM litert_compiled_model_run(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 extern ERL_NIF_TERM litert_compiled_model_fully_accelerated(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 extern ERL_NIF_TERM litert_compiled_model_non_cpu_fully_accelerated(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
@@ -232,6 +233,8 @@ static ErlNifFunc nif_functions[] = {
 #ifdef TFLITE_BEAM_LITERT_API_ENABLED
     F_CPU(litert_environment_new, 1),
     F_CPU(litert_compiled_model_new, 6),
+    F_CPU(litert_compiled_model_new, 7),
+    F_CPU(litert_backend_options, 1),
     F_CPU(litert_compiled_model_run, 2),
     F_CPU(litert_compiled_model_fully_accelerated, 1),
     F_CPU(litert_compiled_model_non_cpu_fully_accelerated, 1),
@@ -250,6 +253,8 @@ static ErlNifFunc nif_functions[] = {
 #else
     F_NOT_COMPILED_LITERT(litert_environment_new, 1),
     F_NOT_COMPILED_LITERT(litert_compiled_model_new, 6),
+    F_NOT_COMPILED_LITERT(litert_compiled_model_new, 7),
+    F_NOT_COMPILED_LITERT(litert_backend_options, 1),
     F_NOT_COMPILED_LITERT(litert_compiled_model_run, 2),
     F_NOT_COMPILED_LITERT(litert_compiled_model_fully_accelerated, 1),
     F_NOT_COMPILED_LITERT(litert_compiled_model_non_cpu_fully_accelerated, 1),

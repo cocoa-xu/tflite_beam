@@ -41,6 +41,12 @@ nif_litert_call_count() ->
 litert_environment_new(_runtime_library_dir) ->
     not_loaded(?LINE).
 
+litert_backend_options(_options) ->
+    not_loaded(?LINE).
+
+litert_compiled_model_new(_env, _path, _accelerators, _precision, _profile, _signature, _backend_options) ->
+    not_loaded(?LINE).
+
 litert_compiled_model_new(_env, _path, _accelerators, _precision, _profile, _signature) ->
     not_loaded(?LINE).
 

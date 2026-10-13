@@ -22,6 +22,7 @@
 #include "../nif_utils.hpp"
 #include "../erlang_nif_resource.h"
 #include "../fault_inject.hpp"
+#include "litert_backend_options.h"
 
 #include "litert/c/litert_common.h"
 #include "litert/c/litert_compiled_model.h"
@@ -271,7 +272,7 @@ ERL_NIF_TERM litert_environment_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM
 // allocated once here rather than per run, which is what makes a compiled
 // model something a caller has to serialise access to.
 ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    if (argc != 6) return enif_make_badarg(env);
+    if (argc != 6 && argc != 7) return enif_make_badarg(env);
 
     ERL_NIF_TERM error{};
     auto env_res = NifResLiteRtEnvironment::get_resource(env, argv[0], error);
@@ -287,6 +288,9 @@ ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_T
         return erlang::nif::error(env, "expecting a path and four integers");
     }
 
+    LiteRtBackendPayloads backend_options;
+    if (argc == 7) backend_options = litert_backend_payloads(env, argv[6], precision);
+
     auto res = NifResLiteRtCompiledModel::allocate_resource(env, error);
     if (res == nullptr) return error;
     ResourceRef<NifResLiteRtCompiledModel> hold(res);
@@ -301,10 +305,13 @@ ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_T
     TRY(LiteRtSetOptionsHardwareAccelerators(res->options, (LiteRtHwAcceleratorSet)accelerators),
         "select accelerator")
 
-    if (precision != 0) {
+    if (argc == 6 && precision != 0) {
         char toml[40];
         snprintf(toml, sizeof(toml), "precision = %d\n", precision);
         TRY(add_toml_options(res->options, "gpu_options", toml), "attach gpu options")
+    }
+    for (const auto &entry : backend_options) {
+        TRY(add_toml_options(res->options, entry.first.c_str(), entry.second.c_str()), "attach backend options")
     }
     if (profile) {
         TRY(add_toml_options(res->options, "runtime_options_string", "enable_profiling = true\n"),
