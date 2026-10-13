@@ -12,7 +12,8 @@ Everything here is behind `TFLITE_BEAM_ENABLE_LITERT_API=ON`.
 |---|---|
 | `litert_common.h` | status strings, accelerator and precision enums |
 | `litert_environment.h`, `litert_environment_options.h` | `tflite_beam_litert_compiled_model:environment/1`, which is how an accelerator plugin is found |
-| `litert_model.h` | signature listing, subgraph input and output counts |
+| `litert_model.h` | signature listing, experimental graph inspection and serialization |
+| `litert_builder.h`, `litert_op_options.h` | experimental OneHot, SplitV and StableHLO composite option rewrites |
 | `litert_options.h`, `litert_opaque_options.h` | accelerator selection, and the TOML payloads that carry precision and profiling |
 | `litert_compiled_model.h` | `new/3`, `run/2`, `fully_accelerated/1`, `non_cpu_fully_accelerated/1`, `io_sizes/1` |
 | `litert_profiler.h`, `litert_profiler_event.h` | `profile/1`, `summarise_profile/1`, `reset_profile/1` |
@@ -29,13 +30,13 @@ copied in and out synchronously inside one call, so there is nothing to wait on
 that a `gen_server:call/3` does not already cover. It becomes worth binding if buffers
 ever stay resident on a device between calls, and not before.
 
-**`litert_op_options.h`** is 132 functions for reading one operator's options
-out of a model. It answers questions about a graph, and nothing in tflite_beam
-exposes a graph to ask them of. Binding it would mean first exposing operators
-as things a caller can hold.
-
-**`litert_builder.h`** builds and edits models programmatically. tflite_beam
-runs models, it does not author them.
+Most of **`litert_op_options.h`** remains unbound. Graph inspection reports
+connectivity for every operator and options for OneHot, SplitV and StableHLO
+composite. The three corresponding builder functions added in 2.3.0 are bound
+through `tflite_beam_litert_model:rewrite/3`. It operates on a private model and
+returns a serialized binary. LiteRT exposes no public standalone builder
+creation or commit API, so the binding uses the pinned runtime's internal
+builder and serializer. It preserves the graph's topology and is experimental.
 
 **`litert_custom_op_kernel.h`** lets a custom operator be implemented in the
 host language. On the BEAM that means calling back into Erlang from inside an

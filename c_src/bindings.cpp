@@ -38,6 +38,8 @@ extern ERL_NIF_TERM litert_compiled_model_pending_events(ErlNifEnv *env, int arg
 extern ERL_NIF_TERM litert_compiled_model_reset_profile(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 extern ERL_NIF_TERM litert_compiled_model_io_sizes(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 extern ERL_NIF_TERM litert_model_signatures(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
+extern ERL_NIF_TERM litert_model_inspect(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
+extern ERL_NIF_TERM litert_model_rewrite(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 extern ERL_NIF_TERM litert_compiled_model_run_with_metrics(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 extern ERL_NIF_TERM litert_platform_support(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 extern ERL_NIF_TERM nif_litert_call_count(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
@@ -238,6 +240,8 @@ static ErlNifFunc nif_functions[] = {
     F(litert_compiled_model_reset_profile, 1),
     F(litert_compiled_model_io_sizes, 1),
     F_CPU(litert_model_signatures, 2),
+    F_CPU(litert_model_inspect, 2),
+    F_CPU(litert_model_rewrite, 3),
     F_CPU(litert_compiled_model_run_with_metrics, 3),
     F_CPU(litert_compiled_model_run_with_metrics, 5),
     F(litert_platform_support, 0),
@@ -254,6 +258,8 @@ static ErlNifFunc nif_functions[] = {
     F_NOT_COMPILED_LITERT(litert_compiled_model_reset_profile, 1),
     F_NOT_COMPILED_LITERT(litert_compiled_model_io_sizes, 1),
     F_NOT_COMPILED_LITERT(litert_model_signatures, 2),
+    F_NOT_COMPILED_LITERT(litert_model_inspect, 2),
+    F_NOT_COMPILED_LITERT(litert_model_rewrite, 3),
     F_NOT_COMPILED_LITERT(litert_compiled_model_run_with_metrics, 3),
     F_NOT_COMPILED_LITERT(litert_compiled_model_run_with_metrics, 5),
     F_NOT_COMPILED_LITERT(litert_platform_support, 0),

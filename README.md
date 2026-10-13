@@ -208,6 +208,34 @@ GPU plugin; the default is CPU. Missing input paths use zero-filled inputs.
 
 [plugins]: https://github.com/cocoa-xu/tflite_delegate_plugins
 
+### Inspecting and rewriting graph options
+
+The experimental `tflite_beam_litert_model` API reads subgraph connectivity and
+the options added to LiteRT's builder in 2.3.0. It can rewrite OneHot's `axis`,
+SplitV's `num_splits`, and StableHLO composite's name, decomposition subgraph,
+version and attributes:
+
+```erlang
+{ok, Graphs} = tflite_beam_litert_model:inspect(Env, "model.tflite"),
+{ok, Binary} = tflite_beam_litert_model:rewrite(Env, "model.tflite", [
+    #{subgraph => 0, operator => 0, options => #{axis => -1}}
+]),
+ok = file:write_file("rewritten.tflite", Binary).
+```
+
+Both functions accept a path or `{buffer, Binary}`. Indices come from `inspect/2`;
+other operator codes are returned as their LiteRT enum numbers. Unexposed
+operator options appear as empty maps. Rewrites happen in a private model and
+preserve tensor shapes, connections and signatures. Keep the options consistent
+with those shapes. SplitV's count must match its existing outputs. Composite
+attributes must be a valid FlexBuffers map, and recursive decompositions are
+refused. No Erlang or C callbacks are needed.
+
+LiteRT's public builder has no standalone creation or commit functions, and its
+public serialization is disabled in builds without NPU support. This binding
+uses the pinned runtime's internal builder and serializer to make these edits
+available in CPU and GPU builds. This is why the graph API is experimental.
+
 ### One model, one process
 
 A compiled model owns one set of input and output buffers for its whole life,

@@ -22,6 +22,7 @@ main() ->
     ok = interpreter_ownership(Model),
     ok = compiled_model_concurrency(Model),
     ok = compiled_model_lifetimes(Model),
+    ok = graph_rewrite_lifetimes(Root),
     io:format("sanitizer drive complete~n"),
     halt(0).
 
@@ -111,6 +112,23 @@ compiled_model_lifetimes(Model) ->
         {error, _} = ?A:environment(<<"/tmp/a", 0, "b">>)
     end),
     [erlang:garbage_collect(P) || P <- erlang:processes()],
+    ok.
+
+graph_rewrite_lifetimes(Root) ->
+    {ok, Env} = ?A:environment(),
+    Path = filename:join([Root, "test", "models", "graph_options.tflite"]),
+    {ok, Source} = file:read_file(Path),
+    {ok, [_, _, #{operators := [#{options := Options}]}]} =
+        tflite_beam_litert_model:inspect(Env, {buffer, Source}),
+    repeat(80, fun() ->
+        Changed = Options#{name := binary:copy(<<"name">>, 64)},
+        Edit = #{subgraph => 2, operator => 0, options => Changed},
+        {ok, Binary} = tflite_beam_litert_model:rewrite(Env, {buffer, Source}, [Edit]),
+        {ok, [_, _, #{operators := [#{options := Changed}]}]} =
+            tflite_beam_litert_model:inspect(Env, {buffer, Binary}),
+        {error, _} = tflite_beam_litert_model:rewrite(Env, {buffer, Source},
+            [Edit#{options := Changed#{attributes := <<1, 2, 3>>}}])
+    end),
     ok.
 
 spawn_many(N, Fun) ->
