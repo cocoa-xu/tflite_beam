@@ -45,7 +45,7 @@ static void signature(tflite::ModelT &model, uint32_t index) {
 }
 
 int main(int argc, char **argv) {
-    if (argc != 2) return 2;
+    if (argc != 2 && argc != 3) return 2;
     tflite::ModelT model;
     model.version = 3;
     model.description = "LiteRT graph option fixtures";
@@ -119,6 +119,20 @@ int main(int argc, char **argv) {
     composite->outputs = {1};
     model.subgraphs.push_back(std::move(composite));
     for (uint32_t i = 0; i < model.subgraphs.size(); ++i) signature(model, i);
+    if (argc == 3) {
+        if (std::strcmp(argv[2], "mismatched") == 0) {
+            model.subgraphs[0]->operators[0]->builtin_options.Set(split_options);
+        } else if (std::strcmp(argv[2], "split_mismatched") == 0) {
+            model.subgraphs[1]->operators[0]->builtin_options.Set(hot_options);
+        } else if (std::strcmp(argv[2], "composite_mismatched") == 0) {
+            tflite::StablehloConcatenateOptionsT other;
+            model.subgraphs[2]->operators[0]->builtin_options_2.Set(other);
+        } else if (std::strcmp(argv[2], "missing") == 0) {
+            model.subgraphs[0]->operators[0]->builtin_options.Reset();
+        } else {
+            return 2;
+        }
+    }
 
     flatbuffers::FlatBufferBuilder builder;
     tflite::FinishModelBuffer(builder, tflite::Model::Pack(builder, &model));

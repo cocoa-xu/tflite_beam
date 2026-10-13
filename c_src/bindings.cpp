@@ -22,7 +22,10 @@ limitations under the License.
 #include "nif_utils.hpp"
 
 #ifdef TFLITE_BEAM_LITERT_API_ENABLED
+#include <mutex>
 #include "elitte/litert_reaper.h"
+static std::mutex litert_library_lifecycle_lock;
+static unsigned int litert_library_instances = 0;
 #endif
 #include "nif_guard.hpp"
 #include "helper.h"
@@ -171,14 +174,19 @@ on_load(ErlNifEnv* env, void**, ERL_NIF_TERM) {
 #ifdef TFLITE_BEAM_LITERT_API_ENABLED
     // A reaper that will not start is not a reason to refuse to load: teardown
     // then happens on the caller's thread, which is what it did before.
-    if (rc == 0) litert_reaper_start();
+    if (rc == 0) {
+        std::lock_guard<std::mutex> lock(litert_library_lifecycle_lock);
+        ++litert_library_instances;
+        litert_reaper_start();
+    }
 #endif
     return rc;
 }
 
 static void on_unload(ErlNifEnv*, void*) {
 #ifdef TFLITE_BEAM_LITERT_API_ENABLED
-    litert_reaper_stop();
+    std::lock_guard<std::mutex> lock(litert_library_lifecycle_lock);
+    if (--litert_library_instances == 0) litert_reaper_stop();
 #endif
 }
 
@@ -187,8 +195,16 @@ static int on_reload(ErlNifEnv*, void**, ERL_NIF_TERM) {
 }
 
 static int on_upgrade(ErlNifEnv* env, void**, void**, ERL_NIF_TERM) {
-    return open_resource_types(
+    int rc = open_resource_types(
         env, (ErlNifResourceFlags)(ERL_NIF_RT_CREATE | ERL_NIF_RT_TAKEOVER));
+#ifdef TFLITE_BEAM_LITERT_API_ENABLED
+    if (rc == 0) {
+        std::lock_guard<std::mutex> lock(litert_library_lifecycle_lock);
+        ++litert_library_instances;
+        litert_reaper_start();
+    }
+#endif
+    return rc;
 }
 
 // Every entry goes through the exception guard; see nif_guard.hpp. The two

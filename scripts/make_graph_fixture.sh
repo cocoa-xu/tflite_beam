@@ -10,3 +10,7 @@ trap 'rm -- "$BIN"' EXIT
 c++ -std=c++17 -I "$FLATBUFFERS" -I "$TENSORFLOW" \
     "${ROOT}/scripts/make_graph_fixture.cpp" -o "$BIN"
 "$BIN" "${ROOT}/test/models/graph_options.tflite"
+"$BIN" "${ROOT}/test/models/graph_options_mismatched.tflite" mismatched
+"$BIN" "${ROOT}/test/models/graph_options_split_mismatched.tflite" split_mismatched
+"$BIN" "${ROOT}/test/models/graph_options_composite_mismatched.tflite" composite_mismatched
+"$BIN" "${ROOT}/test/models/graph_options_missing.tflite" missing

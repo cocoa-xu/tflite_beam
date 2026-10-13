@@ -21,6 +21,7 @@
     signature_runner_retired_by_rebuild/1,
     signature_runner_usable_before_rebuild/1,
     signature_runner_registry_does_not_grow/1,
+    retired_handles_do_not_remove_new_registry_entries/1,
     model_outlives_its_error_reporter_handle/1,
     error_reporter_shared_between_models/1,
     concurrent_runner_fetch_and_rebuild/1,
@@ -45,6 +46,7 @@ all() ->
         signature_runner_retired_by_rebuild,
         signature_runner_usable_before_rebuild,
         signature_runner_registry_does_not_grow,
+        retired_handles_do_not_remove_new_registry_entries,
         model_outlives_its_error_reporter_handle,
         error_reporter_shared_between_models,
         concurrent_runner_fetch_and_rebuild,
@@ -68,6 +70,7 @@ all() ->
 init_per_testcase(Case, Config) when
         Case =:= tensor_registry_does_not_grow;
         Case =:= signature_runner_registry_does_not_grow;
+        Case =:= retired_handles_do_not_remove_new_registry_entries;
         Case =:= runner_registry_failure_frees_the_runner_and_the_lock;
         Case =:= interpreter_allocation_failure_is_reported_not_leaked;
         Case =:= builder_allocation_failure_is_reported_not_leaked;
@@ -194,6 +197,47 @@ signature_runner_registry_does_not_grow(_Config) ->
         end, N, {0, N}),
         assert_empty_registries(Interpreter)
     end, [2000, 2000, 20000]).
+
+retired_handles_do_not_remove_new_registry_entries(_Config) ->
+    {Builder, Interpreter} = rebuildable("add.bin"),
+    ok = tflite_beam_interpreter:allocate_tensors(Interpreter),
+    {ok, [Index | _]} = tflite_beam_interpreter:inputs(Interpreter),
+    Parent = self(),
+    {Pid, Monitor} = spawn_monitor(fun() ->
+        Handles = registry_handles(Interpreter, Index, 500),
+        Parent ! {self(), ready},
+        receive release -> ok end,
+        {Tensors, Runners} = Handles,
+        ?assert(is_retired(tflite_beam_tensor:to_binary(hd(Tensors)))),
+        ?assert(is_retired(tflite_beam_signature_runner:input_size(hd(Runners))))
+    end),
+    receive {Pid, ready} -> ok after 30000 -> ct:fail(timeout) end,
+    ?assertEqual({ok, {500, 500}}, registry_sizes(Interpreter)),
+    ok = tflite_beam_interpreter_builder:build(Builder, Interpreter),
+    ok = tflite_beam_interpreter:allocate_tensors(Interpreter),
+    hold_new_generation(Interpreter, Index, Pid, Monitor),
+    assert_empty_registries(Interpreter).
+
+hold_new_generation(Interpreter, Index, Pid, Monitor) ->
+    {Tensors, Runners} = registry_handles(Interpreter, Index, 128),
+    ?assertEqual({ok, {128, 128}}, registry_sizes(Interpreter)),
+    Pid ! release,
+    receive
+        {'DOWN', Monitor, process, Pid, normal} -> ok;
+        {'DOWN', Monitor, process, Pid, Reason} -> ct:fail({worker_failed, Reason})
+    after 30000 -> ct:fail(timeout)
+    end,
+    ?assertEqual({ok, {128, 128}}, registry_sizes(Interpreter)),
+    [?assert(is_binary(tflite_beam_tensor:to_binary(Tensor))) || Tensor <- Tensors],
+    [?assertMatch({ok, _}, tflite_beam_signature_runner:input_size(Runner)) || Runner <- Runners].
+
+registry_handles(Interpreter, Index, Count) ->
+    Tensors = [tflite_beam_interpreter:tensor(Interpreter, Index) || _ <- lists:seq(1, Count)],
+    Runners = [begin
+        {ok, Runner} = tflite_beam_interpreter:get_signature_runner(Interpreter, nil),
+        Runner
+    end || _ <- lists:seq(1, Count)],
+    {Tensors, Runners}.
 
 hold_registry_entries(Interpreter, Fetch, Count, Expected) ->
     Handles = [Fetch() || _ <- lists:seq(1, Count)],

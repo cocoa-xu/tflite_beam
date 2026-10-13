@@ -17,6 +17,7 @@ template<class Resource>
 static void erase_registry_entry(std::vector<Resource *> &list, Resource *resource) {
     const bool indexed = enif_sizeof_resource(resource) >= sizeof(Resource);
     size_t index = indexed ? resource->registry_index : list.size();
+    if (indexed && index == static_cast<size_t>(-1)) return;
     // Older resources survive NIF upgrades without the appended index field.
     if (index >= list.size() || list[index] != resource) {
         auto found = std::find(list.begin(), list.end(), resource);
@@ -315,7 +316,7 @@ bool caller_may_use(ErlNifEnv * env, NifResInterpreter * res) {
 
 NifResInterpreter * NifResInterpreter::get_resource(ErlNifEnv * env, ERL_NIF_TERM term, ERL_NIF_TERM &error) {
     NifResInterpreter * self_res = nullptr;
-    if (!enif_get_resource(env, term, NifResInterpreter::type, (void **)&self_res) || self_res == nullptr || self_res->val == nullptr) {
+    if (!enif_get_resource(env, term, NifResInterpreter::type, (void **)&self_res) || self_res == nullptr) {
         error = erlang::nif::error(env, "cannot access NifResInterpreter resource");
         return nullptr;
     }
@@ -338,6 +339,9 @@ void NifResInterpreter::release_tensors(NifResInterpreter * res) {
     for (auto tensor_res : *res->tensors) {
         if (tensor_res) {
             tensor_res->interpreter_has_gone = true;
+            if (enif_sizeof_resource(tensor_res) >= sizeof(NifResTfLiteTensor)) {
+                tensor_res->registry_index = static_cast<size_t>(-1);
+            }
         }
     }
     res->tensors->clear();
@@ -375,6 +379,9 @@ void NifResInterpreter::release_signature_runners(NifResInterpreter * res) {
     for (auto runner_res : *res->signature_runners) {
         if (runner_res) {
             runner_res->interpreter_has_gone = true;
+            if (enif_sizeof_resource(runner_res) >= sizeof(NifResSignatureRunner)) {
+                runner_res->registry_index = static_cast<size_t>(-1);
+            }
         }
     }
     res->signature_runners->clear();
@@ -421,12 +428,10 @@ void NifResInterpreter::destruct_resource(ErlNifEnv *env, void *args) {
 
         if (res->in_use) {
             enif_mutex_destroy(res->in_use);
-            res->in_use = nullptr;
         }
 
         if (res->being_replaced) {
             enif_mutex_destroy(res->being_replaced);
-            res->being_replaced = nullptr;
         }
 
         // after the interpreter itself: a delegate has to outlive the graph it
@@ -466,13 +471,6 @@ NifResSignatureRunner * NifResSignatureRunner::get_resource(ErlNifEnv * env, ERL
 
     if (self_res->interpreter_has_gone) {
         error = erlang::nif::error(env, "cannot access NifResSignatureRunner resource: the handle has been retired, because the interpreter it came from was rebuilt");
-        return nullptr;
-    }
-
-    // a runner is a view onto its interpreter and runs on its subgraph, so it
-    // answers to whichever process controls that interpreter
-    if (!caller_may_use(env, self_res->interpreter)) {
-        error = erlang::nif::error(env, "interpreter belongs to another process");
         return nullptr;
     }
 
@@ -527,19 +525,6 @@ NifResTfLiteTensor * NifResTfLiteTensor::get_resource(ErlNifEnv * env, ERL_NIF_T
 
     if (self_res->interpreter_has_gone) {
         error = erlang::nif::error(env, "cannot access NifResTfLiteTensor resource: the handle has been retired, because the interpreter moved its tensors");
-        return nullptr;
-    }
-
-    // A handle is a way into its interpreter's arena, so it answers to whoever
-    // controls that interpreter, exactly as the interpreter and its signature
-    // runners do. Without this the guard was on the door and not on the window:
-    // interpreter:tensor/2 refused a process that did not own the interpreter,
-    // and a handle that process already held read and wrote through it anyway,
-    // with the owner seeing the foreign write. tflite_beam_interpreter_server
-    // hands out such a handle from with/2, so its isolation was undone by its
-    // own escape hatch.
-    if (!caller_may_use(env, self_res->interpreter)) {
-        error = erlang::nif::error(env, "interpreter belongs to another process");
         return nullptr;
     }
 

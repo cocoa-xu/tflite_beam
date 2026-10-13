@@ -64,6 +64,7 @@
 -type opts() :: #{
     model_path := binary() | string(),
     runtime_library_dir => binary() | string(),
+    backend_options => ?M:backend_options(),
     accelerators => [?M:accelerator()],
     precision => ?M:precision(),
     profile => boolean(),
@@ -418,8 +419,8 @@ ensure_distributed() ->
     end.
 
 start_peer(Opts) ->
-    %% the same code path, so the peer finds this library and its NIF
-    Args = ["-pa" | code:get_path()] ++ maps:get(peer_args, Opts, []),
+    %% -pa prepends each path, reversing the order it receives.
+    Args = ["-pa" | lists:reverse(code:get_path())] ++ maps:get(peer_args, Opts, []),
     case peer:start_link(#{name => peer:random_name(), args => Args, connection => standard_io}) of
         {ok, Peer, Node} -> {ok, Peer, Node};
         {error, Reason} ->

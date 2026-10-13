@@ -4,6 +4,10 @@
 
 - Remove tensor and signature runner registry entries in constant time while
   preserving resources created before a NIF upgrade.
+- Preserve native resource lifetimes across repeated NIF upgrades and unloads,
+  and synchronize borrowed-handle ownership checks with interpreter rebuilds.
+- Reject mismatched graph option unions before calling LiteRT, preserve isolated
+  peer code-path priority, and validate malformed paths and accelerator lists.
 
 - Add typed CPU, GPU, Arm, Intel OpenVINO, Google Tensor, MediaTek and Qualcomm
   backend settings, including weight sharing, CPU thread counts and weight caches.

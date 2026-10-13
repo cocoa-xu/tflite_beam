@@ -64,6 +64,7 @@
 %% Everything tflite_beam_litert_compiled_model:new/3 takes, plus max_queue,
 %% which belongs to the process rather than to the model.
 -type opts() :: #{
+    backend_options => ?M:backend_options(),
     accelerators => [?M:accelerator()],
     precision => ?M:precision(),
     profile => boolean(),

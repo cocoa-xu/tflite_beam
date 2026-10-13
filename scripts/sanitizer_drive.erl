@@ -20,6 +20,7 @@ main() ->
     Root = root_dir(),
     Model = filename:join([Root, "test", "models", "multi_add.bin"]),
     ok = interpreter_ownership(Model),
+    ok = interpreter_rebuild_concurrency(Model),
     ok = interpreter_registry_concurrency(Model),
     ok = compiled_model_concurrency(Model),
     ok = compiled_model_lifetimes(Model),
@@ -46,15 +47,41 @@ interpreter_ownership(Model) ->
     {ok, Interp} = tflite_beam_interpreter:new(),
     ok = tflite_beam_interpreter_builder:build(Builder, Interp),
     ok = tflite_beam_interpreter:allocate_tensors(Interp),
+    {ok, [Index | _]} = tflite_beam_interpreter:inputs(Interp),
+    #tflite_beam_tensor{ref = Tensor} = tflite_beam_interpreter:tensor(Interp, Index),
+    {ok, Runner} = tflite_beam_interpreter:get_signature_runner(Interp, nil),
     wait(spawn_many(12, fun() ->
         repeat(60, fun() ->
             _ = catch tflite_beam_interpreter:controlling_process(Interp, self()),
             _ = catch tflite_beam_interpreter:inputs(Interp),
             _ = catch tflite_beam_interpreter:execution_plan(Interp),
             _ = catch tflite_beam_interpreter:controlling_process(Interp),
+            _ = tflite_beam_tensor:type(Tensor),
+            _ = tflite_beam_signature_runner:input_size(Runner),
             _ = catch tflite_beam_interpreter:controlling_process(Interp, undefined)
         end)
     end)),
+    ok.
+
+interpreter_rebuild_concurrency(Model) ->
+    {ok, Resolver} = tflite_beam_ops_builtin_builtin_resolver:new(#{}),
+    #tflite_beam_flatbuffer_model{ref = Ref} =
+        tflite_beam_flatbuffer_model:build_from_file(Model),
+    {ok, Builder} = tflite_beam_interpreter_builder:new(Ref, Resolver),
+    {ok, Interpreter} = tflite_beam_interpreter:new(),
+    ok = tflite_beam_interpreter_builder:build(Builder, Interpreter),
+    Readers = spawn_many(8, fun() ->
+        repeat(1000, fun() ->
+            _ = tflite_beam_interpreter:inputs(Interpreter),
+            _ = tflite_beam_interpreter:controlling_process(Interpreter),
+            _ = tflite_beam_interpreter:cancel(Interpreter)
+        end)
+    end),
+    repeat(100, fun() ->
+        _ = tflite_beam_interpreter_builder:build(Builder, Interpreter)
+    end),
+    wait(Readers),
+    {ok, [_ | _]} = tflite_beam_interpreter:inputs(Interpreter),
     ok.
 
 %% Every compiled model entry point at once, including the ones that read while

@@ -66,6 +66,23 @@ std::string string(ErlNifEnv *env, ERL_NIF_TERM term) {
 
 using Model = std::unique_ptr<LiteRtModelT, decltype(&LiteRtDestroyModel)>;
 
+void validate_options(LiteRtOp op) {
+    bool valid = true;
+    switch (op->OpCode()) {
+    case kLiteRtOpCodeTflOneHot:
+        valid = litert::internal::GetTflOptions(*op).AsOneHotOptions() != nullptr;
+        break;
+    case kLiteRtOpCodeTflSplitV:
+        valid = litert::internal::GetTflOptions(*op).AsSplitVOptions() != nullptr;
+        break;
+    case kLiteRtOpCodeShloComposite:
+        valid = litert::internal::GetTflOptions2(*op).AsStableHLOCompositeOptions() != nullptr;
+        break;
+    default: break;
+    }
+    if (!valid) throw std::invalid_argument("operator options do not match the opcode");
+}
+
 Model load(ErlNifEnv *env, ERL_NIF_TERM environment, ERL_NIF_TERM source) {
     ERL_NIF_TERM error;
     auto resource = NifResLiteRtEnvironment::get_resource(env, environment, error);
@@ -86,6 +103,9 @@ Model load(ErlNifEnv *env, ERL_NIF_TERM environment, ERL_NIF_TERM source) {
     }
     Model result(model, LiteRtDestroyModel);
     if (model->NumSubgraphs() == 0) throw std::invalid_argument("model has no subgraphs");
+    for (size_t i = 0; i < model->NumSubgraphs(); ++i) {
+        for (LiteRtOp op : model->Subgraph(i).Ops()) validate_options(op);
+    }
     return result;
 }
 

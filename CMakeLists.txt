@@ -30,10 +30,6 @@ if(NOT TFLITE_ROOT_DIR)
     message(FATAL_ERROR "TFLITE_ROOT_DIR is not set.")
 endif()
 
-if(UNIX AND APPLE)
-    set(CMAKE_SHARED_LINKER_FLAGS "-flat_namespace -undefined suppress -undefined dynamic_lookup")
-endif()
-
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wno-comment")
 if(DEFINED ENV{TARGET_GCC_FLAGS})
@@ -510,13 +506,15 @@ set_target_properties(tflite_beam PROPERTIES SUFFIX ".so")
 set_target_properties(tflite_beam PROPERTIES
     INSTALL_RPATH_USE_LINK_PATH TRUE
     BUILD_WITH_INSTALL_RPATH TRUE
+    CXX_VISIBILITY_PRESET hidden
+    VISIBILITY_INLINES_HIDDEN TRUE
 )
 
 if(UNIX AND NOT APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-but-set-variable")
     set_target_properties(tflite_beam PROPERTIES INSTALL_RPATH "\$ORIGIN/libedgetpu")
 elseif(UNIX AND APPLE)
-    set(CMAKE_SHARED_LINKER_FLAGS "-flat_namespace -undefined suppress -undefined dynamic_lookup")
+    target_link_options(tflite_beam PRIVATE "-undefined" "dynamic_lookup")
     set_target_properties(tflite_beam PROPERTIES INSTALL_RPATH "@loader_path/libedgetpu")
 endif()
 

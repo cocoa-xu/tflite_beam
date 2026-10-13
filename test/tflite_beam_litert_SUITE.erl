@@ -25,6 +25,7 @@
     invalid_graph_edits_are_refused/1,
     metrics_are_empty_rather_than_an_error/1,
     metrics_include_host_timing_and_extra_values/1,
+    reaper_survives_queue_allocation_failure/1,
     profile_is_empty_unless_asked_for/1,
     profile_names_the_operators/1,
     pending_events_tracks_the_backlog/1,
@@ -68,6 +69,7 @@ all() ->
         invalid_graph_edits_are_refused,
         metrics_are_empty_rather_than_an_error,
         metrics_include_host_timing_and_extra_values,
+        reaper_survives_queue_allocation_failure,
         profile_is_empty_unless_asked_for,
         profile_names_the_operators,
         pending_events_tracks_the_backlog,
@@ -193,6 +195,13 @@ hostile_arguments_are_refused_not_survived(Config) ->
     ?assertMatch({error, _}, ?A:new(Env, <<"a", 0, "b">>, #{})),
     ?assertMatch({error, _}, ?A:signatures(Env, <<"a", 0, "b">>)),
     ?assertMatch({error, _}, ?A:new(Env, Path, #{signature => <<"a", 0, "b">>})),
+    [?assertMatch({error, Reason} when is_binary(Reason), Call())
+     || Text <- [[make_ref()], ["path" | invalid_tail], [16#D800]],
+        Call <- [fun() -> ?A:environment(Text) end,
+                 fun() -> ?A:new(Env, Text) end,
+                 fun() -> ?A:signatures(Env, Text) end,
+                 fun() -> ?A:new(Env, Path, #{signature => Text}) end,
+                 fun() -> ?B:start(Env, Text) end]],
 
     %% an empty accelerator set selects nothing to run on
     ?assertMatch({error, _}, ?A:new(Env, Path, #{accelerators => []})),
@@ -233,8 +242,11 @@ hostile_arguments_are_refused_not_survived(Config) ->
     %% sibling does rather than raising and making the caller catch one of them.
     [?assertMatch({error, _}, ?A:new(Env, Path, Bad))
      || Bad <- [#{accelerators => [nope]}, #{accelerators => 7},
-                #{accelerators => []}, #{precision => nope},
+                #{accelerators => []}, #{accelerators => [cpu | invalid_tail]},
+                #{precision => nope},
                 #{profile => perhaps}]],
+    ?assertMatch({error, Reason} when is_binary(Reason),
+                 ?B:start(Env, Path, #{accelerators => [cpu | invalid_tail]})),
     %% and a perfectly ordinary Unicode string is text, not a crash
     ?assertMatch({error, _}, ?A:new(Env, [28450, 23383], #{})),
 
@@ -412,6 +424,15 @@ graph_options_are_inspected_and_rewritten(Config) ->
 invalid_graph_edits_are_refused(Config) ->
     Env = proplists:get_value(env, Config),
     Path = tflite_beam_test_models:path("graph_options.tflite"),
+    [begin
+         Mismatched = tflite_beam_test_models:path(Name),
+         {ok, Buffer} = file:read_file(Mismatched),
+         [?assertMatch({error, _}, Call())
+          || Source <- [Mismatched, {buffer, Buffer}],
+             Call <- [fun() -> tflite_beam_litert_model:inspect(Env, Source) end,
+                      fun() -> tflite_beam_litert_model:rewrite(Env, Source, []) end]]
+     end || Name <- ["graph_options_mismatched.tflite", "graph_options_split_mismatched.tflite",
+                     "graph_options_composite_mismatched.tflite", "graph_options_missing.tflite"]],
     ?assertMatch({error, _}, tflite_beam_litert_model:inspect(make_ref(), Path)),
     [?assertMatch({error, _}, tflite_beam_litert_model:inspect(Env, Source))
      || Source <- [<<"a", 0>>, [improper | tail], {buffer, <<1, 2, 3>>}, {buffer, invalid},
@@ -452,6 +473,36 @@ metrics_include_host_timing_and_extra_values(Config) ->
     ?assertEqual({ok, {Outputs, Extra}},
                  ?A:run_with_metrics(Model, Inputs, #{extra_metrics => Extra})),
     ?assertEqual({ok, {Outputs, []}}, ?A:run_with_metrics(Model, Inputs, #{})).
+
+reaper_survives_queue_allocation_failure(Config) ->
+    case fault_injection() of
+        false -> {skip, "fault injection is disabled"};
+        true ->
+            Drop = fun(Fail) ->
+                {Pid, Ref} = spawn_monitor(fun() ->
+                    Model = model(Config, #{}),
+                    {ok, {Sizes, _}} = ?A:io_sizes(Model),
+                    {ok, _} = ?A:run(Model, [filled(1.0, N) || N <- Sizes]),
+                    case Fail of
+                        true -> ok = tflite_beam_nif:nif_arm_fault(litert_reaper_submit);
+                        false -> ok
+                    end,
+                    {ok, _} = ?A:io_sizes(Model),
+                    erlang:garbage_collect()
+                end),
+                receive
+                    {'DOWN', Ref, process, Pid, normal} -> ok;
+                    {'DOWN', Ref, process, Pid, Reason} -> ct:fail({reaper_worker_failed, Reason})
+                after 10000 -> ct:fail(reaper_worker_stuck)
+                end
+            end,
+            try
+                Drop(true),
+                Drop(false)
+            after
+                ok = tflite_beam_nif:nif_arm_fault(none)
+            end
+    end.
 
 %% An accelerator may leave the two metric entries of its definition null, and
 %% every accelerator reachable here does, so this asks for the empty list rather
@@ -894,13 +945,14 @@ a_full_queue_is_refused_rather_than_grown(Config) ->
 every_forwarded_call_reaches_the_model(Config) ->
     Env = proplists:get_value(env, Config),
     Path = tflite_beam_test_models:path(?MODEL),
-    Opts = #{accelerators => [cpu], profile => true},
+    Opts = #{accelerators => [cpu], profile => true,
+             backend_options => #{cpu => #{kernel_mode => reference}}},
 
     {ok, Server} = ?B:start_link(Env, Path, Opts),
     {ok, {Ins, _}} = ?B:io_sizes(Server),
     Inputs = [filled(1.0, N) || N <- Ins],
     ?assertMatch({ok, [_ | _]}, ?B:run(Server, Inputs)),
-    ?assertMatch({ok, B} when is_boolean(B), ?B:fully_accelerated(Server)),
+    ?assertEqual({ok, false}, ?B:fully_accelerated(Server)),
     ?assertEqual({ok, false}, ?B:non_cpu_fully_accelerated(Server)),
     ?assertMatch({ok, {_, _}}, ?B:run_with_metrics(Server, Inputs)),
     ?assertMatch({ok, {_, [{<<"tflite_beam_run_us">>, _}, {<<"batch_size">>, 1}]}},
@@ -916,13 +968,24 @@ every_forwarded_call_reaches_the_model(Config) ->
     ?B:stop(Server),
 
     case ?I:start(Opts#{model_path => Path}) of
+        {error, <<"cannot start distribution:", _/binary>> = Reason} ->
+            {skip, {distribution_is_unavailable, Reason}};
         {error, Reason} ->
-            {skip, {cannot_start_an_isolated_node, Reason}};
+            ct:fail({cannot_start_isolated_model, Reason});
         {ok, Iso} ->
             try
+                Paths = [P || P <- code:get_path(), filelib:is_dir(P)],
+                ?assertEqual(Paths, ?I:with(Iso, fun(_) -> code:get_path() end)),
+                {ok, PeerNode} = ?I:node_of(Iso),
+                [?assertEqual(code:which(Module), erpc:call(PeerNode, code, which, [Module]))
+                 || Module <- [tflite_beam_nif, ?A]],
+                [?assertMatch({error, Reason} when is_binary(Reason), ?I:start(Bad))
+                 || Bad <- [Opts#{model_path => [make_ref()]},
+                            Opts#{model_path => Path, accelerators => [cpu | invalid_tail]},
+                            Opts#{model_path => Path, signature => [make_ref()]}]],
                 ?assertMatch({ok, {_, _}}, ?I:io_sizes(Iso)),
                 ?assertMatch({ok, [_ | _]}, ?I:run(Iso, Inputs)),
-                ?assertMatch({ok, B2} when is_boolean(B2), ?I:fully_accelerated(Iso)),
+                ?assertEqual({ok, false}, ?I:fully_accelerated(Iso)),
                 ?assertEqual({ok, false}, ?I:non_cpu_fully_accelerated(Iso)),
                 ?assertMatch({ok, {_, _}}, ?I:run_with_metrics(Iso, Inputs)),
                 ?assertMatch({ok, {_, [{<<"tflite_beam_run_us">>, _}, {<<"batch_size">>, 1}]}},

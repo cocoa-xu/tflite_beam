@@ -1,7 +1,9 @@
 #ifdef TFLITE_BEAM_LITERT_API_ENABLED
 
 #include "litert_reaper.h"
+#include "../fault_inject.hpp"
 
+#include <atomic>
 #include <deque>
 
 // Destroying a compiled model is not cheap and it is not bounded by anything a
@@ -17,7 +19,7 @@
 
 namespace {
 
-ErlNifMutex * queue_lock = nullptr;
+std::atomic<ErlNifMutex *> queue_lock{nullptr};
 ErlNifCond * queue_ready = nullptr;
 ErlNifTid reaper_tid;
 bool reaper_running = false;
@@ -25,19 +27,20 @@ bool accepting = false;
 std::deque<LiteRtTeardown> * queue = nullptr;
 
 void * reaper_main(void *) {
+    ErlNifMutex * lock = queue_lock.load(std::memory_order_acquire);
     for (;;) {
         LiteRtTeardown job;
-        enif_mutex_lock(queue_lock);
+        enif_mutex_lock(lock);
         while (queue->empty() && accepting) {
-            enif_cond_wait(queue_ready, queue_lock);
+            enif_cond_wait(queue_ready, lock);
         }
         if (queue->empty() && !accepting) {
-            enif_mutex_unlock(queue_lock);
+            enif_mutex_unlock(lock);
             return nullptr;
         }
         job = queue->front();
         queue->pop_front();
-        enif_mutex_unlock(queue_lock);
+        enif_mutex_unlock(lock);
 
         litert_teardown_now(job);
     }
@@ -72,36 +75,57 @@ void litert_teardown_now(const LiteRtTeardown & job) {
 }
 
 void litert_reaper_submit(const LiteRtTeardown & job) {
-    if (queue_lock == nullptr) {
+    ErlNifMutex * lock = queue_lock.load(std::memory_order_acquire);
+    if (lock == nullptr) {
         litert_teardown_now(job);
         return;
     }
     // Whether there is anyone to hand it to has to be read under the lock, or a
     // stop running alongside this decides one way and the queue goes the other.
-    enif_mutex_lock(queue_lock);
+    enif_mutex_lock(lock);
     if (!accepting) {
-        enif_mutex_unlock(queue_lock);
+        enif_mutex_unlock(lock);
         litert_teardown_now(job);
         return;
     }
-    queue->push_back(job);
+    try {
+        erlang::nif::fault_point(erlang::nif::kFaultLiteRtReaperSubmit);
+        queue->push_back(job);
+    } catch (const std::bad_alloc &) {
+        enif_mutex_unlock(lock);
+        litert_teardown_now(job);
+        return;
+    }
     enif_cond_signal(queue_ready);
-    enif_mutex_unlock(queue_lock);
+    enif_mutex_unlock(lock);
 }
 
 int litert_reaper_start() {
     if (reaper_running) return 0;
 
-    queue_lock = enif_mutex_create(const_cast<char *>("tflite_beam_litert_reaper"));
-    queue_ready = enif_cond_create(const_cast<char *>("tflite_beam_litert_reaper"));
-    queue = new (std::nothrow) std::deque<LiteRtTeardown>();
-    if (queue_lock == nullptr || queue_ready == nullptr || queue == nullptr) {
-        litert_reaper_stop();
-        return -1;
+    ErlNifMutex * lock = queue_lock.load(std::memory_order_acquire);
+    if (lock == nullptr) {
+        lock = enif_mutex_create(const_cast<char *>("tflite_beam_litert_reaper"));
+        ErlNifCond * ready = enif_cond_create(const_cast<char *>("tflite_beam_litert_reaper"));
+        std::deque<LiteRtTeardown> * jobs = nullptr;
+        try {
+            jobs = new std::deque<LiteRtTeardown>();
+        } catch (const std::bad_alloc &) {
+        }
+        if (lock == nullptr || ready == nullptr || jobs == nullptr) {
+            delete jobs;
+            if (ready) enif_cond_destroy(ready);
+            if (lock) enif_mutex_destroy(lock);
+            return -1;
+        }
+        queue_ready = ready;
+        queue = jobs;
+        queue_lock.store(lock, std::memory_order_release);
     }
 
-
+    enif_mutex_lock(lock);
     accepting = true;
+    enif_mutex_unlock(lock);
     if (enif_thread_create(const_cast<char *>("tflite_beam_litert_reaper"),
                            &reaper_tid, reaper_main, nullptr, nullptr) != 0) {
         // submit() falls back to the calling thread, so this is slow, not broken
@@ -113,12 +137,13 @@ int litert_reaper_start() {
 }
 
 void litert_reaper_stop() {
-    if (queue_lock == nullptr) return;
+    ErlNifMutex * lock = queue_lock.load(std::memory_order_acquire);
+    if (lock == nullptr) return;
 
-    enif_mutex_lock(queue_lock);
+    enif_mutex_lock(lock);
     accepting = false;
     if (queue_ready) enif_cond_signal(queue_ready);
-    enif_mutex_unlock(queue_lock);
+    enif_mutex_unlock(lock);
 
     if (reaper_running) {
         enif_thread_join(reaper_tid, nullptr);
@@ -129,11 +154,11 @@ void litert_reaper_stop() {
     // anything still queued has to be finished before this library goes away.
     for (;;) {
         LiteRtTeardown job;
-        enif_mutex_lock(queue_lock);
-        if (queue->empty()) { enif_mutex_unlock(queue_lock); break; }
+        enif_mutex_lock(lock);
+        if (queue->empty()) { enif_mutex_unlock(lock); break; }
         job = queue->front();
         queue->pop_front();
-        enif_mutex_unlock(queue_lock);
+        enif_mutex_unlock(lock);
         litert_teardown_now(job);
     }
 

@@ -324,12 +324,8 @@ struct NifResInterpreter {
 bool caller_may_use(ErlNifEnv * env, NifResInterpreter * res);
 
 
-// Every entry point that dereferences an interpreter takes the guard, not only
-// the ones that write, and re-reads val after taking it. get_resource checks val
-// before the guard, which proves only that it was not null a moment ago: a
-// rebuild that fails stores null, and a caller that passed the earlier check and
-// was then descheduled would go on to dereference it. The check that counts is
-// the one under the lock.
+// Every entry point that dereferences an interpreter checks val under its guard.
+// get_resource only resolves the resource; a rebuild can change val concurrently.
 // interpreter_builder_build deletes the tflite::Interpreter
 // and puts another in its place, so a reader holding nothing but self_res is
 // holding a pointer to something that can be freed while it reads. There is one
