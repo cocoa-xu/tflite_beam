@@ -69,7 +69,10 @@ compiled_model_concurrency(Model) ->
             _ = ?A:controlling_process(CM),
             _ = ?A:io_sizes(CM),
             _ = ?A:fully_accelerated(CM),
+            _ = ?A:non_cpu_fully_accelerated(CM),
             _ = ?A:run_with_metrics(CM, In),
+            _ = ?A:run_with_metrics(CM, In, #{host_timing => true,
+                extra_metrics => [{<<"tag">>, binary:copy(<<"x">>, 128)}]}),
             _ = ?A:reset_profile(CM)
         end)
     end)),
@@ -93,6 +96,13 @@ compiled_model_lifetimes(Model) ->
         In = [binary:copy(<<0>>, N) || N <- Ins],
         {ok, _} = ?A:run(CM, In),
         {ok, _} = ?A:run_with_metrics(CM, In),
+        {ok, false} = ?A:non_cpu_fully_accelerated(CM),
+        Extra = [{integer_to_binary(N), binary:copy(<<"x">>, N + 64)}
+                 || N <- lists:seq(1, 64)],
+        {ok, {_, [{<<"tflite_beam_run_us">>, Time} | Extra]}} =
+            ?A:run_with_metrics(CM, In, #{host_timing => true, extra_metrics => Extra}),
+        true = is_integer(Time) andalso Time >= 0,
+        {error, _} = ?A:run_with_metrics(CM, In, #{extra_metrics => [{<<"tag">>, <<0>>}]}),
         {error, _} = ?A:run(CM, tl(In)),
         {error, _} = ?A:run(CM, [binary:copy(<<0>>, 1) | tl(In)]),
         {error, _} = ?A:new(Env, Model, #{accelerators => [nope]}),

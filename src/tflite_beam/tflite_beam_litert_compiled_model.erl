@@ -25,7 +25,7 @@
     signatures/2,
     new/2, new/3,
     run/2,
-    fully_accelerated/1,
+    fully_accelerated/1, non_cpu_fully_accelerated/1,
     io_sizes/1,
     profile/1, profile/2,
     pending_events/1,
@@ -61,6 +61,11 @@
 %% Whatever the accelerator chose to report. `unsupported' is a value of a kind
 %% LiteRtAny can hold but this library has no term for.
 -type metric_value() :: integer() | float() | boolean() | binary() | unsupported.
+-type metrics_options() :: #{
+    detail_level => detail_level(),
+    host_timing => boolean(),
+    extra_metrics => [{binary(), integer() | float() | boolean() | binary()}]
+}.
 -type opts() :: #{
     accelerators => [accelerator()],
     precision => precision(),
@@ -70,7 +75,7 @@
 }.
 -export_type([accelerator/0, precision/0, opts/0, signature_index/0, event_limit/0,
               detail_level/0, operator_kind/0, event/0, event_type/0,
-              event_source/0, summary_entry/0, metric_value/0]).
+              event_source/0, summary_entry/0, metric_value/0, metrics_options/0]).
 
 %% @doc
 %% What this build of the library can reach.
@@ -291,6 +296,11 @@ run(Model, Inputs) when is_list(Inputs) ->
 fully_accelerated(Model) ->
     tflite_beam_nif:litert_compiled_model_fully_accelerated(Model).
 
+%% @doc Whether all operations run on GPU or NPU, with no CPU execution.
+-spec non_cpu_fully_accelerated(reference()) -> {ok, boolean()} | {error, binary()}.
+non_cpu_fully_accelerated(Model) ->
+    tflite_beam_nif:litert_compiled_model_non_cpu_fully_accelerated(Model).
+
 %% @doc The byte size of each input and output buffer.
 -spec io_sizes(reference()) -> {ok, {[non_neg_integer()], [non_neg_integer()]}} | {error, binary()}.
 io_sizes(Model) ->
@@ -355,22 +365,37 @@ run_with_metrics(Model, Inputs) ->
 %% @doc
 %% Run the model with metrics collection bracketing the inference.
 %%
+%% An options map may set `detail_level', `host_timing' and `extra_metrics'.
+%% `host_timing => true' appends `<<"tflite_beam_run_us">>', measured inside the
+%% NIF across input transfer, synchronous inference and output transfer. It
+%% excludes queue waiting and metrics collection. All options are off or empty
+%% by default. Extra metrics are `{Name, Value}' tuples; names and string values
+%% are binaries without NUL bytes, and integers must fit in signed 64 bits.
+%%
 %% Usually the counters come back empty. Filling them in is the accelerator's
 %% job, through two entries of its definition that are allowed to be null, so an
 %% empty list means nobody offered anything rather than that something went
-%% wrong. Every accelerator this library has been run against returned nothing;
-%% what a vendor backend does is its own business and is not established here.
+%% wrong. LiteRT 2.3.0's ML Drift GPU backend can report intermediate and
+%% constant tensor memory. Which counters appear depends on the loaded plugin.
 %%
 %% Collection brackets the run rather than being started and stopped on its own,
 %% because a backend asked to report on an interval containing no inference has
-%% nothing to report on. Use `profile/1' for timings; this is for counters a
-%% backend chooses to expose.
--spec run_with_metrics(reference(), [binary()], detail_level()) ->
+%% nothing to report on. Use `profile/1' for operator timings.
+-spec run_with_metrics(reference(), [binary()], detail_level() | metrics_options()) ->
     {ok, {[binary()], [{binary(), metric_value()}]}} | {error, binary()}.
 run_with_metrics(Model, Inputs, DetailLevel)
         when is_list(Inputs), is_integer(DetailLevel),
              DetailLevel >= 0, DetailLevel =< 2147483647 ->
-    tflite_beam_nif:litert_compiled_model_run_with_metrics(Model, Inputs, DetailLevel).
+    tflite_beam_nif:litert_compiled_model_run_with_metrics(Model, Inputs, DetailLevel);
+run_with_metrics(Model, Inputs, Options) when is_list(Inputs), is_map(Options) ->
+    case maps:keys(Options) -- [detail_level, host_timing, extra_metrics] of
+        [] ->
+            tflite_beam_nif:litert_compiled_model_run_with_metrics(
+                Model, Inputs, maps:get(detail_level, Options, 0),
+                maps:get(host_timing, Options, false), maps:get(extra_metrics, Options, []));
+        _ ->
+            {error, <<"unknown metrics option">>}
+    end.
 
 %% @doc Which process this model belongs to, or `undefined' if nobody has
 %% claimed it. Answers `{error, _}' while another caller is inside the model,

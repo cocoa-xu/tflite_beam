@@ -20,6 +20,7 @@
     each_signature_runs_its_own_function/1,
     an_unknown_signature_is_refused/1,
     metrics_are_empty_rather_than_an_error/1,
+    metrics_include_host_timing_and_extra_values/1,
     profile_is_empty_unless_asked_for/1,
     profile_names_the_operators/1,
     pending_events_tracks_the_backlog/1,
@@ -58,6 +59,7 @@ all() ->
         each_signature_runs_its_own_function,
         an_unknown_signature_is_refused,
         metrics_are_empty_rather_than_an_error,
+        metrics_include_host_timing_and_extra_values,
         profile_is_empty_unless_asked_for,
         profile_names_the_operators,
         pending_events_tracks_the_backlog,
@@ -121,7 +123,8 @@ compiled_model_runs(Config) ->
     [X, Y] = Got,
     ?assertEqual(filled(6.0, hd(Outs)), X),
     ?assertEqual(filled(9.0, hd(tl(Outs))), Y),
-    ?assertMatch({ok, _}, ?A:fully_accelerated(Model)).
+    ?assertEqual({ok, true}, ?A:fully_accelerated(Model)),
+    ?assertEqual({ok, false}, ?A:non_cpu_fully_accelerated(Model)).
 
 compiled_model_refuses_a_wrong_sized_input(Config) ->
     Model = model(Config, #{accelerators => [cpu]}),
@@ -200,6 +203,18 @@ hostile_arguments_are_refused_not_survived(Config) ->
     %% and the isolated variant asks for its model path before it starts a node
     ?assertEqual({error, <<"model_path is required">>}, ?I:start(#{accelerators => [cpu]})),
 
+    ?assertMatch({error, _}, ?A:non_cpu_fully_accelerated(make_ref())),
+    [?assertMatch({error, _}, ?A:run_with_metrics(Model, Good, Bad))
+     || Bad <- [#{unknown => true}, #{detail_level => -1},
+                #{detail_level => 2147483648}, #{host_timing => invalid},
+                #{extra_metrics => not_a_list}, #{extra_metrics => [improper | tail]},
+                #{extra_metrics => [{<<"name">>, 9223372036854775808}]},
+                #{extra_metrics => [{<<"name">>, -9223372036854775809}]},
+                #{extra_metrics => [{<<"name", 0>>, 1}]},
+                #{extra_metrics => [{<<"name">>, <<"value", 0>>}]},
+                #{extra_metrics => [{name, 1}]},
+                #{extra_metrics => [{<<"name">>, make_ref()}]},
+                #{extra_metrics => [{<<"name">>, 1, 2}]}]],
     ?assertMatch({error, _}, ?A:run(Model, [])),
     ?assertMatch({error, _}, ?A:run(Model, [improper | Good])),
     ?assertMatch({error, _}, ?A:run(Model, [1, 2, 3, 4])),
@@ -279,9 +294,23 @@ an_unknown_signature_is_refused(Config) ->
                                                  signature => <<"not a signature">>})),
     ?assertMatch({error, _}, ?A:new(Env, Path, #{accelerators => [cpu], signature => 99})).
 
-%% An accelerator may leave the two metric entries of its definition null, and
-%% every accelerator reachable here does, so this asks for the empty list rather
-%% than an error. It exists to catch the API breaking, not to assert a number.
+metrics_include_host_timing_and_extra_values(Config) ->
+    Model = model(Config, #{accelerators => [cpu]}),
+    {ok, {Ins, _}} = ?A:io_sizes(Model),
+    Inputs = [filled(1.0, N) || N <- Ins],
+    Extra = [{<<"minimum">>, -9223372036854775808},
+             {<<"maximum">>, 9223372036854775807}, {<<"ratio">>, 0.5},
+             {<<"enabled">>, true}, {<<"disabled">>, false},
+             {<<"label">>, <<"measurement">>}, {<<"empty">>, <<>>}]
+            ++ [{integer_to_binary(N), binary:copy(<<"value">>, N)} || N <- lists:seq(1, 64)],
+    {ok, {Outputs, [{<<"tflite_beam_run_us">>, Time} | Extra]}} =
+        ?A:run_with_metrics(Model, Inputs, #{host_timing => true, extra_metrics => Extra}),
+    ?assert(is_integer(Time) andalso Time >= 0),
+    ?assertEqual({ok, Outputs}, ?A:run(Model, Inputs)),
+    ?assertEqual({ok, {Outputs, Extra}},
+                 ?A:run_with_metrics(Model, Inputs, #{extra_metrics => Extra})),
+    ?assertEqual({ok, {Outputs, []}}, ?A:run_with_metrics(Model, Inputs, #{})).
+
 %% An accelerator may leave the two metric entries of its definition null, and
 %% every accelerator reachable here does, so this asks for the empty list rather
 %% than a number. `{ok, {Outputs, []}}' looks the same whether LiteRT was asked
@@ -730,7 +759,12 @@ every_forwarded_call_reaches_the_model(Config) ->
     Inputs = [filled(1.0, N) || N <- Ins],
     ?assertMatch({ok, [_ | _]}, ?B:run(Server, Inputs)),
     ?assertMatch({ok, B} when is_boolean(B), ?B:fully_accelerated(Server)),
+    ?assertEqual({ok, false}, ?B:non_cpu_fully_accelerated(Server)),
     ?assertMatch({ok, {_, _}}, ?B:run_with_metrics(Server, Inputs)),
+    ?assertMatch({ok, {_, [{<<"tflite_beam_run_us">>, _}, {<<"batch_size">>, 1}]}},
+                 ?B:run_with_metrics(Server, Inputs,
+                                     #{host_timing => true, extra_metrics => [{<<"batch_size">>, 1}]})),
+    ?assertMatch({error, _}, ?B:run_with_metrics(Server, Inputs, #{host_timing => invalid})),
     ?assertMatch({ok, L} when is_list(L), ?B:profile(Server)),
     ?assertMatch({ok, N} when is_integer(N), ?B:pending_events(Server)),
     ?assertMatch({ok, L2} when is_list(L2), ?B:summarise_profile(Server)),
@@ -747,7 +781,12 @@ every_forwarded_call_reaches_the_model(Config) ->
                 ?assertMatch({ok, {_, _}}, ?I:io_sizes(Iso)),
                 ?assertMatch({ok, [_ | _]}, ?I:run(Iso, Inputs)),
                 ?assertMatch({ok, B2} when is_boolean(B2), ?I:fully_accelerated(Iso)),
+                ?assertEqual({ok, false}, ?I:non_cpu_fully_accelerated(Iso)),
                 ?assertMatch({ok, {_, _}}, ?I:run_with_metrics(Iso, Inputs)),
+                ?assertMatch({ok, {_, [{<<"tflite_beam_run_us">>, _}, {<<"batch_size">>, 1}]}},
+                             ?I:run_with_metrics(Iso, Inputs,
+                                                 #{host_timing => true, extra_metrics => [{<<"batch_size">>, 1}]})),
+                ?assertMatch({error, _}, ?I:run_with_metrics(Iso, Inputs, #{host_timing => invalid})),
                 ?assertMatch({ok, L3} when is_list(L3), ?I:profile(Iso)),
                 ?assertMatch({ok, N2} when is_integer(N2), ?I:pending_events(Iso)),
                 ?assertMatch({ok, L4} when is_list(L4), ?I:summarise_profile(Iso)),

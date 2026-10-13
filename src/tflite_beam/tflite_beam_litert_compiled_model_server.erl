@@ -38,7 +38,7 @@
     start/2, start/3,
     run/2, run/3,
     with/2, with/3,
-    fully_accelerated/1,
+    fully_accelerated/1, non_cpu_fully_accelerated/1,
     io_sizes/1,
     run_with_metrics/2, run_with_metrics/3, run_with_metrics/4,
     profile/1, profile/2,
@@ -143,10 +143,15 @@ with(Server, Fun) ->
 with(Server, Fun, Timeout) when is_function(Fun, 1) ->
     gen_server:call(Server, {with, Fun}, Timeout).
 
-%% @doc Whether one accelerator claimed the whole graph.
+%% @doc Whether every operation was delegated, including to CPU accelerators.
 -spec fully_accelerated(pid()) -> {ok, boolean()} | {error, binary()}.
 fully_accelerated(Server) ->
     with(Server, fun(M) -> ?M:fully_accelerated(M) end).
+
+%% @doc Whether all operations run on GPU or NPU, with no CPU execution.
+-spec non_cpu_fully_accelerated(pid()) -> {ok, boolean()} | {error, binary()}.
+non_cpu_fully_accelerated(Server) ->
+    with(Server, fun(M) -> ?M:non_cpu_fully_accelerated(M) end).
 
 %% @doc The byte size of each input and output buffer.
 -spec io_sizes(pid()) -> {ok, {[non_neg_integer()], [non_neg_integer()]}} | {error, binary()}.
@@ -160,7 +165,7 @@ run_with_metrics(Server, Inputs) ->
     run_with_metrics(Server, Inputs, 0, ?DEFAULT_TIMEOUT).
 
 %% @doc Run the model with metrics collection bracketing the inference.
--spec run_with_metrics(pid(), [binary()], ?M:detail_level()) ->
+-spec run_with_metrics(pid(), [binary()], ?M:detail_level() | ?M:metrics_options()) ->
     {ok, {[binary()], [{binary(), term()}]}} | {error, binary()}.
 run_with_metrics(Server, Inputs, DetailLevel) ->
     run_with_metrics(Server, Inputs, DetailLevel, ?DEFAULT_TIMEOUT).
@@ -172,11 +177,12 @@ run_with_metrics(Server, Inputs, DetailLevel) ->
 %% direct module refuses with `function_clause' would raise inside this server's
 %% `handle_call' and take the server down with it, so a caller mistake would
 %% cost the model rather than the call.
--spec run_with_metrics(pid(), [binary()], ?M:detail_level(), timeout()) ->
+-spec run_with_metrics(pid(), [binary()], ?M:detail_level() | ?M:metrics_options(), timeout()) ->
     {ok, {[binary()], [{binary(), term()}]}} | {error, binary()}.
 run_with_metrics(Server, Inputs, DetailLevel, Timeout)
-        when is_list(Inputs), is_integer(DetailLevel),
-             DetailLevel >= 0, DetailLevel =< 2147483647 ->
+        when is_list(Inputs),
+             (is_map(DetailLevel) orelse
+              (is_integer(DetailLevel) andalso DetailLevel >= 0 andalso DetailLevel =< 2147483647)) ->
     gen_server:call(Server, {run_with_metrics, Inputs, DetailLevel}, Timeout).
 
 %% @doc Every profiling event recorded since the last reset.
