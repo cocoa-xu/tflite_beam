@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add experimental graph inspection and transactional OneHot, SplitV and
+  StableHLO composite option rewrites through LiteRT 2.3.0's builder.
+
 - Build the runtime from LiteRT 2.3.0 and use the KleidiAI revision required by
   its XNNPACK dependency. Fetch the pinned SafeInt headers for the optional
   LiteRT API build. Rebuild external delegate plugins against LiteRT 2.3.0.
