@@ -103,6 +103,7 @@ interpreter_registry_concurrency(Model) ->
     end),
     [Pid ! done || {Pid, _} <- Workers],
     wait([Monitor || {_, Monitor} <- Workers]),
+    erlang:garbage_collect(),
     registry_empty(Interpreter, 200).
 
 registry_batch(Interpreter, Index) ->
@@ -131,7 +132,8 @@ registry_receive() ->
 registry_empty(Interpreter, Remaining) ->
     case tflite_beam_nif:nif_interpreter_registry_sizes(Interpreter) of
         {ok, {0, 0}} -> ok;
-        _ when Remaining > 0 -> timer:sleep(10), registry_empty(Interpreter, Remaining - 1)
+        _ when Remaining > 0 -> timer:sleep(10), registry_empty(Interpreter, Remaining - 1);
+        Counts -> error({registry_not_empty, Counts})
     end.
 
 %% Build and drop many models, through the error paths as well as the good one:
