@@ -205,6 +205,16 @@ It warms each mode, rotates their order over seven rounds, checks every output,
 and reports mean, median, p95 and p99 latency in microseconds. Set
 `LITERT_BENCHMARK_ACCELERATOR=gpu` and `LITERT_RUNTIME_LIBRARY_DIR` to compare a
 GPU plugin; the default is CPU. Missing input paths use zero-filled inputs.
+Use `LITERT_BENCHMARK_ACCELERATOR=gpu_cpu` to explicitly allow mixed GPU and CPU
+execution. `LITERT_BENCHMARK_BACKEND_OPTIONS` accepts an Erlang backend map, for
+example `#{cpu => #{num_threads => 4}}`, to compare settings with the same
+measurement procedure.
+
+To measure tensor handle creation and full registry cleanup, compile
+`scripts/benchmark_registry.erl` and `test/tflite_beam_test_models.erl` into
+`/tmp`, then run `benchmark_registry main` with the same code paths and
+`TFLITE_BEAM_ENABLE_FAULT_INJECTION=1`. It checks the number of live entries
+and waits for both registries to empty before recording cleanup time.
 
 [plugins]: https://github.com/cocoa-xu/tflite_delegate_plugins
 

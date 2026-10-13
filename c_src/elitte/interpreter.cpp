@@ -39,7 +39,7 @@ ERL_NIF_TERM interpreter_controlling_process(ErlNifEnv *env, int argc, const ERL
 
     NifResInterpreter * self_res;
 
-    if (!enif_get_resource(env, argv[0], NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
+    if (!enif_get_resource(env, argv[0], NifResInterpreter::type, (void **)&self_res)) {
         return erlang::nif::error(env, "cannot access NifResInterpreter resource");
     }
 
@@ -51,6 +51,9 @@ ERL_NIF_TERM interpreter_controlling_process(ErlNifEnv *env, int argc, const ERL
     MutexTryLock in_use(self_res->in_use);
     if (!in_use.acquired()) {
         return erlang::nif::error(env, "interpreter is already in use by another process");
+    }
+    if (self_res->val == nullptr) {
+        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
     }
 
     if (!self_res->is_controlled) {
@@ -66,7 +69,7 @@ ERL_NIF_TERM interpreter_set_controlling_process(ErlNifEnv *env, int argc, const
     if (argc != 2) return enif_make_badarg(env);
 
     NifResInterpreter * self_res;
-    if (!enif_get_resource(env, argv[0], NifResInterpreter::type, (void **)&self_res) || self_res->val == nullptr) {
+    if (!enif_get_resource(env, argv[0], NifResInterpreter::type, (void **)&self_res)) {
         return erlang::nif::error(env, "cannot access NifResInterpreter resource");
     }
 
@@ -77,6 +80,9 @@ ERL_NIF_TERM interpreter_set_controlling_process(ErlNifEnv *env, int argc, const
     MutexTryLock in_use(self_res->in_use);
     if (!in_use.acquired()) {
         return erlang::nif::error(env, "interpreter is already in use by another process");
+    }
+    if (self_res->val == nullptr) {
+        return erlang::nif::error(env, "cannot access NifResInterpreter resource");
     }
 
     ErlNifPid caller;
@@ -694,6 +700,7 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
     if (self_res->tensors) {
         MutexLock registry(self_res->tensors_lock);
         self_res->tensors->push_back(tensor_res);
+        tensor_res->registry_index = self_res->tensors->size() - 1;
     }
 
     ERL_NIF_TERM tensor_reference = enif_make_resource(env, tensor_res);

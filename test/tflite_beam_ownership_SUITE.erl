@@ -23,6 +23,7 @@
     undefined_gives_it_back/1,
     a_dead_controller_releases_it/1,
     signature_runner_inherits_it/1,
+    cancellation_is_allowed_from_another_process/1,
     concurrent_use_is_refused/1,
     server_predicts/1,
     server_is_atomic_under_concurrency/1,
@@ -50,6 +51,7 @@ all() ->
         undefined_gives_it_back,
         a_dead_controller_releases_it,
         signature_runner_inherits_it,
+        cancellation_is_allowed_from_another_process,
         concurrent_use_is_refused,
         server_predicts,
         server_is_atomic_under_concurrency,
@@ -160,6 +162,22 @@ signature_runner_inherits_it(_Config) ->
     ?assertMatch({ok, _}, tflite_beam_signature_runner:input_names(Runner)),
     ?assertMatch({error, _},
                  in_another_process(fun() -> tflite_beam_signature_runner:input_names(Runner) end)).
+
+cancellation_is_allowed_from_another_process(_Config) ->
+    Interpreter = tflite_beam_test_models:interpreter("multi_add.bin"),
+    {ok, Runner} = tflite_beam_interpreter:get_signature_runner(Interpreter, <<"serving_default">>),
+    ok = tflite_beam_interpreter:controlling_process(Interpreter, self()),
+    ok = tflite_beam_interpreter:enable_cancellation(Interpreter),
+    ?assertEqual(ok, in_another_process(fun() ->
+        tflite_beam_signature_runner:cancel(Runner)
+    end)),
+    ?assertEqual(ok, in_another_process(fun() ->
+        tflite_beam_interpreter:cancel(Interpreter)
+    end)),
+    ?assertMatch({error, _}, in_another_process(fun() ->
+        tflite_beam_signature_runner:input_names(Runner)
+    end)),
+    ?assertEqual({ok, self()}, tflite_beam_interpreter:controlling_process(Interpreter)).
 
 %% The always-on half, which needs no opt-in. Two processes hammering one
 %% interpreter overlap often enough to be caught: measured at roughly 3% of

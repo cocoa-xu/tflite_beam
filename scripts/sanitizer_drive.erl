@@ -20,6 +20,8 @@ main() ->
     Root = root_dir(),
     Model = filename:join([Root, "test", "models", "multi_add.bin"]),
     ok = interpreter_ownership(Model),
+    ok = interpreter_rebuild_concurrency(Model),
+    ok = interpreter_registry_concurrency(Model),
     ok = compiled_model_concurrency(Model),
     ok = compiled_model_lifetimes(Model),
     ok = backend_options_lifetimes(Model),
@@ -45,15 +47,41 @@ interpreter_ownership(Model) ->
     {ok, Interp} = tflite_beam_interpreter:new(),
     ok = tflite_beam_interpreter_builder:build(Builder, Interp),
     ok = tflite_beam_interpreter:allocate_tensors(Interp),
+    {ok, [Index | _]} = tflite_beam_interpreter:inputs(Interp),
+    #tflite_beam_tensor{ref = Tensor} = tflite_beam_interpreter:tensor(Interp, Index),
+    {ok, Runner} = tflite_beam_interpreter:get_signature_runner(Interp, nil),
     wait(spawn_many(12, fun() ->
         repeat(60, fun() ->
             _ = catch tflite_beam_interpreter:controlling_process(Interp, self()),
             _ = catch tflite_beam_interpreter:inputs(Interp),
             _ = catch tflite_beam_interpreter:execution_plan(Interp),
             _ = catch tflite_beam_interpreter:controlling_process(Interp),
+            _ = tflite_beam_tensor:type(Tensor),
+            _ = tflite_beam_signature_runner:input_size(Runner),
             _ = catch tflite_beam_interpreter:controlling_process(Interp, undefined)
         end)
     end)),
+    ok.
+
+interpreter_rebuild_concurrency(Model) ->
+    {ok, Resolver} = tflite_beam_ops_builtin_builtin_resolver:new(#{}),
+    #tflite_beam_flatbuffer_model{ref = Ref} =
+        tflite_beam_flatbuffer_model:build_from_file(Model),
+    {ok, Builder} = tflite_beam_interpreter_builder:new(Ref, Resolver),
+    {ok, Interpreter} = tflite_beam_interpreter:new(),
+    ok = tflite_beam_interpreter_builder:build(Builder, Interpreter),
+    Readers = spawn_many(8, fun() ->
+        repeat(1000, fun() ->
+            _ = tflite_beam_interpreter:inputs(Interpreter),
+            _ = tflite_beam_interpreter:controlling_process(Interpreter),
+            _ = tflite_beam_interpreter:cancel(Interpreter)
+        end)
+    end),
+    repeat(100, fun() ->
+        _ = tflite_beam_interpreter_builder:build(Builder, Interpreter)
+    end),
+    wait(Readers),
+    {ok, [_ | _]} = tflite_beam_interpreter:inputs(Interpreter),
     ok.
 
 %% Every compiled model entry point at once, including the ones that read while
@@ -87,6 +115,53 @@ compiled_model_concurrency(Model) ->
     end)),
     ?B:stop(Server),
     ok.
+
+interpreter_registry_concurrency(Model) ->
+    {ok, Resolver} = tflite_beam_ops_builtin_builtin_resolver:new(#{}),
+    #tflite_beam_flatbuffer_model{ref = Ref} = tflite_beam_flatbuffer_model:build_from_file(Model),
+    {ok, Builder} = tflite_beam_interpreter_builder:new(Ref, Resolver),
+    {ok, Interpreter} = tflite_beam_interpreter:new(),
+    ok = tflite_beam_interpreter_builder:build(Builder, Interpreter),
+    ok = tflite_beam_interpreter:allocate_tensors(Interpreter),
+    {ok, [Index | _]} = tflite_beam_interpreter:inputs(Interpreter),
+    Workers = [spawn_monitor(fun registry_collect/0) || _ <- lists:seq(1, 10)],
+    repeat(20, fun() ->
+        [Pid ! {batch, registry_batch(Interpreter, Index)} || {Pid, _} <- Workers]
+    end),
+    [Pid ! done || {Pid, _} <- Workers],
+    wait([Monitor || {_, Monitor} <- Workers]),
+    erlang:garbage_collect(),
+    registry_empty(Interpreter, 200).
+
+registry_batch(Interpreter, Index) ->
+    Tensors = [begin
+        #tflite_beam_tensor{} = Tensor = tflite_beam_interpreter:tensor(Interpreter, Index),
+        Tensor
+    end || _ <- lists:seq(1, 30)],
+    Runners = [begin
+        {ok, Runner} = tflite_beam_interpreter:get_signature_runner(Interpreter, nil),
+        Runner
+    end || _ <- lists:seq(1, 30)],
+    {Tensors, Runners}.
+
+registry_collect() ->
+    case registry_receive() of
+        batch -> erlang:garbage_collect(), registry_collect();
+        done -> exit(done)
+    end.
+
+registry_receive() ->
+    receive
+        {batch, {Tensors, Runners}} -> 60 = length(Tensors) + length(Runners), batch;
+        done -> done
+    end.
+
+registry_empty(Interpreter, Remaining) ->
+    case tflite_beam_nif:nif_interpreter_registry_sizes(Interpreter) of
+        {ok, {0, 0}} -> ok;
+        _ when Remaining > 0 -> timer:sleep(10), registry_empty(Interpreter, Remaining - 1);
+        Counts -> error({registry_not_empty, Counts})
+    end.
 
 %% Build and drop many models, through the error paths as well as the good one:
 %% a double free lives in the path that failed, not the one that worked.
@@ -152,7 +227,11 @@ spawn_many(N, Fun) ->
     [element(2, spawn_monitor(fun() -> Fun(), exit(done) end)) || _ <- lists:seq(1, N)].
 
 wait(Refs) ->
-    [receive {'DOWN', R, process, _, _} -> ok after 300000 -> ok end || R <- Refs],
+    [receive
+        {'DOWN', R, process, _, done} -> ok;
+        {'DOWN', R, process, _, Reason} -> error({worker_failed, Reason})
+     after 300000 -> error(worker_timeout)
+     end || R <- Refs],
     ok.
 
 repeat(N, Fun) ->

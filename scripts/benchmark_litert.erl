@@ -9,13 +9,24 @@ main() ->
     Count = list_to_integer(CountString),
     true = Count > 0,
     Dir = case os:getenv("LITERT_RUNTIME_LIBRARY_DIR") of false -> ""; Value -> Value end,
-    Accelerator = case os:getenv("LITERT_BENCHMARK_ACCELERATOR") of
-        "gpu" -> gpu;
-        "npu" -> npu;
-        _ -> cpu
+    Accelerators = case os:getenv("LITERT_BENCHMARK_ACCELERATOR") of
+        false -> [cpu];
+        "cpu" -> [cpu];
+        "gpu" -> [gpu];
+        "gpu_cpu" -> [gpu, cpu];
+        "npu" -> [npu];
+        Value0 -> error({unknown_accelerator, Value0})
     end,
     {ok, Env} = ?A:environment(Dir),
-    Opts = #{accelerators => [Accelerator]},
+    Backend = case os:getenv("LITERT_BENCHMARK_BACKEND_OPTIONS") of
+        false -> #{};
+        Text ->
+            {ok, Tokens, _} = erl_scan:string(Text ++ "."),
+            {ok, Parsed} = erl_parse:parse_term(Tokens),
+            true = is_map(Parsed),
+            Parsed
+    end,
+    Opts = #{accelerators => Accelerators, backend_options => Backend},
     {CompileUs, {ok, Model}} = timer:tc(fun() -> ?A:new(Env, Path, Opts) end),
     {ok, {Sizes, _}} = ?A:io_sizes(Model),
     Inputs = inputs(InputPaths, Sizes),
@@ -36,8 +47,8 @@ main() ->
     [{_, _} = sample(Fun, Expected) || {_, Fun} <- Modes, _ <- lists:seq(1, 10)],
     Samples = rounds(7, Modes, Count, Expected, #{}),
     ok = ?B:stop(Server),
-    io:format("model=~ts accelerator=~p compile_us=~p non_cpu_fully_accelerated=~p~n",
-        [Path, Accelerator, CompileUs, ?A:non_cpu_fully_accelerated(Model)]),
+    io:format("model=~ts accelerators=~p backend_options=~p compile_us=~p non_cpu_fully_accelerated=~p~n",
+        [Path, Accelerators, Backend, CompileUs, ?A:non_cpu_fully_accelerated(Model)]),
     io:format("mode,samples,mean_us,p50_us,p95_us,p99_us,mean_native_us~n"),
     [report(Name, maps:get(Name, Samples)) || {Name, _} <- Modes],
     halt().

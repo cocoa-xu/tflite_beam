@@ -73,6 +73,7 @@ ERL_NIF_TERM interpreter_get_signature_runner(ErlNifEnv *env, int argc, const ER
         MutexLock registry(self_res->signature_runners_lock);
         erlang::nif::fault_point(erlang::nif::kFaultRunnerRegistry);
         self_res->signature_runners->push_back(res);
+        res->registry_index = self_res->signature_runners->size() - 1;
     }
 
     ret = enif_make_resource(env, res);

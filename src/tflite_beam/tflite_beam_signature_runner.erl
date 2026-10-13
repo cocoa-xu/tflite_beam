@@ -102,6 +102,8 @@ invoke(Self) when is_reference(Self) ->
 
 %% @doc Cancel an in-flight invocation.
 %%
+%% Like interpreter cancellation, this is safe to call from another process,
+%% including when the interpreter has a controlling process.
 %% Requires `tflite_beam_interpreter:enable_cancellation/1' on the interpreter
 %% this runner came from. Without it TFLite refuses, and the reason it gives
 %% does not say why.

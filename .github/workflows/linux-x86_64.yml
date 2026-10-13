@@ -108,6 +108,7 @@ jobs:
         run: |
           rebar3 deps
           rebar3 compile
+          epmd -daemon
           # the five allocation-failure cases refuse to arm without this, and
           # skip rather than fail, so leaving it out loses them silently
           TFLITE_BEAM_ENABLE_FAULT_INJECTION=1 rebar3 ct
@@ -135,6 +136,7 @@ jobs:
           export CMAKE_OPTIONS="${CMAKE_OPTIONS} -D TFLITE_BEAM_ENABLE_LITERT_API=ON -D LITERT_ENABLE_GPU=ON"
           rebar3 compile
           TFLITE_BEAM_ENABLE_FAULT_INJECTION=1 rebar3 ct
+          bash scripts/check_nif_upgrade.sh
 
       - name: ccache statistics
         if: always()

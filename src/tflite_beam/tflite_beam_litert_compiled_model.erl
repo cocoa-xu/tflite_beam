@@ -493,17 +493,19 @@ operator_kind(_) -> not_an_operator.
 accelerator_set([]) ->
     {error, <<"name at least one accelerator; [] selects nothing to run on">>};
 accelerator_set(List) when is_list(List) ->
-    lists:foldl(
-        fun(_, {error, _} = Error) -> Error;
-           (A, {ok, Acc}) ->
-               case accelerator_bit(A) of
-                   {ok, Bit} -> {ok, Acc bor Bit};
-                   Error -> Error
-               end
-        end, {ok, 0}, List);
+    accelerator_bits(List, 0);
 accelerator_set(Other) ->
     {error, iolist_to_binary(
         io_lib:format("accelerators must be a list, got ~p", [Other]))}.
+
+accelerator_bits([], Acc) -> {ok, Acc};
+accelerator_bits([A | Rest], Acc) ->
+    case accelerator_bit(A) of
+        {ok, Bit} -> accelerator_bits(Rest, Acc bor Bit);
+        Error -> Error
+    end;
+accelerator_bits(_, _) ->
+    {error, <<"accelerators must be a proper list">>}.
 
 accelerator_bit(cpu) -> {ok, 1};
 accelerator_bit(gpu) -> {ok, 2};
@@ -552,9 +554,11 @@ signature_index_by_key(Env, Path, Key) ->
 %% list_to_binary/1 raises on anything outside a byte range, so a perfectly
 %% ordinary Unicode string would throw where every sibling returns an error.
 to_binary(List) ->
-    case unicode:characters_to_binary(List) of
+    try unicode:characters_to_binary(List) of
         Binary when is_binary(Binary) -> {ok, Binary};
         _ -> {error, <<"expecting text, which this is not">>}
+    catch
+        error:badarg -> {error, <<"expecting text, which this is not">>}
     end.
 
 %% Everything here reaches C as a NUL terminated string, so a NUL inside one
