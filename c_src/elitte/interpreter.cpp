@@ -694,6 +694,7 @@ ERL_NIF_TERM interpreter_tensor(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
     if (self_res->tensors) {
         MutexLock registry(self_res->tensors_lock);
         self_res->tensors->push_back(tensor_res);
+        tensor_res->registry_index = self_res->tensors->size() - 1;
     }
 
     ERL_NIF_TERM tensor_reference = enif_make_resource(env, tensor_res);

@@ -1,4 +1,5 @@
 #include <erl_nif.h>
+#include <algorithm>
 #include "nif_utils.hpp"
 
 #include "tflite/c/c_api.h"
@@ -11,6 +12,25 @@
 #ifdef TFLITE_BEAM_LITERT_API_ENABLED
 #include "elitte/litert_reaper.h"
 #endif
+
+template<class Resource>
+static void erase_registry_entry(std::vector<Resource *> &list, Resource *resource) {
+    const bool indexed = enif_sizeof_resource(resource) >= sizeof(Resource);
+    size_t index = indexed ? resource->registry_index : list.size();
+    // Older resources survive NIF upgrades without the appended index field.
+    if (index >= list.size() || list[index] != resource) {
+        auto found = std::find(list.begin(), list.end(), resource);
+        if (found == list.end()) return;
+        index = static_cast<size_t>(found - list.begin());
+    }
+    Resource *moved = list.back();
+    list[index] = moved;
+    list.pop_back();
+    if (moved != resource && enif_sizeof_resource(moved) >= sizeof(Resource)) {
+        moved->registry_index = index;
+    }
+    if (indexed) resource->registry_index = static_cast<size_t>(-1);
+}
 
 NifResBuiltinOpResolver * NifResBuiltinOpResolver::allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error) {
     NifResBuiltinOpResolver * res = (NifResBuiltinOpResolver *)enif_alloc_resource(NifResBuiltinOpResolver::type, sizeof(NifResBuiltinOpResolver));
@@ -431,6 +451,7 @@ NifResSignatureRunner * NifResSignatureRunner::allocate_resource(ErlNifEnv * env
 
     res->val = nullptr;
     res->interpreter = nullptr;
+    res->registry_index = static_cast<size_t>(-1);
     construct_atomic(&res->interpreter_has_gone, false);
 
     return res;
@@ -470,13 +491,7 @@ void NifResSignatureRunner::destruct_resource(ErlNifEnv *env, void *args) {
         // the registry lock like every other writer.
         if (res->interpreter && res->interpreter->signature_runners) {
             MutexLock registry(res->interpreter->signature_runners_lock);
-            auto & list = *res->interpreter->signature_runners;
-            for (auto it = list.begin(); it != list.end(); ++it) {
-                if (*it == res) {
-                    list.erase(it);
-                    break;
-                }
-            }
+            erase_registry_entry(*res->interpreter->signature_runners, res);
         }
 
         if (res->interpreter) {
@@ -496,6 +511,7 @@ NifResTfLiteTensor * NifResTfLiteTensor::allocate_resource(ErlNifEnv * env, ERL_
 
     res->val = nullptr;
     res->interpreter = nullptr;
+    res->registry_index = static_cast<size_t>(-1);
     res->index = -1;
     construct_atomic(&res->interpreter_has_gone, false);
 
@@ -540,13 +556,7 @@ void NifResTfLiteTensor::destruct_resource(ErlNifEnv *env, void *args) {
         // never deleted: it belongs to the interpreter's arena.
         if (res->interpreter && res->interpreter->tensors) {
             MutexLock registry(res->interpreter->tensors_lock);
-            auto & list = *res->interpreter->tensors;
-            for (auto it = list.begin(); it != list.end(); ++it) {
-                if (*it == res) {
-                    list.erase(it);
-                    break;
-                }
-            }
+            erase_registry_entry(*res->interpreter->tensors, res);
             res->val = nullptr;
         } else {
             res->val = nullptr;

@@ -5,6 +5,7 @@
 
 #include "fault_inject.hpp"
 #include "nif_utils.hpp"
+#include "erlang_nif_resource.h"
 
 namespace erlang {
 namespace nif {
@@ -21,6 +22,27 @@ std::atomic<int> armed_fault_point{kFaultNone};
 
 }  // namespace nif
 }  // namespace erlang
+
+ERL_NIF_TERM nif_interpreter_registry_sizes(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+    if (!erlang::nif::fault_injection_enabled()) {
+        return erlang::nif::error(env, "fault injection is off; set TFLITE_BEAM_ENABLE_FAULT_INJECTION to use it");
+    }
+    ERL_NIF_TERM error;
+    auto resource = NifResInterpreter::get_resource(env, argv[0], error);
+    if (!resource) return error;
+    size_t tensors, runners;
+    {
+        MutexLock lock(resource->tensors_lock);
+        tensors = resource->tensors->size();
+    }
+    {
+        MutexLock lock(resource->signature_runners_lock);
+        runners = resource->signature_runners->size();
+    }
+    return erlang::nif::ok(env, enif_make_tuple2(env,
+        enif_make_uint64(env, tensors), enif_make_uint64(env, runners)));
+}
 
 // Arms the next call through one of the points named in fault_inject.hpp to
 // fail as an allocation failure would. It exists so the test suite can reach the

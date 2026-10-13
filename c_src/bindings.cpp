@@ -48,6 +48,7 @@ extern ERL_NIF_TERM litert_compiled_model_set_controlling_process(ErlNifEnv *env
 extern ERL_NIF_TERM litert_compiled_model_get_controlling_process(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 #endif
 extern ERL_NIF_TERM nif_arm_fault(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
+extern ERL_NIF_TERM nif_interpreter_registry_sizes(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]);
 
 #ifdef __GNUC__
 #  pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -205,6 +206,7 @@ static int on_upgrade(ErlNifEnv* env, void**, void**, ERL_NIF_TERM) {
 static ErlNifFunc nif_functions[] = {
     // For the test suite; see fault_inject.hpp.
     F(nif_arm_fault, 1),
+    F(nif_interpreter_registry_sizes, 1),
 #ifdef TFLITE_BEAM_LITERT_API_ENABLED
     F(nif_litert_call_count, 0),
 #else

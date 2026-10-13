@@ -391,6 +391,7 @@ struct NifResSignatureRunner {
     // destroys the tflite::Interpreter this borrows from and puts a new one in
     // its place, which leaves val dangling with the resource still valid
     std::atomic_bool interpreter_has_gone;
+    size_t registry_index;
 
     static ErlNifResourceType * type;
     static NifResSignatureRunner * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);
@@ -416,6 +417,7 @@ struct NifResTfLiteTensor {
     // AllocateTensors and a reshape both move the arena out from under val
     // while the interpreter itself stays exactly where it was
     std::atomic_bool interpreter_has_gone;
+    size_t registry_index;
 
     static ErlNifResourceType * type;
     static NifResTfLiteTensor * allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error);

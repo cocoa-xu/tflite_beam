@@ -31,6 +31,9 @@ not_loaded(Line) ->
 nif_arm_fault(_point) ->
     not_loaded(?LINE).
 
+nif_interpreter_registry_sizes(_interpreter) ->
+    not_loaded(?LINE).
+
 nif_litert_call_count() ->
     not_loaded(?LINE).
 

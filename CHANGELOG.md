@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Remove tensor and signature runner registry entries in constant time while
+  preserving resources created before a NIF upgrade.
+
 - Add typed CPU, GPU, Arm, Intel OpenVINO, Google Tensor, MediaTek and Qualcomm
   backend settings, including weight sharing, CPU thread counts and weight caches.
 
