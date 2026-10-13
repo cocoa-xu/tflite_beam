@@ -249,6 +249,10 @@ bundles only affect its Gemma compiler optimizations. Vendor settings require
 the corresponding SDK and compatible plugin; this library does not bundle
 those SDKs. They do not improve execution on an unrelated CPU or Edge TPU.
 
+The official LiteRT 2.3.0 Metal plugin rejects uint8 weights when constant tensor
+sharing is enabled. Leave `constant_tensors_sharing` disabled for those models.
+Allowing CPU fallback does not recover a delegate compilation failure.
+
 ### Inspecting and rewriting graph options
 
 The experimental `tflite_beam_litert_model` API reads subgraph connectivity and
