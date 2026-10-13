@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add typed CPU, GPU, Arm, Intel OpenVINO, Google Tensor, MediaTek and Qualcomm
+  backend settings, including weight sharing, CPU thread counts and weight caches.
+
 - Add experimental graph inspection and transactional OneHot, SplitV and
   StableHLO composite option rewrites through LiteRT 2.3.0's builder.
 

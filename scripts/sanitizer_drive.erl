@@ -22,6 +22,7 @@ main() ->
     ok = interpreter_ownership(Model),
     ok = compiled_model_concurrency(Model),
     ok = compiled_model_lifetimes(Model),
+    ok = backend_options_lifetimes(Model),
     ok = graph_rewrite_lifetimes(Root),
     io:format("sanitizer drive complete~n"),
     halt(0).
@@ -112,6 +113,22 @@ compiled_model_lifetimes(Model) ->
         {error, _} = ?A:environment(<<"/tmp/a", 0, "b">>)
     end),
     [erlang:garbage_collect(P) || P <- erlang:processes()],
+    ok.
+
+backend_options_lifetimes(Model) ->
+    {ok, Env} = ?A:environment(),
+    Options = #{cpu => #{num_threads => 2}, gpu => #{use_ir_model => true},
+        qualcomm => #{qnn_lib_dir => binary:copy(<<"path">>, 64)},
+        google_tensor => #{input_coherency => [{<<"serving">>, binary:copy(<<"input">>, 32), true}]},
+        mediatek => #{option_bundle => binary:copy(<<"bundle">>, 32)},
+        arm => #{enable_just_in_time => true}, intel_openvino => #{enable_weight_sharing => true}},
+    repeat(40, fun() ->
+        {ok, _} = ?A:backend_options(Options),
+        {ok, CM} = ?A:new(Env, Model, #{backend_options => Options}),
+        {ok, {Sizes, _}} = ?A:io_sizes(CM),
+        {ok, _} = ?A:run(CM, [binary:copy(<<0>>, N) || N <- Sizes]),
+        {error, _} = ?A:backend_options(Options#{qualcomm := #{qnn_lib_dir => <<0>>}})
+    end),
     ok.
 
 graph_rewrite_lifetimes(Root) ->

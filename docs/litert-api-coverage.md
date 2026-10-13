@@ -15,6 +15,7 @@ Everything here is behind `TFLITE_BEAM_ENABLE_LITERT_API=ON`.
 | `litert_model.h` | signature listing, experimental graph inspection and serialization |
 | `litert_builder.h`, `litert_op_options.h` | experimental OneHot, SplitV and StableHLO composite option rewrites |
 | `litert_options.h`, `litert_opaque_options.h` | accelerator selection, and the TOML payloads that carry precision and profiling |
+| `options/litert_{cpu,gpu,arm,intel_openvino,google_tensor,mediatek,qualcomm}_options.h` | typed backend settings, native serialization, weight sharing and CPU weight caches through `backend_options` |
 | `litert_compiled_model.h` | `new/3`, `run/2`, `fully_accelerated/1`, `non_cpu_fully_accelerated/1`, `io_sizes/1` |
 | `litert_profiler.h`, `litert_profiler_event.h` | `profile/1`, `summarise_profile/1`, `reset_profile/1` |
 | `litert_metrics.h` | `run_with_metrics/2,3`, which brackets inference and uses `LiteRtAppendMetric` for optional host timing and extra metrics |

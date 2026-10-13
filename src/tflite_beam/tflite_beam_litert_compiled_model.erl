@@ -23,7 +23,7 @@
 -export([
     environment/0, environment/1,
     signatures/2,
-    new/2, new/3,
+    new/2, new/3, backend_options/1,
     run/2,
     fully_accelerated/1, non_cpu_fully_accelerated/1,
     io_sizes/1,
@@ -67,15 +67,20 @@
     extra_metrics => [{binary(), integer() | float() | boolean() | binary()}]
 }.
 -type opts() :: #{
+    backend_options => backend_options(),
     accelerators => [accelerator()],
     precision => precision(),
     profile => boolean(),
     signature => signature_index() | binary() | string(),
     max_model_bytes => non_neg_integer()
 }.
+-type backend_options() :: #{
+    cpu => map(), gpu => map(), arm => map(), intel_openvino => map(),
+    google_tensor => map(), mediatek => map(), qualcomm => map()
+}.
 -export_type([accelerator/0, precision/0, opts/0, signature_index/0, event_limit/0,
               detail_level/0, operator_kind/0, event/0, event_type/0,
-              event_source/0, summary_entry/0, metric_value/0, metrics_options/0]).
+              event_source/0, summary_entry/0, metric_value/0, metrics_options/0, backend_options/0]).
 
 %% @doc
 %% What this build of the library can reach.
@@ -169,6 +174,9 @@ new(Env, Path) ->
 %% found the compile fails rather than quietly running on the CPU, so check the
 %% result rather than assuming.
 %% @param precision What a GPU accelerator should compute in.
+%% @param backend_options Typed settings for CPU, GPU and vendor plugins.
+%% They are validated by LiteRT and merged with `precision' before compilation.
+%% A setting takes effect only when the loaded backend supports it.
 %%
 %% `default' asks for nothing and lets the accelerator decide, which is not the
 %% same as asking for `fp32'. Measured against the plugins in
@@ -268,10 +276,20 @@ profile_flag(Other) ->
     {error, iolist_to_binary(
         io_lib:format("profile must be true or false, got ~p", [Other]))}.
 
+%% @doc Validate backend settings with LiteRT and return their serialized payloads.
+%% This checks configuration without loading a model or requiring vendor hardware.
+-spec backend_options(backend_options()) -> {ok, [{binary(), binary()}]} | {error, binary()}.
+backend_options(Options) ->
+    tflite_beam_nif:litert_backend_options(Options).
+
 new_with_signature(Env, Path, Accel, Prec, Profile, Opts) ->
     case signature_index(Env, Path, maps:get(signature, Opts, 0)) of
         {ok, Index} ->
-            tflite_beam_nif:litert_compiled_model_new(Env, Path, Accel, Prec, Profile, Index);
+            case maps:find(backend_options, Opts) of
+                error -> tflite_beam_nif:litert_compiled_model_new(Env, Path, Accel, Prec, Profile, Index);
+                {ok, Backend} ->
+                    tflite_beam_nif:litert_compiled_model_new(Env, Path, Accel, Prec, Profile, Index, Backend)
+            end;
         Error ->
             Error
     end.
