@@ -50,6 +50,9 @@ litert_compiled_model_run(_model, _inputs) ->
 litert_compiled_model_fully_accelerated(_model) ->
     not_loaded(?LINE).
 
+litert_compiled_model_non_cpu_fully_accelerated(_model) ->
+    not_loaded(?LINE).
+
 litert_compiled_model_profile(_model, _limit) ->
     not_loaded(?LINE).
 
@@ -66,6 +69,9 @@ litert_model_signatures(_env, _path) ->
     not_loaded(?LINE).
 
 litert_compiled_model_run_with_metrics(_model, _inputs, _detail_level) ->
+    not_loaded(?LINE).
+
+litert_compiled_model_run_with_metrics(_model, _inputs, _detail_level, _host_timing, _extra_metrics) ->
     not_loaded(?LINE).
 
 litert_platform_support() ->

@@ -42,7 +42,7 @@
     run/2, run/3,
     with/2, with/3,
     io_sizes/1,
-    fully_accelerated/1,
+    fully_accelerated/1, non_cpu_fully_accelerated/1,
     run_with_metrics/2, run_with_metrics/3, run_with_metrics/4,
     profile/1, profile/2,
     pending_events/1,
@@ -133,6 +133,11 @@ io_sizes(Server) ->
 fully_accelerated(Server) ->
     call(Server, fully_accelerated, ?DEFAULT_TIMEOUT).
 
+%% @doc Whether all operations run on GPU or NPU, with no CPU execution.
+-spec non_cpu_fully_accelerated(pid()) -> {ok, boolean()} | {error, binary()}.
+non_cpu_fully_accelerated(Server) ->
+    call(Server, non_cpu_fully_accelerated, ?DEFAULT_TIMEOUT).
+
 %% @doc
 %% Run a function against the compiled model, on the node that owns it.
 %%
@@ -155,18 +160,19 @@ with(Server, Fun, Timeout) when is_function(Fun, 1) ->
 run_with_metrics(Server, Inputs) ->
     run_with_metrics(Server, Inputs, 0).
 
-%% @doc As `run_with_metrics/2', at a given detail level.
--spec run_with_metrics(pid(), [binary()], ?M:detail_level()) ->
+%% @doc As `run_with_metrics/2', with a detail level or metrics options map.
+-spec run_with_metrics(pid(), [binary()], ?M:detail_level() | ?M:metrics_options()) ->
     {ok, {[binary()], [{binary(), ?M:metric_value()}]}} | {error, binary()}.
 run_with_metrics(Server, Inputs, DetailLevel) ->
     run_with_metrics(Server, Inputs, DetailLevel, ?DEFAULT_TIMEOUT).
 
 %% @doc As `run_with_metrics/3', waiting at most `Timeout'.
--spec run_with_metrics(pid(), [binary()], ?M:detail_level(), timeout()) ->
+-spec run_with_metrics(pid(), [binary()], ?M:detail_level() | ?M:metrics_options(), timeout()) ->
     {ok, {[binary()], [{binary(), ?M:metric_value()}]}} | {error, binary()}.
 run_with_metrics(Server, Inputs, DetailLevel, Timeout)
-        when is_list(Inputs), is_integer(DetailLevel),
-             DetailLevel >= 0, DetailLevel =< 2147483647 ->
+        when is_list(Inputs),
+             (is_map(DetailLevel) orelse
+              (is_integer(DetailLevel) andalso DetailLevel >= 0 andalso DetailLevel =< 2147483647)) ->
     call(Server, {run_with_metrics, Inputs, DetailLevel, Timeout}, Timeout).
 
 %% @doc Every profiling event recorded since the last reset.
@@ -386,6 +392,7 @@ no_object_code(Module) ->
 forward(Remote, {run, Inputs, Timeout}) -> ?SERVER:run(Remote, Inputs, Timeout);
 forward(Remote, io_sizes) -> ?SERVER:io_sizes(Remote);
 forward(Remote, fully_accelerated) -> ?SERVER:fully_accelerated(Remote);
+forward(Remote, non_cpu_fully_accelerated) -> ?SERVER:non_cpu_fully_accelerated(Remote);
 forward(Remote, {run_with_metrics, Inputs, DetailLevel, Timeout}) ->
     ?SERVER:run_with_metrics(Remote, Inputs, DetailLevel, Timeout);
 forward(Remote, {profile, Limit}) -> ?SERVER:profile(Remote, Limit);

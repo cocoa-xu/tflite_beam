@@ -16,6 +16,7 @@
 #include <cstring>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "../nif_utils.hpp"
@@ -576,13 +577,64 @@ ERL_NIF_TERM litert_compiled_model_run(ErlNifEnv *env, int argc, const ERL_NIF_T
     return erlang::nif::ok(env, outputs);
 }
 
+struct ExtraMetric {
+    std::string name;
+    std::string text;
+    LiteRtAny value{};
+};
+
+static bool metric_string(ErlNifEnv *env, ERL_NIF_TERM term, std::string &out) {
+    ErlNifBinary binary;
+    if (!enif_inspect_binary(env, term, &binary)) return false;
+    if (binary.size) out.assign(reinterpret_cast<const char *>(binary.data), binary.size);
+    return out.find('\0') == std::string::npos;
+}
+
+static ERL_NIF_TERM extra_metrics(ErlNifEnv *env, ERL_NIF_TERM list,
+                                  std::vector<ExtraMetric> &out) {
+    unsigned count;
+    if (!enif_get_list_length(env, list, &count)) {
+        return erlang::nif::error(env, "expecting a list of extra metrics");
+    }
+    out.reserve(count);
+    ERL_NIF_TERM head, tail = list;
+    while (enif_get_list_cell(env, tail, &head, &tail)) {
+        int arity;
+        const ERL_NIF_TERM *pair;
+        ExtraMetric metric;
+        if (!enif_get_tuple(env, head, &arity, &pair) || arity != 2 ||
+            !metric_string(env, pair[0], metric.name)) {
+            return erlang::nif::error(env, "expecting {binary name without NUL, value} metrics");
+        }
+        ErlNifSInt64 integer;
+        double real;
+        if (enif_get_int64(env, pair[1], &integer)) {
+            metric.value.type = kLiteRtAnyTypeInt;
+            metric.value.int_value = integer;
+        } else if (enif_get_double(env, pair[1], &real)) {
+            metric.value.type = kLiteRtAnyTypeReal;
+            metric.value.real_value = real;
+        } else if (enif_is_identical(pair[1], erlang::nif::atom(env, "true")) ||
+                   enif_is_identical(pair[1], erlang::nif::atom(env, "false"))) {
+            metric.value.type = kLiteRtAnyTypeBool;
+            metric.value.bool_value = enif_is_identical(pair[1], erlang::nif::atom(env, "true"));
+        } else if (metric_string(env, pair[1], metric.text)) {
+            metric.value.type = kLiteRtAnyTypeString;
+        } else {
+            return erlang::nif::error(env, "expecting a signed 64-bit integer, float, boolean or binary without NUL metric value");
+        }
+        out.push_back(std::move(metric));
+    }
+    return 0;
+}
+
 // litert_compiled_model_run_with_metrics(Model, Inputs, DetailLevel)
 //
 // Collection has to bracket an inference: starting and stopping with nothing in
 // between reports on an empty interval, which is what asking for metrics without
 // a run used to do. Both happen here under one lock so nothing interleaves.
 ERL_NIF_TERM litert_compiled_model_run_with_metrics(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    if (argc != 3) return enif_make_badarg(env);
+    if (argc != 3 && argc != 5) return enif_make_badarg(env);
 
     CompiledModelUse res(env, argv[0]);
     if (!res) return res.error();
@@ -590,6 +642,18 @@ ERL_NIF_TERM litert_compiled_model_run_with_metrics(ErlNifEnv *env, int argc, co
     int detail = 0;
     if (!enif_get_int(env, argv[2], &detail) || detail < 0) {
         return erlang::nif::error(env, "expecting a detail level of zero or more");
+    }
+
+    bool host_timing = false;
+    std::vector<ExtraMetric> extra;
+    if (argc == 5) {
+        if (enif_is_identical(argv[3], erlang::nif::atom(env, "true"))) {
+            host_timing = true;
+        } else if (!enif_is_identical(argv[3], erlang::nif::atom(env, "false"))) {
+            return erlang::nif::error(env, "expecting a boolean host_timing option");
+        }
+        ERL_NIF_TERM failure = extra_metrics(env, argv[4], extra);
+        if (failure != 0) return failure;
     }
 
     if (erlang::nif::fault_injection_enabled()) {
@@ -606,7 +670,9 @@ ERL_NIF_TERM litert_compiled_model_run_with_metrics(ErlNifEnv *env, int argc, co
     }
 
     ERL_NIF_TERM outputs;
+    ErlNifTime started = host_timing ? enif_monotonic_time(ERL_NIF_USEC) : 0;
     ERL_NIF_TERM run_failure = run_locked(env, res.get(), argv[1], &outputs);
+    ErlNifTime elapsed = host_timing ? enif_monotonic_time(ERL_NIF_USEC) - started : 0;
 
     // stop first whatever happened, so a failed inference never leaves the
     // backend collecting, and report the inference failure ahead of a stop one
@@ -619,6 +685,21 @@ ERL_NIF_TERM litert_compiled_model_run_with_metrics(ErlNifEnv *env, int argc, co
         return litert_error(env, "stop metrics", stop_status);
     }
     if (run_failure != 0) return run_failure;
+
+    if (host_timing) {
+        LiteRtMetric metric{};
+        metric.name = "tflite_beam_run_us";
+        metric.value.type = kLiteRtAnyTypeInt;
+        metric.value.int_value = elapsed;
+        LiteRtStatus st = LiteRtAppendMetric(collection.get(), &metric);
+        if (st != kLiteRtStatusOk) return litert_error(env, "append host timing", st);
+    }
+    for (auto &entry : extra) {
+        if (entry.value.type == kLiteRtAnyTypeString) entry.value.str_value = entry.text.c_str();
+        LiteRtMetric metric{entry.name.c_str(), entry.value};
+        LiteRtStatus st = LiteRtAppendMetric(collection.get(), &metric);
+        if (st != kLiteRtStatusOk) return litert_error(env, "append metric", st);
+    }
 
     ERL_NIF_TERM collected;
     ERL_NIF_TERM failure = read_metrics(env, collection.get(), &collected);
@@ -636,6 +717,17 @@ ERL_NIF_TERM litert_compiled_model_fully_accelerated(ErlNifEnv *env, int argc, c
     bool fully = false;
     LiteRtStatus st = LiteRtCompiledModelIsFullyAccelerated(res->val, &fully);
     if (st != kLiteRtStatusOk) return litert_error(env, "fully accelerated", st);
+    return erlang::nif::ok(env, erlang::nif::atom(env, fully ? "true" : "false"));
+}
+
+ERL_NIF_TERM litert_compiled_model_non_cpu_fully_accelerated(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+    CompiledModelUse res(env, argv[0]);
+    if (!res) return res.error();
+
+    bool fully = false;
+    LiteRtStatus st = LiteRtCompiledModelIsNonCpuFullyAccelerated(res->val, &fully);
+    if (st != kLiteRtStatusOk) return litert_error(env, "non-CPU fully accelerated", st);
     return erlang::nif::ok(env, erlang::nif::atom(env, fully ? "true" : "false"));
 }
 
@@ -811,14 +903,6 @@ ERL_NIF_TERM litert_model_signatures(ErlNifEnv *env, int argc, const ERL_NIF_TER
     return erlang::nif::ok(env, list);
 }
 
-// litert_compiled_model_metrics(Model, DetailLevel) -> {ok, [{binary(), term()}]}
-//
-// Hardware counters, which an accelerator supplies through the two entries of
-// its definition that may be null. Neither the plugins here nor Google's own
-// prebuilt fills them in, so this is usually an empty list rather than an
-// error, and saying so beats leaving a caller to wonder.
-// Reads a stopped metrics object into a list. Returns 0 on success and an error
-// term otherwise, so a caller can destroy the object either way.
 static ERL_NIF_TERM read_metrics(ErlNifEnv *env, LiteRtMetrics metrics, ERL_NIF_TERM *out) {
     int n = 0;
     if (LiteRtGetNumMetrics(metrics, &n) != kLiteRtStatusOk) {

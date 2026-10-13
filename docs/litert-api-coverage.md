@@ -14,9 +14,9 @@ Everything here is behind `TFLITE_BEAM_ENABLE_LITERT_API=ON`.
 | `litert_environment.h`, `litert_environment_options.h` | `tflite_beam_litert_compiled_model:environment/1`, which is how an accelerator plugin is found |
 | `litert_model.h` | signature listing, subgraph input and output counts |
 | `litert_options.h`, `litert_opaque_options.h` | accelerator selection, and the TOML payloads that carry precision and profiling |
-| `litert_compiled_model.h` | `new/3`, `run/2`, `fully_accelerated/1`, `io_sizes/1` |
+| `litert_compiled_model.h` | `new/3`, `run/2`, `fully_accelerated/1`, `non_cpu_fully_accelerated/1`, `io_sizes/1` |
 | `litert_profiler.h`, `litert_profiler_event.h` | `profile/1`, `summarise_profile/1`, `reset_profile/1` |
-| `litert_metrics.h` | `run_with_metrics/2,3`, which brackets an inference and returns an empty list on every accelerator reachable here |
+| `litert_metrics.h` | `run_with_metrics/2,3`, which brackets inference and uses `LiteRtAppendMetric` for optional host timing and extra metrics |
 | `litert_tensor_buffer.h`, `litert_tensor_buffer_requirements.h`, `litert_tensor_buffer_types.h` | managed buffers, allocated by LiteRT from each tensor's requirements, which need not be host memory |
 | `litert_platform_support.h` | `platform_support/0` |
 | `litert_layout.h`, `litert_model_types.h`, `litert_any.h` | types the above pass around |
@@ -79,8 +79,9 @@ would apply to `tflite_beam_interpreter` just as much.
 
 ## The one thing worth rechecking on an upstream bump
 
-`litert_metrics.h` is bound but empty in practice, because filling it is an
-accelerator's job through two entries of `LiteRtAcceleratorDef` that may be
-null. Both the plugins in `tflite_delegate_plugins` and Google's own prebuilt
-GPU accelerator leave them null. If a vendor accelerator ever appears that fills
-them, `run_with_metrics/2` starts returning something without any change here.
+Accelerator metrics depend on two optional entries of `LiteRtAcceleratorDef`.
+LiteRT 2.3.0's ML Drift GPU implementation supplies
+`gpu_intermediate_memory_bytes` and `gpu_constant_memory_bytes` when its backend
+can measure them. Other plugins may still supply none. The binding preserves
+their names and values, and appends optional host timing and caller metrics
+after them. New accelerator counters need no additional Erlang API.

@@ -5,6 +5,11 @@
 - Build the runtime from LiteRT 2.3.0 and use the KleidiAI revision required by
   its XNNPACK dependency. Fetch the pinned SafeInt headers for the optional
   LiteRT API build. Rebuild external delegate plugins against LiteRT 2.3.0.
+- Add `non_cpu_fully_accelerated/1` to distinguish complete GPU/NPU delegation
+  from CPU XNNPACK delegation.
+- Accept an options map in `run_with_metrics/3` for optional synchronous run
+  timing and extra data metrics, appended through LiteRT's metrics API. Both
+  additions are available through the direct, server and isolated modules.
 
 ## v1.0.0 (2026-09-02)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v1.0.0) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v1.0.0)

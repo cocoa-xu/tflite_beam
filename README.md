@@ -170,6 +170,42 @@ accelerator plugin. Without one, asking for `[gpu]` fails rather than quietly
 running on the CPU. [`tflite_delegate_plugins`][plugins] builds plugins that
 answer both this and the delegate interface above from one file.
 
+`fully_accelerated/1` means every operation was delegated, including to CPU
+XNNPACK. `non_cpu_fully_accelerated/1` only returns `{ok, true}` when the whole
+model runs on GPU or NPU with no CPU execution.
+
+`run_with_metrics/3` accepts a detail level or an options map:
+
+```erlang
+{ok, {Outputs, Metrics}} = tflite_beam_litert_compiled_model:run_with_metrics(
+    Model, [Input], #{host_timing => true,
+                      extra_metrics => [{<<"batch_size">>, 1}]}).
+```
+
+`host_timing` adds `<<"tflite_beam_run_us">>`, the microseconds spent transferring
+inputs, running synchronous inference and transferring outputs. Queue waiting
+and metrics collection are excluded. Extra metrics are data, not callbacks;
+names and string values are binaries without NUL bytes, and integer values fit
+in signed 64 bits. Both options default to off or empty. Accelerator counters
+are returned first, followed by host timing and extra metrics. LiteRT 2.3.0's
+ML Drift GPU plugin can report intermediate and constant tensor memory; a
+backend that supplies no counters still returns an empty list by default.
+
+To compare inference and metrics overhead on a local model, compile
+`scripts/benchmark_litert.erl` into a temporary directory and run it with the
+model path, runs per round and optional input binary paths:
+
+```sh
+erlc -o /tmp scripts/benchmark_litert.erl
+erl -noshell -pa /tmp _build/default/lib/tflite_beam/ebin \
+    -run benchmark_litert main -extra test/models/multi_add.bin 500
+```
+
+It warms each mode, rotates their order over seven rounds, checks every output,
+and reports mean, median, p95 and p99 latency in microseconds. Set
+`LITERT_BENCHMARK_ACCELERATOR=gpu` and `LITERT_RUNTIME_LIBRARY_DIR` to compare a
+GPU plugin; the default is CPU. Missing input paths use zero-filled inputs.
+
 [plugins]: https://github.com/cocoa-xu/tflite_delegate_plugins
 
 ### One model, one process
@@ -459,4 +495,3 @@ which it says out loud on install rather than doing quietly.
 ## Upstream Dependencies
 
 - [cocoa-xu/libedgetpu](https://github.com/cocoa-xu/libedgetpu)
-
