@@ -1,6 +1,7 @@
 # Changelog
 
-## Unreleased
+## v1.1.0 (2026-10-14)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v1.1.0) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v1.1.0)
 
 - Remove tensor and signature runner registry entries in constant time while
   preserving resources created before a NIF upgrade.
