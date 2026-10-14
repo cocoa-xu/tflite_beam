@@ -40,6 +40,8 @@
     a_model_larger_than_its_limit_is_refused/1,
     a_full_queue_is_refused_rather_than_grown/1,
     an_isolated_model_runs_and_its_death_is_survivable/1,
+    an_isolated_model_starts_without_epmd/1,
+    isolated_cold_start/1,
     an_isolated_callback_that_outlives_its_timeout_costs_the_call_not_the_model/1,
     every_forwarded_call_reaches_the_model/1,
     a_recompiled_callback_module_is_carried_over/1
@@ -84,6 +86,7 @@ all() ->
         a_model_larger_than_its_limit_is_refused,
         a_full_queue_is_refused_rather_than_grown,
         an_isolated_model_runs_and_its_death_is_survivable,
+        an_isolated_model_starts_without_epmd,
         an_isolated_callback_that_outlives_its_timeout_costs_the_call_not_the_model,
         every_forwarded_call_reaches_the_model,
         a_recompiled_callback_module_is_carried_over
@@ -1011,6 +1014,41 @@ wait_for_isolated_down(Server, Inputs, Tries) ->
     case tflite_beam_litert_compiled_model_isolated:run(Server, Inputs) of
         {error, <<"the isolated model's node went down">>} -> ok;
         _ -> timer:sleep(100), wait_for_isolated_down(Server, Inputs, Tries - 1)
+    end.
+
+an_isolated_model_starts_without_epmd(_Config) ->
+    {ok, Listener} = gen_tcp:listen(0, [{ip, {127, 0, 0, 1}}, {active, false}]),
+    {ok, Port} = inet:port(Listener),
+    ok = gen_tcp:close(Listener),
+    Path = tflite_beam_test_models:path(?MODEL),
+    {ok, Control, _} = peer:start_link(#{
+        connection => standard_io,
+        args => ["-pa" | lists:reverse(code:get_path())],
+        env => [{"ERL_EPMD_PORT", integer_to_list(Port)}]
+    }),
+    try
+        ?assertEqual(false, peer:call(Control, erlang, is_alive, [])),
+        ?assertMatch({error, _}, peer:call(Control, erl_epmd, names, [])),
+        ?assertEqual(ok, peer:call(Control, ?MODULE, isolated_cold_start, [Path], 60000))
+    after
+        peer:stop(Control),
+        Epmd = open_port({spawn_executable, os:find_executable("epmd")},
+                         [exit_status, {args, ["-port", integer_to_list(Port), "-kill"]}]),
+        receive {Epmd, {exit_status, _}} -> ok
+        after 5000 -> port_close(Epmd)
+        end
+    end.
+
+isolated_cold_start(Path) ->
+    {ok, Server} = ?I:start(#{model_path => Path, accelerators => [cpu]}),
+    try
+        ?assert(is_alive()),
+        {ok, {Ins, Outs}} = ?I:io_sizes(Server),
+        Inputs = [filled(1.0, N) || N <- Ins],
+        ?assertEqual({ok, [filled(3.0, N) || N <- Outs]}, ?I:run(Server, Inputs)),
+        ok
+    after
+        ?I:stop(Server)
     end.
 
 %% The whole point of the isolated variant: a model that dies takes its node and
