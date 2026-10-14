@@ -231,10 +231,11 @@ call(Server, Request, Timeout) ->
 
 init(Opts) ->
     process_flag(trap_exit, true),
-    case ensure_distributed() of
-        ok ->
-            case start_peer(Opts) of
-                {ok, Peer, Node} ->
+    %% Starting the named peer also starts EPMD before the parent joins it.
+    case start_peer(Opts) of
+        {ok, Peer, Node} ->
+            case ensure_distributed() of
+                ok ->
                     case start_model_on(Node, Opts) of
                         {ok, Remote} ->
                             monitor_node(Node, true),
@@ -244,6 +245,7 @@ init(Opts) ->
                             {stop, Reason}
                     end;
                 {error, Reason} ->
+                    peer:stop(Peer),
                     {stop, Reason}
             end;
         {error, Reason} ->
@@ -401,8 +403,7 @@ forward(Remote, summarise_profile) -> ?SERVER:summarise_profile(Remote);
 forward(Remote, pending_events) -> ?SERVER:pending_events(Remote);
 forward(Remote, reset_profile) -> ?SERVER:reset_profile(Remote).
 
-%% Distribution has to be up before a peer can be started, and a library should
-%% not insist the caller arranged that in advance.
+%% The parent needs distribution for calls to the isolated model.
 ensure_distributed() ->
     case is_alive() of
         true ->
