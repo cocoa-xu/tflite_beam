@@ -1138,7 +1138,10 @@ an_isolated_callback_that_outlives_its_timeout_costs_the_call_not_the_model(_Con
             {skip, {cannot_start_an_isolated_node, Reason}};
         {ok, Iso} ->
             try
-                ?assertEqual({error, <<"the isolated model did not answer in time">>},
+                %% Either the caller's timeout or the forwarded call's timeout can win.
+                ?assertMatch({error, Message} when
+                                 Message =:= <<"the isolated model did not answer in time">> orelse
+                                 Message =:= <<"the isolated model did not answer in time; what it was given carries on">>,
                              ?I:with(Iso, fun(_) -> timer:sleep(3000), slow end, 200)),
                 %% node_of/1 is answered by the isolating process itself, so how
                 %% long it takes says whether that process is still waiting on
