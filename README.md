@@ -479,13 +479,15 @@ Add `tflite_beam` to your list of dependencies in `rebar.config`:
 
 ```erlang
 {deps, [
-  {tflite_beam, "1.1.0"}
+  {tflite_beam, "1.1.1"}
 ]}
 ```
 
 1.1.0 builds the runtime from LiteRT 2.3.0 and adds acceleration queries,
 inference metrics options, backend settings and experimental graph operations.
 External delegate plugins must be built against LiteRT 2.3.0.
+
+1.1.1 fixes isolated model startup when EPMD is not already running.
 
 The 1.x line builds the runtime from LiteRT rather than from TensorFlow. The 0.3
 line is the last one built from TensorFlow itself:

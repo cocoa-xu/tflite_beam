@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.1.1 (2026-10-15)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v1.1.1) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v1.1.1)
+
+- Start isolated models when EPMD is not already running by starting the named
+  peer before enabling distribution in the parent node.
+
 ## v1.1.0 (2026-10-14)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v1.1.0) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v1.1.0)
 
