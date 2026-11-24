@@ -41,8 +41,9 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       TFLITE_BEAM_CORAL_SUPPORT: "true"
       TFLITE_BEAM_PREFER_PRECOMPILED: "false"
+      TFLITE_BEAM_USE_CCACHE: "true"
       # the plugin is so the external-delegate tests have something to load
-      CMAKE_OPTIONS: "-D TFLITE_BEAM_BUILD_TEST_PLUGIN=ON -D CMAKE_C_COMPILER_LAUNCHER=ccache -D CMAKE_CXX_COMPILER_LAUNCHER=ccache"
+      CMAKE_OPTIONS: "-D TFLITE_BEAM_BUILD_TEST_PLUGIN=ON"
 
     steps:
       - name: Checkout

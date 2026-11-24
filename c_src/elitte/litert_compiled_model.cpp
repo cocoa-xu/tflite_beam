@@ -288,8 +288,8 @@ ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_T
         return erlang::nif::error(env, "expecting a path and four integers");
     }
 
-    LiteRtBackendPayloads backend_options;
-    if (argc == 7) backend_options = litert_backend_payloads(env, argv[6], precision);
+    LiteRtBackendPayloads backend_options =
+        litert_backend_payloads(env, argc == 7 ? argv[6] : enif_make_new_map(env), precision, profile);
 
     auto res = NifResLiteRtCompiledModel::allocate_resource(env, error);
     if (res == nullptr) return error;
@@ -305,17 +305,8 @@ ERL_NIF_TERM litert_compiled_model_new(ErlNifEnv *env, int argc, const ERL_NIF_T
     TRY(LiteRtSetOptionsHardwareAccelerators(res->options, (LiteRtHwAcceleratorSet)accelerators),
         "select accelerator")
 
-    if (argc == 6 && precision != 0) {
-        char toml[40];
-        snprintf(toml, sizeof(toml), "precision = %d\n", precision);
-        TRY(add_toml_options(res->options, "gpu_options", toml), "attach gpu options")
-    }
     for (const auto &entry : backend_options) {
         TRY(add_toml_options(res->options, entry.first.c_str(), entry.second.c_str()), "attach backend options")
-    }
-    if (profile) {
-        TRY(add_toml_options(res->options, "runtime_options_string", "enable_profiling = true\n"),
-            "attach runtime options")
     }
 
     TRY(LiteRtCreateCompiledModel(env_res->val, res->model, res->options, &res->val), "compile model")
@@ -738,6 +729,93 @@ ERL_NIF_TERM litert_compiled_model_non_cpu_fully_accelerated(ErlNifEnv *env, int
     return erlang::nif::ok(env, erlang::nif::atom(env, fully ? "true" : "false"));
 }
 
+// litert_compiled_model_last_inference_duration(Model) -> {ok, non_neg_integer() | undefined} | {error, Reason}
+ERL_NIF_TERM litert_compiled_model_last_inference_duration(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+    CompiledModelUse res(env, argv[0]);
+    if (!res) return res.error();
+
+    int64_t duration_ns = -1;
+    LiteRtStatus st = LiteRtGetCompiledModelLastInferenceDuration(res->val, &duration_ns);
+    if (st != kLiteRtStatusOk) return litert_error(env, "last inference duration", st);
+    if (duration_ns < 0) return erlang::nif::ok(env, erlang::nif::atom(env, "undefined"));
+    return erlang::nif::ok(env, enif_make_int64(env, duration_ns));
+}
+
+static ERL_NIF_TERM hardware_types_term(ErlNifEnv *env, LiteRtHwAcceleratorSet set) {
+    ERL_NIF_TERM list = enif_make_list(env, 0);
+    int known = kLiteRtHwAcceleratorCpu | kLiteRtHwAcceleratorGpu | kLiteRtHwAcceleratorNpu;
+    int unknown = set & ~known;
+    if (unknown != 0) {
+        list = enif_make_list_cell(env, enif_make_int(env, unknown), list);
+    }
+    if (set & kLiteRtHwAcceleratorNpu) {
+        list = enif_make_list_cell(env, erlang::nif::atom(env, "npu"), list);
+    }
+    if (set & kLiteRtHwAcceleratorGpu) {
+        list = enif_make_list_cell(env, erlang::nif::atom(env, "gpu"), list);
+    }
+    if (set & kLiteRtHwAcceleratorCpu) {
+        list = enif_make_list_cell(env, erlang::nif::atom(env, "cpu"), list);
+    }
+    return list;
+}
+
+// litert_compiled_model_delegation_metrics(Model) -> {ok, map()} | {error, Reason}
+ERL_NIF_TERM litert_compiled_model_delegation_metrics(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 1) return enif_make_badarg(env);
+    CompiledModelUse res(env, argv[0]);
+    if (!res) return res.error();
+
+    LiteRtDelegationMetricsConst metrics = nullptr;
+    LiteRtStatus st = LiteRtCompiledModelGetDelegationMetrics(res->val, &metrics);
+    if (st != kLiteRtStatusOk) return litert_error(env, "delegation metrics", st);
+
+    int total_nodes = 0;
+    st = LiteRtGetDelegationMetricsTotalNodeCount(metrics, &total_nodes);
+    if (st != kLiteRtStatusOk) return litert_error(env, "delegation total node count", st);
+
+    LiteRtParamIndex num_accel = 0;
+    st = LiteRtGetNumDelegationMetricsAccelerators(metrics, &num_accel);
+    if (st != kLiteRtStatusOk) return litert_error(env, "delegation accelerator count", st);
+
+    ERL_NIF_TERM accel_list = enif_make_list(env, 0);
+    for (LiteRtParamIndex i = num_accel; i-- > 0; ) {
+        LiteRtAcceleratorDelegationMetricsConst accel = nullptr;
+        st = LiteRtGetDelegationMetricsAccelerator(metrics, i, &accel);
+        if (st != kLiteRtStatusOk) return litert_error(env, "delegation accelerator", st);
+
+        const char *accel_name = nullptr;
+        LiteRtHwAcceleratorSet hw_type = kLiteRtHwAcceleratorNone;
+        int delegated_nodes = 0;
+        int partitions = 0;
+        if ((st = LiteRtGetAcceleratorDelegationMetricsName(accel, &accel_name)) != kLiteRtStatusOk ||
+            (st = LiteRtGetAcceleratorDelegationMetricsHardwareType(accel, &hw_type)) != kLiteRtStatusOk ||
+            (st = LiteRtGetAcceleratorDelegationMetricsDelegatedNodeCount(accel, &delegated_nodes)) != kLiteRtStatusOk ||
+            (st = LiteRtGetAcceleratorDelegationMetricsPartitionCount(accel, &partitions)) != kLiteRtStatusOk) {
+            return litert_error(env, "accelerator delegation metrics", st);
+        }
+
+        ERL_NIF_TERM entry = enif_make_new_map(env);
+        enif_make_map_put(env, entry, erlang::nif::atom(env, "name"),
+            erlang::nif::make_binary(env, accel_name ? accel_name : ""), &entry);
+        enif_make_map_put(env, entry, erlang::nif::atom(env, "hardware_types"),
+            hardware_types_term(env, hw_type), &entry);
+        enif_make_map_put(env, entry, erlang::nif::atom(env, "delegated_node_count"),
+            enif_make_int(env, delegated_nodes), &entry);
+        enif_make_map_put(env, entry, erlang::nif::atom(env, "partition_count"),
+            enif_make_int(env, partitions), &entry);
+        accel_list = enif_make_list_cell(env, entry, accel_list);
+    }
+
+    ERL_NIF_TERM result = enif_make_new_map(env);
+    enif_make_map_put(env, result, erlang::nif::atom(env, "total_node_count"),
+        enif_make_int(env, total_nodes), &result);
+    enif_make_map_put(env, result, erlang::nif::atom(env, "accelerators"),
+        accel_list, &result);
+    return erlang::nif::ok(env, result);
+}
+
 // LiteRT's own numbers mean nothing to a caller and can be renumbered upstream
 // without this file changing, so they are named here against the enum constants
 // rather than passed through. An unknown one keeps its number, because dropping
@@ -961,6 +1039,15 @@ ERL_NIF_TERM litert_platform_support(ErlNifEnv *env, int argc, const ERL_NIF_TER
     put("fastrpc",    LiteRtHasFastRpcSupport());
     put("sync_fence", LiteRtHasSyncFenceSupport());
     return map;
+}
+
+// litert_runtime_abi_version() -> {ok, binary()} | {error, Reason}
+ERL_NIF_TERM litert_runtime_abi_version(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 0) return enif_make_badarg(env);
+    const char *abi_version = nullptr;
+    LiteRtStatus st = LiteRtGetRuntimeAbiVersion(&abi_version);
+    if (st != kLiteRtStatusOk) return litert_error(env, "runtime ABI version", st);
+    return erlang::nif::ok(env, erlang::nif::make_binary(env, abi_version ? abi_version : ""));
 }
 
 // litert_compiled_model_controlling_process(Model, Pid) -> ok | {error, Reason}

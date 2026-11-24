@@ -100,6 +100,9 @@ compiled_model_concurrency(Model) ->
             _ = ?A:io_sizes(CM),
             _ = ?A:fully_accelerated(CM),
             _ = ?A:non_cpu_fully_accelerated(CM),
+            _ = ?A:last_inference_duration(CM),
+            _ = ?A:delegation_metrics(CM),
+            _ = ?A:runtime_abi_version(),
             _ = ?A:run_with_metrics(CM, In),
             _ = ?A:run_with_metrics(CM, In, #{host_timing => true,
                 extra_metrics => [{<<"tag">>, binary:copy(<<"x">>, 128)}]}),
@@ -174,6 +177,9 @@ compiled_model_lifetimes(Model) ->
         {ok, _} = ?A:run(CM, In),
         {ok, _} = ?A:run_with_metrics(CM, In),
         {ok, false} = ?A:non_cpu_fully_accelerated(CM),
+        {ok, Dur} = ?A:last_inference_duration(CM),
+        true = is_integer(Dur) andalso Dur >= 0,
+        {ok, #{total_node_count := _, accelerators := _}} = ?A:delegation_metrics(CM),
         Extra = [{integer_to_binary(N), binary:copy(<<"x">>, N + 64)}
                  || N <- lists:seq(1, 64)],
         {ok, {_, [{<<"tflite_beam_run_us">>, Time} | Extra]}} =
@@ -192,14 +198,26 @@ compiled_model_lifetimes(Model) ->
 
 backend_options_lifetimes(Model) ->
     {ok, Env} = ?A:environment(),
-    Options = #{cpu => #{num_threads => 2}, gpu => #{use_ir_model => true},
-        qualcomm => #{qnn_lib_dir => binary:copy(<<"path">>, 64)},
+    Options = #{cpu => #{num_threads => 2},
+        gpu => #{use_ir_model => true, enable_fast_tuning => true,
+                 debug_delegate_partition => false, debug_first_delegate_node_index => 0},
+        qualcomm => #{qnn_lib_dir => binary:copy(<<"path">>, 64), graph_priority => high,
+                      htp_dlbc => true, htp_device_id => 0},
         google_tensor => #{input_coherency => [{<<"serving">>, binary:copy(<<"input">>, 32), true}]},
         mediatek => #{option_bundle => binary:copy(<<"bundle">>, 32)},
-        arm => #{enable_just_in_time => true}, intel_openvino => #{enable_weight_sharing => true}},
+        arm_vulkan_ml => #{enable_just_in_time => true, dump_op_timings => false,
+                           float_fallback => true},
+        compiler => #{partition_strategy => weakly_connected, max_partitions => 2,
+                      positional_input_shapes => [{<<"serving_default">>, [1, 4]}],
+                      tensor_input_shapes => [{<<"serving_default">>, <<"in">>, [1, -1]}]},
+        runtime => #{error_reporter_mode => buffer, compress_quantization_zero_points => true,
+                     selected_signatures => [<<"serving_default">>]},
+        samsung => #{enable_large_model_support => true, soc_model => <<"s5e">>},
+        webnn => #{device_preference => gpu, power_preference => default, precision => fp16},
+        intel_openvino => #{enable_weight_sharing => true}},
     repeat(40, fun() ->
         {ok, _} = ?A:backend_options(Options),
-        {ok, CM} = ?A:new(Env, Model, #{backend_options => Options}),
+        {ok, CM} = ?A:new(Env, Model, #{profile => true, backend_options => Options}),
         {ok, {Sizes, _}} = ?A:io_sizes(CM),
         {ok, _} = ?A:run(CM, [binary:copy(<<0>>, N) || N <- Sizes]),
         {error, _} = ?A:backend_options(Options#{qualcomm := #{qnn_lib_dir => <<0>>}})
@@ -210,16 +228,20 @@ graph_rewrite_lifetimes(Root) ->
     {ok, Env} = ?A:environment(),
     Path = filename:join([Root, "test", "models", "graph_options.tflite"]),
     {ok, Source} = file:read_file(Path),
-    {ok, [_, _, #{operators := [#{options := Options}]}]} =
+    {ok, [_, _, #{operators := [#{options := Options}]},
+          #{operators := [#{options := Conv3dTOpts}]}, _]} =
         tflite_beam_litert_model:inspect(Env, {buffer, Source}),
     repeat(80, fun() ->
         Changed = Options#{name := binary:copy(<<"name">>, 64)},
-        Edit = #{subgraph => 2, operator => 0, options => Changed},
-        {ok, Binary} = tflite_beam_litert_model:rewrite(Env, {buffer, Source}, [Edit]),
-        {ok, [_, _, #{operators := [#{options := Changed}]}]} =
+        ChangedConv = Conv3dTOpts#{fused_activation_function := relu},
+        Edits = [#{subgraph => 2, operator => 0, options => Changed},
+                 #{subgraph => 3, operator => 0, options => ChangedConv}],
+        {ok, Binary} = tflite_beam_litert_model:rewrite(Env, {buffer, Source}, Edits),
+        {ok, [_, _, #{operators := [#{options := Changed}]},
+              #{operators := [#{options := ChangedConv}]}, _]} =
             tflite_beam_litert_model:inspect(Env, {buffer, Binary}),
         {error, _} = tflite_beam_litert_model:rewrite(Env, {buffer, Source},
-            [Edit#{options := Changed#{attributes := <<1, 2, 3>>}}])
+            [#{subgraph => 2, operator => 0, options => Changed#{attributes := <<1, 2, 3>>}}])
     end),
     ok.
 

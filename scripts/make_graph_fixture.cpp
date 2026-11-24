@@ -5,7 +5,7 @@
 
 #include "flatbuffers/flatbuffers.h"
 #include "flatbuffers/flexbuffers.h"
-#include "tensorflow/lite/schema/schema_generated.h"
+#include "tflite/schema/schema_generated.h"
 
 static uint32_t buffer(tflite::ModelT &model, const std::vector<int32_t> &values) {
     auto result = std::make_unique<tflite::BufferT>();
@@ -51,7 +51,9 @@ int main(int argc, char **argv) {
     model.description = "LiteRT graph option fixtures";
     model.buffers.push_back(std::make_unique<tflite::BufferT>());
     for (auto code : {tflite::BuiltinOperator_ONE_HOT, tflite::BuiltinOperator_SPLIT_V,
-                     tflite::BuiltinOperator_STABLEHLO_COMPOSITE}) {
+                     tflite::BuiltinOperator_STABLEHLO_COMPOSITE,
+                     tflite::BuiltinOperator_CONV_3D_TRANSPOSE,
+                     tflite::BuiltinOperator_LOCAL_RESPONSE_NORMALIZATION}) {
         auto entry = std::make_unique<tflite::OperatorCodeT>();
         entry->builtin_code = code;
         entry->deprecated_builtin_code = code < 127 ? code : 127;
@@ -118,6 +120,51 @@ int main(int argc, char **argv) {
     composite->inputs = {0};
     composite->outputs = {1};
     model.subgraphs.push_back(std::move(composite));
+
+    auto conv3d_t = std::make_unique<tflite::SubGraphT>();
+    conv3d_t->name = "conv3d_transpose";
+    tensor(*conv3d_t, tflite::TensorType_INT32, {5}, buffer(model, {1, 2, 2, 2, 1}), "conv3d_shape");
+    tensor(*conv3d_t, tflite::TensorType_FLOAT32, {1, 1, 1, 1, 1}, buffer(model, {0x40000000}), "conv3d_filter");
+    tensor(*conv3d_t, tflite::TensorType_FLOAT32, {1, 2, 2, 2, 1}, 0, "conv3d_input");
+    tensor(*conv3d_t, tflite::TensorType_FLOAT32, {1, 2, 2, 2, 1}, 0, "conv3d_output");
+    op = std::make_unique<tflite::OperatorT>();
+    op->opcode_index = 3;
+    op->inputs = {0, 1, 2};
+    op->outputs = {3};
+    tflite::Conv3DOptionsT conv3d_options;
+    conv3d_options.padding = tflite::Padding_SAME;
+    conv3d_options.stride_w = 1;
+    conv3d_options.stride_h = 1;
+    conv3d_options.stride_d = 1;
+    conv3d_options.fused_activation_function = tflite::ActivationFunctionType_NONE;
+    conv3d_options.dilation_w_factor = 1;
+    conv3d_options.dilation_h_factor = 1;
+    conv3d_options.dilation_d_factor = 1;
+    op->builtin_options.Set(conv3d_options);
+    conv3d_t->operators.push_back(std::move(op));
+    conv3d_t->inputs = {2};
+    conv3d_t->outputs = {3};
+    model.subgraphs.push_back(std::move(conv3d_t));
+
+    auto lrn = std::make_unique<tflite::SubGraphT>();
+    lrn->name = "local_response_normalization";
+    tensor(*lrn, tflite::TensorType_FLOAT32, {1, 2, 2, 2}, 0, "lrn_input");
+    tensor(*lrn, tflite::TensorType_FLOAT32, {1, 2, 2, 2}, 0, "lrn_output");
+    op = std::make_unique<tflite::OperatorT>();
+    op->opcode_index = 4;
+    op->inputs = {0};
+    op->outputs = {1};
+    tflite::LocalResponseNormalizationOptionsT lrn_options;
+    lrn_options.radius = 1;
+    lrn_options.bias = 1.0f;
+    lrn_options.alpha = 0.5f;
+    lrn_options.beta = 0.75f;
+    op->builtin_options.Set(lrn_options);
+    lrn->operators.push_back(std::move(op));
+    lrn->inputs = {0};
+    lrn->outputs = {1};
+    model.subgraphs.push_back(std::move(lrn));
+
     for (uint32_t i = 0; i < model.subgraphs.size(); ++i) signature(model, i);
     if (argc == 3) {
         if (std::strcmp(argv[2], "mismatched") == 0) {
@@ -127,6 +174,10 @@ int main(int argc, char **argv) {
         } else if (std::strcmp(argv[2], "composite_mismatched") == 0) {
             tflite::StablehloConcatenateOptionsT other;
             model.subgraphs[2]->operators[0]->builtin_options_2.Set(other);
+        } else if (std::strcmp(argv[2], "conv3d_transpose_mismatched") == 0) {
+            model.subgraphs[3]->operators[0]->builtin_options.Set(hot_options);
+        } else if (std::strcmp(argv[2], "lrn_mismatched") == 0) {
+            model.subgraphs[4]->operators[0]->builtin_options.Set(hot_options);
         } else if (std::strcmp(argv[2], "missing") == 0) {
             model.subgraphs[0]->operators[0]->builtin_options.Reset();
         } else {

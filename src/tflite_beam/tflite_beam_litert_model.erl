@@ -6,12 +6,14 @@
 -type source() :: binary() | string() | {buffer, binary()}.
 -type edit() :: #{subgraph := non_neg_integer(), operator := non_neg_integer(), options := map()}.
 
-%% @doc Read subgraph connectivity and OneHot, SplitV and StableHLO composite options.
+%% @doc Read subgraph connectivity and OneHot, SplitV, Conv3dTranspose,
+%% LocalResponseNormalization and StableHLO composite options.
 -spec inspect(reference(), source()) -> {ok, [map()]} | {error, binary()}.
 inspect(Env, Source) ->
     with_source(Source, fun(Value) -> tflite_beam_nif:litert_model_inspect(Env, Value) end).
 
-%% @doc Rewrite operator options in a private model and return a TFLite binary.
+%% @doc Rewrite operator options (OneHot, SplitV, Conv3dTranspose and StableHLO
+%% composite) in a private model and return a TFLite binary.
 %% Edits refer to the indices returned by inspect/2. The source is never modified.
 %% Tensor shapes and connectivity are preserved; the caller must keep them
 %% consistent with the new options. This experimental API uses LiteRT's builder.

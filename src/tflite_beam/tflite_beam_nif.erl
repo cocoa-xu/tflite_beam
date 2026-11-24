@@ -62,6 +62,12 @@ litert_compiled_model_fully_accelerated(_model) ->
 litert_compiled_model_non_cpu_fully_accelerated(_model) ->
     not_loaded(?LINE).
 
+litert_compiled_model_last_inference_duration(_model) ->
+    not_loaded(?LINE).
+
+litert_compiled_model_delegation_metrics(_model) ->
+    not_loaded(?LINE).
+
 litert_compiled_model_profile(_model, _limit) ->
     not_loaded(?LINE).
 
@@ -90,6 +96,9 @@ litert_compiled_model_run_with_metrics(_model, _inputs, _detail_level, _host_tim
     not_loaded(?LINE).
 
 litert_platform_support() ->
+    not_loaded(?LINE).
+
+litert_runtime_abi_version() ->
     not_loaded(?LINE).
 
 litert_compiled_model_set_controlling_process(_model, _pid) ->

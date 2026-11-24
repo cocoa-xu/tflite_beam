@@ -16,12 +16,12 @@
 -include("tflite_beam/tflite_beam_records.hrl").
 
 %% @doc The version of the TfLite sources this library was built from, e.g.
-%% `<<"2.3.0">>'.
+%% `<<"2.4.0">>'.
 %%
 %% Since the runtime moved to LiteRT's `tflite' subtree this is LiteRT's version,
 %% because that is where the sources come from. It is not the same number as
 %% {@link tensorflow_version/0}, and the two are not comparable: LiteRT versions
-%% independently, so its 2.3.0 is newer than TensorFlow's 2.21.0, not older.
+%% independently, so its 2.4.0 is newer than TensorFlow's 2.21.0, not older.
 %%
 %% **This is the one to compare a delegate plugin against.** Open-source TfLite
 %% offers no binary-stable delegate interface: a plugin loaded through
@@ -94,7 +94,7 @@ xnnpack_max_tensor_dims() ->
 source_tree() ->
     tflite_beam_nif:tflite_source_tree().
 
-%% @doc The TensorFlow release this build pulled in, e.g. `<<"2.21.0-rc0">>'.
+%% @doc The TensorFlow release this build pulled headers from, e.g. `<<"2.21.0">>'.
 %%
 %% TensorFlow is no longer where the runtime comes from. LiteRT reaches into it
 %% for `compiler/mlir/lite', TSL and XLA, and pins a release whose schema its own

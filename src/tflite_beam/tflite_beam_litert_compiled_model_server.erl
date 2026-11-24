@@ -39,6 +39,7 @@
     run/2, run/3,
     with/2, with/3,
     fully_accelerated/1, non_cpu_fully_accelerated/1,
+    last_inference_duration/1, delegation_metrics/1,
     io_sizes/1,
     run_with_metrics/2, run_with_metrics/3, run_with_metrics/4,
     profile/1, profile/2,
@@ -153,6 +154,16 @@ fully_accelerated(Server) ->
 -spec non_cpu_fully_accelerated(pid()) -> {ok, boolean()} | {error, binary()}.
 non_cpu_fully_accelerated(Server) ->
     with(Server, fun(M) -> ?M:non_cpu_fully_accelerated(M) end).
+
+%% @doc Duration of the last native inference in nanoseconds, or `undefined'.
+-spec last_inference_duration(pid()) -> {ok, non_neg_integer() | undefined} | {error, binary()}.
+last_inference_duration(Server) ->
+    with(Server, fun(M) -> ?M:last_inference_duration(M) end).
+
+%% @doc Total graph node count before delegation and per-accelerator delegation metrics.
+-spec delegation_metrics(pid()) -> {ok, ?M:delegation_metrics()} | {error, binary()}.
+delegation_metrics(Server) ->
+    with(Server, fun(M) -> ?M:delegation_metrics(M) end).
 
 %% @doc The byte size of each input and output buffer.
 -spec io_sizes(pid()) -> {ok, {[non_neg_integer()], [non_neg_integer()]}} | {error, binary()}.

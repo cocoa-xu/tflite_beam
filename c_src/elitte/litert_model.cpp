@@ -75,12 +75,52 @@ void validate_options(LiteRtOp op) {
     case kLiteRtOpCodeTflSplitV:
         valid = litert::internal::GetTflOptions(*op).AsSplitVOptions() != nullptr;
         break;
+    case kLiteRtOpCodeTflConv3dTranspose:
+        valid = litert::internal::GetTflOptions(*op).AsConv3DOptions() != nullptr;
+        break;
+    case kLiteRtOpCodeTflLocalResponseNormalization:
+        valid = litert::internal::GetTflOptions(*op).AsLocalResponseNormalizationOptions() != nullptr;
+        break;
     case kLiteRtOpCodeShloComposite:
         valid = litert::internal::GetTflOptions2(*op).AsStableHLOCompositeOptions() != nullptr;
         break;
     default: break;
     }
     if (!valid) throw std::invalid_argument("operator options do not match the opcode");
+}
+
+ERL_NIF_TERM padding_term(ErlNifEnv *env, uint32_t padding) {
+    switch (padding) {
+    case 0: return atom(env, "same");
+    case 1: return atom(env, "valid");
+    default: return enif_make_uint(env, padding);
+    }
+}
+
+uint32_t padding_value(ErlNifEnv *env, ERL_NIF_TERM term) {
+    if (enif_is_identical(term, atom(env, "same"))) return 0;
+    if (enif_is_identical(term, atom(env, "valid"))) return 1;
+    throw std::invalid_argument("padding must be same or valid");
+}
+
+ERL_NIF_TERM activation_term(ErlNifEnv *env, uint32_t activation) {
+    switch (activation) {
+    case 0: return atom(env, "none");
+    case 1: return atom(env, "relu");
+    case 2: return atom(env, "relu_n1_to_1");
+    case 3: return atom(env, "relu6");
+    case 4: return atom(env, "tanh");
+    case 5: return atom(env, "sign_bit");
+    default: return enif_make_uint(env, activation);
+    }
+}
+
+uint32_t activation_value(ErlNifEnv *env, ERL_NIF_TERM term) {
+    const char *names[] = {"none", "relu", "relu_n1_to_1", "relu6", "tanh", "sign_bit"};
+    for (uint32_t i = 0; i < 6; ++i) {
+        if (enif_is_identical(term, atom(env, names[i]))) return i;
+    }
+    throw std::invalid_argument("unknown fused_activation_function");
 }
 
 Model load(ErlNifEnv *env, ERL_NIF_TERM environment, ERL_NIF_TERM source) {
@@ -131,6 +171,41 @@ ERL_NIF_TERM options(ErlNifEnv *env, LiteRtOp op) {
         check(LiteRtGetSplitVNumSplitsOption(op, &value));
         put(env, result, "num_splits", enif_make_int(env, value));
         break;
+    case kLiteRtOpCodeTflConv3dTranspose: {
+        uint32_t padding = 0, activation = 0;
+        int32_t stride_d = 0, stride_w = 0, stride_h = 0;
+        int32_t dilation_d = 0, dilation_w = 0, dilation_h = 0;
+        check(LiteRtGetConv3dTransposePaddingOption(op, &padding));
+        check(LiteRtGetConv3dTransposeStrideDOption(op, &stride_d));
+        check(LiteRtGetConv3dTransposeStrideWOption(op, &stride_w));
+        check(LiteRtGetConv3dTransposeStrideHOption(op, &stride_h));
+        check(LiteRtGetConv3dTransposeFusedActivationOption(op, &activation));
+        check(LiteRtGetConv3dTransposeDilationDOption(op, &dilation_d));
+        check(LiteRtGetConv3dTransposeDilationWOption(op, &dilation_w));
+        check(LiteRtGetConv3dTransposeDilationHOption(op, &dilation_h));
+        put(env, result, "padding", padding_term(env, padding));
+        put(env, result, "stride_d", enif_make_int(env, stride_d));
+        put(env, result, "stride_w", enif_make_int(env, stride_w));
+        put(env, result, "stride_h", enif_make_int(env, stride_h));
+        put(env, result, "fused_activation_function", activation_term(env, activation));
+        put(env, result, "dilation_d_factor", enif_make_int(env, dilation_d));
+        put(env, result, "dilation_w_factor", enif_make_int(env, dilation_w));
+        put(env, result, "dilation_h_factor", enif_make_int(env, dilation_h));
+        break;
+    }
+    case kLiteRtOpCodeTflLocalResponseNormalization: {
+        int32_t radius = 0;
+        float bias = 0.0f, alpha = 0.0f, beta = 0.0f;
+        check(LiteRtGetLocalResponseNormalizationRadiusOption(op, &radius));
+        check(LiteRtGetLocalResponseNormalizationBiasOption(op, &bias));
+        check(LiteRtGetLocalResponseNormalizationAlphaOption(op, &alpha));
+        check(LiteRtGetLocalResponseNormalizationBetaOption(op, &beta));
+        put(env, result, "radius", enif_make_int(env, radius));
+        put(env, result, "bias", enif_make_double(env, bias));
+        put(env, result, "alpha", enif_make_double(env, alpha));
+        put(env, result, "beta", enif_make_double(env, beta));
+        break;
+    }
     case kLiteRtOpCodeShloComposite: {
         const char *name;
         const uint8_t *attributes;
@@ -155,6 +230,8 @@ ERL_NIF_TERM code(ErlNifEnv *env, LiteRtOpCode value) {
     switch (value) {
     case kLiteRtOpCodeTflOneHot: return atom(env, "one_hot");
     case kLiteRtOpCodeTflSplitV: return atom(env, "split_v");
+    case kLiteRtOpCodeTflConv3dTranspose: return atom(env, "conv3d_transpose");
+    case kLiteRtOpCodeTflLocalResponseNormalization: return atom(env, "local_response_normalization");
     case kLiteRtOpCodeShloComposite: return atom(env, "stablehlo_composite");
     default: return enif_make_int(env, value);
     }
@@ -221,6 +298,30 @@ void rewrite_options(ErlNifEnv *env, LiteRtModel model, size_t graph_index,
         litert::internal::SetTflOptions(*original, litert::internal::TakeTflOptions(*op));
         break;
     }
+    case kLiteRtOpCodeTflConv3dTranspose: {
+        if (size != 8) {
+            throw std::invalid_argument(
+                "conv3d_transpose needs padding, stride_w, stride_h, stride_d, "
+                "dilation_w_factor, dilation_h_factor, dilation_d_factor and fused_activation_function");
+        }
+        uint32_t padding = padding_value(env, get(env, map, "padding"));
+        int32_t stride_w = integer(env, map, "stride_w");
+        int32_t stride_h = integer(env, map, "stride_h");
+        int32_t stride_d = integer(env, map, "stride_d");
+        int32_t dilation_w = integer(env, map, "dilation_w_factor");
+        int32_t dilation_h = integer(env, map, "dilation_h_factor");
+        int32_t dilation_d = integer(env, map, "dilation_d_factor");
+        uint32_t activation = activation_value(env, get(env, map, "fused_activation_function"));
+        if (stride_w <= 0 || stride_h <= 0 || stride_d <= 0 ||
+            dilation_w <= 0 || dilation_h <= 0 || dilation_d <= 0) {
+            throw std::invalid_argument("conv3d_transpose strides and dilations must be positive");
+        }
+        check(LiteRtBuilderBuildConv3dTransposeOpOption(
+            &builder, op, &padding, &stride_w, &stride_h, &stride_d,
+            &dilation_w, &dilation_h, &dilation_d, &activation));
+        litert::internal::SetTflOptions(*original, litert::internal::TakeTflOptions(*op));
+        break;
+    }
     case kLiteRtOpCodeShloComposite: {
         if (size != 4) throw std::invalid_argument("stablehlo_composite needs name, decomposition_subgraph_index, version and attributes");
         std::string name = string(env, get(env, map, "name"));
@@ -242,7 +343,7 @@ void rewrite_options(ErlNifEnv *env, LiteRtModel model, size_t graph_index,
         litert::internal::SetTflOptions2(*original, litert::internal::TakeTflOptions2(*op));
         break;
     }
-    default: throw std::invalid_argument("graph rewrite supports one_hot, split_v and stablehlo_composite");
+    default: throw std::invalid_argument("graph rewrite supports one_hot, split_v, conv3d_transpose and stablehlo_composite");
     }
 }
 

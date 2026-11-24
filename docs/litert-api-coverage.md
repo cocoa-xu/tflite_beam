@@ -1,6 +1,6 @@
 # What of LiteRT's C API this binds, and what it does not
 
-LiteRT 2.3.0 publishes 28 headers under `litert/c`. This is which of them
+LiteRT 2.4.0 publishes 29 headers under `litert/c` (plus 12 under `litert/c/options`). This is which of them
 tflite_beam reaches, and for the rest, the reason it does not. It exists so the
 next person asking "did we miss something" gets an answer rather than a survey.
 
@@ -10,14 +10,14 @@ Everything here is behind `TFLITE_BEAM_ENABLE_LITERT_API=ON`.
 
 | header | reached through |
 |---|---|
-| `litert_common.h` | status strings, accelerator and precision enums |
-| `litert_environment.h`, `litert_environment_options.h` | `tflite_beam_litert_compiled_model:environment/1`, which is how an accelerator plugin is found |
+| `litert_common.h` | status strings, accelerator, error-reporter and precision enums |
+| `litert_environment.h`, `litert_environment_options.h` | `tflite_beam_litert_compiled_model:environment/1` (plugin search path) and `runtime_abi_version/0` |
 | `litert_model.h` | signature listing, experimental graph inspection and serialization |
-| `litert_builder.h`, `litert_op_options.h` | experimental OneHot, SplitV and StableHLO composite option rewrites |
-| `litert_options.h`, `litert_opaque_options.h` | accelerator selection, and the TOML payloads that carry precision and profiling |
-| `options/litert_{cpu,gpu,arm,intel_openvino,google_tensor,mediatek,qualcomm}_options.h` | typed backend settings, native serialization, weight sharing and CPU weight caches through `backend_options` |
-| `litert_compiled_model.h` | `new/3`, `run/2`, `fully_accelerated/1`, `non_cpu_fully_accelerated/1`, `io_sizes/1` |
-| `litert_profiler.h`, `litert_profiler_event.h` | `profile/1`, `summarise_profile/1`, `reset_profile/1` |
+| `litert_builder.h`, `litert_op_options.h` | experimental OneHot, SplitV, Conv3dTranspose and StableHLO composite option rewrites, plus LocalResponseNormalization option inspection |
+| `litert_options.h`, `litert_opaque_options.h` | accelerator selection, and the TOML payloads that carry precision, profiling and backend settings |
+| `options/litert_{cpu,gpu,arm_vulkan_ml,compiler,runtime,samsung,webnn,intel_openvino,google_tensor,mediatek,qualcomm}_options.h` | typed backend settings, native serialization, compile-time input shape overrides, runtime options, weight sharing and CPU weight caches through `backend_options` |
+| `litert_compiled_model.h` | `new/3`, `run/2`, `fully_accelerated/1`, `non_cpu_fully_accelerated/1`, `last_inference_duration/1`, `delegation_metrics/1`, `io_sizes/1` |
+| `litert_profiler.h`, `litert_profiler_event.h` | `profile/1,2`, `pending_events/1`, `summarise_profile/1`, `reset_profile/1` |
 | `litert_metrics.h` | `run_with_metrics/2,3`, which brackets inference and uses `LiteRtAppendMetric` for optional host timing and extra metrics |
 | `litert_tensor_buffer.h`, `litert_tensor_buffer_requirements.h`, `litert_tensor_buffer_types.h` | managed buffers, allocated by LiteRT from each tensor's requirements, which need not be host memory |
 | `litert_platform_support.h` | `platform_support/0` |
@@ -32,21 +32,25 @@ that a `gen_server:call/3` does not already cover. It becomes worth binding if b
 ever stay resident on a device between calls, and not before.
 
 Most of **`litert_op_options.h`** remains unbound. Graph inspection reports
-connectivity for every operator and options for OneHot, SplitV and StableHLO
-composite. The three corresponding builder functions added in 2.3.0 are bound
-through `tflite_beam_litert_model:rewrite/3`. It operates on a private model and
-returns a serialized binary. LiteRT exposes no public standalone builder
-creation or commit API, so the binding uses the pinned runtime's internal
-builder and serializer. It preserves the graph's topology and is experimental.
+connectivity for every operator and options for OneHot, SplitV, Conv3dTranspose,
+LocalResponseNormalization and StableHLO composite. The builder functions for
+OneHot, SplitV, Conv3dTranspose and StableHLO composite are bound through
+`tflite_beam_litert_model:rewrite/3` (LiteRT 2.4.0 exposes no builder for
+LocalResponseNormalization). It operates on a private model and returns a
+serialized binary. LiteRT exposes no public standalone builder creation or
+commit API, so the binding uses the pinned runtime's internal builder and
+serializer. It preserves the graph's topology and is experimental.
 
-**`litert_custom_op_kernel.h`** lets a custom operator be implemented in the
-host language. On the BEAM that means calling back into Erlang from inside an
-inference, on a dirty scheduler, per operator invocation. That is a design with
-real hazards and no demand yet.
+**`litert_custom_op_kernel.h`** and **`litert_op_resolver.h`** let custom
+operators or op resolvers be implemented in the host language. On the BEAM that
+means calling back into Erlang from inside an inference or compilation, on a
+dirty scheduler. That is a design with real hazards and no demand yet.
 
 **`litert_gl_types.h`, `litert_opencl_types.h`, `litert_webgpu_types.h`,
-`litert_custom_tensor_buffer.h`** describe device-resident buffers. Same reason
-as `litert_event.h`: nothing here holds one.
+`litert_custom_tensor_buffer.h`** (together with external Vulkan environment
+handle tags and `LiteRtCompiledModel{Register,Unregister}TensorBuffer`) describe
+device-resident buffers and foreign GPU handles. Same reason as `litert_event.h`:
+nothing here holds one.
 
 **`litert_event_type.h`, `litert_op_code.h`** are enumerations used by the
 above.
@@ -82,7 +86,7 @@ would apply to `tflite_beam_interpreter` just as much.
 ## The one thing worth rechecking on an upstream bump
 
 Accelerator metrics depend on two optional entries of `LiteRtAcceleratorDef`.
-LiteRT 2.3.0's ML Drift GPU implementation supplies
+LiteRT 2.4.0's ML Drift GPU implementation supplies
 `gpu_intermediate_memory_bytes` and `gpu_constant_memory_bytes` when its backend
 can measure them. Other plugins may still supply none. The binding preserves
 their names and values, and appends optional host timing and caller metrics

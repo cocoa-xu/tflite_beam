@@ -600,6 +600,9 @@ NifResLiteRtEnvironment * NifResLiteRtEnvironment::allocate_resource(ErlNifEnv *
         error = erlang::nif::error(env, "cannot allocate NifResLiteRtEnvironment resource");
         return res;
     }
+    // ERTS's uninstrumented allocator may recycle a slot whose previous owner
+    // ran destruct_resource on another scheduler; pair with the release there.
+    TFLITE_BEAM_TSAN_TAKE(res);
     res->val = nullptr;
     return res;
 }
@@ -616,11 +619,13 @@ NifResLiteRtEnvironment * NifResLiteRtEnvironment::get_resource(ErlNifEnv * env,
 
 void NifResLiteRtEnvironment::destruct_resource(ErlNifEnv *, void *args) {
     auto res = (NifResLiteRtEnvironment *)args;
+    if (!res) return;
     TFLITE_BEAM_TSAN_TAKE(res);
-    if (res && res->val) {
+    if (res->val) {
         LiteRtDestroyEnvironment(res->val);
         res->val = nullptr;
     }
+    TFLITE_BEAM_TSAN_PUBLISH(res);
 }
 
 NifResLiteRtCompiledModel * NifResLiteRtCompiledModel::allocate_resource(ErlNifEnv * env, ERL_NIF_TERM &error) {
@@ -630,6 +635,8 @@ NifResLiteRtCompiledModel * NifResLiteRtCompiledModel::allocate_resource(ErlNifE
         error = erlang::nif::error(env, "cannot allocate NifResLiteRtCompiledModel resource");
         return res;
     }
+    // Pair with destruct_resource's release when ERTS recycles the resource slot.
+    TFLITE_BEAM_TSAN_TAKE(res);
     res->val = nullptr;
     res->model = nullptr;
     res->options = nullptr;
@@ -710,6 +717,7 @@ void NifResLiteRtCompiledModel::destruct_resource(ErlNifEnv *, void *args) {
     res->lock = nullptr;
     // borrowed from the compiled model, so it is dropped rather than destroyed
     res->profiler = nullptr;
+    TFLITE_BEAM_TSAN_PUBLISH(res);
 
     litert_reaper_submit(job);
 }

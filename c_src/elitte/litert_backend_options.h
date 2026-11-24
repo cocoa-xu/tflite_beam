@@ -8,6 +8,6 @@
 
 using LiteRtBackendPayloads = std::vector<std::pair<std::string, std::string>>;
 
-LiteRtBackendPayloads litert_backend_payloads(ErlNifEnv *env, ERL_NIF_TERM options, int precision);
+LiteRtBackendPayloads litert_backend_payloads(ErlNifEnv *env, ERL_NIF_TERM options, int precision, int profile = 0);
 
 #endif

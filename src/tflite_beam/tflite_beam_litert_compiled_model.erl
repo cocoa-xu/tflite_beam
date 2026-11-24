@@ -26,6 +26,7 @@
     new/2, new/3, backend_options/1,
     run/2,
     fully_accelerated/1, non_cpu_fully_accelerated/1,
+    last_inference_duration/1, delegation_metrics/1,
     io_sizes/1,
     profile/1, profile/2,
     pending_events/1,
@@ -34,7 +35,8 @@
     summarise_profile/1,
     run_with_metrics/2, run_with_metrics/3,
     controlling_process/1, controlling_process/2,
-    platform_support/0
+    platform_support/0,
+    runtime_abi_version/0
 ]).
 
 -type accelerator() :: cpu | gpu | npu.
@@ -74,13 +76,26 @@
     signature => signature_index() | binary() | string(),
     max_model_bytes => non_neg_integer()
 }.
--type backend_options() :: #{
-    cpu => map(), gpu => map(), arm => map(), intel_openvino => map(),
-    google_tensor => map(), mediatek => map(), qualcomm => map()
+-type hardware_type() :: accelerator() | integer().
+-type accelerator_delegation_metrics() :: #{
+    name := binary(),
+    hardware_types := [hardware_type()],
+    delegated_node_count := non_neg_integer(),
+    partition_count := non_neg_integer()
 }.
--export_type([accelerator/0, precision/0, opts/0, signature_index/0, event_limit/0,
+-type delegation_metrics() :: #{
+    total_node_count := non_neg_integer(),
+    accelerators := [accelerator_delegation_metrics()]
+}.
+-type backend_options() :: #{
+    cpu => map(), gpu => map(), arm => map(), arm_vulkan_ml => map(),
+    compiler => map(), runtime => map(), samsung => map(), webnn => map(),
+    intel_openvino => map(), google_tensor => map(), mediatek => map(), qualcomm => map()
+}.
+-export_type([accelerator/0, hardware_type/0, precision/0, opts/0, signature_index/0, event_limit/0,
               detail_level/0, operator_kind/0, event/0, event_type/0,
-              event_source/0, summary_entry/0, metric_value/0, metrics_options/0, backend_options/0]).
+              event_source/0, summary_entry/0, metric_value/0, metrics_options/0,
+              accelerator_delegation_metrics/0, delegation_metrics/0, backend_options/0]).
 
 %% @doc
 %% What this build of the library can reach.
@@ -98,6 +113,11 @@ platform_support() ->
         Map when is_map(Map) -> {ok, Map};
         Error -> Error
     end.
+
+%% @doc The LiteRT runtime C API ABI version string (e.g. `<<"1.7.0">>').
+-spec runtime_abi_version() -> {ok, binary()} | {error, binary()}.
+runtime_abi_version() ->
+    tflite_beam_nif:litert_runtime_abi_version().
 
 %% @doc
 %% Whether this build has the LiteRT API at all.
@@ -319,6 +339,18 @@ fully_accelerated(Model) ->
 non_cpu_fully_accelerated(Model) ->
     tflite_beam_nif:litert_compiled_model_non_cpu_fully_accelerated(Model).
 
+%% @doc Duration of the last native inference in nanoseconds, or `undefined'
+%% if no inference has succeeded yet.
+-spec last_inference_duration(reference()) -> {ok, non_neg_integer() | undefined} | {error, binary()}.
+last_inference_duration(Model) ->
+    tflite_beam_nif:litert_compiled_model_last_inference_duration(Model).
+
+%% @doc Total graph node count before delegation and per-accelerator delegated
+%% node and partition counts.
+-spec delegation_metrics(reference()) -> {ok, delegation_metrics()} | {error, binary()}.
+delegation_metrics(Model) ->
+    tflite_beam_nif:litert_compiled_model_delegation_metrics(Model).
+
 %% @doc The byte size of each input and output buffer.
 -spec io_sizes(reference()) -> {ok, {[non_neg_integer()], [non_neg_integer()]}} | {error, binary()}.
 io_sizes(Model) ->
@@ -337,7 +369,7 @@ io_sizes(Model) ->
 %% duration, which is why `summarise_profile/1' drops them.
 %%
 %% The buffer behind this is fixed and large: a compiled model asks for
-%% 512 * 1024 entries in LiteRT 2.3.0, not the 10240 a bare profiler defaults
+%% 512 * 1024 entries in LiteRT 2.4.0, not the 10240 a bare profiler defaults
 %% to. So a long-lived model does not grow without bound, but neither will it
 %% overflow soon. Reset it when you want to measure a change rather than to keep
 %% it in check.
@@ -393,7 +425,7 @@ run_with_metrics(Model, Inputs) ->
 %% Usually the counters come back empty. Filling them in is the accelerator's
 %% job, through two entries of its definition that are allowed to be null, so an
 %% empty list means nobody offered anything rather than that something went
-%% wrong. LiteRT 2.3.0's ML Drift GPU backend can report intermediate and
+%% wrong. LiteRT 2.4.0's ML Drift GPU backend can report intermediate and
 %% constant tensor memory. Which counters appear depends on the loaded plugin.
 %%
 %% Collection brackets the run rather than being started and stopped on its own,

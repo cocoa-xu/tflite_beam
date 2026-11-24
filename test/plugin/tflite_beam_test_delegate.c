@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "tensorflow/lite/c/common.h"
+#include "tflite/c/common.h"
 
 static TfLiteStatus prepare_claim_none(TfLiteContext* context, TfLiteDelegate* delegate) {
   return kTfLiteOk;

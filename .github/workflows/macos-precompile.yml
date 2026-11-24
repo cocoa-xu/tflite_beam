@@ -16,6 +16,7 @@ jobs:
     runs-on: ${{ matrix.pair.runs_on }}
     env:
       TFLITE_BEAM_PREFER_PRECOMPILED: "false"
+      TFLITE_BEAM_USE_CCACHE: "true"
       OTP_VERSION: ${{ matrix.pair.otp }}
       ELIXIR_VERSION: "1.16.3"
     name: ${{ matrix.pair.arch }}-apple-darwin - OTP ${{ matrix.pair.otp }}
@@ -57,6 +58,29 @@ jobs:
         uses: jwlawson/actions-setup-cmake@v2
         with:
           cmake-version: '3.22.x'
+
+      - name: Install ccache
+        run: brew install ccache
+
+      - name: Restore ccache
+        id: ccache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ccache
+          key: ccache-precompile-${{ matrix.pair.arch }}-apple-darwin-${{ hashFiles('Makefile') }}-${{ github.run_id }}
+          restore-keys: |
+            ccache-precompile-${{ matrix.pair.arch }}-apple-darwin-${{ hashFiles('Makefile') }}-
+            ccache-precompile-${{ matrix.pair.arch }}-apple-darwin-
+
+      - name: Configure ccache
+        run: |
+          D="$HOME/.cache/ccache"
+          echo "CCACHE_DIR=$D" >> $GITHUB_ENV
+          echo "CCACHE_MAXSIZE=300M" >> $GITHUB_ENV
+          if [ -d "$D" ] && [ -n "$(ls -A "$D" 2>/dev/null)" ]; then
+            echo "CCACHE_RESTORED=1" >> $GITHUB_ENV
+          fi
+          CCACHE_DIR="$D" ccache --zero-stats
 
       - name: Create precompiled library
         run: |
@@ -103,3 +127,15 @@ jobs:
           # from August is still sitting there holding it. Only a bare vX.Y.Z is
           # a release now; everything else, rc or dry run, is a pre-release.
           prerelease: ${{ !startsWith(github.ref_name, 'v') || contains(github.ref_name, '-') }}
+
+      - name: ccache statistics
+        if: always()
+        run: |
+          ccache --show-stats --verbose
+          if [ -n "${CCACHE_RESTORED:-}" ]; then
+            hits=$(ccache --show-stats | awk '/^  Hits:/{print $2; exit}')
+            if [ "${hits:-0}" -eq 0 ]; then
+              echo "::error::a ccache cache was restored but nothing hit -- check CCACHE_DIR against the cached path"
+              exit 1
+            fi
+          fi

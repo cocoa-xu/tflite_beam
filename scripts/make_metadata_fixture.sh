@@ -8,7 +8,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 FLATBUFFERS="${ROOT}/_build/default/lib/tflite_beam/cmake_tflite_beam/flatbuffers/include"
-TENSORFLOW="$(find "${ROOT}/3rd_party/tensorflow" -maxdepth 1 -name 'tensorflow-*' | sort -V | tail -1)"
+LITERT="$(find "${ROOT}/3rd_party/litert" -maxdepth 1 -name 'LiteRT-*' | sort -V | tail -1)"
 
 if [ ! -d "${FLATBUFFERS}" ]; then
   echo "no flatbuffers headers at ${FLATBUFFERS}; build the NIF first" >&2
@@ -22,7 +22,7 @@ trap 'rm -f "${BIN}"' EXIT
 c++ -std=c++17 \
   -I "${FLATBUFFERS}" \
   -I "${ROOT}/c_src" \
-  -I "${TENSORFLOW}" \
+  -I "${LITERT}" \
   -o "${BIN}" "${ROOT}/scripts/make_metadata_fixture.cpp"
 
 "${BIN}" "${OUT}"

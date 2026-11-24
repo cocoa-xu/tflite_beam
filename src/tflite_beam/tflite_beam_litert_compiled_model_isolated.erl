@@ -43,6 +43,7 @@
     with/2, with/3,
     io_sizes/1,
     fully_accelerated/1, non_cpu_fully_accelerated/1,
+    last_inference_duration/1, delegation_metrics/1,
     run_with_metrics/2, run_with_metrics/3, run_with_metrics/4,
     profile/1, profile/2,
     pending_events/1,
@@ -138,6 +139,16 @@ fully_accelerated(Server) ->
 -spec non_cpu_fully_accelerated(pid()) -> {ok, boolean()} | {error, binary()}.
 non_cpu_fully_accelerated(Server) ->
     call(Server, non_cpu_fully_accelerated, ?DEFAULT_TIMEOUT).
+
+%% @doc Duration of the last native inference in nanoseconds, or `undefined'.
+-spec last_inference_duration(pid()) -> {ok, non_neg_integer() | undefined} | {error, binary()}.
+last_inference_duration(Server) ->
+    call(Server, last_inference_duration, ?DEFAULT_TIMEOUT).
+
+%% @doc Total graph node count before delegation and per-accelerator delegation metrics.
+-spec delegation_metrics(pid()) -> {ok, ?M:delegation_metrics()} | {error, binary()}.
+delegation_metrics(Server) ->
+    call(Server, delegation_metrics, ?DEFAULT_TIMEOUT).
 
 %% @doc
 %% Run a function against the compiled model, on the node that owns it.
@@ -396,6 +407,8 @@ forward(Remote, {run, Inputs, Timeout}) -> ?SERVER:run(Remote, Inputs, Timeout);
 forward(Remote, io_sizes) -> ?SERVER:io_sizes(Remote);
 forward(Remote, fully_accelerated) -> ?SERVER:fully_accelerated(Remote);
 forward(Remote, non_cpu_fully_accelerated) -> ?SERVER:non_cpu_fully_accelerated(Remote);
+forward(Remote, last_inference_duration) -> ?SERVER:last_inference_duration(Remote);
+forward(Remote, delegation_metrics) -> ?SERVER:delegation_metrics(Remote);
 forward(Remote, {run_with_metrics, Inputs, DetailLevel, Timeout}) ->
     ?SERVER:run_with_metrics(Remote, Inputs, DetailLevel, Timeout);
 forward(Remote, {profile, Limit}) -> ?SERVER:profile(Remote, Limit);
@@ -409,7 +422,8 @@ ensure_distributed() ->
         true ->
             ok;
         false ->
-            Name = list_to_atom("tflite_beam_" ++ integer_to_list(erlang:unique_integer([positive]))),
+            Name = list_to_atom(
+                "tflite_beam_" ++ integer_to_list(erlang:unique_integer([positive])) ++ "@localhost"),
             case net_kernel:start([Name, shortnames]) of
                 {ok, _} -> ok;
                 {error, {already_started, _}} -> ok;
@@ -422,11 +436,31 @@ ensure_distributed() ->
 start_peer(Opts) ->
     %% -pa prepends each path, reversing the order it receives.
     Args = ["-pa" | lists:reverse(code:get_path())] ++ maps:get(peer_args, Opts, []),
-    case peer:start_link(#{name => peer:random_name(), args => Args, connection => standard_io}) of
+    PeerOpts = #{
+        name => peer:random_name(),
+        host => peer_host(),
+        args => Args,
+        connection => standard_io
+    },
+    case peer:start_link(PeerOpts) of
         {ok, Peer, Node} -> {ok, Peer, Node};
         {error, Reason} ->
             {error, iolist_to_binary(
                 io_lib:format("cannot start the isolated node: ~p", [Reason]))}
+    end.
+
+%% When distribution is not already running, pin both parent and peer to
+%% localhost so local EPMD and hostname resolution never diverge (e.g. under
+%% Tailscale or `epmd -address 127.0.0.1`). When already distributed, inherit
+%% the current node's host explicitly because OTP's peer defaults to
+%% inet:gethostname() rather than the parent node's host.
+peer_host() ->
+    case is_alive() of
+        false ->
+            "localhost";
+        true ->
+            [_Name, Host] = string:split(atom_to_list(node()), "@"),
+            Host
     end.
 
 start_model_on(Node, Opts) ->

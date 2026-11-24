@@ -1,20 +1,27 @@
 #ifdef TFLITE_BEAM_LITERT_API_ENABLED
 #include "litert_backend_options.h"
 
+#include <cstdint>
 #include <cstring>
 #include <initializer_list>
 #include <limits>
 #include <memory>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 #include "../nif_utils.hpp"
-#include "litert/c/options/litert_arm_options.h"
+#include "litert/c/options/litert_arm_vulkan_ml_options.h"
+#include "litert/c/options/litert_compiler_options.h"
 #include "litert/c/options/litert_cpu_options.h"
 #include "litert/c/options/litert_google_tensor_options.h"
 #include "litert/c/options/litert_gpu_options.h"
 #include "litert/c/options/litert_intel_openvino_options.h"
 #include "litert/c/options/litert_mediatek_options.h"
 #include "litert/c/options/litert_qualcomm_options.h"
+#include "litert/c/options/litert_runtime_options.h"
+#include "litert/c/options/litert_samsung_options.h"
+#include "litert/c/options/litert_webnn_options.h"
 
 namespace {
 
@@ -64,6 +71,35 @@ std::string string(ErlNifEnv *env, ERL_NIF_TERM term) {
         }
     }
     return value;
+}
+
+std::string compiler_string(ErlNifEnv *env, ERL_NIF_TERM term, bool disallow_at) {
+    std::string value = string(env, term);
+    if (value.find('\'') != std::string::npos) {
+        throw std::invalid_argument("compiler option string cannot contain single quotes");
+    }
+    if (disallow_at && value.find('@') != std::string::npos) {
+        throw std::invalid_argument("compiler signature key cannot contain '@'");
+    }
+    return value;
+}
+
+std::vector<int32_t> shape_dims(ErlNifEnv *env, ERL_NIF_TERM list) {
+    unsigned count = 0;
+    if (!enif_get_list_length(env, list, &count)) {
+        throw std::invalid_argument("expecting a proper list of shape dimensions");
+    }
+    std::vector<int32_t> dims;
+    dims.reserve(count);
+    ERL_NIF_TERM head, tail = list;
+    while (enif_get_list_cell(env, tail, &head, &tail)) {
+        int64_t dim = integer(env, head, -1, std::numeric_limits<int32_t>::max());
+        if (dim == 0) {
+            throw std::invalid_argument("shape dimensions must be positive or -1");
+        }
+        dims.push_back(static_cast<int32_t>(dim));
+    }
+    return dims;
 }
 
 class MapIterator {
@@ -167,18 +203,153 @@ std::pair<std::string, std::string> gpu(ErlNifEnv *env, ERL_NIF_TERM map, int pr
             check(LrtSetGpuOptionsMetalResidencySet(options.get(), boolean(env, value)));
         } else if (key == "hint_fully_delegated_to_single_delegate") {
             check(LrtSetGpuOptionsHintFullyDelegatedToSingleDelegate(options.get(), boolean(env, value)));
+        } else if (key == "enable_fast_tuning") {
+            check(LrtSetGpuOptionsEnableFastTuning(options.get(), boolean(env, value)));
+        } else if (key == "enable_op_profiling") {
+            check(LrtSetGpuOptionsEnableOpProfiling(options.get(), boolean(env, value)));
+        } else if (key == "enable_op_profiling_detailed_report") {
+            check(LrtSetGpuOptionsEnableOpProfilingDetailedReport(options.get(), boolean(env, value)));
+        } else if (key == "debug_delegate_partition") {
+            check(LrtSetGpuOptionsDebugDelegatePartition(options.get(), boolean(env, value)));
+        } else if (key == "debug_first_delegate_node_index") {
+            check(LrtSetGpuOptionsDebugFirstDelegateNodeIndex(options.get(),
+                integer(env, value, 0, std::numeric_limits<int>::max())));
+        } else if (key == "debug_last_delegate_node_index") {
+            check(LrtSetGpuOptionsDebugLastDelegateNodeIndex(options.get(),
+                integer(env, value, 0, std::numeric_limits<int>::max())));
         } else unknown(key);
     });
     return payload(options.get(), LrtGetOpaqueGpuOptionsData);
 }
 
-std::pair<std::string, std::string> arm(ErlNifEnv *env, ERL_NIF_TERM map) {
-    auto options = create<LrtArmOptionsT>(LrtCreateArmOptions, LrtDestroyArmOptions);
+std::pair<std::string, std::string> arm_vulkan_ml(ErlNifEnv *env, ERL_NIF_TERM map) {
+    auto options = create<LrtArmVulkanMLOptionsT>(LrtCreateArmVulkanMLOptions, LrtDestroyArmVulkanMLOptions);
     each(env, map, [&](const std::string &key, ERL_NIF_TERM value) {
-        if (key == "enable_just_in_time") check(LrtArmOptionsSetEnableJustInTime(options.get(), boolean(env, value)));
-        else unknown(key);
+        if (key == "enable_just_in_time") {
+            check(LrtArmVulkanMLOptionsSetEnableJustInTime(options.get(), boolean(env, value)));
+        } else if (key == "dump_op_timings") {
+            check(LrtArmVulkanMLOptionsSetDumpOpTimings(options.get(), boolean(env, value)));
+        } else if (key == "float_fallback") {
+            check(LrtArmVulkanMLOptionsSetFloatFallback(options.get(), boolean(env, value)));
+        } else unknown(key);
     });
-    return payload(options.get(), LrtGetOpaqueArmOptionsData);
+    return payload(options.get(), LrtGetOpaqueArmVulkanMLOptionsData);
+}
+
+std::pair<std::string, std::string> compiler(ErlNifEnv *env, ERL_NIF_TERM map) {
+    auto options = create<LrtCompilerOptions>(LrtCreateCompilerOptions, LrtDestroyCompilerOptions);
+    each(env, map, [&](const std::string &key, ERL_NIF_TERM value) {
+        if (key == "partition_strategy") {
+            check(LrtSetCompilerOptionsPartitionStrategy(options.get(),
+                static_cast<LiteRtCompilerOptionsPartitionStrategy>(
+                    choice(env, value, {"default", "weakly_connected"}))));
+        } else if (key == "max_partitions") {
+            check(LrtSetCompilerOptionsMaxPartitions(options.get(),
+                static_cast<size_t>(integer(env, value, 0, std::numeric_limits<int64_t>::max()))));
+        } else if (key == "positional_input_shapes") {
+            unsigned count = 0;
+            if (!enif_get_list_length(env, value, &count)) {
+                throw std::invalid_argument("positional_input_shapes must be a proper list");
+            }
+            ERL_NIF_TERM head, tail = value;
+            while (enif_get_list_cell(env, tail, &head, &tail)) {
+                int arity = 0;
+                const ERL_NIF_TERM *entry = nullptr;
+                if (!enif_get_tuple(env, head, &arity, &entry) || arity != 2) {
+                    throw std::invalid_argument("positional_input_shapes entries must be {signature_key, dims}");
+                }
+                std::string sig = compiler_string(env, entry[0], true);
+                auto dims = shape_dims(env, entry[1]);
+                check(LrtAddCompilerOptionsPositionalInputShape(
+                    options.get(), sig.c_str(), dims.empty() ? nullptr : dims.data(), dims.size()));
+            }
+        } else if (key == "tensor_input_shapes" || key == "signature_input_shapes") {
+            bool by_tensor = (key == "tensor_input_shapes");
+            unsigned count = 0;
+            if (!enif_get_list_length(env, value, &count)) {
+                throw std::invalid_argument(key + " must be a proper list");
+            }
+            ERL_NIF_TERM head, tail = value;
+            while (enif_get_list_cell(env, tail, &head, &tail)) {
+                int arity = 0;
+                const ERL_NIF_TERM *entry = nullptr;
+                if (!enif_get_tuple(env, head, &arity, &entry) || arity != 3) {
+                    throw std::invalid_argument(key + " entries must be {signature_key, name, dims}");
+                }
+                std::string sig = compiler_string(env, entry[0], true);
+                std::string target = compiler_string(env, entry[1], false);
+                if (target.empty()) {
+                    throw std::invalid_argument(key + " name cannot be empty");
+                }
+                auto dims = shape_dims(env, entry[2]);
+                check(by_tensor
+                    ? LrtAddCompilerOptionsTensorInputShape(
+                        options.get(), sig.c_str(), target.c_str(), dims.empty() ? nullptr : dims.data(), dims.size())
+                    : LrtAddCompilerOptionsSignatureInputShape(
+                        options.get(), sig.c_str(), target.c_str(), dims.empty() ? nullptr : dims.data(), dims.size()));
+            }
+        } else unknown(key);
+    });
+    return payload(options.get(), LrtGetOpaqueCompilerOptionsData);
+}
+
+std::pair<std::string, std::string> runtime(ErlNifEnv *env, ERL_NIF_TERM map, int profile) {
+    auto options = create<LrtRuntimeOptions>(LrtCreateRuntimeOptions, LrtDestroyRuntimeOptions);
+    if (profile) check(LrtSetRuntimeOptionsEnableProfiling(options.get(), true));
+    each(env, map, [&](const std::string &key, ERL_NIF_TERM value) {
+        if (key == "error_reporter_mode") {
+            check(LrtSetRuntimeOptionsErrorReporterMode(options.get(),
+                static_cast<LiteRtErrorReporterMode>(choice(env, value, {"none", "stderr", "buffer"}))));
+        } else if (key == "compress_quantization_zero_points") {
+            check(LrtSetRuntimeOptionsCompressQuantizationZeroPoints(options.get(), boolean(env, value)));
+        } else if (key == "disable_delegate_clustering") {
+            check(LrtSetRuntimeOptionsDisableDelegateClustering(options.get(), boolean(env, value)));
+        } else if (key == "selected_signatures") {
+            unsigned count = 0;
+            if (!enif_get_list_length(env, value, &count) || count == 0) {
+                throw std::invalid_argument("selected_signatures must be a non-empty list of binaries");
+            }
+            std::vector<std::string> keys;
+            keys.reserve(count);
+            ERL_NIF_TERM head, tail = value;
+            while (enif_get_list_cell(env, tail, &head, &tail)) {
+                std::string sig = string(env, head);
+                if (sig.empty()) throw std::invalid_argument("selected_signatures cannot contain empty keys");
+                keys.push_back(std::move(sig));
+            }
+            check(LrtSetRuntimeOptionsSelectedSignatures(options.get(), keys));
+        } else unknown(key);
+    });
+    return payload(options.get(), LrtGetOpaqueRuntimeOptionsData);
+}
+
+std::pair<std::string, std::string> samsung(ErlNifEnv *env, ERL_NIF_TERM map) {
+    auto options = create<LrtSamsungOptionsT>(LrtCreateSamsungOptions, LrtDestroySamsungOptions);
+    each(env, map, [&](const std::string &key, ERL_NIF_TERM value) {
+        if (key == "enable_large_model_support") {
+            check(LrtSamsungOptionsSetEnableLargeModelSupport(options.get(), boolean(env, value)));
+        } else if (key == "soc_model") {
+            check(LrtSamsungOptionsSetSocModel(options.get(), string(env, value).c_str()));
+        } else unknown(key);
+    });
+    return payload(options.get(), LrtGetOpaqueSamsungOptionsData);
+}
+
+std::pair<std::string, std::string> webnn(ErlNifEnv *env, ERL_NIF_TERM map) {
+    auto options = create<LrtWebNnOptions>(LrtCreateWebNnOptions, LrtDestroyWebNnOptions);
+    each(env, map, [&](const std::string &key, ERL_NIF_TERM value) {
+        if (key == "device_preference") {
+            check(LrtSetWebNnOptionsDevicePreference(options.get(),
+                static_cast<LiteRtWebNnDeviceType>(choice(env, value, {"cpu", "gpu", "npu"}))));
+        } else if (key == "power_preference") {
+            check(LrtSetWebNnOptionsPowerPreference(options.get(),
+                static_cast<LiteRtWebNnPowerPreference>(choice(env, value, {"default", "high_performance", "low_power"}))));
+        } else if (key == "precision") {
+            check(LrtSetWebNnOptionsPrecision(options.get(),
+                static_cast<LiteRtWebNnPrecision>(choice(env, value, {"fp32", "fp16"}))));
+        } else unknown(key);
+    });
+    return payload(options.get(), LrtGetOpaqueWebNnOptionsData);
 }
 
 std::pair<std::string, std::string> intel(ErlNifEnv *env, ERL_NIF_TERM map) {
@@ -247,6 +418,28 @@ std::pair<std::string, std::string> qualcomm(ErlNifEnv *env, ERL_NIF_TERM map) {
     each(env, map, [&](const std::string &key, ERL_NIF_TERM value) {
         if (key == "enable_weight_sharing") {
             check(LrtQualcommOptionsSetEnableWeightSharing(options.get(), boolean(env, value)));
+        } else if (key == "graph_priority") {
+            check(LrtQualcommOptionsSetGraphPriority(options.get(), static_cast<LrtQualcommOptionsGraphPriority>(
+                choice(env, value, {"default", "low", "normal", "normal_high", "high"}))));
+        } else if (key == "op_name_format") {
+            check(LrtQualcommOptionsSetOpNameFormat(options.get(), static_cast<LrtQualcommOptionsOpNameFormat>(
+                choice(env, value, {"basic", "detailed"}))));
+        } else if (key == "htp_dlbc") {
+            check(LrtQualcommOptionsSetHtpDlbc(options.get(), boolean(env, value)));
+        } else if (key == "htp_dlbc_weights") {
+            check(LrtQualcommOptionsSetHtpDlbcWeights(options.get(), boolean(env, value)));
+        } else if (key == "htp_weight_sharing_channel_tile_size") {
+            check(LrtQualcommOptionsSetHtpWeightSharingChannelTileSize(options.get(),
+                static_cast<int32_t>(integer(env, value, std::numeric_limits<int32_t>::min(),
+                                             std::numeric_limits<int32_t>::max()))));
+        } else if (key == "htp_device_id") {
+            check(LrtQualcommOptionsSetHtpDeviceId(options.get(),
+                static_cast<uint32_t>(integer(env, value, 0, UINT32_MAX))));
+        } else if (key == "htp_file_read_memory_budget_mb") {
+            check(LrtQualcommOptionsSetHtpFileReadMemoryBudgetMB(options.get(),
+                static_cast<uint32_t>(integer(env, value, 0, UINT32_MAX))));
+        } else if (key == "htp_context_init_acceleration") {
+            check(LrtQualcommOptionsSetHtpContextInitAcceleration(options.get(), boolean(env, value)));
         } else if (key == "htp_pd_session") {
             check(LrtQualcommOptionsSetHtpPdSession(options.get(), static_cast<LrtQualcommOptionsHtpPdSession>(
                 choice(env, value, {"unsigned", "signed", "adaptive"}))));
@@ -291,13 +484,23 @@ std::pair<std::string, std::string> qualcomm(ErlNifEnv *env, ERL_NIF_TERM map) {
 
 }  // namespace
 
-LiteRtBackendPayloads litert_backend_payloads(ErlNifEnv *env, ERL_NIF_TERM options, int precision) {
+LiteRtBackendPayloads litert_backend_payloads(ErlNifEnv *env, ERL_NIF_TERM options, int precision, int profile) {
     LiteRtBackendPayloads result;
     bool has_gpu = false;
+    bool has_runtime = false;
+    bool has_arm = false;
     each(env, options, [&](const std::string &backend, ERL_NIF_TERM map) {
         if (backend == "cpu") result.push_back(cpu(env, map));
         else if (backend == "gpu") { result.push_back(gpu(env, map, precision)); has_gpu = true; }
-        else if (backend == "arm") result.push_back(arm(env, map));
+        else if (backend == "arm" || backend == "arm_vulkan_ml") {
+            if (has_arm) throw std::invalid_argument("arm and arm_vulkan_ml cannot both be specified");
+            has_arm = true;
+            result.push_back(arm_vulkan_ml(env, map));
+        }
+        else if (backend == "compiler") result.push_back(compiler(env, map));
+        else if (backend == "runtime") { result.push_back(runtime(env, map, profile)); has_runtime = true; }
+        else if (backend == "samsung") result.push_back(samsung(env, map));
+        else if (backend == "webnn") result.push_back(webnn(env, map));
         else if (backend == "intel_openvino") result.push_back(intel(env, map));
         else if (backend == "mediatek") result.push_back(mediatek(env, map));
         else if (backend == "google_tensor") result.push_back(google(env, map));
@@ -305,12 +508,13 @@ LiteRtBackendPayloads litert_backend_payloads(ErlNifEnv *env, ERL_NIF_TERM optio
         else throw std::invalid_argument("unknown backend: " + backend);
     });
     if (precision && !has_gpu) result.push_back(gpu(env, enif_make_new_map(env), precision));
+    if (profile && !has_runtime) result.push_back(runtime(env, enif_make_new_map(env), profile));
     return result;
 }
 
 ERL_NIF_TERM litert_backend_options(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1) return enif_make_badarg(env);
-    auto payloads = litert_backend_payloads(env, argv[0], 0);
+    auto payloads = litert_backend_payloads(env, argv[0], 0, 0);
     ERL_NIF_TERM result = enif_make_list(env, 0);
     for (size_t i = payloads.size(); i-- > 0;) {
         ERL_NIF_TERM terms[2];

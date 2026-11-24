@@ -1,6 +1,51 @@
 cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 project(tflite_beam C CXX)
 
+set(TFLITE_BEAM_USE_CCACHE "auto" CACHE STRING
+    "Use ccache as the CMake compiler launcher: auto, true/ON, or false/OFF"
+)
+string(TOLOWER "${TFLITE_BEAM_USE_CCACHE}" _tflite_beam_use_ccache)
+if(_tflite_beam_use_ccache STREQUAL "auto"
+   OR _tflite_beam_use_ccache STREQUAL "true"
+   OR _tflite_beam_use_ccache STREQUAL "on"
+   OR _tflite_beam_use_ccache STREQUAL "1"
+   OR _tflite_beam_use_ccache STREQUAL "yes")
+    # Search on the build host even when a cross-compilation toolchain file
+    # restricts program lookup to the target sysroot.
+    find_program(TFLITE_BEAM_CCACHE_PROGRAM ccache NO_CMAKE_FIND_ROOT_PATH)
+    if(TFLITE_BEAM_CCACHE_PROGRAM)
+        set(_tflite_beam_ccache_langs "")
+        foreach(_lang IN ITEMS C CXX OBJC OBJCXX)
+            if(NOT DEFINED CMAKE_${_lang}_COMPILER_LAUNCHER
+               AND NOT DEFINED ENV{CMAKE_${_lang}_COMPILER_LAUNCHER})
+                set(CMAKE_${_lang}_COMPILER_LAUNCHER "${TFLITE_BEAM_CCACHE_PROGRAM}")
+                list(APPEND _tflite_beam_ccache_langs "${_lang}")
+            endif()
+        endforeach()
+        if(_tflite_beam_ccache_langs)
+            list(JOIN _tflite_beam_ccache_langs ", " _tflite_beam_ccache_langs_str)
+            message(STATUS "Using ccache (${_tflite_beam_ccache_langs_str}): ${TFLITE_BEAM_CCACHE_PROGRAM}")
+        else()
+            message(STATUS "Compiler launchers already configured; skipping ccache auto-configuration")
+        endif()
+    elseif(NOT _tflite_beam_use_ccache STREQUAL "auto")
+        message(FATAL_ERROR
+            "TFLITE_BEAM_USE_CCACHE=${TFLITE_BEAM_USE_CCACHE} requested, "
+            "but ccache was not found in PATH.")
+    else()
+        message(STATUS "ccache not found; building without compiler cache")
+    endif()
+elseif(_tflite_beam_use_ccache STREQUAL "false"
+       OR _tflite_beam_use_ccache STREQUAL "off"
+       OR _tflite_beam_use_ccache STREQUAL "0"
+       OR _tflite_beam_use_ccache STREQUAL "no")
+    message(STATUS "ccache disabled (TFLITE_BEAM_USE_CCACHE=${TFLITE_BEAM_USE_CCACHE})")
+else()
+    message(FATAL_ERROR
+        "Invalid TFLITE_BEAM_USE_CCACHE value '${TFLITE_BEAM_USE_CCACHE}'; "
+        "expected auto, true/ON, or false/OFF.")
+endif()
+
 if(NOT DEFINED PRIV_DIR)
     if(DEFINED MIX_APP_PATH AND NOT "${MIX_APP_PATH}" STREQUAL "")
         set(PRIV_DIR "${MIX_APP_PATH}/priv")
@@ -121,49 +166,9 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_CXX_COMPILER_ID STREQUAL
 endif()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" CACHE STRING "Override CXX FLAGS")
 
-# LiteRT fetches Eigen by cloning gitlab.com, which throttles under load and has
-# refused this build twice. The mirror is a plain copy carrying the same commit,
-# so the pin still decides which Eigen is used and only the host changes.
-# OverridableFetchContent reads this name for the content it calls "eigen"; see
-# tflite/tools/cmake/modules/OverridableFetchContent.cmake.
-if(NOT OVERRIDABLE_FETCH_CONTENT_eigen_GIT_REPOSITORY)
-    set(OVERRIDABLE_FETCH_CONTENT_eigen_GIT_REPOSITORY
-        "https://github.com/cocoa-xu/eigen.git" CACHE STRING
-        "Where to fetch Eigen from; the commit is still pinned by LiteRT")
-endif()
-
-# That override reaches the Eigen that LiteRT fetches by name and nothing else.
-# ml_dtypes carries its own Eigen as a git submodule, whose URL lives in that
-# repository's .gitmodules and points at gitlab all the same, so a build fails
-# there with "GitLab is currently unable to handle this request due to load"
-# while the mirror sits unused. insteadOf is the one rewrite git applies to
-# submodule URLs as well, so it closes the hole the CMake option cannot reach.
-#
-# Written into the user's git config rather than pointed at with
-# GIT_CONFIG_GLOBAL, because that variable arrived in git 2.32 and the
-# precompile container is ubuntu:20.04 with git 2.25, which ignores it silently:
-# the first attempt looked right here and changed nothing there. The entry is
-# rewritten every configure and names only this one repository.
-find_program(GIT_EXECUTABLE_FOR_MIRROR git)
-if(GIT_EXECUTABLE_FOR_MIRROR)
-    # One entry, and the exact URL .gitmodules carries. insteadOf matches on
-    # prefix, so registering the form without ".git" as well would rewrite
-    # ".../eigen.git" into ".../cocoa-xu/eigen.git" plus the leftover ".git",
-    # and a request for a repository that does not exist comes back from GitHub
-    # as 401 rather than 404, which git answers by asking for a username and
-    # failing with "could not read Username". Setting the key twice does not
-    # add a second value either; it replaces the first.
-    execute_process(
-        COMMAND "${GIT_EXECUTABLE_FOR_MIRROR}" config --global
-                "url.${OVERRIDABLE_FETCH_CONTENT_eigen_GIT_REPOSITORY}.insteadOf"
-                "https://gitlab.com/libeigen/eigen.git"
-        RESULT_VARIABLE _mirror_rc OUTPUT_QUIET ERROR_QUIET)
-    if(NOT _mirror_rc EQUAL 0)
-        message(WARNING
-            "could not point git at the Eigen mirror; a submodule clone may "
-            "fall back to gitlab.com and fail when it is loaded")
-    endif()
-endif()
+# LiteRT 2.4.0's eigen.cmake and ml_dtypes.cmake fetch pinned archives from
+# storage.googleapis.com/mirror.tensorflow.org by default instead of cloning
+# gitlab.com, so no GitLab mirror override is needed here anymore.
 
 # reset CLOG_SOURCE_DIR so that cpuinfo won't complain
 unset(CLOG_SOURCE_DIR CACHE)
@@ -354,6 +359,22 @@ if(TFLITE_BEAM_ENABLE_LITERT_API)
     # All three of these come from litert's own top level CMakeLists, which is not
     # used here because it would add the tflite subtree a second time.
     find_package(Threads REQUIRED)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+        set(LITERT_PLATFORM_MACOS ON)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        set(LITERT_PLATFORM_LINUX ON)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+        set(LITERT_PLATFORM_WINDOWS ON)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Android")
+        set(LITERT_PLATFORM_ANDROID ON)
+    endif()
+    if(NOT DEFINED CMAKE_HOST_EXECUTABLE_SUFFIX)
+        if(CMAKE_HOST_WIN32)
+            set(CMAKE_HOST_EXECUTABLE_SUFFIX ".exe")
+        else()
+            set(CMAKE_HOST_EXECUTABLE_SUFFIX "")
+        endif()
+    endif()
 
     # build_config.h is generated from a template and reached as
     # "litert/build_common/build_config.h", so the generated tree needs that shape.
@@ -388,17 +409,42 @@ if(TFLITE_BEAM_ENABLE_LITERT_API)
     )
     include_directories("${LITERT_GENERATED_INCLUDE_DIR}" "${LITERT_ROOT_DIR}")
 
-    # litert/runtime compiles open_cl_memory.cc and open_cl_sync.cc unconditionally,
-    # with no option gating them, so CL/cl.h is needed whether or not the GPU is
-    # wanted. TFLite ships the module that fetches those headers; this borrows it.
-    list(APPEND CMAKE_MODULE_PATH "${TFLITE_ROOT_DIR}/tools/cmake/modules")
-    include(opencl_headers)
+    add_compile_definitions(CL_TARGET_OPENCL_VERSION=300)
 
-    # and those files reach delegates/gpu/common/types.h, which wants fp16.h.
+    # LiteRT 2.4.0's core and runtime targets compile against ML Drift and
+    # Khronos headers (OpenCL/Vulkan/OpenGL/EGL), fetched via TFLite's CMake
+    # modules rather than expected from the system.
+    list(APPEND CMAKE_MODULE_PATH "${TFLITE_ROOT_DIR}/tools/cmake/modules")
+    if(NOT EXISTS "${CMAKE_BINARY_DIR}/opencl_headers")
+        find_package(opencl_headers REQUIRED)
+    endif()
+    include_directories("${CMAKE_BINARY_DIR}/opencl_headers")
+
+    if(NOT EXISTS "${CMAKE_BINARY_DIR}/vulkan_headers")
+        find_package(vulkan_headers REQUIRED)
+    endif()
+    include_directories(AFTER "${CMAKE_BINARY_DIR}/vulkan_headers/include")
+
+    if(NOT EXISTS "${CMAKE_BINARY_DIR}/opengl_headers")
+        find_package(opengl_headers REQUIRED)
+    endif()
+    include_directories(AFTER "${CMAKE_BINARY_DIR}/opengl_headers/api")
+
+    if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
+        if(NOT EXISTS "${CMAKE_BINARY_DIR}/egl_headers")
+            find_package(egl_headers REQUIRED)
+        endif()
+        include_directories(AFTER "${CMAKE_BINARY_DIR}/egl_headers/api")
+    endif()
+
     # XNNPACK already fetched FP16 into this build, so point at it rather than
     # fetching a second copy.
     if(EXISTS "${CMAKE_CURRENT_BINARY_DIR}/FP16-source/include")
         include_directories("${CMAKE_CURRENT_BINARY_DIR}/FP16-source/include")
+    elseif(NOT EXISTS "${CMAKE_BINARY_DIR}/fp16_headers")
+        find_package(fp16_headers REQUIRED)
+    else()
+        include_directories("${CMAKE_BINARY_DIR}/fp16_headers/include")
     endif()
     # litert/cc/litert_buffer_ref.h declares members named Span whose return type
     # is the Span alias already used earlier in the same class. GCC rejects that
@@ -416,14 +462,9 @@ if(TFLITE_BEAM_ENABLE_LITERT_API)
         endif()
     endif()
 
-    # litert/runtime's event.cc, gpu_environment.cc and open_cl_memory.cc call
-    # TFLite's own OpenCL layer, which no target here builds, so off Apple the
-    # .so links with 22 symbols missing and fails to load. That layer exists so
-    # LiteRT can pass CL buffers around itself, and nothing here asks it to: the
-    # GPU accelerator is a plugin that brings its own OpenCL. Compiling it out
-    # keeps the host free of a dependency it does not use, and the accelerator is
-    # still found, because the name the registry tries first,
-    # libLiteRtGpuAccelerator, is not one of the ones this gates.
+    # Keep LiteRT's own OpenCL buffer interop compiled out so the host stays free
+    # of an OpenCL runtime dependency; the GPU accelerator plugin brings its own
+    # OpenCL and libLiteRtGpuAccelerator is unaffected.
     add_compile_definitions(LITERT_DISABLE_OPENCL_SUPPORT)
 
     include(OverridableFetchContent)
@@ -440,6 +481,90 @@ if(TFLITE_BEAM_ENABLE_LITERT_API)
         OverridableFetchContent_Populate(safeint)
     endif()
     include_directories("${safeint_SOURCE_DIR}")
+
+    OverridableFetchContent_Declare(
+        ml_drift
+        GIT_REPOSITORY https://github.com/google-ai-edge/ml-drift.git
+        GIT_TAG 1b18771f44c0be3d972847b31a80f6dc3d6964b5
+        GIT_PROGRESS TRUE
+        PREFIX "${CMAKE_BINARY_DIR}"
+        SOURCE_DIR "${CMAKE_BINARY_DIR}/ml_drift"
+    )
+    OverridableFetchContent_GetProperties(ml_drift)
+    if(NOT ml_drift_POPULATED)
+        OverridableFetchContent_Populate(ml_drift)
+    endif()
+    include_directories("${ml_drift_SOURCE_DIR}")
+
+    if(NOT TARGET flatbuffers::flatbuffers AND TARGET flatbuffers)
+        add_library(flatbuffers::flatbuffers ALIAS flatbuffers)
+    endif()
+
+    set(LITERT_FLATC_EXECUTABLE "")
+    set(LITERT_FLATC_TARGET "")
+    if(CMAKE_CROSSCOMPILING)
+        if(TFLITE_HOST_TOOLS_DIR)
+            foreach(_litert_flatc_candidate
+                    "${TFLITE_HOST_TOOLS_DIR}/flatc${CMAKE_HOST_EXECUTABLE_SUFFIX}"
+                    "${TFLITE_HOST_TOOLS_DIR}/Release/flatc${CMAKE_HOST_EXECUTABLE_SUFFIX}"
+                    "${TFLITE_HOST_TOOLS_DIR}/bin/flatc${CMAKE_HOST_EXECUTABLE_SUFFIX}"
+                    "${TFLITE_HOST_TOOLS_DIR}/flatbuffers-flatc/bin/flatc${CMAKE_HOST_EXECUTABLE_SUFFIX}")
+                if(EXISTS "${_litert_flatc_candidate}")
+                    set(LITERT_FLATC_EXECUTABLE "${_litert_flatc_candidate}")
+                    break()
+                endif()
+            endforeach()
+        endif()
+        if(NOT LITERT_FLATC_EXECUTABLE)
+            unset(LITERT_FLATC_EXECUTABLE)
+            find_program(LITERT_FLATC_EXECUTABLE NAMES flatc NO_CMAKE_FIND_ROOT_PATH)
+        endif()
+        if(NOT LITERT_FLATC_EXECUTABLE AND EXISTS "${CMAKE_BINARY_DIR}/flatbuffers-flatc/bin/flatc${CMAKE_HOST_EXECUTABLE_SUFFIX}")
+            set(LITERT_FLATC_EXECUTABLE "${CMAKE_BINARY_DIR}/flatbuffers-flatc/bin/flatc${CMAKE_HOST_EXECUTABLE_SUFFIX}")
+        endif()
+    else()
+        if(TARGET flatbuffers::flatc)
+            set(LITERT_FLATC_EXECUTABLE "$<TARGET_FILE:flatbuffers::flatc>")
+            set(LITERT_FLATC_TARGET flatbuffers::flatc)
+        elseif(TARGET flatc)
+            set(LITERT_FLATC_EXECUTABLE "$<TARGET_FILE:flatc>")
+            set(LITERT_FLATC_TARGET flatc)
+        elseif(EXISTS "${CMAKE_BINARY_DIR}/flatbuffers-flatc/bin/flatc${CMAKE_HOST_EXECUTABLE_SUFFIX}")
+            set(LITERT_FLATC_EXECUTABLE "${CMAKE_BINARY_DIR}/flatbuffers-flatc/bin/flatc${CMAKE_HOST_EXECUTABLE_SUFFIX}")
+        elseif(EXISTS "${CMAKE_BINARY_DIR}/_deps/flatbuffers-build/flatc${CMAKE_HOST_EXECUTABLE_SUFFIX}")
+            set(LITERT_FLATC_EXECUTABLE "${CMAKE_BINARY_DIR}/_deps/flatbuffers-build/flatc${CMAKE_HOST_EXECUTABLE_SUFFIX}")
+        else()
+            unset(LITERT_FLATC_EXECUTABLE)
+            find_program(LITERT_FLATC_EXECUTABLE NAMES flatc NO_CMAKE_FIND_ROOT_PATH)
+        endif()
+    endif()
+    if(NOT LITERT_FLATC_EXECUTABLE)
+        message(FATAL_ERROR
+            "Could not locate flatc to generate ML Drift FlatBuffer headers. "
+            "Install flatc or set TFLITE_HOST_TOOLS_DIR.")
+    endif()
+
+    set(MLDRIFT_SERIALIZATION_BASE_FBS "${ml_drift_SOURCE_DIR}/ml_drift/common/task/serialization_base.fbs")
+    set(MLDRIFT_SERIALIZATION_BASE_H "${ml_drift_SOURCE_DIR}/ml_drift/common/task/serialization_base_generated.h")
+    set(MLDRIFT_CL_PROGRAM_CACHE_FBS "${ml_drift_SOURCE_DIR}/ml_drift/cl/compiled_program_cache.fbs")
+    set(MLDRIFT_CL_PROGRAM_CACHE_H "${ml_drift_SOURCE_DIR}/ml_drift/cl/compiled_program_cache_generated.h")
+    add_custom_command(
+        OUTPUT "${MLDRIFT_SERIALIZATION_BASE_H}" "${MLDRIFT_CL_PROGRAM_CACHE_H}"
+        COMMAND ${LITERT_FLATC_EXECUTABLE} --cpp --scoped-enums
+                -I "${ml_drift_SOURCE_DIR}"
+                -o "${ml_drift_SOURCE_DIR}/ml_drift/common/task"
+                "${MLDRIFT_SERIALIZATION_BASE_FBS}"
+        COMMAND ${LITERT_FLATC_EXECUTABLE} --cpp --scoped-enums
+                -I "${ml_drift_SOURCE_DIR}"
+                -o "${ml_drift_SOURCE_DIR}/ml_drift/cl"
+                "${MLDRIFT_CL_PROGRAM_CACHE_FBS}"
+        DEPENDS "${MLDRIFT_SERIALIZATION_BASE_FBS}" "${MLDRIFT_CL_PROGRAM_CACHE_FBS}" ${LITERT_FLATC_TARGET}
+        COMMENT "Generating ML Drift FlatBuffer headers"
+    )
+    add_custom_target(mldrift_serialization_gen DEPENDS
+        "${MLDRIFT_SERIALIZATION_BASE_H}"
+        "${MLDRIFT_CL_PROGRAM_CACHE_H}"
+    )
 
     # The C API sits on cc/internal, which sits on core. litert's own top level
     # adds these in the same order; only its add_subdirectory of tflite is left
@@ -494,7 +619,7 @@ option(TFLITE_BEAM_BUILD_TEST_PLUGIN "Build the external-delegate test plugin" O
 if(TFLITE_BEAM_BUILD_TEST_PLUGIN)
     add_library(tflite_beam_test_delegate SHARED
         "${CMAKE_CURRENT_SOURCE_DIR}/test/plugin/tflite_beam_test_delegate.c")
-    target_include_directories(tflite_beam_test_delegate PRIVATE "${TENSORFLOW_SOURCE_DIR}")
+    target_include_directories(tflite_beam_test_delegate PRIVATE "${LITERT_ROOT_DIR}")
     set_target_properties(tflite_beam_test_delegate PROPERTIES
         PREFIX ""
         SUFFIX ".so"

@@ -10,7 +10,7 @@
 
 #include "flatbuffers/flatbuffers.h"
 #include "metadata_schema_generated.h"
-#include "tensorflow/lite/schema/schema_generated.h"
+#include "tflite/schema/schema_generated.h"
 
 namespace md = tflite;
 

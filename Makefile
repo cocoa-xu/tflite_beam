@@ -28,6 +28,9 @@ TFLITE_BEAM_CORAL_SUPPORT ?= "true"
 TFLITE_BEAM_ENABLE_LITERT_API ?= "false"
 TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME ?= "native"
 TFLITE_BEAM_PREFER_PRECOMPILED ?= "true"
+# Use ccache as the CMake compiler launcher when available.
+# Accepted values: auto (enable if ccache is in PATH), true (require), false (disable).
+TFLITE_BEAM_USE_CCACHE ?= auto
 TFLITE_BEAM_CORAL_LIBEDGETPU_URL ?= "native"
 SCRIPTS_DIR = $(shell pwd)/scripts
 C_SRC = $(shell pwd)/c_src
@@ -42,28 +45,19 @@ ifdef CMAKE_TOOLCHAIN_FILE
 	CMAKE_CONFIGURE_FLAGS=-D CMAKE_TOOLCHAIN_FILE="$(CMAKE_TOOLCHAIN_FILE)"
 endif
 
-# Tensorflow
-TFLITE_USE_GIT_HEAD ?= false
-TFLITE_GIT_REPO ?= "https://github.com/tensorflow/tensorflow.git"
+# LiteRT / TensorFlow
 # The runtime comes from LiteRT's tflite subtree. LITERT_VER is therefore the
 # version a delegate plugin has to match, and it is what tflite_beam:tflite_version/0
 # answers.
 LITERT_GIT_REPO ?= "https://github.com/google-ai-edge/LiteRT.git"
-LITERT_VER ?= 2.3.0
-# TensorFlow is still a build dependency rather than the source of the runtime:
-# LiteRT's CMake reaches into it for compiler/mlir/lite, TSL and XLA. The version
-# is the one LiteRT pins, and mismatching it silently mixes two schemas.
-TFLITE_VER ?= 2.21.0-rc0
-TFLITE_VER_V = v$(TFLITE_VER)
-ifneq ($(TFLITE_USE_GIT_HEAD), false)
-	TFLITE_VER_V=$(TFLITE_USE_GIT_BRANCH)
-endif
+LITERT_VER ?= 2.4.0
+# LiteRT 2.4.0's CMake build is TensorFlow-free by default: instead of cloning
+# TensorFlow, Findtensorflow_headers.cmake fetches only the few header-only
+# files the runtime needs from this TensorFlow tag. Recorded here for
+# tflite_beam:tensorflow_version/0.
+TFLITE_VER ?= 2.21.0
 THIRD_PARTY_DIR = $(shell pwd)/3rd_party
 TFLITE_BEAM_CACHE_DIR = $(THIRD_PARTY_DIR)/cache
-TFLITE_SOURCE_URL = "https://github.com/tensorflow/tensorflow/archive/refs/tags/$(TFLITE_VER_V).zip"
-TFLITE_SOURCE_ZIP = $(TFLITE_BEAM_CACHE_DIR)/tensorflow-$(TFLITE_VER_V).zip
-UNZIP_TARGET_DIR = $(THIRD_PARTY_DIR)/tensorflow
-TENSORFLOW_ROOT_DIR = $(UNZIP_TARGET_DIR)/tensorflow-$(TFLITE_VER)
 LITERT_VER_V = v$(LITERT_VER)
 LITERT_SOURCE_URL = "https://github.com/google-ai-edge/LiteRT/archive/refs/tags/$(LITERT_VER_V).zip"
 LITERT_SOURCE_ZIP = $(TFLITE_BEAM_CACHE_DIR)/litert-$(LITERT_VER_V).zip
@@ -73,12 +67,11 @@ TFLITE_ROOT_DIR = $(LITERT_ROOT_DIR)/tflite
 GFLAGS_ROOT_DIR = $(THIRD_PARTY_DIR)/gflags
 GLOG_ROOT_DIR = $(THIRD_PARTY_DIR)/glog
 TFLITE_CMAKELISTS_TXT = $(TFLITE_ROOT_DIR)/CMakeLists.txt
-CMAKE_TFLITE_BUILD_DIR = $(MIX_APP_PATH)/cmake_tflite_$(TFLITE_VER)
 
 # KleidiAI is fetched by XNNPACK for arm64 targets, but gitlab.arm.com blocks
 # GitHub runners. Mirror the commit XNNPACK pins from
 # github.com and hand the local copy to XNNPACK via KLEIDIAI_SOURCE_DIR.
-KLEIDIAI_COMMIT ?= 4bc7bd457930de119f8b826ecfdebfbd9c08cf8c
+KLEIDIAI_COMMIT ?= 0ec849c4ee7eecc8e79e6808d20bcdd10e8d137f
 KLEIDIAI_SOURCE_URL = https://github.com/ARM-software/kleidiai/archive/$(KLEIDIAI_COMMIT).tar.gz
 KLEIDIAI_SOURCE_ARCHIVE = $(TFLITE_BEAM_CACHE_DIR)/kleidiai-$(KLEIDIAI_COMMIT).tar.gz
 KLEIDIAI_SOURCE_DIR = $(THIRD_PARTY_DIR)/kleidiai-$(KLEIDIAI_COMMIT)
@@ -147,33 +140,6 @@ prepare_priv_dir:
 create_cache_dir:
 	@ mkdir -p "$(TFLITE_BEAM_CACHE_DIR)"
 
-$(TFLITE_SOURCE_ZIP): create_cache_dir
-	@ if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true" ]; then \
-		if [ "$(TFLITE_USE_GIT_HEAD)" = "false" ] && [ ! -e "$(TFLITE_SOURCE_ZIP)" ]; then \
-			if [ -e "$(shell which curl)" ]; then \
-				curl -fSL "$(TFLITE_SOURCE_URL)" -o $(TFLITE_SOURCE_ZIP) ; \
-			elif [ -e "$(shell which wget)" ]; then \
-				wget "$(TFLITE_SOURCE_URL)" -O $(TFLITE_SOURCE_ZIP) ; \
-			else \
-				echo "cannot find curl or wget, cannot download tensorflow source code" ; \
-				exit 1 ; \
-			fi \
-		fi \
-	fi
-
-unarchive_source_code: $(TFLITE_SOURCE_ZIP)
-	@ if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true" ]; then \
-   		if [ ! -d "$(TENSORFLOW_ROOT_DIR)" ]; then \
-			rm -rf "$(TENSORFLOW_ROOT_DIR)" ; \
-			mkdir -p "$(UNZIP_TARGET_DIR)" ; \
-			if [ "$(TFLITE_USE_GIT_HEAD)" = "false" ]; then \
-				unzip -qq -o "$(TFLITE_SOURCE_ZIP)" -d "$(UNZIP_TARGET_DIR)" ; \
-			else \
-				git clone --branch=$(TFLITE_USE_GIT_BRANCH) --depth=1 $(TFLITE_GIT_REPO) "$(TENSORFLOW_ROOT_DIR)" ; \
-			fi \
-		fi \
-	fi
-
 $(LITERT_SOURCE_ZIP): create_cache_dir
 	@ if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" != "true" ]; then \
 		if [ ! -e "$(LITERT_SOURCE_ZIP)" ]; then \
@@ -230,7 +196,7 @@ $(UNICODE_DATA): prepare_priv_dir
 		cp -f "$(UNICODEDATA)/unicode_data.txt" "$(UNICODE_DATA)" ; \
 	fi
 
-$(NATIVE_BINDINGS_SO): $(UNICODE_DATA) unarchive_source_code unarchive_litert_source_code install_libedgetpu_runtime libusb fetch_kleidiai
+$(NATIVE_BINDINGS_SO): $(UNICODE_DATA) unarchive_litert_source_code install_libedgetpu_runtime libusb fetch_kleidiai
 	@ if [ "$(TFLITE_BEAM_PREFER_PRECOMPILED)" = "true" ]; then \
 		{ \
 			cd "$(shell pwd)" && \
@@ -253,20 +219,19 @@ $(NATIVE_BINDINGS_SO): $(UNICODE_DATA) unarchive_source_code unarchive_litert_so
 			git clone --depth 1 https://github.com/google/glog.git 3rd_party/glog ; \
 		fi && \
 		mkdir -p $(CMAKE_BINDINGS_BUILD_DIR) && \
-		python3 "$(shell pwd)/patches/apply_patch.py" "$(TENSORFLOW_ROOT_DIR)" "$(TFLITE_VER)" "$(THIRD_PARTY_DIR)" && \
 		cd "$(CMAKE_BINDINGS_BUILD_DIR)" && \
 		cmake -D C_SRC="$(C_SRC)" \
 			-D PRIV_DIR="$(PRIV_DIR)" \
 			-D ERTS_INCLUDE_DIR="$(ERTS_INCLUDE_DIR)" \
 			-D TFLITE_ROOT_DIR="$(TFLITE_ROOT_DIR)" \
 			-D LITERT_ROOT_DIR="$(LITERT_ROOT_DIR)" \
-			-D TENSORFLOW_SOURCE_DIR="$(TENSORFLOW_ROOT_DIR)" \
 			-D GFLAGS_ROOT_DIR="$(GFLAGS_ROOT_DIR)" \
 			-D GLOG_ROOT_DIR="$(GLOG_ROOT_DIR)" \
 			-D TFLITE_BEAM_CORAL_SUPPORT="$(TFLITE_BEAM_CORAL_SUPPORT)" \
 			-D TFLITE_BEAM_ENABLE_LITERT_API="$(TFLITE_BEAM_ENABLE_LITERT_API)" \
 			-D TFLITE_BEAM_TFLITE_VERSION="$(TFLITE_VER)" \
 			-D TFLITE_BEAM_LITERT_VERSION="$(LITERT_VER)" \
+			-D TFLITE_BEAM_USE_CCACHE="$(TFLITE_BEAM_USE_CCACHE)" \
 			-D TFLITE_HOST_TOOLS_DIR="$(TFLITE_HOST_TOOLS_DIR)" \
 			-D LIBUSB_INSTALL_DIR="$(LIBUSB_INSTALL_DIR)" \
 			-D MIX_APP_PATH="$(MIX_APP_PATH)" \

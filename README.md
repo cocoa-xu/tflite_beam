@@ -172,7 +172,11 @@ answer both this and the delegate interface above from one file.
 
 `fully_accelerated/1` means every operation was delegated, including to CPU
 XNNPACK. `non_cpu_fully_accelerated/1` only returns `{ok, true}` when the whole
-model runs on GPU or NPU with no CPU execution.
+model runs on GPU or NPU with no CPU execution. `delegation_metrics/1` reports
+the total node count before delegation along with each accelerator's delegated
+node and partition counts. `last_inference_duration/1` returns the native
+inference duration of the most recent run in nanoseconds (or `undefined` before
+any run), and `runtime_abi_version/0` reports the LiteRT runtime ABI version.
 
 `run_with_metrics/3` accepts a detail level or an options map:
 
@@ -187,7 +191,7 @@ inputs, running synchronous inference and transferring outputs. Queue waiting
 and metrics collection are excluded. Extra metrics are data, not callbacks;
 names and string values are binaries without NUL bytes, and integer values fit
 in signed 64 bits. Both options default to off or empty. Accelerator counters
-are returned first, followed by host timing and extra metrics. LiteRT 2.3.0's
+are returned first, followed by host timing and extra metrics. LiteRT 2.4.0's
 ML Drift GPU plugin can report intermediate and constant tensor memory; a
 backend that supplies no counters still returns an empty list by default.
 
@@ -233,23 +237,30 @@ the same settings through. For example, to use four CPU threads:
 vendor hardware and returns the native option identifiers and serialized
 payloads. Settings use LiteRT's typed C API; unknown backends, keys and enum
 values return errors. Top-level `precision` is merged into the same GPU payload
-as its backend settings.
+as its backend settings, and top-level `profile` is merged into the `runtime`
+payload.
 
 | Backend | Supported settings |
 |---|---|
 | `cpu` | `num_threads` (-1 or positive), `kernel_mode` (`delegate`, `reference`, `builtin`), `enable_ynnpack`, `xnnpack_flags` (uint32), `hint_fully_delegated_to_single_delegate`, `weight_cache_path`, `weight_cache_fd` |
-| `gpu` | `constant_tensors_sharing`, `use_ir_model`, `use_metal_argument_buffers`, `metal_residency_set`, `hint_fully_delegated_to_single_delegate` (booleans) |
-| `arm` | `enable_just_in_time` (boolean) |
+| `gpu` | `constant_tensors_sharing`, `use_ir_model`, `use_metal_argument_buffers`, `metal_residency_set`, `hint_fully_delegated_to_single_delegate`, `enable_fast_tuning`, `enable_op_profiling`, `enable_op_profiling_detailed_report`, `debug_delegate_partition` (booleans); `debug_first_delegate_node_index`, `debug_last_delegate_node_index` (non-negative integers) |
+| `arm_vulkan_ml` (alias `arm`) | `enable_just_in_time`, `dump_op_timings`, `float_fallback` (booleans) |
+| `compiler` | `partition_strategy` (`default`, `weakly_connected`), `max_partitions` (non-negative integer), `positional_input_shapes` (`[{SignatureKey, Dims}]`), `tensor_input_shapes` and `signature_input_shapes` (`[{SignatureKey, Name, Dims}]`, where dims are positive or `-1`) |
+| `runtime` | `error_reporter_mode` (`none`, `stderr`, `buffer`), `compress_quantization_zero_points`, `disable_delegate_clustering` (booleans), `selected_signatures` (non-empty list of unique non-empty binaries) |
+| `samsung` | `enable_large_model_support` (boolean), `soc_model` (binary) |
+| `webnn` | `device_preference` (`cpu`, `gpu`, `npu`), `power_preference` (`default`, `high_performance`, `low_power`), `precision` (`fp32`, `fp16`) |
 | `intel_openvino` | `enable_weight_sharing` (boolean), `performance_mode` (`latency`, `throughput`, `cumulative_throughput`) |
 | `google_tensor` | `input_coherency`, `output_coherency`: lists of `{Signature, Tensor, Boolean}` |
 | `mediatek` | `gemma_compiler_optimizations`, `use_get_supported_operations` (booleans); `option_bundle`, `option_bundle_decode`, `option_bundle_prefill` (binaries) |
-| `qualcomm` | `enable_weight_sharing`; `backend` (`undefined`, `gpu`, `htp`, `dsp`, `ir`, `lpai`); `htp_pd_session`, `dsp_pd_session` (`unsigned`, `signed`, `adaptive`); `dsp_encoding` (`static`, `dynamic`); `dsp_performance_mode`; `lpai_target` (`x86`, `arm`, `adsp`, `tensilica`); `lpai_fps`, `lpai_ftrt_ratio` (positive uint32); `lpai_client_perf_type` (`default`, `real_time`, `non_real_time`); `lpai_core_affinity` (`default`, `soft`, `hard`); `lpai_core_selection` (uint32); `qnn_lib_dir`, `dsp_skel_dir`, `graph_transform` (binaries) |
+| `qualcomm` | `enable_weight_sharing`, `htp_dlbc`, `htp_dlbc_weights`, `htp_context_init_acceleration` (booleans); `graph_priority` (`default`, `low`, `normal`, `normal_high`, `high`); `op_name_format` (`basic`, `detailed`); `htp_weight_sharing_channel_tile_size` (int32); `htp_device_id`, `htp_file_read_memory_budget_mb` (uint32); `backend` (`undefined`, `gpu`, `htp`, `dsp`, `ir`, `lpai`); `htp_pd_session`, `dsp_pd_session` (`unsigned`, `signed`, `adaptive`); `dsp_encoding` (`static`, `dynamic`); `dsp_performance_mode`; `lpai_target` (`x86`, `arm`, `adsp`, `tensilica`); `lpai_fps`, `lpai_ftrt_ratio` (positive uint32); `lpai_client_perf_type` (`default`, `real_time`, `non_real_time`); `lpai_core_affinity` (`default`, `soft`, `hard`); `lpai_core_selection` (uint32); `qnn_lib_dir`, `dsp_skel_dir`, `graph_transform` (binaries) |
 
 Qualcomm DSP performance modes are `default`, `sustained_high_performance`,
 `burst`, `high_performance`, `power_saver`, `low_power_saver`, `high_power_saver`,
 `low_balanced` and `balanced`. Backend strings are binaries without controls,
 quotes or backslashes, because LiteRT's payload serializers do not escape them.
-Coherency names also exclude colon, equals and spaces.
+Compiler signature keys also exclude `@` and single quotes; coherency names also
+exclude colon, equals and spaces. `arm` and `arm_vulkan_ml` are aliases for the
+same backend (`ArmVulkanML`) and cannot both be set at once.
 
 CPU cache paths and descriptors are mutually exclusive; keep a supplied file
 descriptor available while compiling. YNNPACK requires a runtime built with it.
@@ -266,9 +277,10 @@ Allowing CPU fallback does not recover a delegate compilation failure.
 ### Inspecting and rewriting graph options
 
 The experimental `tflite_beam_litert_model` API reads subgraph connectivity and
-the options added to LiteRT's builder in 2.3.0. It can rewrite OneHot's `axis`,
-SplitV's `num_splits`, and StableHLO composite's name, decomposition subgraph,
-version and attributes:
+options for OneHot, SplitV, Conv3dTranspose, LocalResponseNormalization and
+StableHLO composite operators. It can rewrite OneHot's `axis`, SplitV's
+`num_splits`, Conv3dTranspose's padding/strides/dilations/activation, and
+StableHLO composite's name, decomposition subgraph, version and attributes:
 
 ```erlang
 {ok, Graphs} = tflite_beam_litert_model:inspect(Env, "model.tflite"),
@@ -437,6 +449,13 @@ bash "3rd_party/cache/${TFLITE_BEAM_CORAL_LIBEDGETPU_RUNTIME}/edgetpu_runtime/in
 
   Defaults to `true`.
 
+- `TFLITE_BEAM_USE_CCACHE`
+
+  Control whether source builds use `ccache` as the CMake compiler launcher.
+  Accepted values are `auto` (use `ccache` when found in `PATH`), `true` (require `ccache`), and `false` (disable `ccache`).
+
+  Defaults to `auto`.
+
 - `TFLITE_BEAM_CORAL_SUPPORT`
 
   Enable Coral Support.
@@ -512,7 +531,7 @@ exactly its size, where a short binary used to be written as far as it went and
 reported as success, leaving the rest of the tensor holding whatever was there
 before. And `tflite_version/0` now answers LiteRT's version rather than
 TensorFlow's, which matters if you load a delegate plugin: it has to be built from
-the same release, and the two version lines are not comparable, so LiteRT's 2.3.0
+the same release, and the two version lines are not comparable, so LiteRT's 2.4.0
 is newer than TensorFlow's 2.21.0 rather than older.
 
 Documentation is published on [HexDocs](https://hexdocs.pm/tflite_beam).
