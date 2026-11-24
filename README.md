@@ -13,7 +13,7 @@ TensorFlow Lite BEAM bindings with optional EdgeTPU support.
 | Ubuntu 20.04     | armv6   | gnueabihf | [![CI](https://github.com/cocoa-xu/tflite_beam/actions/workflows/linux-precompile.yml/badge.svg)](https://github.com/cocoa-xu/tflite_beam/actions/workflows/linux-precompile.yml) | Yes |
 | Ubuntu 20.04     | riscv64 | gnu       | [![CI](https://github.com/cocoa-xu/tflite_beam/actions/workflows/linux-precompile.yml/badge.svg)](https://github.com/cocoa-xu/tflite_beam/actions/workflows/linux-precompile.yml) | Yes |
 | macOS 15 Sequoia | x86_64  | darwin    | [![CI](https://github.com/cocoa-xu/tflite_beam/actions/workflows/macos-precompile.yml/badge.svg)](https://github.com/cocoa-xu/tflite_beam/actions/workflows/macos-precompile.yml) | Yes |
-| macOS 14 Sonoma  | arm64   | darwin    | [![CI](https://github.com/cocoa-xu/tflite_beam/actions/workflows/macos-precompile.yml/badge.svg)](https://github.com/cocoa-xu/tflite_beam/actions/workflows/macos-precompile.yml) | Yes |
+| macOS 15 Sequoia | arm64   | darwin    | [![CI](https://github.com/cocoa-xu/tflite_beam/actions/workflows/macos-precompile.yml/badge.svg)](https://github.com/cocoa-xu/tflite_beam/actions/workflows/macos-precompile.yml) | Yes |
 
 
 ## Delegates
@@ -549,7 +549,7 @@ compile. These have held since v0.3.12:
 | `aarch64-linux-gnu` | glibc 2.34 (Ubuntu 22.04, Debian 12) |
 | `armv6-linux-gnueabihf` | glibc 2.38 (Debian 13, or a Nerves system) |
 | `riscv64-linux-gnu` | glibc 2.38 (Debian 13, or a Nerves system) |
-| `aarch64-apple-darwin` | macOS 14 |
+| `aarch64-apple-darwin` | macOS 15 |
 | `x86_64-apple-darwin` | macOS 15 |
 
 The figure is a floor, not a pin: anything newer works. Check yours with

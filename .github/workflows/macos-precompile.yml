@@ -38,7 +38,7 @@ jobs:
               otp: "25.3.2.9"
               arch: aarch64
               libedgetpu_library: darwin_arm64
-              runs_on: macos-14
+              runs_on: macos-15
 
     steps:
       - name: Checkout
