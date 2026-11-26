@@ -494,6 +494,22 @@ if(TFLITE_BEAM_ENABLE_LITERT_API)
     if(NOT ml_drift_POPULATED)
         OverridableFetchContent_Populate(ml_drift)
     endif()
+    # GCC's C++ frontend added _Float16 in GCC 12. On AArch64 with GCC 10/11
+    # (e.g. Ubuntu 22.04's g++-aarch64-linux-gnu), ml_drift/common/types.h
+    # defines HAS_NATIVE_FP16 and aliases half to _Float16, failing to compile.
+    # Require GCC >= 12 for HAS_NATIVE_FP16 so older GCC falls back to fp16.h.
+    set(_mldrift_types_h "${ml_drift_SOURCE_DIR}/ml_drift/common/types.h")
+    if(EXISTS "${_mldrift_types_h}")
+        file(READ "${_mldrift_types_h}" _mldrift_types_content)
+        string(REPLACE
+            "(defined(__clang__) || defined(__GNUC__))"
+            "(defined(__clang__) || (defined(__GNUC__) && __GNUC__ >= 12))"
+            _mldrift_types_patched
+            "${_mldrift_types_content}")
+        if(NOT _mldrift_types_patched STREQUAL _mldrift_types_content)
+            file(WRITE "${_mldrift_types_h}" "${_mldrift_types_patched}")
+        endif()
+    endif()
     include_directories("${ml_drift_SOURCE_DIR}")
 
     if(NOT TARGET flatbuffers::flatbuffers AND TARGET flatbuffers)
