@@ -498,13 +498,19 @@ Add `tflite_beam` to your list of dependencies in `rebar.config`:
 
 ```erlang
 {deps, [
-  {tflite_beam, "1.1.1"}
+  {tflite_beam, "1.2.0"}
 ]}
 ```
 
+1.2.0 builds the runtime from LiteRT 2.4.0, adds `runtime_abi_version/0`,
+`last_inference_duration/1`, `delegation_metrics/1`, new LiteRT 2.4.0 backend
+options (`arm_vulkan_ml`, `compiler`, `runtime`, `samsung`, `webnn`, plus new
+`gpu` and `qualcomm` settings), `conv3d_transpose` /
+`local_response_normalization` graph options, and `ccache` support. External
+delegate plugins must be built against LiteRT 2.4.0.
+
 1.1.0 builds the runtime from LiteRT 2.3.0 and adds acceleration queries,
 inference metrics options, backend settings and experimental graph operations.
-External delegate plugins must be built against LiteRT 2.3.0.
 
 1.1.1 fixes isolated model startup when EPMD is not already running.
 

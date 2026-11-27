@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.2.0 (2026-11-26)
+[Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v1.2.0) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v1.2.0)
+
+- Build the runtime from LiteRT 2.4.0 using its TensorFlow-free CMake build,
+  updated KleidiAI revision, and ML Drift / Khronos headers for the optional
+  LiteRT API build (including a portable `fp16.h` fallback on GCC < 12 AArch64).
+  Rebuild external delegate plugins against LiteRT 2.4.0.
+- Add `runtime_abi_version/0`, `last_inference_duration/1`, and
+  `delegation_metrics/1` on `tflite_beam_litert_compiled_model` (with
+  `last_inference_duration/1` and `delegation_metrics/1` forwarded through the
+  server and isolated modules).
+- Expand `backend_options` for LiteRT 2.4.0: migrate `arm` to `arm_vulkan_ml`
+  (keeping `arm` as a backward-compatible alias), add `compiler` (including
+  compile-time positional/tensor/signature input shape overrides), `runtime`
+  (merged with top-level `profile`), `samsung`, and `webnn` backends, plus new
+  `gpu` and `qualcomm` options.
+- Add `conv3d_transpose` inspection and option rewriting plus
+  `local_response_normalization` inspection in `tflite_beam_litert_model`.
+- Add configurable `ccache` support (`TFLITE_BEAM_USE_CCACHE=auto|true|false`)
+  in CMake/Makefile and enable it across CI and precompile workflows.
+- Pin auto-started isolated model distribution to `@localhost` and inherit the
+  parent node's host on subsequent peers; pair ERTS resource slot recycling in
+  TSan annotations; migrate arm64 macOS precompiled builds from retired
+  `macos-14` to `macos-15`.
+
 ## v1.1.1 (2026-10-15)
 [Browse the Repository](https://github.com/cocoa-xu/tflite_beam/tree/v1.1.1) | [Released Assets](https://github.com/cocoa-xu/tflite_beam/releases/tag/v1.1.1)
 
